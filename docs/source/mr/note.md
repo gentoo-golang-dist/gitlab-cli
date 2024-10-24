@@ -39,6 +39,7 @@ $ glab mr note 123
 
 ```plaintext
   -m, --message string   Comment or note message.
+      --note-id int      Existing note ID to update
       --unique           Don't create a comment or note if it already exists.
 ```
 
