@@ -50,6 +50,11 @@ require (
 )
 
 require (
+	github.com/coder/websocket v1.8.12 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+)
+
+require (
 	al.essio.dev/pkg/shellescape v1.5.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -73,6 +78,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/hasura/go-graphql-client v0.13.1
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
