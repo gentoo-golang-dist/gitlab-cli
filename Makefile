@@ -2,7 +2,6 @@ OS = $(shell uname | tr A-Z a-z)
 DEBUG ?= false
 export PATH := $(abspath bin/):${PATH}
 
-
 # Build variables
 export CGO_ENABLED ?= 0
 ifeq (${VERBOSE}, 1)
@@ -47,6 +46,7 @@ endif
 
 GO_LDFLAGS := -X main.buildDate=$(BUILD_DATE) $(GO_LDFLAGS)
 GO_LDFLAGS := $(GO_LDFLAGS) -X main.version=$(GLAB_VERSION)
+GO_LDFLAGS := $(GO_LDFLAGS) -w -s
 GOURL ?= gitlab.com/gitlab-org/cli
 BUILDLOC ?= ./bin/glab
 
