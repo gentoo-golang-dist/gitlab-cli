@@ -81,7 +81,7 @@ func (c *Context) UploadFiles(projectID, tagName string) error {
 		if err != nil {
 			return err
 		}
-		projectFile, _, err := c.Client.Projects.UploadFile(
+		projectFile, _, err := c.Client.Projects.UploadFile( //nolint:all
 			projectID,
 			r,
 			file.Name,

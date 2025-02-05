@@ -11,9 +11,9 @@
     "updated_at": "2022-01-20T21:47:54.11Z",
     "upvotes": 0,
     "downvotes": 0,
-    "author":
-    {
+    "author": {
       "id": 8814129,
+      "locked": false,
       "username": "OWNER",
       "name": "Some User",
       "state": "active",
@@ -21,9 +21,9 @@
       "avatar_url": "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
       "web_url": "https://gitlab.com/OWNER"
     },
-    "assignee":
-    {
+    "assignee": {
       "id": 8814129,
+      "locked": false,
       "username": "OWNER",
       "name": "Some User",
       "state": "active",
@@ -31,10 +31,10 @@
       "avatar_url": "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
       "web_url": "https://gitlab.com/OWNER"
     },
-    "assignees":
-    [
+    "assignees": [
       {
         "id": 8814129,
+        "locked": false,
         "username": "OWNER",
         "name": "Some User",
         "state": "active",
@@ -43,8 +43,7 @@
         "web_url": "https://gitlab.com/OWNER"
       }
     ],
-    "reviewers":
-    [],
+    "reviewers": [],
     "source_project_id": 29316529,
     "target_project_id": 29316529,
     "labels": [],
@@ -70,20 +69,17 @@
     "force_remove_source_branch": true,
     "allow_collaboration": false,
     "web_url": "https://gitlab.com/OWNER/REPO/-/merge_requests/4",
-    "references":
-    {
+    "references": {
       "short": "!4",
       "relative": "!4",
       "full": "OWNER/REPO!4"
     },
     "discussion_locked": false,
     "changes": null,
-    "user":
-    {
+    "user": {
       "can_merge": false
     },
-    "time_stats":
-    {
+    "time_stats": {
       "human_time_estimate": "",
       "human_total_time_spent": "",
       "time_estimate": 0,
@@ -92,8 +88,7 @@
     "squash": false,
     "pipeline": null,
     "head_pipeline": null,
-    "diff_refs":
-    {
+    "diff_refs": {
       "base_sha": "",
       "head_sha": "",
       "start_sha": ""
@@ -103,8 +98,7 @@
     "approvals_before_merge": 0,
     "reference": "!4",
     "first_contribution": false,
-    "task_completion_status":
-    {
+    "task_completion_status": {
       "count": 0,
       "completed_count": 0
     },
@@ -125,9 +119,9 @@
     "updated_at": "2022-01-18T18:06:50.054Z",
     "upvotes": 0,
     "downvotes": 0,
-    "author":
-    {
+    "author": {
       "id": 8814129,
+      "locked": false,
       "username": "OWNER",
       "name": "Some User",
       "state": "active",
@@ -136,10 +130,8 @@
       "web_url": "https://gitlab.com/OWNER"
     },
     "assignee": null,
-    "assignees":
-    [],
-    "reviewers":
-    [],
+    "assignees": [],
+    "reviewers": [],
     "source_project_id": 29316529,
     "target_project_id": 29316529,
     "labels": [],
@@ -165,20 +157,17 @@
     "force_remove_source_branch": true,
     "allow_collaboration": false,
     "web_url": "https://gitlab.com/OWNER/REPO/-/merge_requests/1",
-    "references":
-    {
+    "references": {
       "short": "!1",
       "relative": "!1",
       "full": "OWNER/REPO!1"
     },
     "discussion_locked": false,
     "changes": null,
-    "user":
-    {
+    "user": {
       "can_merge": false
     },
-    "time_stats":
-    {
+    "time_stats": {
       "human_time_estimate": "",
       "human_total_time_spent": "",
       "time_estimate": 0,
@@ -187,8 +176,7 @@
     "squash": false,
     "pipeline": null,
     "head_pipeline": null,
-    "diff_refs":
-    {
+    "diff_refs": {
       "base_sha": "",
       "head_sha": "",
       "start_sha": ""
@@ -198,8 +186,7 @@
     "approvals_before_merge": 0,
     "reference": "!1",
     "first_contribution": false,
-    "task_completion_status":
-    {
+    "task_completion_status": {
       "count": 0,
       "completed_count": 0
     },
@@ -209,3 +196,4 @@
     "merge_status": "can_be_merged"
   }
 ]
+
