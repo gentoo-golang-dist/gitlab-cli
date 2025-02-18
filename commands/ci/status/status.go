@@ -7,9 +7,7 @@ import (
 	"gitlab.com/gitlab-org/cli/api"
 	"gitlab.com/gitlab-org/cli/commands/ci/ciutils"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/pkg/dbg"
-	"gitlab.com/gitlab-org/cli/pkg/git"
 	"gitlab.com/gitlab-org/cli/pkg/utils"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -38,10 +36,14 @@ func NewCmdStatus(f *cmdutils.Factory) *cobra.Command {
 		Long: ``,
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
 			c := f.IO.Color()
 
 			apiClient, err := f.HttpClient()
+			if err != nil {
+				return err
+			}
+
+			repo, err := f.BaseRepo()
 			if err != nil {
 				return err
 			}
@@ -50,35 +52,9 @@ func NewCmdStatus(f *cmdutils.Factory) *cobra.Command {
 			live, _ := cmd.Flags().GetBool("live")
 			compact, _ := cmd.Flags().GetBool("compact")
 
-			if branch == "" {
-				branch, err = git.CurrentBranch()
-				if err != nil {
-					return err
-				}
-				dbg.Debug("Current branch:", branch)
-			}
-
-			var repo glrepo.Interface
-			branchConfig := git.ReadBranchConfig(branch)
-			if branchConfig.RemoteName == "" {
-				repo, err = f.BaseRepo()
-				if err != nil {
-					return err
-				}
-			} else {
-				remotes, err := f.Remotes()
-				if err != nil {
-					return err
-				}
-				repo, err = remotes.FindByName(branchConfig.RemoteName)
-				if err != nil {
-					redCheck := c.Red("x")
-					fmt.Fprintf(f.IO.StdOut, "%s Remote '%s' for branch '%s' is gone.\n", redCheck, branchConfig.RemoteName, branch)
-					return err
-				}
-			}
 			repoName := repo.FullName()
 			dbg.Debug("Repository:", repoName)
+			dbg.Debug("Current branch:", branch)
 
 			runningPipeline, err := api.GetLatestPipeline(apiClient, repoName, branch)
 			if err != nil {
@@ -187,7 +163,7 @@ func NewCmdStatus(f *cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
 	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
-	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. Default: current branch.")
+	pipelineStatusCmd.Flags().StringP("branch", "b", "main", "Check pipeline status for a branch.")
 
 	return pipelineStatusCmd
 }
