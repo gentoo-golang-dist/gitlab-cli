@@ -8,6 +8,7 @@ import (
 	"gitlab.com/gitlab-org/cli/commands/ci/ciutils"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
 	"gitlab.com/gitlab-org/cli/pkg/dbg"
+	"gitlab.com/gitlab-org/cli/pkg/git"
 	"gitlab.com/gitlab-org/cli/pkg/utils"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -54,6 +55,35 @@ func NewCmdStatus(f *cmdutils.Factory) *cobra.Command {
 
 			repoName := repo.FullName()
 			dbg.Debug("Repository:", repoName)
+
+			if branch == "" {
+				branch, err = git.CurrentBranch()
+				if err != nil {
+					// if there isn't a branch via --branch, and we are not in a git repository set the branch to main
+					branch = "main"
+				}
+				dbg.Debug("Current branch:", branch)
+			}
+
+			branchConfig := git.ReadBranchConfig(branch)
+			if branchConfig.RemoteName == "" {
+				repo, err = f.BaseRepo()
+				if err != nil {
+					return err
+				}
+			} else {
+				remotes, err := f.Remotes()
+				if err != nil {
+					return err
+				}
+				repo, err = remotes.FindByName(branchConfig.RemoteName)
+				if err != nil {
+					redCheck := c.Red("x")
+					fmt.Fprintf(f.IO.StdOut, "%s Remote '%s' for branch '%s' is gone.\n", redCheck, branchConfig.RemoteName, branch)
+					return err
+				}
+			}
+
 			dbg.Debug("Current branch:", branch)
 
 			runningPipeline, err := api.GetLatestPipeline(apiClient, repoName, branch)
@@ -163,7 +193,7 @@ func NewCmdStatus(f *cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
 	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
-	pipelineStatusCmd.Flags().StringP("branch", "b", "main", "Check pipeline status for a branch.")
+	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch.")
 
 	return pipelineStatusCmd
 }

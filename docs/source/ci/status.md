@@ -42,7 +42,7 @@ glab ci status
 ## Options
 
 ```plaintext
-  -b, --branch string   Check pipeline status for a branch. (default "main")
+  -b, --branch string   Check pipeline status for a branch.
   -c, --compact         Show status in compact format.
   -l, --live            Show status in real time until the pipeline ends.
 ```
