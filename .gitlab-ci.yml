@@ -16,7 +16,6 @@ workflow:
 
 # This is the base job template that all other jobs will extend
 .go_job:
-  image: golang:$GO_VERSIO
   # NOTE: largest linux-based hosted runner available in Free tier.
   # see https://docs.gitlab.com/ee/ci/runners/hosted_runners/linux.html#machine-types-available-for-linux---x86-64N
   tags:
@@ -63,6 +62,7 @@ include:
 
 check_docs_update:
   extends: .documentation
+  image: golang:latest
   before_script:
     - *get_go_version
   script:
