@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"gitlab.com/gitlab-org/cli/commands"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
+	"gitlab.com/gitlab-org/cli/commands/completion"
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
@@ -209,7 +210,11 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 		// Skipping `help` commands until Long description can be revised
 		if cmd.Name() != "help" {
 			buf.WriteString("\n## Synopsis\n\n")
-			buf.WriteString(cmd.Long)
+			if cmd.Name() == "completion" {
+				buf.WriteString(completion.HelpText)
+			} else {
+				buf.WriteString(cmd.Long)
+			}
 		}
 	}
 

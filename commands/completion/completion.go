@@ -4,23 +4,13 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/charmbracelet/glamour"
 	"gitlab.com/gitlab-org/cli/pkg/iostreams"
 
 	"github.com/spf13/cobra"
 )
 
-func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
-	var (
-		shellType string
-
-		// description will not be added if true
-		excludeDesc = false
-	)
-
-	completionCmd := &cobra.Command{
-		Use:   "completion",
-		Short: "Generate shell completion scripts.",
-		Long: heredoc.Docf(`
+var HelpText = heredoc.Docf(`
 		This command outputs code meant to be saved to a file, or immediately
 		evaluated by an interactive shell. To load completions:
 
@@ -28,7 +18,7 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		To load completions in your current shell session:
 
-		%[2]splaintext
+		%[2]sshell
 		source <(glab completion -s bash)
 		%[2]s
 
@@ -36,13 +26,13 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		#### Linux
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s bash > /etc/bash_completion.d/glab
 		%[2]s
 
 		#### macOS
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s bash > /usr/local/etc/bash_completion.d/glab
 		%[2]s
 
@@ -51,13 +41,13 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 		If shell completion is not already enabled in your environment you must
 		enable it. Run this command one time:
 
-		%[2]splaintext
+		%[2]sshell
 		echo "autoload -U compinit; compinit" >> ~/.zshrc
 		%[2]s
 
 		To load completions in your current shell session:
 
-		%[2]splaintext
+		%[2]sshell
 		source <(glab completion -s zsh); compdef _glab glab
 		%[2]s
 
@@ -65,7 +55,7 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		#### Linux
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s zsh > "${fpath[1]}/_glab"
 		%[2]s
 
@@ -73,7 +63,7 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		For older versions of macOS, you might need this command:
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s zsh > /usr/local/share/zsh/site-functions/_glab
 		%[2]s
 
@@ -83,13 +73,13 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		To load completions in your current shell session:
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s fish | source
 		%[2]s
 
 		To load completions for every new session, run this command one time:
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s fish > ~/.config/fish/completions/glab.fish
 		%[2]s
 
@@ -97,7 +87,7 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		To load completions in your current shell session:
 
-		%[2]splaintext
+		%[2]sshell
 		glab completion -s powershell | Out-String | Invoke-Expression
 		%[2]s
 
@@ -106,8 +96,26 @@ func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
 
 		When installing glab through a package manager, however, you might not need
 		more shell configuration to support completions.
-		For Homebrew, see [brew shell completion](https://docs.brew.sh/Shell-Completion)
-		`, "`", "```"),
+		For Homebrew, see [brew shell completion](https://docs.brew.sh/Shell-Completion).
+		`, "`", "```")
+
+func NewCmdCompletion(io *iostreams.IOStreams) *cobra.Command {
+	var (
+		shellType string
+
+		// description will not be added if true
+		excludeDesc = false
+	)
+
+	longOutput, err := glamour.Render(HelpText, "dark")
+	if err != nil {
+		panic(err)
+	}
+
+	completionCmd := &cobra.Command{
+		Use:   "completion",
+		Short: "Generate shell completion scripts.",
+		Long:  longOutput,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			out := io.StdOut
 			rootCmd := cmd.Parent()
