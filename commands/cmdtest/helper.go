@@ -22,6 +22,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -165,6 +166,39 @@ func InitFactory(ios *iostreams.IOStreams, rt http.RoundTripper) *cmdutils.Facto
 		Branch: func() (string, error) {
 			return "main", nil
 		},
+	}
+}
+
+func InitMockFactory(ios *iostreams.IOStreams, client *gitlab.Client) *cmdutils.Factory {
+	return &cmdutils.Factory{
+		IO: ios,
+		HttpClient: func() (*gitlab.Client, error) {
+			return client, nil
+		},
+		Config: func() (config.Config, error) {
+			return config.NewBlankConfig(), nil
+		},
+		BaseRepo: func() (glrepo.Interface, error) {
+			return glrepo.New("OWNER", "REPO"), nil
+		},
+		Branch: func() (string, error) {
+			return "main", nil
+		},
+	}
+}
+
+type CmdExecFunc func(cli string) (*test.CmdOut, error)
+type CmdFunc func(f *cmdutils.Factory) *cobra.Command
+
+func Setup(t *testing.T, cmdFunc CmdFunc, isTTY bool, doHyperlinks string) (*gitlab_testing.TestClient, CmdExecFunc) {
+	t.Helper()
+
+	ios, _, stdout, stderr := InitIOStreams(isTTY, doHyperlinks)
+	tc := gitlab_testing.NewTestClient(t)
+	f := InitMockFactory(ios, tc.Client)
+
+	return tc, func(cli string) (*test.CmdOut, error) {
+		return ExecuteCommand(cmdFunc(f), cli, stdout, stderr)
 	}
 }
 

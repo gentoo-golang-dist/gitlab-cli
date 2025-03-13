@@ -2,6 +2,8 @@ module gitlab.com/gitlab-org/cli
 
 go 1.24.0
 
+replace gitlab.com/gitlab-org/api/client-go => /Users/timo/work/gitlab/api/client-go
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
@@ -103,7 +105,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
