@@ -56,12 +56,13 @@ type CreateOpts struct {
 	IsWIP          bool `json:"is_wip,omitempty"`
 	ShouldPush     bool `json:"should_push,omitempty"`
 
-	NoEditor      bool `json:"-"`
-	IsInteractive bool `json:"-"`
-	Yes           bool `json:"-"`
-	Web           bool `json:"-"`
-	Recover       bool `json:"-"`
-	Signoff       bool `json:"-"`
+	NoEditor          bool `json:"-"`
+	IsInteractive     bool `json:"-"`
+	Yes               bool `json:"-"`
+	Web               bool `json:"-"`
+	OpenAfterCreation bool `json:"-"`
+	Recover           bool `json:"-"`
+	Signoff           bool `json:"-"`
 
 	IO       *iostreams.IOStreams             `json:"-"`
 	Branch   func() (string, error)           `json:"-"`
@@ -183,6 +184,7 @@ func NewCmdCreate(f *cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().StringP("head", "H", "", "Select another head repository using the `OWNER/REPO` or `GROUP/NAMESPACE/REPO` format, the project ID, or the full URL.")
 	mrCreateCmd.Flags().BoolVarP(&opts.Yes, "yes", "y", false, "Skip submission confirmation prompt. Use --fill to skip all optional prompts.")
 	mrCreateCmd.Flags().BoolVarP(&opts.Web, "web", "w", false, "Continue merge request creation in a browser.")
+	mrCreateCmd.Flags().BoolVarP(&opts.OpenAfterCreation, "open-after-creation", "o", false, "Open merge request in browser after creation.")
 	mrCreateCmd.Flags().BoolVarP(&opts.CopyIssueLabels, "copy-issue-labels", "", false, "Copy labels from issue to the merge request. Used with --related-issue.")
 	mrCreateCmd.Flags().StringVarP(&opts.RelatedIssue, "related-issue", "i", "", "Create a merge request for an issue. If --title is not provided, uses the issue title.")
 	mrCreateCmd.Flags().BoolVar(&opts.Recover, "recover", false, "Save the options to a file if the merge request creation fails. If the file exists, the options are loaded from the recovery file. (EXPERIMENTAL.)")
@@ -512,7 +514,7 @@ func createRun(opts *CreateOpts) error {
 
 	var action cmdutils.Action
 
-	// submit without prompting for non interactive mode
+	// submit without prompting for non-interactive mode
 	if !opts.IsInteractive || opts.Yes {
 		action = cmdutils.SubmitAction
 	}
@@ -637,6 +639,11 @@ func createRun(opts *CreateOpts) error {
 		}
 
 		fmt.Fprintln(out, mrutils.DisplayMR(c, &mr.BasicMergeRequest, opts.IO.IsaTTY))
+
+		if opts.OpenAfterCreation {
+			return openURLInBrowser(opts, mr.WebURL)
+		}
+
 		return nil
 	}
 
@@ -730,26 +737,12 @@ func handlePush(opts *CreateOpts, remote *glrepo.Remote) error {
 }
 
 func previewMR(opts *CreateOpts) error {
-	repo, err := opts.BaseRepo()
-	if err != nil {
-		return err
-	}
-
-	cfg, err := opts.Config()
-	if err != nil {
-		return err
-	}
-
 	openURL, err := generateMRCompareURL(opts)
 	if err != nil {
 		return err
 	}
 
-	if opts.IO.IsOutputTTY() {
-		fmt.Fprintf(opts.IO.StdErr, "Opening %s in your browser.\n", utils.DisplayURL(openURL))
-	}
-	browser, _ := cfg.Get(repo.RepoHost(), "browser")
-	return utils.OpenInBrowser(openURL, browser)
+	return openURLInBrowser(opts, openURL)
 }
 
 func generateMRCompareURL(opts *CreateOpts) (string, error) {
@@ -791,6 +784,25 @@ func generateMRCompareURL(opts *CreateOpts) (string, error) {
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil
+}
+
+func openURLInBrowser(opts *CreateOpts, url string) error {
+	repo, err := opts.BaseRepo()
+	if err != nil {
+		return err
+	}
+
+	cfg, err := opts.Config()
+	if err != nil {
+		return err
+	}
+
+	if opts.IO.IsOutputTTY() {
+		fmt.Fprintf(opts.IO.StdErr, "Opening %s in your browser.\n\n", utils.DisplayURL(url))
+	}
+
+	browser, _ := cfg.Get(repo.RepoHost(), "browser")
+	return utils.OpenInBrowser(url, browser)
 }
 
 func ResolvedHeadRepo(f *cmdutils.Factory) func() (glrepo.Interface, error) {

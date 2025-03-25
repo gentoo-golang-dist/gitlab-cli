@@ -49,6 +49,7 @@ glab mr create --fill --fill-commit-body --yes
   -l, --label strings          Add label by name. Multiple labels should be comma-separated.
   -m, --milestone string       The global ID or title of a milestone to assign.
       --no-editor              Don't open editor to enter a description. If true, uses prompt. Defaults to false.
+  -o, --open-after-creation    Open merge request in browser after creation.
       --push                   Push committed changes after creating merge request. Make sure you have committed changes.
       --recover                Save the options to a file if the merge request creation fails. If the file exists, the options are loaded from the recovery file. (EXPERIMENTAL.)
   -i, --related-issue string   Create a merge request for an issue. If --title is not provided, uses the issue title.

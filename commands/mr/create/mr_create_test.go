@@ -406,6 +406,7 @@ func TestNewCmdCreate_RelatedIssueWithTitleAndDescription(t *testing.T) {
 		"--description", "\"my custom MR description\"",
 		"--related-issue", "1",
 		"--source-branch", "feat-new-mr",
+		"--open-after-creation",
 	}
 
 	cli := strings.Join(cliStr, " ")
@@ -421,7 +422,7 @@ func TestNewCmdCreate_RelatedIssueWithTitleAndDescription(t *testing.T) {
 		return
 	}
 	assert.Contains(t, cmdtest.FirstLine([]byte(output.String())), "!12 my custom MR title (feat-new-mr)")
-	assert.Contains(t, output.Stderr(), "\nCreating draft merge request for feat-new-mr into master in OWNER/REPO\n\n")
+	assert.Equal(t, "\nCreating draft merge request for feat-new-mr into master in OWNER/REPO\n\nOpening gitlab.com/OWNER/REPO/-/merge_requests/12 in your browser.\n\n", output.Stderr())
 	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
 }
 
