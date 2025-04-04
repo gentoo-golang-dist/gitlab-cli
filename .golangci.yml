@@ -1,16 +1,32 @@
+version: "2"
 run:
-    timeout: 5m
-    modules-download-mode: readonly
-
+  modules-download-mode: readonly
 linters:
-    disable-all: true
-    enable:
-        - errcheck
-        - gofumpt
-        - goimports
-        - gosimple
-        - govet
-        - ineffassign
-        - staticcheck
-        - typecheck
-        - unused
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
