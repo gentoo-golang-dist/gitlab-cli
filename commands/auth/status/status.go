@@ -124,9 +124,6 @@ func statusRun(opts *StatusOpts) error {
 				tokenDisplay = token
 			}
 			addMsg("%s Token: %s", c.GreenCheck(), tokenDisplay)
-			if !api.IsValidToken(token) {
-				addMsg("%s Invalid token provided in configuration file.", c.WarnIcon())
-			}
 		} else {
 			addMsg("%s No token provided in configuration file.", c.WarnIcon())
 		}
