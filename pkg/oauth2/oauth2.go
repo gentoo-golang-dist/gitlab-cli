@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	stdio "io"
 	"net/http"
 	"net/url"
 	"time"
@@ -17,9 +18,18 @@ import (
 )
 
 const (
-	redirectURI = "http://localhost:7171/auth/redirect"
-	scopes      = "openid+profile+read_user+write_repository+api"
+	scopes = "openid profile read_user write_repository api"
 )
+
+// DeviceAuthResponse represents the response from the device authorization endpoint.
+type DeviceAuthResponse struct {
+	DeviceCode              string `json:"device_code"`
+	UserCode                string `json:"user_code"`
+	VerificationURI         string `json:"verification_uri"`
+	VerificationURIComplete string `json:"verification_uri_complete"`
+	ExpiresIn               int    `json:"expires_in"` // Time in seconds until the codes expire
+	Interval                int    `json:"interval"`   // Minimum polling interval in seconds
+}
 
 func oAuthClientID(cfg config.Config, hostname string) (string, error) {
 	if glinstance.IsSelfHosted(hostname) {
@@ -36,119 +46,223 @@ func oAuthClientID(cfg config.Config, hostname string) (string, error) {
 	return glinstance.DefaultClientID(), nil
 }
 
+// https://docs.gitlab.com/api/oauth2/#device-authorization-grant-flow
 func StartFlow(cfg config.Config, io *iostreams.IOStreams, hostname string) (string, error) {
-	authURL := fmt.Sprintf("https://%s/oauth/authorize", hostname)
+	// Construct the authorization and token URLs for the target GitLab instance.
+	authURL := fmt.Sprintf("https://%s/oauth/authorize_device", hostname)
+	tokenURL := fmt.Sprintf("https://%s/oauth/token", hostname)
 
+	// Get the appropriate OAuth Client ID for the instance.
 	clientID, err := oAuthClientID(cfg, hostname)
 	if err != nil {
-		return "", err
+		return "", err // Return error from oAuthClientID (e.g., self-hosted ID not set)
 	}
 
-	state := GenerateCodeVerifier()
-	codeVerifier := GenerateCodeVerifier()
-	codeChallenge := GenerateCodeChallenge(codeVerifier)
-	completeAuthURL := fmt.Sprintf(
-		"%s?client_id=%s&redirect_uri=%s&response_type=code&state=%s&scope=%s&code_challenge=%s&code_challenge_method=S256",
-		authURL, clientID, redirectURI, state, scopes, codeChallenge)
-
-	tokenCh := handleAuthRedirect(io, "0.0.0.0", codeVerifier, hostname, "https", clientID, state)
-	defer close(tokenCh)
-
-	browser, _ := cfg.Get(hostname, "browser")
-	if err := utils.OpenInBrowser(completeAuthURL, browser); err != nil {
-		fmt.Fprintf(io.StdErr, "Failed opening a browser at %s\n", completeAuthURL)
-		fmt.Fprintf(io.StdErr, "Encountered error: %s\n", err)
-		fmt.Fprint(io.StdErr, "Try entering the URL in your browser manually.\n")
-	}
-	token := <-tokenCh
-	if token == nil {
-		return "", fmt.Errorf("authentication failed: no token received")
-	}
-
-	err = token.SetConfig(hostname, cfg)
+	// Step 1: Request device and user codes from the authorization server.
+	deviceAuthResponse, err := requestDeviceAuthorization(authURL, clientID, scopes)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to request device authorization: %w", err)
 	}
 
+	// Display instructions to the user.
+	fmt.Fprintf(io.StdErr, "! First copy your one-time user code: %s%s%s\n", io.Color().Bold(deviceAuthResponse.UserCode), io.Color().RedCheck(), "")
+	fmt.Fprintf(io.StdErr, "- Press Enter to open %s in your browser...", hostname)
+	fmt.Scanln() // Wait for user confirmation before opening browser
+
+	// Step 2: Open the verification URI (preferably the complete one) in the user's browser.
+	verificationLink := deviceAuthResponse.VerificationURIComplete
+	if verificationLink == "" { // Fallback if complete URI is not provided
+		verificationLink = deviceAuthResponse.VerificationURI
+		fmt.Fprintf(io.StdErr, "Navigate to: %s\n", deviceAuthResponse.VerificationURI)
+		fmt.Fprintf(io.StdErr, "And enter code: %s\n", deviceAuthResponse.UserCode)
+	}
+
+	browser, _ := cfg.Get(hostname, "browser") // Get preferred browser from config, ignore error
+	if err := utils.OpenInBrowser(verificationLink, browser); err != nil {
+		fmt.Fprintf(io.StdErr, "%s Failed opening browser %s\n", io.Color().WarnIcon(), io.Color().Bold(verificationLink))
+		fmt.Fprintf(io.StdErr, "Error: %s\n", err)
+		fmt.Fprintf(io.StdErr, "Please open the URL manually in your browser and paste the user code shown above.\n")
+	}
+
+	fmt.Fprintf(io.StdErr, "Waiting for authorization...\n")
+
+	// Step 3: Poll the token endpoint until the user authorizes or denies, or it times out.
+	tokenResponse, err := pollForToken(io, tokenURL, clientID, deviceAuthResponse.DeviceCode, deviceAuthResponse.Interval, deviceAuthResponse.ExpiresIn)
+	if err != nil {
+		return "", fmt.Errorf("failed while polling for token: %w", err)
+	}
+
+	// Check if the token response contains an OAuth error.
+	if tokenResponse.Error != "" {
+		// Provide more specific feedback for common errors
+		switch tokenResponse.Error {
+		case "access_denied":
+			return "", fmt.Errorf("authorization denied: %s", tokenResponse.ErrorDescription)
+		case "expired_token":
+			return "", fmt.Errorf("authorization timed out: The verification code expired. Please try again")
+		default:
+			return "", fmt.Errorf("token exchange failed: %s - %s", tokenResponse.Error, tokenResponse.ErrorDescription)
+		}
+	}
+
+	// Ensure we received an access token
+	if tokenResponse.AccessToken == "" {
+		return "", fmt.Errorf("authentication failed: received empty access token")
+	}
+
+	fmt.Fprintf(io.StdErr, "%s Authorization successful.\n", io.Color().GreenCheck())
+
+	// Assuming AuthToken struct definition NOW INCLUDES TokenType and Scope
+	token := &AuthToken{
+		AccessToken:  tokenResponse.AccessToken,
+		ExpiresIn:    tokenResponse.ExpiresIn, // Pass ExpiresIn for calculation
+		RefreshToken: tokenResponse.RefreshToken,
+	}
+
+	// Calculate the absolute expiration time.
+	token.CalcExpiresDate() // This method should exist on the AuthToken struct
+
+	// Persist the obtained token information in the configuration.
+	err = token.SetConfig(hostname, cfg) // This method should exist on the AuthToken struct
+	if err != nil {
+		return "", fmt.Errorf("failed to save token configuration: %w", err)
+	}
+
+	// Return the access token for immediate use if needed.
 	return token.AccessToken, nil
 }
 
-func handleAuthRedirect(io *iostreams.IOStreams, listenHostname, codeVerifier, hostname, protocol, clientID, originalState string) chan *AuthToken {
-	tokenCh := make(chan *AuthToken)
+// requestDeviceAuthorization sends the initial request to the device authorization endpoint.
+func requestDeviceAuthorization(authURL, clientID, scope string) (*DeviceAuthResponse, error) {
+	// Prepare the form data for the POST request.
+	form := url.Values{
+		"client_id": []string{clientID},
+		"scope":     []string{scope},
+	}
 
-	server := &http.Server{Addr: listenHostname + ":7171"}
+	// Perform the POST request.
+	resp, err := http.PostForm(authURL, form)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP POST request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
-	http.HandleFunc("/auth/redirect", func(w http.ResponseWriter, r *http.Request) {
-		code := r.URL.Query().Get("code")
-		state := r.URL.Query().Get("state")
+	// Read the response body.
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
 
-		if state != originalState {
-			fmt.Fprintf(io.StdErr, "Error: Invalid state")
-			tokenCh <- nil
-			return
-		}
+	// Check for non-success HTTP status codes.
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(body))
+	}
 
-		token, err := requestToken(hostname, protocol, clientID, code, codeVerifier)
-		if err != nil {
-			fmt.Fprintf(io.StdErr, "Error occured requesting access token %s.", err)
-			tokenCh <- nil
-			return
-		}
+	// Unmarshal the JSON response body into the DeviceAuthResponse struct.
+	var deviceAuthResponse DeviceAuthResponse
+	err = json.Unmarshal(body, &deviceAuthResponse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode JSON response: %w\nBody: %s", err, string(body))
+	}
 
-		_, _ = w.Write([]byte("You have authenticated successfully. You can now close this browser window."))
-		tokenCh <- token
-		_ = server.Shutdown(context.Background())
-	})
+	// Basic validation of the response
+	if deviceAuthResponse.DeviceCode == "" || deviceAuthResponse.UserCode == "" || deviceAuthResponse.VerificationURI == "" {
+		return nil, fmt.Errorf("invalid response received: missing required fields\nBody: %s", string(body))
+	}
+	if deviceAuthResponse.Interval == 0 {
+		deviceAuthResponse.Interval = 5 // Default interval if not provided by server
+	}
 
-	go func() {
-		err := http.ListenAndServe(listenHostname+":7171", nil)
-		if err != nil {
-			fmt.Fprintf(io.StdErr, "Error occured while setting up server %s.", err)
-			tokenCh <- nil
-		}
-	}()
-
-	return tokenCh
+	return &deviceAuthResponse, nil
 }
 
-func requestToken(hostname, protocol, clientID, code, codeVerifier string) (*AuthToken, error) {
-	tokenURL := fmt.Sprintf("%s://%s/oauth/token", protocol, hostname)
+// pollForToken periodically polls the token endpoint until authorization succeeds, fails, or times out.
+func pollForToken(io *iostreams.IOStreams, tokenURL, clientID, deviceCode string, interval, expiresIn int) (*TokenResponse, error) {
+	// Set a timeout for the entire polling process based on the expires_in value.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(expiresIn)*time.Second)
+	defer cancel()
 
-	form := url.Values{
-		"client_id":     []string{clientID},
-		"code":          []string{code},
-		"grant_type":    []string{"authorization_code"},
-		"redirect_uri":  []string{redirectURI},
-		"code_verifier": []string{codeVerifier},
+	// Ensure a minimum polling interval.
+	pollingInterval := time.Duration(interval) * time.Second
+	minInterval := 5 * time.Second // Set a minimum sensible interval
+	if pollingInterval < minInterval {
+		pollingInterval = minInterval
 	}
 
-	resp, err := http.PostForm(tokenURL, form)
+	// Start the polling loop.
+	for {
+		// Wait for the polling interval before making the request,
+		// except for the very first attempt.
+		select {
+		case <-ctx.Done():
+			// The timeout context expired before we got a definitive answer.
+			return &TokenResponse{Error: "expired_token", ErrorDescription: "user did not authorize within the allowed time limit"}, nil // Simulate expired_token
+		case <-time.After(pollingInterval):
+			// Interval elapsed, proceed to poll.
+		}
 
-	if resp.StatusCode == http.StatusBadRequest {
-		respBody, _ := io.ReadAll(resp.Body)
-		err = fmt.Errorf("bad request: %s\n", string(respBody))
+		// Prepare the form data for the token request.
+		form := url.Values{
+			"grant_type":  []string{"urn:ietf:params:oauth:grant-type:device_code"},
+			"device_code": []string{deviceCode},
+			"client_id":   []string{clientID},
+		}
+
+		// Perform the POST request to the token endpoint.
+		resp, err := http.PostForm(tokenURL, form)
+		if err != nil {
+			// Network or connection error during polling, retry might be possible but often indicates a persistent issue.
+			// Log the error and continue polling until timeout? Or return error immediately?
+			// Returning error might be safer.
+			fmt.Fprintf(io.StdErr, "Polling error: %s\n", err)
+			// return nil, fmt.Errorf("token endpoint request failed: %w", err) // Option: Fail fast
+			continue // Option: Log and retry
+		}
+		defer resp.Body.Close()
+
+		// Read the response body.
+		body, err := stdio.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Fprintf(io.StdErr, "Polling error: failed to read response body: %s\n", err)
+			// return nil, fmt.Errorf("failed to read token response body: %w", err) // Option: Fail fast
+			continue // Option: Log and retry
+		}
+
+		// Unmarshal the JSON response body into the TokenResponse struct.
+		var tokenResponse TokenResponse
+		err = json.Unmarshal(body, &tokenResponse)
+		if err != nil {
+			fmt.Fprintf(io.StdErr, "Polling error: failed to decode JSON response: %s\nBody: %s\n", err, string(body))
+			// return nil, fmt.Errorf("failed to decode token response JSON: %w", err) // Option: Fail fast
+			continue // Option: Log and retry
+		}
+
+		// Process the token response based on the error field or success.
+		if tokenResponse.Error == "" && tokenResponse.AccessToken != "" {
+			// Success: Access token received.
+			return &tokenResponse, nil
+		}
+
+		switch tokenResponse.Error {
+		case "authorization_pending":
+			// Expected response while user hasn't finished: Continue polling.
+			// Optionally print a dot or message to show progress
+			// fmt.Fprint(io.StdErr, ".")
+		case "slow_down":
+			// Server requested slower polling: Increase interval and continue.
+			fmt.Fprintf(io.StdErr, "Server requested slowdown, increasing polling interval.\n")
+			pollingInterval += time.Duration(interval) * time.Second // Simple increase, could use server hint if provided
+		case "access_denied", "expired_token":
+			// Terminal errors: Stop polling and return the response.
+			return &tokenResponse, nil
+		default:
+			// Unexpected error from the token endpoint: Stop polling and return.
+			fmt.Fprintf(io.StdErr, "Unexpected error during token polling: %s - %s\n", tokenResponse.Error, tokenResponse.ErrorDescription)
+			return &tokenResponse, nil // Return the error response
+		}
+
+		// If we loop back, check context again before sleeping (handled by select at the start).
 	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	at := AuthToken{}
-
-	err = json.Unmarshal(respBytes, &at)
-	if err != nil {
-		return nil, err
-	}
-
-	at.CalcExpiresDate()
-	at.CodeVerifier = codeVerifier
-
-	return &at, nil
 }
 
 func RefreshToken(hostname string, cfg config.Config, protocol string) error {
@@ -171,8 +285,6 @@ func RefreshToken(hostname string, cfg config.Config, protocol string) error {
 		"client_id":     []string{clientID},
 		"grant_type":    []string{"refresh_token"},
 		"refresh_token": []string{token.RefreshToken},
-		"redirect_uri":  []string{redirectURI},
-		"code_verifier": []string{token.CodeVerifier},
 	}
 
 	tokenURL := fmt.Sprintf("%s://%s/oauth/token", protocol, hostname)

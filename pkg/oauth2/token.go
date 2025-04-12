@@ -14,6 +14,17 @@ type AuthToken struct {
 	CodeVerifier string    `json:"code_verifier"`
 }
 
+type TokenResponse struct {
+	AccessToken      string `json:"access_token"`      // The access token itself
+	TokenType        string `json:"token_type"`        // Type of token (usually "bearer")
+	ExpiresIn        int    `json:"expires_in"`        // Duration in seconds until the access token expires
+	RefreshToken     string `json:"refresh_token"`     // Token used to obtain a new access token
+	CreatedAt        int64  `json:"created_at"`        // Unix timestamp indicating when the token was created
+	Scope            string `json:"scope"`             // Scopes granted by the access token
+	Error            string `json:"error"`             // Error message if the token request failed
+	ErrorDescription string `json:"error_description"` // Error description if the token request failed
+}
+
 func (t *AuthToken) CalcExpiresDate() {
 	t.ExpiryDate = time.Now().Add(time.Second * time.Duration(t.ExpiresIn))
 }
