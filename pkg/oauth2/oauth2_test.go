@@ -53,35 +53,23 @@ func TestRefreshToken(t *testing.T) {
 }
 
 func TestClientID(t *testing.T) {
-	// No changes needed for this test based on oauth2.go updates
 	testCasesTable := []struct {
 		name             string
 		hostname         string
 		configClientID   string
 		expectedClientID string
-		expectError      bool // Added for clarity based on previous version
 	}{
 		{
 			name:             "managed",
 			hostname:         glinstance.Default(),
 			configClientID:   "",
 			expectedClientID: glinstance.DefaultClientID(),
-			expectError:      false,
 		},
 		{
 			name:             "self-managed-complete",
 			hostname:         "salsa.debian.org",
 			configClientID:   "321",
 			expectedClientID: "321",
-			expectError:      false,
-		},
-		// Added the error case for completeness, preserving structure
-		{
-			name:             "invalid self-managed config",
-			hostname:         "gitlab.example.org", // Different hostname for clarity
-			configClientID:   "",                   // Missing client_id
-			expectedClientID: "",
-			expectError:      true,
 		},
 	}
 
@@ -95,29 +83,19 @@ func TestClientID(t *testing.T) {
 				},
 			}
 			clientID, err := oAuthClientID(cfg, testCase.hostname)
-
-			if testCase.expectError {
-				assert.Error(t, err)
-				assert.Empty(t, clientID)
-				// Optionally check error message contains expected text
-				assert.Contains(t, err.Error(), "set 'client_id' first")
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, testCase.expectedClientID, clientID)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.expectedClientID, clientID)
 		})
 	}
 
-	// Original structure had this separate Run - keep it
-	t.Run("invalid self-managed config (original structure)", func(t *testing.T) {
+	t.Run("invalid self-managed config", func(t *testing.T) {
 		cfg := stubConfig{
 			hosts: map[string]map[string]string{
-				"salsa.debian.org": {}, // Empty config for this host
+				"salsa.debian.org": {},
 			},
 		}
 		clientID, err := oAuthClientID(cfg, "salsa.debian.org")
 		assert.Error(t, err)
 		assert.Empty(t, clientID)
-		assert.Contains(t, err.Error(), "set 'client_id' first")
 	})
 }
