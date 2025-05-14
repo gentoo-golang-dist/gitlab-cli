@@ -20,6 +20,7 @@ import (
 	"gitlab.com/gitlab-org/cli/commands/alias/expand"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
 	"gitlab.com/gitlab-org/cli/commands/help"
+	"gitlab.com/gitlab-org/cli/commands/hooks"
 	"gitlab.com/gitlab-org/cli/commands/update"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/run"
@@ -152,6 +153,8 @@ func main() {
 
 	rootCmd.SetArgs(expandedArgs)
 
+	checkForTelemetryHook(cfg, cmdFactory, expandedArgs)
+
 	if cmd, err := rootCmd.ExecuteC(); err != nil {
 		if !errors.Is(err, cmdutils.SilentError) {
 			printError(cmdFactory.IO, err, cmd, debug)
@@ -246,5 +249,11 @@ func maybeOverrideDefaultHost(f *cmdutils.Factory, cfg config.Config) {
 			glinstance.OverrideDefaultProtocol(protocol)
 		}
 		glinstance.OverrideDefault(customGLHost)
+	}
+}
+
+func checkForTelemetryHook(cfg config.Config, f *cmdutils.Factory, args []string) {
+	if hooks.IsTelemetryEnabled(cfg) {
+		cobra.OnFinalize(hooks.AddTelemetryHook(f, args))
 	}
 }
