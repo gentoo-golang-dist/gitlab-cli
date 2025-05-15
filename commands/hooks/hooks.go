@@ -33,8 +33,8 @@ func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
 					"label":                  command,
 					"property":               subcommand,
 					"command_and_subcommand": fullCommand,
-					"NamespaceID":            projectID,
-					"ProjectID":              namespaceID,
+					"NamespaceID":            namespaceID,
+					"ProjectID":              projectID,
 					"SendToSnowplow":         "true",
 				},
 			})
