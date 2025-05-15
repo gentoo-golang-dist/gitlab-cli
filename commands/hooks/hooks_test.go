@@ -6,9 +6,12 @@ import (
 	"github.com/stretchr/testify/require"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	"go.uber.org/mock/gomock"
+
 	"gitlab.com/gitlab-org/cli/commands/cmdtest"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )
 
 func TestSendCommandUsage(t *testing.T) {
@@ -73,13 +76,28 @@ func TestSendCommandUsage(t *testing.T) {
 				HttpClient: func() (*gitlab.Client, error) {
 					return tc.Client, nil
 				},
+				BaseRepo: func() (glrepo.Interface, error) {
+					return glrepo.New("OWNER", "REPO"), nil
+				},
 			}
 
 			hook := AddTelemetryHook(f, tt.args)
 
+			project := gitlab.Project{
+				ID:        123,
+				Namespace: &gitlab.ProjectNamespace{ID: 123},
+			}
+
+			tc.MockProjects.EXPECT().
+				GetProject(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&project, &gitlab.Response{}, nil)
+
 			tc.MockUsageData.EXPECT().
 				TrackEvent(&gitlab.TrackEventOptions{
-					Event: "gitlab_cli_command_used",
+					Event:          "gitlab_cli_command_used",
+					NamespaceID:    gitlab.Ptr(project.Namespace.ID),
+					ProjectID:      gitlab.Ptr(project.ID),
+					SendToSnowplow: gitlab.Ptr(true),
 					AdditionalProperties: map[string]string{
 						"label":                  tt.command,
 						"property":               tt.subcommand,

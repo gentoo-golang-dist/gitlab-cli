@@ -1,7 +1,6 @@
 package hooks
 
 import (
-	"strconv"
 	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
@@ -11,8 +10,8 @@ import (
 
 func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
 	return func() {
-		var projectID string
-		var namespaceID string
+		var projectID int
+		var namespaceID int
 
 		command, subcommand, fullCommand, _ := parseCommand(args)
 
@@ -22,20 +21,20 @@ func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
 
 		project, err := repo.Project(client)
 		if err == nil {
-			projectID = strconv.Itoa(project.ID)
-			namespaceID = strconv.Itoa(project.Namespace.ID)
+			projectID = project.ID
+			namespaceID = project.Namespace.ID
 		}
 
 		if client != nil {
 			_, _ = client.UsageData.TrackEvent(&gitlab.TrackEventOptions{
-				Event: "gitlab_cli_command_used",
+				Event:          "gitlab_cli_command_used",
+				NamespaceID:    gitlab.Ptr(namespaceID),
+				ProjectID:      gitlab.Ptr(projectID),
+				SendToSnowplow: gitlab.Ptr(true),
 				AdditionalProperties: map[string]string{
 					"label":                  command,
 					"property":               subcommand,
 					"command_and_subcommand": fullCommand,
-					"NamespaceID":            namespaceID,
-					"ProjectID":              projectID,
-					"SendToSnowplow":         "true",
 				},
 			})
 		}
