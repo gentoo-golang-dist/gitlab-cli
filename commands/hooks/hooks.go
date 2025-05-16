@@ -10,36 +10,7 @@ import (
 
 func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
 	return func() {
-		go func() {
-			var projectID int
-			var namespaceID int
-
-			command, subcommand, fullCommand, _ := parseCommand(args)
-
-			client, _ := f.HttpClient()
-
-			repo, _ := f.BaseRepo()
-
-			project, err := repo.Project(client)
-			if err == nil {
-				projectID = project.ID
-				namespaceID = project.Namespace.ID
-			}
-
-			if client != nil {
-				_, _ = client.UsageData.TrackEvent(&gitlab.TrackEventOptions{
-					Event:          "gitlab_cli_command_used",
-					NamespaceID:    gitlab.Ptr(namespaceID),
-					ProjectID:      gitlab.Ptr(projectID),
-					SendToSnowplow: gitlab.Ptr(true),
-					AdditionalProperties: map[string]string{
-						"label":                  command,
-						"property":               subcommand,
-						"command_and_subcommand": fullCommand,
-					},
-				})
-			}
-		}()
+		go sendTelemetryData(f, args)
 	}
 }
 
@@ -87,4 +58,35 @@ func parseCommand(parts []string) (command, subcommand, fullCommand, flags strin
 	}
 
 	return command, subcommand, fullCommand, flags
+}
+
+func sendTelemetryData(f *cmdutils.Factory, args []string) {
+	var projectID int
+	var namespaceID int
+
+	command, subcommand, fullCommand, _ := parseCommand(args)
+
+	client, _ := f.HttpClient()
+
+	repo, _ := f.BaseRepo()
+
+	project, err := repo.Project(client)
+	if err == nil {
+		projectID = project.ID
+		namespaceID = project.Namespace.ID
+	}
+
+	if client != nil {
+		_, _ = client.UsageData.TrackEvent(&gitlab.TrackEventOptions{
+			Event:          "gitlab_cli_command_used",
+			NamespaceID:    gitlab.Ptr(namespaceID),
+			ProjectID:      gitlab.Ptr(projectID),
+			SendToSnowplow: gitlab.Ptr(true),
+			AdditionalProperties: map[string]string{
+				"label":                  command,
+				"property":               subcommand,
+				"command_and_subcommand": fullCommand,
+			},
+		})
+	}
 }

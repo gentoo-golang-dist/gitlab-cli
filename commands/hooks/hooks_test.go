@@ -14,7 +14,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )
 
-func TestSendCommandUsage(t *testing.T) {
+func Test_sendTelemetryData(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        []string
@@ -81,8 +81,6 @@ func TestSendCommandUsage(t *testing.T) {
 				},
 			}
 
-			hook := AddTelemetryHook(f, tt.args)
-
 			project := gitlab.Project{
 				ID:        123,
 				Namespace: &gitlab.ProjectNamespace{ID: 123},
@@ -105,7 +103,7 @@ func TestSendCommandUsage(t *testing.T) {
 					},
 				})
 
-			hook()
+			sendTelemetryData(f, tt.args)
 		})
 	}
 }
