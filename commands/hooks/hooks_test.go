@@ -142,6 +142,14 @@ func Test_parseCommand(t *testing.T) {
 			flags:       "\"also\" --web -R blah -p 3",
 		},
 		{
+			name:        "strip out single quote parameters",
+			cmdString:   []string{"mr", "list", "thing", "'also'"},
+			command:     "mr",
+			subcommand:  "list thing",
+			fullCommand: "mr list thing",
+			flags:       "'also'",
+		},
+		{
 			name:        "no subcommand",
 			cmdString:   []string{"mr", "--web", "-R", "blah", "-p", "3"},
 			command:     "mr",

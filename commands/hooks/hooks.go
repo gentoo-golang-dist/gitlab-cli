@@ -36,7 +36,7 @@ func parseCommand(parts []string) (command, subcommand, fullCommand, flags strin
 	flagStartIndex := len(parts)
 	for i := 1; i < len(parts); i++ {
 		// check for things in "quotes" or -flags
-		if strings.HasPrefix(parts[i], "-") || strings.Contains(parts[i], "\"") {
+		if strings.HasPrefix(parts[i], "-") || strings.Contains(parts[i], "\"") || strings.Contains(parts[i], "'") {
 			flagStartIndex = i
 			break
 		}
