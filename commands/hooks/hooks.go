@@ -8,9 +8,11 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
-func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
+func AddTelemetryHook(f *cmdutils.Factory, args string) func() {
+	arrayArgs := strings.Split(args, " ")
+
 	return func() {
-		go sendTelemetryData(f, args)
+		go sendTelemetryData(f, arrayArgs)
 	}
 }
 
@@ -25,46 +27,31 @@ func IsTelemetryEnabled(cfg config.Config) bool {
 }
 
 // parseCommand parses a command string and returns components
-func parseCommand(parts []string) (command, subcommand, fullCommand, flags string) {
+func parseCommand(parts []string) (command, subcommand, fullCommand string) {
 	if len(parts) < 1 {
-		return "", "", "", ""
+		return "", "", ""
 	}
 
-	command = parts[0] // command is the first part
+	// "glab" will always be the first value
+	// the command is the first part
+	command = parts[1]
 
-	// where do the flags/parameters start?
-	flagStartIndex := len(parts)
-	for i := 1; i < len(parts); i++ {
-		// check for things in "quotes" or -flags
-		if strings.HasPrefix(parts[i], "-") || strings.Contains(parts[i], "\"") || strings.Contains(parts[i], "'") {
-			flagStartIndex = i
-			break
-		}
-	}
-
-	if flagStartIndex > 1 {
-		subcommandParts := parts[1:flagStartIndex]
-		subcommand = strings.Join(subcommandParts, " ")
-		// everything after this is presumably flags/parameters
-	}
+	subcommandParts := parts[2:]
+	subcommand = strings.Join(subcommandParts, " ")
 
 	fullCommand = command
 	if subcommand != "" {
 		fullCommand += " " + subcommand
 	}
 
-	if flagStartIndex < len(parts) {
-		flags = strings.Join(parts[flagStartIndex:], " ")
-	}
-
-	return command, subcommand, fullCommand, flags
+	return command, subcommand, fullCommand
 }
 
 func sendTelemetryData(f *cmdutils.Factory, args []string) {
 	var projectID int
 	var namespaceID int
 
-	command, subcommand, fullCommand, _ := parseCommand(args)
+	command, subcommand, fullCommand := parseCommand(args)
 
 	client, _ := f.HttpClient()
 

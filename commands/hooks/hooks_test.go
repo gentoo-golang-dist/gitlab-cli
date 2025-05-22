@@ -115,55 +115,27 @@ func Test_parseCommand(t *testing.T) {
 		command     string
 		subcommand  string
 		fullCommand string
-		flags       string
 	}{
 		{
 			name:        "basic command",
-			cmdString:   []string{"mr", "list", "--web", "-R", "blah", "-p", "3"},
+			cmdString:   []string{"glab", "mr", "list"},
 			command:     "mr",
 			subcommand:  "list",
 			fullCommand: "mr list",
-			flags:       "--web -R blah -p 3",
 		},
 		{
 			name:        "multiple subcommands",
-			cmdString:   []string{"mr", "list", "thing", "--web", "-R", "blah", "-p", "3"},
+			cmdString:   []string{"glab", "mr", "list", "thing", "blah"},
 			command:     "mr",
-			subcommand:  "list thing",
-			fullCommand: "mr list thing",
-			flags:       "--web -R blah -p 3",
-		},
-		{
-			name:        "strip out parameters",
-			cmdString:   []string{"mr", "list", "thing", "\"also\"", "--web", "-R", "blah", "-p", "3"},
-			command:     "mr",
-			subcommand:  "list thing",
-			fullCommand: "mr list thing",
-			flags:       "\"also\" --web -R blah -p 3",
-		},
-		{
-			name:        "strip out single quote parameters",
-			cmdString:   []string{"mr", "list", "thing", "'also'"},
-			command:     "mr",
-			subcommand:  "list thing",
-			fullCommand: "mr list thing",
-			flags:       "'also'",
+			subcommand:  "list thing blah",
+			fullCommand: "mr list thing blah",
 		},
 		{
 			name:        "no subcommand",
-			cmdString:   []string{"mr", "--web", "-R", "blah", "-p", "3"},
+			cmdString:   []string{"glab", "mr"},
 			command:     "mr",
 			subcommand:  "",
 			fullCommand: "mr",
-			flags:       "--web -R blah -p 3",
-		},
-		{
-			name:        "no flags",
-			cmdString:   []string{"mr", "list", "thing"},
-			command:     "mr",
-			subcommand:  "list thing",
-			fullCommand: "mr list thing",
-			flags:       "",
 		},
 		{
 			name:        "too short of a command",
@@ -171,27 +143,17 @@ func Test_parseCommand(t *testing.T) {
 			command:     "",
 			subcommand:  "",
 			fullCommand: "",
-			flags:       "",
-		},
-		{
-			name:        "many subcommands",
-			cmdString:   []string{"mr", "list", "thing", "a", "b", "c", "--flag"},
-			command:     "mr",
-			subcommand:  "list thing a b c",
-			fullCommand: "mr list thing a b c",
-			flags:       "--flag",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			command, subcommand, fullCommand, flags := parseCommand(tt.cmdString)
+			command, subcommand, fullCommand := parseCommand(tt.cmdString)
 
 			require := require.New(t)
 			require.Equal(tt.command, command)
 			require.Equal(tt.subcommand, subcommand)
 			require.Equal(tt.fullCommand, fullCommand)
-			require.Equal(tt.flags, flags)
 		})
 	}
 }
