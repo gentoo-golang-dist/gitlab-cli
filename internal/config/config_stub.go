@@ -96,7 +96,7 @@ func rootConfig() *yaml.Node {
 						Value: "false",
 					},
 					{
-						HeadComment: "# Set to false (0) to disable sending usage data to GitLab or true (1) to enable.\n# See https://docs.gitlab.com/administration/settings/usage_statistics/\n# for more information",
+						HeadComment: "# Set to false (0) to disable sending usage data to your GitLab instance or true (1) to enable.\n# See https://docs.gitlab.com/administration/settings/usage_statistics/\n# for more information",
 						Kind:        yaml.ScalarNode,
 						Value:       "telemetry",
 					},
