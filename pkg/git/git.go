@@ -604,3 +604,128 @@ func ListTags() ([]string, error) {
 
 	return strings.Fields(tagsStr), nil
 }
+
+// BranchComparison represents the relationship between two git refs
+type BranchComparison struct {
+	LocalSHA    string
+	RemoteSHA   string
+	AheadCount  string
+	BehindCount string
+	IsUpToDate  bool
+	HasDiverged bool
+	IsAhead     bool
+	IsBehind    bool
+}
+
+// CompareBranches compares a local branch with a remote ref and returns detailed comparison info
+func CompareBranches(localBranch, remoteRef string) (*BranchComparison, error) {
+	// Get local SHA
+	localCmd := GitCommand("rev-parse", localBranch)
+	localOutput, err := run.PrepareCmd(localCmd).Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get local branch SHA: %w", err)
+	}
+	localSHA := strings.TrimSpace(string(localOutput))
+
+	// Get remote SHA
+	remoteCmd := GitCommand("rev-parse", remoteRef)
+	remoteOutput, err := run.PrepareCmd(remoteCmd).Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get remote ref SHA: %w", err)
+	}
+	remoteSHA := strings.TrimSpace(string(remoteOutput))
+
+	comparison := &BranchComparison{
+		LocalSHA:  localSHA,
+		RemoteSHA: remoteSHA,
+	}
+
+	// If SHAs are the same, branches are up to date
+	if localSHA == remoteSHA {
+		comparison.IsUpToDate = true
+		return comparison, nil
+	}
+
+	behindCmd := GitCommand("rev-list", "--count", fmt.Sprintf("%s..%s", localBranch, remoteRef))
+	behindOutput, _ := run.PrepareCmd(behindCmd).Output()
+	comparison.BehindCount = strings.TrimSpace(string(behindOutput))
+
+	aheadCmd := GitCommand("rev-list", "--count", fmt.Sprintf("%s..%s", remoteRef, localBranch))
+	aheadOutput, _ := run.PrepareCmd(aheadCmd).Output()
+	comparison.AheadCount = strings.TrimSpace(string(aheadOutput))
+
+	comparison.IsAhead = comparison.AheadCount != "0"
+	comparison.IsBehind = comparison.BehindCount != "0"
+	comparison.HasDiverged = comparison.IsAhead && comparison.IsBehind
+
+	return comparison, nil
+}
+
+// FetchRefToTempRef fetches a remote ref to a temporary local ref for comparison
+func FetchRefToTempRef(remoteURL, sourceRef, tempRef string) error {
+	tempFetchSpec := fmt.Sprintf("%s:%s", sourceRef, tempRef)
+	if err := RunCmd([]string{"fetch", remoteURL, tempFetchSpec}); err != nil {
+		return fmt.Errorf("failed to fetch to temp ref: %w", err)
+	}
+	return nil
+}
+
+func DeleteRef(ref string) error {
+	return RunCmd([]string{"update-ref", "-d", ref})
+}
+
+// HasUncommittedChanges checks if there are any uncommitted changes that would prevent a branch update
+func HasUncommittedChanges() (bool, int, error) {
+	count, err := UncommittedChangeCount()
+	if err != nil {
+		return false, 0, err
+	}
+	return count > 0, count, nil
+}
+
+// UpdateBranchToRef safely updates a local branch to match a remote ref
+func UpdateBranchToRef(branchName, remoteURL, remoteRef string, currentBranch string, branchExists bool) error {
+	isOnTargetBranch := currentBranch == branchName
+
+	if isOnTargetBranch && branchExists {
+		// We're on the branch we want to update - use fetch + reset approach
+		if err := RunCmd([]string{"fetch", remoteURL, remoteRef}); err != nil {
+			return fmt.Errorf("failed to fetch: %w", err)
+		}
+
+		// Check for uncommitted changes
+		hasChanges, changeCount, err := HasUncommittedChanges()
+		if err != nil {
+			return fmt.Errorf("failed to check for uncommitted changes: %w", err)
+		}
+		if hasChanges {
+			return fmt.Errorf("branch has %d uncommitted changes that would be lost", changeCount)
+		}
+
+		// Check if local branch has commits that would be lost
+		comparison, err := CompareBranches(branchName, "FETCH_HEAD")
+		if err != nil {
+			return fmt.Errorf("failed to compare branches: %w", err)
+		}
+		if comparison.IsAhead {
+			return fmt.Errorf("branch has %s local commits that would be lost", comparison.AheadCount)
+		}
+
+		// Reset the current branch to match the fetched ref
+		if err := RunCmd([]string{"reset", "--hard", "FETCH_HEAD"}); err != nil {
+			return fmt.Errorf("failed to reset branch: %w", err)
+		}
+	} else {
+		// Not on the target branch, can use normal fetch
+		fetchRefSpec := fmt.Sprintf("%s:%s", remoteRef, branchName)
+		if branchExists {
+			fetchRefSpec = fmt.Sprintf("+%s:%s", remoteRef, branchName)
+		}
+
+		if err := RunCmd([]string{"fetch", remoteURL, fetchRefSpec}); err != nil {
+			return fmt.Errorf("failed to fetch to branch: %w", err)
+		}
+	}
+
+	return nil
+}
