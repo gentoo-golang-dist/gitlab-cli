@@ -23,32 +23,18 @@ func Test_sendTelemetryData(t *testing.T) {
 		fullCommand string
 	}{
 		{
-			name:        "command with args",
-			args:        []string{"hey", "subcmd", "-p", "blah"},
+			name:        "command with subcommand",
+			args:        []string{"hey", "subcmd"},
 			command:     "hey",
 			subcommand:  "subcmd",
 			fullCommand: "hey subcmd",
 		},
 		{
-			name:        "command with no subcommand",
-			args:        []string{"issue", "-l", "bug"},
-			command:     "issue",
-			subcommand:  "",
-			fullCommand: "issue",
-		},
-		{
 			name:        "command with multiple subcommands",
-			args:        []string{"mr", "create", "new", "--title", "Test"},
+			args:        []string{"mr", "create", "new"},
 			command:     "mr",
 			subcommand:  "create new",
 			fullCommand: "mr create new",
-		},
-		{
-			name:        "command with no flags",
-			args:        []string{"ci", "status"},
-			command:     "ci",
-			subcommand:  "status",
-			fullCommand: "ci status",
 		},
 		{
 			name:        "single command only",
@@ -56,13 +42,6 @@ func Test_sendTelemetryData(t *testing.T) {
 			command:     "version",
 			subcommand:  "",
 			fullCommand: "version",
-		},
-		{
-			name:        "command with flags having values",
-			args:        []string{"repo", "view", "--web", "--token", "abc123"},
-			command:     "repo",
-			subcommand:  "view",
-			fullCommand: "repo view",
 		},
 	}
 

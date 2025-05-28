@@ -8,11 +8,9 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
-func AddTelemetryHook(f *cmdutils.Factory, args string) func() {
-	arrayArgs := strings.Split(args, " ")
-
+func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
 	return func() {
-		go sendTelemetryData(f, arrayArgs)
+		go sendTelemetryData(f, args)
 	}
 }
 
@@ -32,11 +30,10 @@ func parseCommand(parts []string) (command, subcommand, fullCommand string) {
 		return "", "", ""
 	}
 
-	// "glab" will always be the first value
-	// the command is the first part
-	command = parts[1]
+	// the command is the first value
+	command = parts[0]
 
-	subcommandParts := parts[2:]
+	subcommandParts := parts[1:]
 	subcommand = strings.Join(subcommandParts, " ")
 
 	fullCommand = command
