@@ -97,21 +97,21 @@ func Test_parseCommand(t *testing.T) {
 	}{
 		{
 			name:        "basic command",
-			cmdString:   []string{"glab", "mr", "list"},
+			cmdString:   []string{"mr", "list"},
 			command:     "mr",
 			subcommand:  "list",
 			fullCommand: "mr list",
 		},
 		{
 			name:        "multiple subcommands",
-			cmdString:   []string{"glab", "mr", "list", "thing", "blah"},
+			cmdString:   []string{"mr", "list", "thing", "blah"},
 			command:     "mr",
 			subcommand:  "list thing blah",
 			fullCommand: "mr list thing blah",
 		},
 		{
 			name:        "no subcommand",
-			cmdString:   []string{"glab", "mr"},
+			cmdString:   []string{"mr"},
 			command:     "mr",
 			subcommand:  "",
 			fullCommand: "mr",
