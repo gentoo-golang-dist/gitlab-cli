@@ -110,6 +110,9 @@ func main() {
 	}
 
 	cmd, _, err := rootCmd.Traverse(expandedArgs)
+
+	checkForTelemetryHook(cfg, cmdFactory, cmd)
+
 	if err != nil || cmd == rootCmd {
 		originalArgs := expandedArgs
 		isShell := false
@@ -152,8 +155,6 @@ func main() {
 	tableprinter.SetIsTTY(cmdFactory.IO.IsOutputTTY())
 
 	rootCmd.SetArgs(expandedArgs)
-
-	checkForTelemetryHook(cfg, cmdFactory, expandedArgs)
 
 	if cmd, err := rootCmd.ExecuteC(); err != nil {
 		if !errors.Is(err, cmdutils.SilentError) {
@@ -252,8 +253,8 @@ func maybeOverrideDefaultHost(f *cmdutils.Factory, cfg config.Config) {
 	}
 }
 
-func checkForTelemetryHook(cfg config.Config, f *cmdutils.Factory, args []string) {
+func checkForTelemetryHook(cfg config.Config, f *cmdutils.Factory, cmd *cobra.Command) {
 	if hooks.IsTelemetryEnabled(cfg) {
-		cobra.OnFinalize(hooks.AddTelemetryHook(f, args))
+		cobra.OnFinalize(hooks.AddTelemetryHook(f, cmd))
 	}
 }

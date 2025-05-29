@@ -3,14 +3,15 @@ package hooks
 import (
 	"strings"
 
+	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
-func AddTelemetryHook(f *cmdutils.Factory, args []string) func() {
+func AddTelemetryHook(f *cmdutils.Factory, cmd *cobra.Command) func() {
 	return func() {
-		go sendTelemetryData(f, args)
+		go sendTelemetryData(f, cmd)
 	}
 }
 
@@ -25,46 +26,31 @@ func IsTelemetryEnabled(cfg config.Config) bool {
 }
 
 // parseCommand parses a command string and returns components
-func parseCommand(parts []string) (command, subcommand, fullCommand, flags string) {
-	if len(parts) < 1 {
-		return "", "", "", ""
+func parseCommand(parts []string) (command, subcommand, fullCommand string) {
+	if len(parts) < 2 {
+		return "", "", ""
 	}
 
-	command = parts[0] // command is the first part
+	// glab is always the first value, command is the next
+	command = parts[1]
 
-	// where do the flags/parameters start?
-	flagStartIndex := len(parts)
-	for i := 1; i < len(parts); i++ {
-		// check for things in "quotes" or -flags
-		if strings.HasPrefix(parts[i], "-") || strings.Contains(parts[i], "\"") || strings.Contains(parts[i], "'") {
-			flagStartIndex = i
-			break
-		}
-	}
-
-	if flagStartIndex > 1 {
-		subcommandParts := parts[1:flagStartIndex]
-		subcommand = strings.Join(subcommandParts, " ")
-		// everything after this is presumably flags/parameters
-	}
+	subcommandParts := parts[2:]
+	subcommand = strings.Join(subcommandParts, " ")
 
 	fullCommand = command
 	if subcommand != "" {
 		fullCommand += " " + subcommand
 	}
 
-	if flagStartIndex < len(parts) {
-		flags = strings.Join(parts[flagStartIndex:], " ")
-	}
-
-	return command, subcommand, fullCommand, flags
+	return command, subcommand, fullCommand
 }
 
-func sendTelemetryData(f *cmdutils.Factory, args []string) {
+func sendTelemetryData(f *cmdutils.Factory, cmd *cobra.Command) {
 	var projectID int
 	var namespaceID int
+	unparsedCommand := strings.Split(cmd.CommandPath(), " ")
 
-	command, subcommand, fullCommand, _ := parseCommand(args)
+	command, subcommand, fullCommand := parseCommand(unparsedCommand)
 
 	client, _ := f.HttpClient()
 
