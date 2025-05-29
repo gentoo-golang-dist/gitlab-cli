@@ -17,8 +17,8 @@ func AddTelemetryHook(f *cmdutils.Factory, cmd *cobra.Command) func() {
 
 // IsTelemetryEnabled checks if usage data is disabled via config or env var
 func IsTelemetryEnabled(cfg config.Config) bool {
-	disableTelemetry, _ := cfg.Get("", "telemetry")
-	if disableTelemetry == "false" || disableTelemetry == "0" {
+	telemetryEnabled, _ := cfg.Get("", "telemetry")
+	if telemetryEnabled == "false" || telemetryEnabled == "0" {
 		return false
 	}
 
