@@ -38,6 +38,44 @@ func (m *MockGitInterface) EXPECT() *MockGitInterfaceMockRecorder {
 	return m.recorder
 }
 
+// AddRemote mocks base method.
+func (m *MockGitInterface) AddRemote(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddRemote", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddRemote indicates an expected call of AddRemote.
+func (mr *MockGitInterfaceMockRecorder) AddRemote(arg0, arg1 any) *MockGitInterfaceAddRemoteCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRemote", reflect.TypeOf((*MockGitInterface)(nil).AddRemote), arg0, arg1)
+	return &MockGitInterfaceAddRemoteCall{Call: call}
+}
+
+// MockGitInterfaceAddRemoteCall wrap *gomock.Call
+type MockGitInterfaceAddRemoteCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceAddRemoteCall) Return(arg0 error) *MockGitInterfaceAddRemoteCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceAddRemoteCall) Do(f func(string, string) error) *MockGitInterfaceAddRemoteCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceAddRemoteCall) DoAndReturn(f func(string, string) error) *MockGitInterfaceAddRemoteCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CheckoutBranch mocks base method.
 func (m *MockGitInterface) CheckoutBranch(arg0 string) error {
 	m.ctrl.T.Helper()
@@ -192,6 +230,45 @@ func (c *MockGitInterfaceCommitsCall) DoAndReturn(f func(string, string) ([]*Com
 	return c
 }
 
+// Config mocks base method.
+func (m *MockGitInterface) Config(arg0 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Config", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Config indicates an expected call of Config.
+func (mr *MockGitInterfaceMockRecorder) Config(arg0 any) *MockGitInterfaceConfigCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Config", reflect.TypeOf((*MockGitInterface)(nil).Config), arg0)
+	return &MockGitInterfaceConfigCall{Call: call}
+}
+
+// MockGitInterfaceConfigCall wrap *gomock.Call
+type MockGitInterfaceConfigCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceConfigCall) Return(arg0 string, arg1 error) *MockGitInterfaceConfigCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceConfigCall) Do(f func(string) (string, error)) *MockGitInterfaceConfigCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceConfigCall) DoAndReturn(f func(string) (string, error)) *MockGitInterfaceConfigCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CurrentBranch mocks base method.
 func (m *MockGitInterface) CurrentBranch() (string, error) {
 	m.ctrl.T.Helper()
@@ -269,6 +346,45 @@ func (c *MockGitInterfaceDeleteLocalBranchCall) DoAndReturn(f func(string) error
 	return c
 }
 
+// GetAllConfig mocks base method.
+func (m *MockGitInterface) GetAllConfig(arg0 string) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllConfig", arg0)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllConfig indicates an expected call of GetAllConfig.
+func (mr *MockGitInterfaceMockRecorder) GetAllConfig(arg0 any) *MockGitInterfaceGetAllConfigCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllConfig", reflect.TypeOf((*MockGitInterface)(nil).GetAllConfig), arg0)
+	return &MockGitInterfaceGetAllConfigCall{Call: call}
+}
+
+// MockGitInterfaceGetAllConfigCall wrap *gomock.Call
+type MockGitInterfaceGetAllConfigCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceGetAllConfigCall) Return(arg0 []byte, arg1 error) *MockGitInterfaceGetAllConfigCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceGetAllConfigCall) Do(f func(string) ([]byte, error)) *MockGitInterfaceGetAllConfigCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceGetAllConfigCall) DoAndReturn(f func(string) ([]byte, error)) *MockGitInterfaceGetAllConfigCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetDefaultBranch mocks base method.
 func (m *MockGitInterface) GetDefaultBranch(arg0 string) (string, error) {
 	m.ctrl.T.Helper()
@@ -304,6 +420,45 @@ func (c *MockGitInterfaceGetDefaultBranchCall) Do(f func(string) (string, error)
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockGitInterfaceGetDefaultBranchCall) DoAndReturn(f func(string) (string, error)) *MockGitInterfaceGetDefaultBranchCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetRemoteURL mocks base method.
+func (m *MockGitInterface) GetRemoteURL(arg0 string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRemoteURL", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRemoteURL indicates an expected call of GetRemoteURL.
+func (mr *MockGitInterfaceMockRecorder) GetRemoteURL(arg0 any) *MockGitInterfaceGetRemoteURLCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRemoteURL", reflect.TypeOf((*MockGitInterface)(nil).GetRemoteURL), arg0)
+	return &MockGitInterfaceGetRemoteURLCall{Call: call}
+}
+
+// MockGitInterfaceGetRemoteURLCall wrap *gomock.Call
+type MockGitInterfaceGetRemoteURLCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceGetRemoteURLCall) Return(arg0 string, arg1 error) *MockGitInterfaceGetRemoteURLCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceGetRemoteURLCall) Do(f func(string) (string, error)) *MockGitInterfaceGetRemoteURLCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceGetRemoteURLCall) DoAndReturn(f func(string) (string, error)) *MockGitInterfaceGetRemoteURLCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -425,6 +580,45 @@ func (c *MockGitInterfaceLatestCommitCall) DoAndReturn(f func(string) (*Commit, 
 	return c
 }
 
+// ListRemotes mocks base method.
+func (m *MockGitInterface) ListRemotes() ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRemotes")
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRemotes indicates an expected call of ListRemotes.
+func (mr *MockGitInterfaceMockRecorder) ListRemotes() *MockGitInterfaceListRemotesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRemotes", reflect.TypeOf((*MockGitInterface)(nil).ListRemotes))
+	return &MockGitInterfaceListRemotesCall{Call: call}
+}
+
+// MockGitInterfaceListRemotesCall wrap *gomock.Call
+type MockGitInterfaceListRemotesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceListRemotesCall) Return(arg0 []string, arg1 error) *MockGitInterfaceListRemotesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceListRemotesCall) Do(f func() ([]string, error)) *MockGitInterfaceListRemotesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceListRemotesCall) DoAndReturn(f func() ([]string, error)) *MockGitInterfaceListRemotesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // Push mocks base method.
 func (m *MockGitInterface) Push(arg0, arg1 string) error {
 	m.ctrl.T.Helper()
@@ -498,6 +692,201 @@ func (c *MockGitInterfaceRemoteBranchExistsCall) Do(f func(string, string) (bool
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockGitInterfaceRemoteBranchExistsCall) DoAndReturn(f func(string, string) (bool, error)) *MockGitInterfaceRemoteBranchExistsCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SetConfig mocks base method.
+func (m *MockGitInterface) SetConfig(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetConfig", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetConfig indicates an expected call of SetConfig.
+func (mr *MockGitInterfaceMockRecorder) SetConfig(arg0, arg1 any) *MockGitInterfaceSetConfigCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetConfig", reflect.TypeOf((*MockGitInterface)(nil).SetConfig), arg0, arg1)
+	return &MockGitInterfaceSetConfigCall{Call: call}
+}
+
+// MockGitInterfaceSetConfigCall wrap *gomock.Call
+type MockGitInterfaceSetConfigCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceSetConfigCall) Return(arg0 error) *MockGitInterfaceSetConfigCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceSetConfigCall) Do(f func(string, string) error) *MockGitInterfaceSetConfigCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceSetConfigCall) DoAndReturn(f func(string, string) error) *MockGitInterfaceSetConfigCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SetRemoteConfig mocks base method.
+func (m *MockGitInterface) SetRemoteConfig(arg0, arg1, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRemoteConfig", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetRemoteConfig indicates an expected call of SetRemoteConfig.
+func (mr *MockGitInterfaceMockRecorder) SetRemoteConfig(arg0, arg1, arg2 any) *MockGitInterfaceSetRemoteConfigCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRemoteConfig", reflect.TypeOf((*MockGitInterface)(nil).SetRemoteConfig), arg0, arg1, arg2)
+	return &MockGitInterfaceSetRemoteConfigCall{Call: call}
+}
+
+// MockGitInterfaceSetRemoteConfigCall wrap *gomock.Call
+type MockGitInterfaceSetRemoteConfigCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceSetRemoteConfigCall) Return(arg0 error) *MockGitInterfaceSetRemoteConfigCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceSetRemoteConfigCall) Do(f func(string, string, string) error) *MockGitInterfaceSetRemoteConfigCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceSetRemoteConfigCall) DoAndReturn(f func(string, string, string) error) *MockGitInterfaceSetRemoteConfigCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SetRemoteResolution mocks base method.
+func (m *MockGitInterface) SetRemoteResolution(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetRemoteResolution", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetRemoteResolution indicates an expected call of SetRemoteResolution.
+func (mr *MockGitInterfaceMockRecorder) SetRemoteResolution(arg0, arg1 any) *MockGitInterfaceSetRemoteResolutionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRemoteResolution", reflect.TypeOf((*MockGitInterface)(nil).SetRemoteResolution), arg0, arg1)
+	return &MockGitInterfaceSetRemoteResolutionCall{Call: call}
+}
+
+// MockGitInterfaceSetRemoteResolutionCall wrap *gomock.Call
+type MockGitInterfaceSetRemoteResolutionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceSetRemoteResolutionCall) Return(arg0 error) *MockGitInterfaceSetRemoteResolutionCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceSetRemoteResolutionCall) Do(f func(string, string) error) *MockGitInterfaceSetRemoteResolutionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceSetRemoteResolutionCall) DoAndReturn(f func(string, string) error) *MockGitInterfaceSetRemoteResolutionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// SetUpstream mocks base method.
+func (m *MockGitInterface) SetUpstream(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUpstream", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetUpstream indicates an expected call of SetUpstream.
+func (mr *MockGitInterfaceMockRecorder) SetUpstream(arg0, arg1 any) *MockGitInterfaceSetUpstreamCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUpstream", reflect.TypeOf((*MockGitInterface)(nil).SetUpstream), arg0, arg1)
+	return &MockGitInterfaceSetUpstreamCall{Call: call}
+}
+
+// MockGitInterfaceSetUpstreamCall wrap *gomock.Call
+type MockGitInterfaceSetUpstreamCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceSetUpstreamCall) Return(arg0 error) *MockGitInterfaceSetUpstreamCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceSetUpstreamCall) Do(f func(string, string) error) *MockGitInterfaceSetUpstreamCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceSetUpstreamCall) DoAndReturn(f func(string, string) error) *MockGitInterfaceSetUpstreamCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// ShowRefs mocks base method.
+func (m *MockGitInterface) ShowRefs(arg0 ...string) ([]Ref, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ShowRefs", varargs...)
+	ret0, _ := ret[0].([]Ref)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ShowRefs indicates an expected call of ShowRefs.
+func (mr *MockGitInterfaceMockRecorder) ShowRefs(arg0 ...any) *MockGitInterfaceShowRefsCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowRefs", reflect.TypeOf((*MockGitInterface)(nil).ShowRefs), arg0...)
+	return &MockGitInterfaceShowRefsCall{Call: call}
+}
+
+// MockGitInterfaceShowRefsCall wrap *gomock.Call
+type MockGitInterfaceShowRefsCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitInterfaceShowRefsCall) Return(arg0 []Ref, arg1 error) *MockGitInterfaceShowRefsCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitInterfaceShowRefsCall) Do(f func(...string) ([]Ref, error)) *MockGitInterfaceShowRefsCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitInterfaceShowRefsCall) DoAndReturn(f func(...string) ([]Ref, error)) *MockGitInterfaceShowRefsCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
