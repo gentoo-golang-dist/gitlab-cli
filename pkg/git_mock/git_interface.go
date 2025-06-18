@@ -147,7 +147,7 @@ func (g *StandardGitRunner) GetRemoteURL(remoteAlias string) (string, error) {
 // ShowRefs resolves fully-qualified refs to commit hashes
 func (g *StandardGitRunner) ShowRefs(ref ...string) ([]Ref, error) {
 	args := append([]string{"show-ref", "--verify", "--"}, ref...)
-	stdout, _, err := g.runGitCommand(strings.Join(args, " "))
+	stdout, _, err := g.runGitCommand(args...)
 
 	var refs []Ref
 	for _, line := range outputLines(stdout) {
