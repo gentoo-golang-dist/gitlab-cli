@@ -43,13 +43,23 @@ type (
 		DeleteLocalBranch(branch string) error
 		GetDefaultBranch(remote string) (string, error)
 		RemoteBranchExists(remote string, branch string) (bool, error)
+		GetRemoteURL(remoteAlias string) (string, error)
+		ShowRefs(ref ...string) ([]Ref, error)
+		ListRemotes() ([]string, error)
+		Config(name string) (string, error)
 		UncommittedChangeCount() (int, error)
 		GitUserName() (string, error)
 		LatestCommit(ref string) (*Commit, error)
 		Commits(baseRef, headRef string) ([]*Commit, error)
 		CommitBody(sha string) (string, error)
 		Push(remote string, ref string) error
+		SetUpstream(remote string, branch string) error
 		HasLocalBranch(branch string) (bool, error)
+		AddRemote(name, u string) error
+		SetRemoteResolution(name, resolution string) error
+		SetRemoteConfig(remote, key, value string) error
+		SetConfig(key, value string) error
+		GetAllConfig(key string) ([]byte, error)
 	}
 
 	StandardGitRunner struct {
@@ -127,6 +137,49 @@ func (g *StandardGitRunner) CheckoutNewBranch(branch string) error {
 		return fmt.Errorf("could not create new branch: %v - %s", err, stderr)
 	}
 	return nil
+}
+
+// GetRemoteURL gets the URL for a remote
+func (g *StandardGitRunner) GetRemoteURL(remoteAlias string) (string, error) {
+	return g.Config("remote." + remoteAlias + ".url")
+}
+
+// ShowRefs resolves fully-qualified refs to commit hashes
+func (g *StandardGitRunner) ShowRefs(ref ...string) ([]Ref, error) {
+	args := append([]string{"show-ref", "--verify", "--"}, ref...)
+	stdout, _, err := g.runGitCommand(strings.Join(args, " "))
+
+	var refs []Ref
+	for _, line := range outputLines(stdout) {
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		refs = append(refs, Ref{
+			Hash: parts[0],
+			Name: parts[1],
+		})
+	}
+
+	return refs, err
+}
+
+// ListRemotes lists all git remotes
+func (g *StandardGitRunner) ListRemotes() ([]string, error) {
+	stdout, stderr, err := g.runGitCommand("remote", "-v")
+	if err != nil {
+		return nil, fmt.Errorf("could not list remotes: %v - %s", err, stderr)
+	}
+	return outputLines(stdout), nil
+}
+
+// Config gets a git config value
+func (g *StandardGitRunner) Config(name string) (string, error) {
+	stdout, _, err := g.runGitCommand("config", name)
+	if err != nil {
+		return "", fmt.Errorf("unknown config key: %s", name)
+	}
+	return utils.FirstLine(stdout), nil
 }
 
 // UncommittedChangeCount returns the number of uncommitted changes
@@ -221,10 +274,99 @@ func (g *StandardGitRunner) Push(remote string, ref string) error {
 	return nil
 }
 
+// SetUpstream sets the upstream (tracking) of a branch
+func (g *StandardGitRunner) SetUpstream(remote string, branch string) error {
+	_, stderr, err := g.runGitCommand("branch", "--set-upstream-to", fmt.Sprintf("%s/%s", remote, branch))
+	if err != nil {
+		return fmt.Errorf("could not set upstream: %v - %s", err, stderr)
+	}
+	return nil
+}
+
 // HasLocalBranch checks if a local branch exists
 func (g *StandardGitRunner) HasLocalBranch(branch string) (bool, error) {
 	_, _, err := g.runGitCommand("rev-parse", "--verify", "refs/heads/"+branch)
 	return err == nil, nil
+}
+
+// AddRemote adds a new git remote and auto-fetches objects from it
+func (g *StandardGitRunner) AddRemote(name, u string) error {
+	_, stderr, err := g.runGitCommand("remote", "add", "-f", name, u)
+	if err != nil {
+		return fmt.Errorf("could not add remote: %v - %s", err, stderr)
+	}
+	return nil
+}
+
+// SetRemoteResolution sets the remote resolution
+func (g *StandardGitRunner) SetRemoteResolution(name, resolution string) error {
+	return g.SetRemoteConfig(name, "glab-resolved", resolution)
+}
+
+// SetRemoteConfig sets a remote config value
+func (g *StandardGitRunner) SetRemoteConfig(remote, key, value string) error {
+	return g.SetConfig(fmt.Sprintf("remote.%s.%s", remote, key), value)
+}
+
+// SetConfig sets a git config value
+func (g *StandardGitRunner) SetConfig(key, value string) error {
+	found, err := g.configValueExists(key, value)
+	if err != nil {
+		return err
+	}
+	if found {
+		return nil
+	}
+	_, stderr, err := g.runGitCommand("config", "--add", key, value)
+	if err != nil {
+		return fmt.Errorf("setting git config: %v - %s", err, stderr)
+	}
+	return nil
+}
+
+// GetAllConfig returns all values for a config key
+func (g *StandardGitRunner) GetAllConfig(key string) ([]byte, error) {
+	err := g.assertValidConfigKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	stdout, stderr, err := g.runGitCommand("config", "--get-all", key)
+	if err != nil {
+		// git-config will exit with 1 in almost all cases, but only when it prints
+		// out things it is an actual error that is worth mentioning.
+		if stderr == "" {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("getting Git configuration value: %v - %s", err, stderr)
+	}
+	return stdout, nil
+}
+
+// Helper methods
+func (g *StandardGitRunner) configValueExists(key, value string) (bool, error) {
+	output, err := g.GetAllConfig(key)
+	if err == nil {
+		return g.outputContainsLine(output, value), nil
+	}
+	return false, err
+}
+
+func (g *StandardGitRunner) outputContainsLine(output []byte, needle string) bool {
+	for _, line := range outputLines(output) {
+		if line == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *StandardGitRunner) assertValidConfigKey(key string) error {
+	s := strings.Split(key, ".")
+	if len(s) < 2 {
+		return fmt.Errorf("incorrect Git configuration key.")
+	}
+	return nil
 }
 
 // runGitCommand executes a git command with proper environment setup and returns stdout/stderr
