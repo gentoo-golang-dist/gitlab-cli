@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strings"
 
@@ -35,6 +36,38 @@ type Commit struct {
 	Title string
 }
 
+// BranchConfig represents branch configuration
+type BranchConfig struct {
+	RemoteName string
+	RemoteURL  string
+	MergeRef   string
+}
+
+// TrackingRef represents a ref for a remote tracking branch
+type TrackingRef struct {
+	RemoteName string
+	BranchName string
+}
+
+func (r TrackingRef) String() string {
+	return "refs/remotes/" + r.RemoteName + "/" + r.BranchName
+}
+
+// Remote is a parsed git remote
+type Remote struct {
+	Name     string
+	Resolved string
+	FetchURL string
+	PushURL  string
+}
+
+func (r *Remote) String() string {
+	return r.Name
+}
+
+// RemoteSet is a slice of git remotes
+type RemoteSet []*Remote
+
 type (
 	GitInterface interface {
 		CheckoutBranch(branch string) error
@@ -60,6 +93,14 @@ type (
 		SetRemoteConfig(remote, key, value string) error
 		SetConfig(key, value string) error
 		GetAllConfig(key string) ([]byte, error)
+		ReadBranchConfig(branch string) BranchConfig
+		RunClone(cloneURL string, target string, args []string) (cloneDir string, err error)
+		AddUpstreamRemote(upstreamURL, cloneDir string) error
+		ToplevelDir() (string, error)
+		DescribeByTags() (string, error)
+		ListTags() ([]string, error)
+		RunCmd(args []string) error
+		Remotes() (RemoteSet, error)
 	}
 
 	StandardGitRunner struct {
@@ -215,15 +256,14 @@ func (g *StandardGitRunner) LatestCommit(ref string) (*Commit, error) {
 		return &Commit{}, fmt.Errorf("could not get latest commit: %v - %s", err, stderr)
 	}
 
-	split := strings.Fields(string(stdout))
-
+	split := strings.SplitN(string(stdout), " ", 2)
 	if len(split) != 2 {
-		return &Commit{}, fmt.Errorf("could not parse commit for %s: unexpected format '%s'", ref, string(stdout))
+		return &Commit{}, fmt.Errorf("could not parse commit for %s: unexpected format", ref)
 	}
 
 	return &Commit{
 		Sha:   split[0],
-		Title: split[1],
+		Title: strings.TrimSpace(split[1]),
 	}, nil
 }
 
@@ -369,6 +409,175 @@ func (g *StandardGitRunner) assertValidConfigKey(key string) error {
 	return nil
 }
 
+// ReadBranchConfig parses the `branch.BRANCH.(remote|merge)` part of git config
+func (g *StandardGitRunner) ReadBranchConfig(branch string) BranchConfig {
+	prefix := regexp.QuoteMeta(fmt.Sprintf("branch.%s.", branch))
+	stdout, _, err := g.runGitCommand("config", "--get-regexp", fmt.Sprintf("^%s(remote|merge)$", prefix))
+	if err != nil {
+		return BranchConfig{}
+	}
+
+	cfg := BranchConfig{}
+	for _, line := range outputLines(stdout) {
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		keys := strings.Split(parts[0], ".")
+		switch keys[len(keys)-1] {
+		case "remote":
+			if strings.Contains(parts[1], ":") {
+				// This is a URL, not a remote name
+				cfg.RemoteURL = parts[1]
+			} else if !isFilesystemPath(parts[1]) {
+				cfg.RemoteName = parts[1]
+			}
+		case "merge":
+			cfg.MergeRef = parts[1]
+		}
+	}
+	return cfg
+}
+
+// RunClone runs git clone command
+func (g *StandardGitRunner) RunClone(cloneURL string, target string, args []string) (cloneDir string, err error) {
+	cloneArgs := append(args, cloneURL)
+
+	// If the args contain an explicit target, pass it to clone
+	//    otherwise, parse the URL to determine where git cloned it to so we can return it
+	if target != "" {
+		cloneArgs = append(cloneArgs, target)
+	} else {
+		target = path.Base(strings.TrimSuffix(cloneURL, ".git"))
+	}
+
+	cloneArgs = append([]string{"clone"}, cloneArgs...)
+
+	cmd := exec.Command(g.gitBinary, cloneArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Run()
+	return target, err
+}
+
+// AddUpstreamRemote adds an upstream remote
+func (g *StandardGitRunner) AddUpstreamRemote(upstreamURL, cloneDir string) error {
+	cmd := exec.Command(g.gitBinary, "-C", cloneDir, "remote", "add", "-f", "upstream", upstreamURL)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// ToplevelDir returns the top-level directory path of the current repository
+func (g *StandardGitRunner) ToplevelDir() (string, error) {
+	stdout, stderr, err := g.runGitCommand("rev-parse", "--show-toplevel")
+	if err != nil {
+		return "", fmt.Errorf("could not get top-level directory: %v - %s", err, stderr)
+	}
+	return utils.FirstLine(stdout), nil
+}
+
+// DescribeByTags gives a description of the current object
+func (g *StandardGitRunner) DescribeByTags() (string, error) {
+	stdout, stderr, err := g.runGitCommand("describe", "--tags")
+	if err != nil {
+		return "", fmt.Errorf("running describe: %v - %s", err, stderr)
+	}
+	return string(stdout), nil
+}
+
+// ListTags gives a slice of tags from the current repository
+func (g *StandardGitRunner) ListTags() ([]string, error) {
+	stdout, stderr, err := g.runGitCommand("tag", "-l")
+	if err != nil {
+		return nil, fmt.Errorf("running tag: %v - %s", err, stderr)
+	}
+
+	tagsStr := string(stdout)
+	if tagsStr == "" {
+		return nil, nil
+	}
+
+	return strings.Fields(tagsStr), nil
+}
+
+// RunCmd runs arbitrary git commands
+func (g *StandardGitRunner) RunCmd(args []string) error {
+	cmd := exec.Command(g.gitBinary, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// Remotes gets the git remotes set for the current repo
+func (g *StandardGitRunner) Remotes() (RemoteSet, error) {
+	list, err := g.ListRemotes()
+	if err != nil {
+		return nil, err
+	}
+	remotes := g.parseRemotes(list)
+
+	// this is affected by SetRemoteResolution
+	stdout, _, _ := g.runGitCommand("config", "--get-regexp", `^remote\..*\.glab-resolved$`)
+	for _, l := range outputLines(stdout) {
+		parts := strings.SplitN(l, " ", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		rp := strings.SplitN(parts[0], ".", 3)
+		if len(rp) < 2 {
+			continue
+		}
+		name := rp[1]
+		for _, r := range remotes {
+			if r.Name == name {
+				r.Resolved = parts[1]
+				break
+			}
+		}
+	}
+
+	return remotes, nil
+}
+
+// parseRemotes parses git remote output into RemoteSet
+func (g *StandardGitRunner) parseRemotes(gitRemotes []string) RemoteSet {
+	remoteRE := regexp.MustCompile(`(.+)\s+(.+)\s+\((push|fetch)\)`)
+	var remotes RemoteSet
+
+	for _, r := range gitRemotes {
+		match := remoteRE.FindStringSubmatch(r)
+		if match == nil {
+			continue
+		}
+		name := strings.TrimSpace(match[1])
+		urlStr := strings.TrimSpace(match[2])
+		urlType := strings.TrimSpace(match[3])
+
+		var rem *Remote
+		if len(remotes) > 0 {
+			rem = remotes[len(remotes)-1]
+			if name != rem.Name {
+				rem = nil
+			}
+		}
+		if rem == nil {
+			rem = &Remote{Name: name}
+			remotes = append(remotes, rem)
+		}
+
+		switch urlType {
+		case "fetch":
+			rem.FetchURL = urlStr
+		case "push":
+			rem.PushURL = urlStr
+		}
+	}
+	return remotes
+}
+
 // runGitCommand executes a git command with proper environment setup and returns stdout/stderr
 func (g *StandardGitRunner) runGitCommand(args ...string) ([]byte, string, error) {
 	cmd := exec.Command(g.gitBinary, args...)
@@ -416,4 +625,9 @@ func parseDefaultBranch(output []byte) (string, error) {
 func outputLines(output []byte) []string {
 	lines := strings.TrimSuffix(string(output), "\n")
 	return strings.Split(lines, "\n")
+}
+
+// isFilesystemPath checks if a path is a filesystem path
+func isFilesystemPath(p string) bool {
+	return p == "." || strings.HasPrefix(p, "./") || strings.HasPrefix(p, "/")
 }

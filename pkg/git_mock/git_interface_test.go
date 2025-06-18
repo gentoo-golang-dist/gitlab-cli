@@ -1280,3 +1280,533 @@ Just some random text`,
 		})
 	}
 }
+
+func TestReadBranchConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		branch         string
+		setupMock      func(*MockGitInterface, string)
+		expectedConfig BranchConfig
+	}{
+		{
+			name:   "successful branch config retrieval with remote name",
+			branch: "main",
+			setupMock: func(m *MockGitInterface, branch string) {
+				m.EXPECT().ReadBranchConfig(branch).Return(BranchConfig{
+					RemoteName: "origin",
+					MergeRef:   "refs/heads/main",
+				})
+			},
+			expectedConfig: BranchConfig{
+				RemoteName: "origin",
+				MergeRef:   "refs/heads/main",
+			},
+		},
+		{
+			name:   "branch config with remote URL",
+			branch: "feature",
+			setupMock: func(m *MockGitInterface, branch string) {
+				m.EXPECT().ReadBranchConfig(branch).Return(BranchConfig{
+					RemoteURL: "https://github.com/user/repo.git",
+					MergeRef:  "refs/heads/feature",
+				})
+			},
+			expectedConfig: BranchConfig{
+				RemoteURL: "https://github.com/user/repo.git",
+				MergeRef:  "refs/heads/feature",
+			},
+		},
+		{
+			name:   "empty branch config",
+			branch: "orphan",
+			setupMock: func(m *MockGitInterface, branch string) {
+				m.EXPECT().ReadBranchConfig(branch).Return(BranchConfig{})
+			},
+			expectedConfig: BranchConfig{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit, tt.branch)
+
+			config := mockGit.ReadBranchConfig(tt.branch)
+
+			require.Equal(t, tt.expectedConfig, config)
+		})
+	}
+}
+
+func TestRunClone(t *testing.T) {
+	tests := []struct {
+		name          string
+		cloneURL      string
+		target        string
+		args          []string
+		setupMock     func(*MockGitInterface, string, string, []string)
+		expectedDir   string
+		expectedError error
+	}{
+		{
+			name:     "successful clone with target",
+			cloneURL: "https://github.com/user/repo.git",
+			target:   "myrepo",
+			args:     []string{"--depth", "1"},
+			setupMock: func(m *MockGitInterface, cloneURL, target string, args []string) {
+				m.EXPECT().RunClone(cloneURL, target, args).Return(target, nil)
+			},
+			expectedDir:   "myrepo",
+			expectedError: nil,
+		},
+		{
+			name:     "successful clone without target",
+			cloneURL: "https://github.com/user/repo.git",
+			target:   "",
+			args:     []string{},
+			setupMock: func(m *MockGitInterface, cloneURL, target string, args []string) {
+				m.EXPECT().RunClone(cloneURL, target, args).Return("repo", nil)
+			},
+			expectedDir:   "repo",
+			expectedError: nil,
+		},
+		{
+			name:     "clone fails",
+			cloneURL: "https://github.com/user/nonexistent.git",
+			target:   "",
+			args:     []string{},
+			setupMock: func(m *MockGitInterface, cloneURL, target string, args []string) {
+				m.EXPECT().RunClone(cloneURL, target, args).Return("", errors.New("repository not found"))
+			},
+			expectedDir:   "",
+			expectedError: errors.New("repository not found"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit, tt.cloneURL, tt.target, tt.args)
+
+			dir, err := mockGit.RunClone(tt.cloneURL, tt.target, tt.args)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.expectedDir, dir)
+		})
+	}
+}
+
+func TestAddUpstreamRemote(t *testing.T) {
+	tests := []struct {
+		name          string
+		upstreamURL   string
+		cloneDir      string
+		setupMock     func(*MockGitInterface, string, string)
+		expectedError error
+	}{
+		{
+			name:        "successful upstream remote addition",
+			upstreamURL: "https://github.com/upstream/repo.git",
+			cloneDir:    "myrepo",
+			setupMock: func(m *MockGitInterface, upstreamURL, cloneDir string) {
+				m.EXPECT().AddUpstreamRemote(upstreamURL, cloneDir).Return(nil)
+			},
+			expectedError: nil,
+		},
+		{
+			name:        "upstream remote addition fails",
+			upstreamURL: "https://github.com/upstream/repo.git",
+			cloneDir:    "nonexistent",
+			setupMock: func(m *MockGitInterface, upstreamURL, cloneDir string) {
+				m.EXPECT().AddUpstreamRemote(upstreamURL, cloneDir).Return(errors.New("not a git repository"))
+			},
+			expectedError: errors.New("not a git repository"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit, tt.upstreamURL, tt.cloneDir)
+
+			err := mockGit.AddUpstreamRemote(tt.upstreamURL, tt.cloneDir)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestToplevelDir(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupMock     func(*MockGitInterface)
+		expectedDir   string
+		expectedError error
+	}{
+		{
+			name: "successful toplevel directory retrieval",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().ToplevelDir().Return("/Users/gary/code/work/cli", nil)
+			},
+			expectedDir:   "/Users/gary/code/work/cli",
+			expectedError: nil,
+		},
+		{
+			name: "not in a git repository",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().ToplevelDir().Return("", errors.New("could not get top-level directory"))
+			},
+			expectedDir:   "",
+			expectedError: errors.New("could not get top-level directory"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit)
+
+			dir, err := mockGit.ToplevelDir()
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.expectedDir, dir)
+		})
+	}
+}
+
+func TestDescribeByTags(t *testing.T) {
+	tests := []struct {
+		name             string
+		setupMock        func(*MockGitInterface)
+		expectedDescribe string
+		expectedError    error
+	}{
+		{
+			name: "successful describe",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().DescribeByTags().Return("v1.2.3-4-gabc123\n", nil)
+			},
+			expectedDescribe: "v1.2.3-4-gabc123\n",
+			expectedError:    nil,
+		},
+		{
+			name: "no tags found",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().DescribeByTags().Return("", errors.New("running describe"))
+			},
+			expectedDescribe: "",
+			expectedError:    errors.New("running describe"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit)
+
+			describe, err := mockGit.DescribeByTags()
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.expectedDescribe, describe)
+		})
+	}
+}
+
+func TestListTags(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupMock     func(*MockGitInterface)
+		expectedTags  []string
+		expectedError error
+	}{
+		{
+			name: "successful tags listing",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().ListTags().Return([]string{"v1.0.0", "v1.1.0", "v1.2.0"}, nil)
+			},
+			expectedTags:  []string{"v1.0.0", "v1.1.0", "v1.2.0"},
+			expectedError: nil,
+		},
+		{
+			name: "no tags",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().ListTags().Return(nil, nil)
+			},
+			expectedTags:  nil,
+			expectedError: nil,
+		},
+		{
+			name: "tags listing fails",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().ListTags().Return(nil, errors.New("running tag"))
+			},
+			expectedTags:  nil,
+			expectedError: errors.New("running tag"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit)
+
+			tags, err := mockGit.ListTags()
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.expectedTags, tags)
+		})
+	}
+}
+
+func TestRunCmd(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          []string
+		setupMock     func(*MockGitInterface, []string)
+		expectedError error
+	}{
+		{
+			name: "successful command execution",
+			args: []string{"status", "--short"},
+			setupMock: func(m *MockGitInterface, args []string) {
+				m.EXPECT().RunCmd(args).Return(nil)
+			},
+			expectedError: nil,
+		},
+		{
+			name: "command execution fails",
+			args: []string{"invalid-command"},
+			setupMock: func(m *MockGitInterface, args []string) {
+				m.EXPECT().RunCmd(args).Return(errors.New("git: 'invalid-command' is not a git command"))
+			},
+			expectedError: errors.New("git: 'invalid-command' is not a git command"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit, tt.args)
+
+			err := mockGit.RunCmd(tt.args)
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestTrackingRef_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		ref      TrackingRef
+		expected string
+	}{
+		{
+			name: "standard tracking ref",
+			ref: TrackingRef{
+				RemoteName: "origin",
+				BranchName: "main",
+			},
+			expected: "refs/remotes/origin/main",
+		},
+		{
+			name: "tracking ref with slash in branch name",
+			ref: TrackingRef{
+				RemoteName: "upstream",
+				BranchName: "feature/new-feature",
+			},
+			expected: "refs/remotes/upstream/feature/new-feature",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.ref.String()
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestRemotes(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupMock      func(*MockGitInterface)
+		expectedRemotes RemoteSet
+		expectedError   error
+	}{
+		{
+			name: "successful remotes retrieval",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().Remotes().Return(RemoteSet{
+					&Remote{
+						Name:     "origin",
+						FetchURL: "https://github.com/user/repo.git",
+						PushURL:  "https://github.com/user/repo.git",
+					},
+					&Remote{
+						Name:     "upstream",
+						FetchURL: "https://github.com/upstream/repo.git",
+						PushURL:  "https://github.com/upstream/repo.git",
+					},
+				}, nil)
+			},
+			expectedRemotes: RemoteSet{
+				&Remote{
+					Name:     "origin",
+					FetchURL: "https://github.com/user/repo.git",
+					PushURL:  "https://github.com/user/repo.git",
+				},
+				&Remote{
+					Name:     "upstream",
+					FetchURL: "https://github.com/upstream/repo.git",
+					PushURL:  "https://github.com/upstream/repo.git",
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "remotes with resolved URLs",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().Remotes().Return(RemoteSet{
+					&Remote{
+						Name:     "origin",
+						FetchURL: "git@github.com:user/repo.git",
+						PushURL:  "git@github.com:user/repo.git",
+						Resolved: "https://gitlab.com/user/repo",
+					},
+				}, nil)
+			},
+			expectedRemotes: RemoteSet{
+				&Remote{
+					Name:     "origin",
+					FetchURL: "git@github.com:user/repo.git",
+					PushURL:  "git@github.com:user/repo.git",
+					Resolved: "https://gitlab.com/user/repo",
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "no remotes",
+			setupMock: func(m *MockGitInterface) {
+				m.EXPECT().Remotes().Return(RemoteSet{}, nil)
+			},
+			expectedRemotes: RemoteSet{},
+			expectedError:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockGit := NewMockGitInterface(ctrl)
+
+			tt.setupMock(mockGit)
+
+			remotes, err := mockGit.Remotes()
+
+			if tt.expectedError != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedError.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.expectedRemotes, remotes)
+		})
+	}
+}
+
+func TestRemote_String(t *testing.T) {
+	tests := []struct {
+		name     string
+		remote   Remote
+		expected string
+	}{
+		{
+			name: "remote with name",
+			remote: Remote{
+				Name:     "origin",
+				FetchURL: "https://github.com/user/repo.git",
+				PushURL:  "https://github.com/user/repo.git",
+			},
+			expected: "origin",
+		},
+		{
+			name: "remote with resolved URL",
+			remote: Remote{
+				Name:     "upstream",
+				FetchURL: "git@github.com:upstream/repo.git",
+				PushURL:  "git@github.com:upstream/repo.git",
+				Resolved: "https://gitlab.com/upstream/repo",
+			},
+			expected: "upstream",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.remote.String()
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
