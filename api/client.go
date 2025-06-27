@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/pkg/glinstance"
@@ -382,6 +383,17 @@ func (c *Client) Lab() *gitlab.Client {
 // BaseURL returns a copy of the BaseURL
 func (c *Client) BaseURL() *url.URL {
 	return c.Lab().BaseURL()
+}
+
+func (c *Client) NewWebSocketConnection() (*websocket.Conn, error) {
+	header := http.Header{}
+	header.Add("Authorization", "Bearer "+c.token)
+	conn, _, err := websocket.DefaultDialer.Dial("wss://gitlab.com/api/v4/ai/duo_workflows/ws", header)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 func NewHTTPRequest(c *Client, method string, baseURL *url.URL, body io.Reader, headers []string, bodyIsJSON bool) (*http.Request, error) {

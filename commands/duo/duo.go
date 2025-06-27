@@ -2,6 +2,7 @@ package duo
 
 import (
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
+	"gitlab.com/gitlab-org/cli/commands/duo/agent"
 	duoAskCmd "gitlab.com/gitlab-org/cli/commands/duo/ask"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ func NewCmdDuo(f cmdutils.Factory) *cobra.Command {
 	}
 
 	duoCmd.AddCommand(duoAskCmd.NewCmdAsk(f))
+	duoCmd.AddCommand(agent.NewCmdAgent(f))
 
 	return duoCmd
 }
