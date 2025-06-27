@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/commands/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )
 
 func NewCmdArchive(f cmdutils.Factory) *cobra.Command {
@@ -44,21 +45,29 @@ func NewCmdArchive(f cmdutils.Factory) *cobra.Command {
 			var name string
 			var err error
 
+			var gitlabClient *gitlab.Client
+			var repo glrepo.Interface
 			if len(args) != 0 {
-				f.RepoOverride(args[0])
+				// repository is coming from command args, not -R
+				apiClient, err := f.ApiClient(args[0], f.Config())
+				if err != nil {
+					return err
+				}
 				if len(args) > 1 {
 					name = args[1]
 				}
-			}
 
-			apiClient, err := f.HttpClient()
-			if err != nil {
-				return err
-			}
-
-			repo, err := f.BaseRepo()
-			if err != nil {
-				return err
+				gitlabClient = apiClient.Lab()
+				repo, err = glrepo.FromFullName(args[0], f.DefaultHostname())
+				if err != nil {
+					return err
+				}
+			} else {
+				gitlabClient, err = f.HttpClient()
+				if err != nil {
+					return err
+				}
+				repo, _ = f.BaseRepo()
 			}
 
 			format, _ := cmd.Flags().GetString("format")
@@ -80,7 +89,7 @@ func NewCmdArchive(f cmdutils.Factory) *cobra.Command {
 				archiveName = name + "." + ext
 			}
 
-			bt, _, err := apiClient.Repositories.Archive(repo.FullName(), l)
+			bt, _, err := gitlabClient.Repositories.Archive(repo.FullName(), l)
 			if err != nil {
 				return fmt.Errorf("failed to get archive: %v", err)
 			}

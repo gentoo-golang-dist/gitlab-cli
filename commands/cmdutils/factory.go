@@ -3,7 +3,6 @@ package cmdutils
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/api"
@@ -18,7 +17,6 @@ import (
 // Factory is a way to obtain core tools for the commands.
 // Safe for concurrent use.
 type Factory interface {
-	RepoOverride(repo string)
 	ApiClient(repoHost string, cfg config.Config) (*api.Client, error)
 	HttpClient() (*gitlab.Client, error)
 	BaseRepo() (glrepo.Interface, error)
@@ -33,29 +31,62 @@ type Factory interface {
 type DefaultFactory struct {
 	io              *iostreams.IOStreams
 	config          config.Config
-	resolveRepos    bool
 	buildInfo       api.BuildInfo
 	defaultHostname string
 	defaultProtocol string
-
-	mu           sync.Mutex // protects the fields below
-	repoOverride string
+	baseRepo        glrepo.Interface
 }
 
-func NewFactory(io *iostreams.IOStreams, resolveRepos bool, cfg config.Config, buildInfo api.BuildInfo) *DefaultFactory {
+func NewFactory(io *iostreams.IOStreams, resolveRepos bool, repository string, cfg config.Config, buildInfo api.BuildInfo) (*DefaultFactory, error) {
 	f := &DefaultFactory{
 		io:              io,
 		config:          cfg,
-		resolveRepos:    resolveRepos,
 		buildInfo:       buildInfo,
 		defaultHostname: glinstance.DefaultHostname,
 		defaultProtocol: glinstance.DefaultProtocol,
 	}
 
-	baseRepo, err := f.BaseRepo()
-	if err == nil {
-		f.defaultHostname = baseRepo.RepoHost()
+	// resolve repository
+	var baseRepo glrepo.Interface
+	if repository != "" {
+		r, err := glrepo.FromFullName(repository, f.defaultHostname)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get full name from provided repository %q for default hostname %q", repository, f.defaultHostname)
+		}
+		baseRepo = r
+	} else {
+		remotes, err := f.Remotes()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get remotes: %w", err)
+		}
+		if resolveRepos {
+			baseRepo = remotes[0]
+		} else {
+			// TODO: is the code below even necessary? Can repo.RepoHost() be an empty string?!
+			repoHost := f.defaultHostname
+			if remotes[0].RepoHost() != "" {
+				repoHost = remotes[0].RepoHost()
+			}
+			ac, err := api.NewClientWithCfg(f.defaultProtocol, repoHost, cfg, false, f.buildInfo.UserAgent())
+			if err != nil {
+				return nil, fmt.Errorf("failed to create new API client to reesolve repository: %w", err)
+			}
+			httpClient := ac.Lab()
+			repoContext, err := glrepo.ResolveRemotesToRepos(remotes, httpClient, "", f.defaultHostname)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve remotes to repositories: %w", err)
+			}
+			r, err := repoContext.BaseRepo(f.io.PromptEnabled())
+			if err != nil {
+				return nil, fmt.Errorf("failed to get base repository from resolved remote repositories: %w", err)
+			}
+			baseRepo = r
+		}
 	}
+
+	f.baseRepo = baseRepo
+	f.defaultHostname = baseRepo.RepoHost()
+
 	// Fetch the custom host config from env vars, then local config.yml, then global config,yml.
 	customGLHost, _ := cfg.Get("", "host")
 	if customGLHost != "" {
@@ -67,17 +98,11 @@ func NewFactory(io *iostreams.IOStreams, resolveRepos bool, cfg config.Config, b
 		f.defaultHostname = customGLHost
 	}
 
-	return f
+	return f, nil
 }
 
 func (f *DefaultFactory) DefaultHostname() string {
 	return f.defaultHostname
-}
-
-func (f *DefaultFactory) RepoOverride(repo string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.repoOverride = repo
 }
 
 func (f *DefaultFactory) ApiClient(repoHost string, cfg config.Config) (*api.Client, error) {
@@ -94,33 +119,7 @@ func (f *DefaultFactory) ApiClient(repoHost string, cfg config.Config) (*api.Cli
 func (f *DefaultFactory) HttpClient() (*gitlab.Client, error) {
 	cfg := f.Config()
 
-	f.mu.Lock()
-	override := f.repoOverride
-	f.mu.Unlock()
-	var repo glrepo.Interface
-	if override != "" {
-		var err error
-		repo, err = glrepo.FromFullName(override, f.defaultHostname)
-		if err != nil {
-			return nil, err // return the error if repo was overridden.
-		}
-	} else {
-		remotes, err := f.Remotes()
-		if err != nil {
-			// use default hostname if remote resolver fails
-			repo = glrepo.NewWithHost("", "", f.defaultHostname)
-		} else {
-			repo = remotes[0]
-		}
-	}
-
-	// TODO: is the code below even necessary? Can repo.RepoHost() be an empty string?!
-	repoHost := f.defaultHostname
-	if repo.RepoHost() != "" {
-		repoHost = repo.RepoHost()
-	}
-
-	c, err := api.NewClientWithCfg(f.defaultProtocol, repoHost, cfg, false, f.buildInfo.UserAgent())
+	c, err := api.NewClientWithCfg(f.defaultProtocol, f.baseRepo.RepoHost(), cfg, false, f.buildInfo.UserAgent())
 	if err != nil {
 		return nil, err
 	}
@@ -129,39 +128,7 @@ func (f *DefaultFactory) HttpClient() (*gitlab.Client, error) {
 }
 
 func (f *DefaultFactory) BaseRepo() (glrepo.Interface, error) {
-	f.mu.Lock()
-	override := f.repoOverride
-	f.mu.Unlock()
-	if override != "" {
-		return glrepo.FromFullName(override, f.defaultHostname)
-	}
-	remotes, err := f.Remotes()
-	if err != nil {
-		return nil, err
-	}
-	if !f.resolveRepos {
-		return remotes[0], nil
-	}
-	cfg := f.Config()
-	// TODO: is the code below even necessary? Can repo.RepoHost() be an empty string?!
-	repoHost := f.defaultHostname
-	if remotes[0].RepoHost() != "" {
-		repoHost = remotes[0].RepoHost()
-	}
-	ac, err := api.NewClientWithCfg(f.defaultProtocol, repoHost, cfg, false, f.buildInfo.UserAgent())
-	if err != nil {
-		return nil, err
-	}
-	httpClient := ac.Lab()
-	repoContext, err := glrepo.ResolveRemotesToRepos(remotes, httpClient, "", f.defaultHostname)
-	if err != nil {
-		return nil, err
-	}
-	baseRepo, err := repoContext.BaseRepo(f.io.PromptEnabled())
-	if err != nil {
-		return nil, err
-	}
-	return baseRepo, nil
+	return f.baseRepo, nil
 }
 
 func (f *DefaultFactory) Remotes() (glrepo.Remotes, error) {

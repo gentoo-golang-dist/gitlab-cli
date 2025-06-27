@@ -24,7 +24,8 @@ func TestAskGit_Integration(t *testing.T) {
 	cfg, err := config.Init()
 	require.NoError(t, err)
 	io, _, stdout, stderr := cmdtest.TestIOStreams()
-	f := cmdutils.NewFactory(io, false, cfg, api.BuildInfo{})
+	f, err := cmdutils.NewFactory(io, false, "", cfg, api.BuildInfo{})
+	require.NoError(t, err)
 
 	cmd := NewCmdAsk(f)
 	cli := "--git how to create a branch"

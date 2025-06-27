@@ -58,8 +58,17 @@ func main() {
 		debug = debugModeCfg == "true" || debugModeCfg == "1"
 	}
 
+	// Resolve repository overrides.
+	// Overrides happen through the global `-R` / `--repo` command line flags
+	// or via GITLAB_REPO environment variable.
+	repository, err := cmdutils.ParseRepoOverrideEarly(os.Args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		os.Exit(2)
+	}
+
 	// Initialize factory and iostreams
-	cmdFactory := cmdutils.NewFactory(
+	cmdFactory, err := cmdutils.NewFactory(
 		iostreams.New(
 			iostreams.WithStdin(os.Stdin, iostreams.IsTerminal(os.Stdin)),
 			iostreams.WithStdout(iostreams.NewColorable(os.Stdout), iostreams.IsTerminal(os.Stdout)),
@@ -90,9 +99,14 @@ func main() {
 			},
 		),
 		true,
+		repository,
 		cfg,
 		api.BuildInfo{Version: version, Commit: commit, Platform: platform, Architecture: runtime.GOARCH},
 	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create command factory: %s\n", err)
+		os.Exit(2)
+	}
 
 	setupSurveyCore(cmdFactory.IO())
 
