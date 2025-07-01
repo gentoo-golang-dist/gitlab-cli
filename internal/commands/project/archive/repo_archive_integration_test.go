@@ -10,7 +10,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func runCommand(t *testing.T, cli string) (*test.CmdOut, error) {
+func runCommand(cli string) (*test.CmdOut, error) {
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 	factory := cmdtest.NewTestFactory(ios)
 
@@ -57,7 +57,7 @@ func Test_repoArchive_Integration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmdArgs := []string{tt.args.repo, tt.args.dest, "--format", tt.args.format, "--sha", tt.args.sha}
-					out, err := runCommand(t, strings.Join(cmdArgs, " "))
+			out, err := runCommand(strings.Join(cmdArgs, " "))
 			if err != nil {
 				t.Log(err)
 				if !tt.wantErr {
