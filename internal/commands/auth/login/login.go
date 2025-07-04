@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -124,7 +125,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 				return &cmdutils.FlagError{Err: errors.New("api-host, api-protocol, and git-protocol can only be used in non-interactive mode.")}
 			}
 
-			if err := loginRun(opts); err != nil {
+			if err := loginRun(cmd.Context(), opts); err != nil {
 				return cmdutils.WrapError(err, "Could not sign in!")
 			}
 
@@ -144,7 +145,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func loginRun(opts *LoginOptions) error {
+func loginRun(ctx context.Context, opts *LoginOptions) error {
 	c := opts.IO.Color()
 	cfg := opts.Config()
 
@@ -336,7 +337,7 @@ func loginRun(opts *LoginOptions) error {
 			return err
 		}
 
-		token, err = oauth2.StartFlow(cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
+		token, err = oauth2.StartFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
 		if err != nil {
 			return err
 		}
