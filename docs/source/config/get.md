@@ -32,7 +32,7 @@ $ glab config get glamour_style
 
 ```plaintext
   -g, --global        Read from global config file (~/.config/glab-cli/config.yml). (default checks 'Environment variables → Local → Global')
-  -h, --host string   Get per-host setting.
+      --host string   Get per-host setting.
 ```
 
 ## Options inherited from parent commands

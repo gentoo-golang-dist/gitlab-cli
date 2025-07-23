@@ -35,7 +35,7 @@ glab config set <key> <value> [flags]
 
 ```plaintext
   -g, --global        Write to global '~/.config/glab-cli/config.yml' file rather than the repository's '.git/glab-cli/config.yml' file.
-  -h, --host string   Set per-host setting.
+      --host string   Set per-host setting.
 ```
 
 ## Options inherited from parent commands
