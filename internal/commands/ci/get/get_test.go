@@ -612,3 +612,295 @@ func TestCIGetJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestCIGetJSONWithBridges(t *testing.T) {
+	t.Parallel()
+
+	tests := []testCase{
+		{
+			name: "when getting JSON for pipeline",
+			args: "-p 452959326 -F json -b main --with-downstream-pipelines",
+			httpMocks: []httpMock{
+				{
+					http.MethodGet,
+					"/api/v4/projects/OWNER%2FREPO/pipelines/452959326",
+					http.StatusOK,
+					"testdata/ci_get-0.json",
+					FileBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/OWNER%2FREPO/pipelines/452959326/jobs?per_page=100",
+					http.StatusOK,
+					"testdata/ci_get-1.json",
+					FileBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/OWNER%2FREPO/pipelines/452959326/bridges?per_page=100",
+					http.StatusOK,
+					"testdata/ci_get-2.json",
+					FileBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/29316529/pipelines/12345678",
+					http.StatusOK,
+					"testdata/ci_get-3.json",
+					FileBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/29316529/pipelines/12345678/jobs?per_page=100",
+					http.StatusOK,
+					"testdata/ci_get-4.json",
+					FileBody,
+				},
+			},
+			expectedOut:     "testdata/ci_get_bridges.result",
+			expectedOutType: FileBody,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fakeHTTP := &httpmock.Mocker{
+				MatchURL: httpmock.PathAndQuerystring,
+			}
+			defer fakeHTTP.Verify(t)
+
+			for _, mock := range tc.httpMocks {
+				var body string
+				if mock.bodyType == FileBody {
+					bodyBytes, _ := os.ReadFile(mock.body)
+					body = string(bodyBytes)
+				} else {
+					body = mock.body
+				}
+				fakeHTTP.RegisterResponder(mock.method, mock.path, httpmock.NewStringResponse(mock.status, body))
+			}
+
+			output, err := runCommand(t, fakeHTTP, tc.args)
+			require.Nil(t, err)
+			var expectedOut string
+			var expectedOutBytes []byte
+
+			if tc.expectedOutType == FileBody {
+				expectedOutBytes, err = os.ReadFile(tc.expectedOut)
+				expectedOut = string(expectedOutBytes)
+				require.Nil(t, err)
+			} else {
+				expectedOut = tc.expectedOut
+			}
+
+			assert.JSONEq(t, expectedOut, output.String())
+			assert.Empty(t, output.Stderr())
+		})
+	}
+}
+
+func TestCIGetWithBridges(t *testing.T) {
+	t.Parallel()
+
+	tests := []testCase{
+		{
+			name: "when get is called on an existing pipeline",
+			args: "-p=123 -b=main --with-downstream-pipelines --with-job-details --with-variables",
+			httpMocks: []httpMock{
+				{
+					http.MethodGet,
+					"/api/v4/projects/OWNER%2FREPO/pipelines/123",
+					http.StatusOK,
+					`{
+						"id": 123,
+						"iid": 123,
+						"status": "pending",
+						"project_id": 5,
+						"source": "push",
+						"ref": "main",
+						"sha": "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						"user": {
+							"username": "test"
+						},
+						"yaml_errors": "-",
+						"created_at": "2023-10-10T00:00:00Z",
+						"started_at": "2023-10-10T00:00:00Z",
+						"updated_at": "2023-10-10T00:00:00Z"
+					}`,
+					InlineBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/OWNER%2FREPO/pipelines/123/jobs?per_page=100",
+					http.StatusOK,
+					`[{
+						"id": 123,
+						"name": "publish",
+						"status": "failed",
+						"failure_reason": "bad timing"
+					}]`,
+					InlineBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/5/pipelines/123/variables",
+					http.StatusOK,
+					`[{
+						"key": "RUN_NIGHTLY_BUILD",
+				    "variable_type": "env_var",
+						"value": "true"
+					}]`,
+					InlineBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/OWNER%2FREPO/pipelines/123/bridges?per_page=100",
+					http.StatusOK,
+					`[{
+						"id": 123,
+						"status": "pending",
+						"ref": "main",
+						"user": {
+							"username": "test"
+						},
+						"created_at": "2023-10-10T00:00:00Z",
+						"started_at": "2023-10-10T00:00:00Z",
+						"finished_at": "2023-10-10T00:00:00Z",
+						"downstream_pipeline": {
+							"id": 456,
+							"iid": 456,
+							"status": "pending",
+							"project_id": 10,
+							"ref": "main",
+							"created_at": "2023-10-10T00:00:00Z",
+							"updated_at": "2023-10-10T00:00:00Z"
+						}
+					}]`,
+					InlineBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/10/pipelines/456",
+					http.StatusOK,
+					`{
+						"id": 456,
+						"iid": 456,
+						"status": "pending",
+						"source": "push",
+						"ref": "main",
+						"sha": "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						"user": {
+							"username": "test"
+						},
+						"yaml_errors": "-",
+						"created_at": "2023-10-10T00:00:00Z",
+						"started_at": "2023-10-10T00:00:00Z",
+						"updated_at": "2023-10-10T00:00:00Z"
+					}`,
+					InlineBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/10/pipelines/456/jobs?per_page=100",
+					http.StatusOK,
+					`[{
+						"id": 123,
+						"name": "publish",
+						"status": "failed",
+						"failure_reason": "bad timing"
+					}]`,
+					InlineBody,
+				},
+				{
+					http.MethodGet,
+					"/api/v4/projects/10/pipelines/456/variables",
+					http.StatusOK,
+					`[{
+						"key": "RUN_DAILY_BUILD",
+				    "variable_type": "env_var",
+						"value": "true"
+					}]`,
+					InlineBody,
+				},
+			},
+			expectedOut: `# Pipeline:
+id:	123
+status:	pending
+source:	push
+ref:	main
+sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
+tag:	false
+yaml Errors:	-
+user:	test
+created:	2023-10-10 00:00:00 +0000 UTC
+started:	2023-10-10 00:00:00 +0000 UTC
+updated:	2023-10-10 00:00:00 +0000 UTC
+
+# Jobs:
+ID	Name	Status	Duration	Failure reason
+123	publish	failed	0	bad timing
+
+# Variables:
+RUN_NIGHTLY_BUILD:	true
+
+# Child 1 pipeline :
+id:	456
+status:	pending
+source:	push
+ref:	main
+sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
+tag:	false
+yaml Errors:	-
+user:	test
+created:	2023-10-10 00:00:00 +0000 UTC
+started:	2023-10-10 00:00:00 +0000 UTC
+updated:	2023-10-10 00:00:00 +0000 UTC
+
+# Child 1 jobs :
+ID	Name	Status	Duration	Failure reason
+123	publish	failed	0	bad timing
+
+# Child 1 variables :
+RUN_DAILY_BUILD:	true
+
+`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fakeHTTP := &httpmock.Mocker{
+				MatchURL: httpmock.PathAndQuerystring,
+			}
+			defer fakeHTTP.Verify(t)
+
+			for _, mock := range tc.httpMocks {
+				var body string
+				if mock.bodyType == FileBody {
+					bodyBytes, _ := os.ReadFile(mock.body)
+					body = string(bodyBytes)
+				} else {
+					body = mock.body
+				}
+				fakeHTTP.RegisterResponder(mock.method, mock.path, httpmock.NewStringResponse(mock.status, body))
+			}
+
+			output, err := runCommand(t, fakeHTTP, tc.args)
+			require.Nil(t, err)
+			var expectedOut string
+			var expectedOutBytes []byte
+
+			if tc.expectedOutType == FileBody {
+				expectedOutBytes, err = os.ReadFile(tc.expectedOut)
+				expectedOut = string(expectedOutBytes)
+				require.Nil(t, err)
+			} else {
+				expectedOut = tc.expectedOut
+			}
+
+			assert.Equal(t, expectedOut, output.String())
+			assert.Empty(t, output.Stderr())
+		})
+	}
+}

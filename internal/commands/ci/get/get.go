@@ -12,15 +12,24 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
 
+type PipelineBridge struct {
+	Bridge    *gitlab.Bridge             `json:"bridge"`
+	Pipeline  *gitlab.Pipeline           `json:"pipeline"`
+	Jobs      []*gitlab.Job              `json:"jobs"`
+	Variables []*gitlab.PipelineVariable `json:"variables"`
+}
+
 type PipelineMergedResponse struct {
 	*gitlab.Pipeline
 	Jobs      []*gitlab.Job              `json:"jobs"`
+	Bridges   []PipelineBridge           `json:"bridges"`
 	Variables []*gitlab.PipelineVariable `json:"variables"`
 }
 
@@ -67,14 +76,30 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 					return f.Branch()
 				}, repo, client)
 
-				// Use GetPipelineWithFallback for robust pipeline lookup with MR fallback
-				pipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repo.FullName(), branch, f.IO())
+				commit, _, err := client.Commits.GetCommit(repo.FullName(), branch, nil)
 				if err != nil {
 					redCheck := c.Red("✘")
 					fmt.Fprintf(f.IO().StdOut, "%s %v\n", redCheck, err)
 					return err
 				}
-				pipelineId = int(pipeline.ID)
+
+				// The latest commit on the branch won't work with a merged
+				// result pipeline
+				if commit.LastPipeline == nil {
+					mr, _, err := mrutils.MRFromArgs(cmd.Context(), f, args, "any")
+					if err != nil {
+						return err
+					}
+
+					if mr.HeadPipeline == nil {
+						return fmt.Errorf("no pipeline found. It might not exist yet. If this problem continues, check your pipeline configuration")
+					} else {
+						pipelineId = int(mr.HeadPipeline.ID)
+					}
+
+				} else {
+					pipelineId = int(commit.LastPipeline.ID)
+				}
 				msgNotFound = fmt.Sprintf("No pipelines running or available on branch: %s", branch)
 			}
 
@@ -92,7 +117,49 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
+			showJobDetails, _ := cmd.Flags().GetBool("with-job-details")
 			showVariables, _ := cmd.Flags().GetBool("with-variables")
+			withDownstreamPipelines, _ := cmd.Flags().GetBool("with-downstream-pipelines")
+			var pipelineBridges []PipelineBridge
+
+			if withDownstreamPipelines {
+				bridges, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Bridge, *gitlab.Response, error) {
+					return client.Jobs.ListPipelineBridges(repo.FullName(), int64(pipelineId), &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+				})
+				if err != nil {
+					return err
+				}
+
+				for _, bridge := range bridges {
+					if bridge.DownstreamPipeline != nil {
+
+						childPipeline, _, err := client.Pipelines.GetPipeline(bridge.DownstreamPipeline.ProjectID, bridge.DownstreamPipeline.ID)
+						if err != nil {
+							return err
+						}
+
+						childJobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
+							return client.Jobs.ListPipelineJobs(bridge.DownstreamPipeline.ProjectID, childPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+						})
+						if err != nil {
+							return err
+						}
+						var childVariables []*gitlab.PipelineVariable
+						if showVariables {
+							childVariables, _, err = client.Pipelines.GetPipelineVariables(bridge.DownstreamPipeline.ProjectID, childPipeline.ID)
+							if err != nil {
+								return err
+							}
+						}
+						pipelineBridges = append(pipelineBridges, PipelineBridge{
+							Pipeline:  childPipeline,
+							Bridge:    bridge,
+							Jobs:      childJobs,
+							Variables: childVariables,
+						})
+					}
+				}
+			}
 
 			var variables []*gitlab.PipelineVariable
 			if showVariables {
@@ -106,6 +173,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				Pipeline:  pipeline,
 				Jobs:      jobs,
 				Variables: variables,
+				Bridges:   pipelineBridges,
 			}
 
 			outputFormat, _ := cmd.Flags().GetString("output-format")
@@ -113,9 +181,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			if output == "json" || outputFormat == "json" {
 				return f.IO().PrintJSON(*mergedPipelineObject)
 			}
-
-			showJobDetails, _ := cmd.Flags().GetBool("with-job-details")
-			printTable(*mergedPipelineObject, f.IO().StdOut, showJobDetails)
+			printTable(*mergedPipelineObject, f.IO().StdOut, showJobDetails, withDownstreamPipelines)
 			return nil
 		},
 	}
@@ -128,24 +194,44 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	_ = pipelineGetCmd.Flags().MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
 	pipelineGetCmd.Flags().BoolP("with-job-details", "d", false, "Show extended job information.")
 	pipelineGetCmd.Flags().Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
+	pipelineGetCmd.Flags().Bool("with-downstream-pipelines", false, "Show child pipelines.")
 
 	return pipelineGetCmd
 }
 
-func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool) {
-	printPipelineTable(p, dest)
+func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool, withChildPipelines bool) {
+	printPipelineTable(p.Pipeline, dest)
 
 	if showJobDetails {
-		printJobTable(p, dest)
+		printJobTable(p.Jobs, dest)
 	} else {
-		printJobText(p, dest)
+		printJobText(p.Jobs, dest)
 	}
 
-	printVariables(p, dest)
+	printVariables(p.Variables, dest)
+
+	if withChildPipelines {
+		for idx, bridge := range p.Bridges {
+			normal_idx := idx + 1
+			printPipelineTable(bridge.Pipeline, dest, normal_idx)
+			if showJobDetails {
+				printJobTable(bridge.Jobs, dest, normal_idx)
+			} else {
+				printJobText(bridge.Jobs, dest, normal_idx)
+			}
+
+			printVariables(bridge.Variables, dest, normal_idx)
+		}
+	}
+
 }
 
-func printPipelineTable(p PipelineMergedResponse, dest io.Writer) {
-	fmt.Fprint(dest, "# Pipeline:\n")
+func printPipelineTable(p *gitlab.Pipeline, dest io.Writer, isChild ...int) {
+	if len(isChild) > 0 {
+		fmt.Fprintf(dest, "# Child %d pipeline :\n", isChild[0])
+	} else {
+		fmt.Fprint(dest, "# Pipeline:\n")
+	}
 	pipelineTable := tableprinter.NewTablePrinter()
 	pipelineTable.AddRow("id:", strconv.FormatInt(p.ID, 10))
 	pipelineTable.AddRow("status:", p.Status)
@@ -161,34 +247,48 @@ func printPipelineTable(p PipelineMergedResponse, dest io.Writer) {
 	fmt.Fprintln(dest, pipelineTable.String())
 }
 
-func printJobTable(p PipelineMergedResponse, dest io.Writer) {
-	fmt.Fprint(dest, "# Jobs:\n")
+func printJobTable(p []*gitlab.Job, dest io.Writer, isChild ...int) {
+	if len(isChild) > 0 {
+		fmt.Fprintf(dest, "# Child %d jobs :\n", isChild[0])
+	} else {
+		fmt.Fprint(dest, "# Jobs:\n")
+	}
 	jobTable := tableprinter.NewTablePrinter()
 	jobTable.AddRow("ID", "Name", "Status", "Duration", "Failure reason")
-	for _, j := range p.Jobs {
+	for _, j := range p {
 		jobTable.AddRow(j.ID, j.Name, j.Status, j.Duration, j.FailureReason)
 	}
 	fmt.Fprintln(dest, jobTable.String())
 }
 
-func printJobText(p PipelineMergedResponse, dest io.Writer) {
-	fmt.Fprint(dest, "# Jobs:\n")
+func printJobText(p []*gitlab.Job, dest io.Writer, isChild ...int) {
+	if len(isChild) > 0 {
+		fmt.Fprintf(dest, "# Child %d jobs :\n", isChild[0])
+	} else {
+		fmt.Fprint(dest, "# Jobs:\n")
+	}
 	jobTable := tableprinter.NewTablePrinter()
-	for _, j := range p.Jobs {
+	for _, j := range p {
+		j := j
 		jobTable.AddRow(j.Name+":", j.Status)
 	}
 	fmt.Fprintln(dest, jobTable.String())
 }
 
-func printVariables(p PipelineMergedResponse, dest io.Writer) {
-	if p.Variables != nil {
-		fmt.Fprint(dest, "# Variables:\n")
-		if len(p.Variables) == 0 {
+func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isChild ...int) {
+
+	if vars != nil {
+		if len(isChild) > 0 {
+			fmt.Fprintf(dest, "# Child %d variables :\n", isChild[0])
+		} else {
+			fmt.Fprint(dest, "# Variables:\n")
+		}
+		if len(vars) == 0 {
 			fmt.Fprint(dest, NoVariablesInPipelineMessage)
 		}
 
 		varTable := tableprinter.NewTablePrinter()
-		for _, v := range p.Variables {
+		for _, v := range vars {
 			varTable.AddRow(v.Key+":", v.Value)
 		}
 		fmt.Fprintln(dest, varTable.String())
