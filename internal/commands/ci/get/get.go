@@ -223,7 +223,6 @@ func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool, w
 			printVariables(bridge.Variables, dest, normal_idx)
 		}
 	}
-
 }
 
 func printPipelineTable(p *gitlab.Pipeline, dest io.Writer, isChild ...int) {
@@ -276,7 +275,6 @@ func printJobText(p []*gitlab.Job, dest io.Writer, isChild ...int) {
 }
 
 func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isChild ...int) {
-
 	if vars != nil {
 		if len(isChild) > 0 {
 			fmt.Fprintf(dest, "# Child %d variables :\n", isChild[0])
