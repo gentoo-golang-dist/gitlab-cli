@@ -49,6 +49,11 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Unable to get path flag: %v", err)
 			}
 
+			err = CreateDirectory(path)
+			if err != nil {
+				return err
+			}
+
 			err = SaveFile(client, repo, fileID, path)
 			if err != nil {
 				return err
@@ -62,19 +67,23 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 	return securefileDownloadCmd
 }
 
-func SaveFile(apiClient *gitlab.Client, repo glrepo.Interface, fileID int, path string) error {
-	contents, _, err := apiClient.SecureFiles.DownloadSecureFile(repo.FullName(), fileID)
-	if err != nil {
-		return fmt.Errorf("Error downloading secure file: %v", err)
-	}
-
-	// Ensure directory exists
+func CreateDirectory(path string) error {
 	dir := filepath.Dir(path)
 	if dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("Error creating directory: %v", err)
 		}
 	}
+
+	return nil
+}
+
+func SaveFile(apiClient *gitlab.Client, repo glrepo.Interface, fileID int, path string) error {
+	contents, _, err := apiClient.SecureFiles.DownloadSecureFile(repo.FullName(), fileID)
+	if err != nil {
+		return fmt.Errorf("Error downloading secure file: %v", err)
+	}
+
 	file, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("Error creating file: %v", err)

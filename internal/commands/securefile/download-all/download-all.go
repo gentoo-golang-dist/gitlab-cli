@@ -70,6 +70,11 @@ func NewCmdDownloadAll(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Unable to get path flag: %v", err)
 			}
 
+			err = download.CreateDirectory(path)
+			if err != nil {
+				return err
+			}
+
 			for _, file := range files {
 				filePath, err := securejoin.SecureJoin(path, file.Name)
 				if err != nil {
