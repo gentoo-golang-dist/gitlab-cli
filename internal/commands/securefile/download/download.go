@@ -49,7 +49,7 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Unable to get path flag: %v", err)
 			}
 
-			err = saveFile(client, repo, fileID, path)
+			err = SaveFile(client, repo, fileID, path)
 			if err != nil {
 				return err
 			}
@@ -62,7 +62,7 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 	return securefileDownloadCmd
 }
 
-func saveFile(apiClient *gitlab.Client, repo glrepo.Interface, fileID int, path string) error {
+func SaveFile(apiClient *gitlab.Client, repo glrepo.Interface, fileID int, path string) error {
 	contents, _, err := apiClient.SecureFiles.DownloadSecureFile(repo.FullName(), fileID)
 	if err != nil {
 		return fmt.Errorf("Error downloading secure file: %v", err)

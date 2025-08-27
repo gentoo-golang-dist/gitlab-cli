@@ -1,10 +1,19 @@
 package downloadall
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"os"
+
 	"github.com/MakeNowJust/heredoc/v2"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/spf13/cobra"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/securefile/download"
 )
 
 type options struct {
@@ -32,15 +41,70 @@ func NewCmdDownloadAll(f cmdutils.Factory) *cobra.Command {
 		`),
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// client, err := f.GitLabClient()
-			// if err != nil {
-			// 	return err
-			// }
-			// return nil
+			client, err := f.GitLabClient()
+			if err != nil {
+				return err
+			}
+
+			repo, err := f.BaseRepo()
+			if err != nil {
+				return err
+			}
+
+			l := &gitlab.ListProjectSecureFilesOptions{
+				Page:    1,
+				PerPage: api.MaxPerPage,
+			}
+
+			files, _, err := client.SecureFiles.ListProjectSecureFiles(repo.FullName(), l)
+			if err != nil {
+				return fmt.Errorf("Error fetching list of secure files: %v", err)
+			}
+
+			if len(files) == 0 {
+				return nil
+			}
+
+			path, err := cmd.Flags().GetString("path")
+			if err != nil {
+				return fmt.Errorf("Unable to get path flag: %v", err)
+			}
+
+			for _, file := range files {
+				filePath, err := securejoin.SecureJoin(path, file.Name)
+				if err != nil {
+					return err
+				}
+
+				if err := download.SaveFile(client, repo, file.ID, filePath); err != nil {
+					return err
+				}
+
+				if err := verifyChecksum(*file, filePath); err != nil {
+					return err
+				}
+			}
+
+			return nil
 		},
 	}
 
 	securefileDownloadAllCmd.Flags().StringVarP(&opts.dir, "path", "p", ".", "Path to download the secure files to")
 
 	return securefileDownloadAllCmd
+}
+
+func verifyChecksum(file gitlab.SecureFile, filePath string) error {
+	body, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	sum := sha256.Sum256(body)
+
+	if hex.EncodeToString(sum[:]) == file.Checksum {
+		return nil
+	}
+
+	return fmt.Errorf("Failure validating checksum for %s", file.Name)
 }
