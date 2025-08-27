@@ -36,6 +36,7 @@ and binary files are supported, but they must be smaller than 5 MB.
 
 - [`create`](create.md)
 - [`download`](download.md)
+- [`download-all`](download-all.md)
 - [`get`](get.md)
 - [`list`](list.md)
 - [`remove`](remove.md)
