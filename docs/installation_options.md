@@ -141,6 +141,12 @@ RUN echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk
 RUN apk add --no-cache glab@edge
 ```
 
+### Conda-forge
+
+Conda-forge users can find `glab` on [conda-forge](https://github.com/conda-forge/glab-feedstock).
+
+Install it globally with the command `pixi global install glab`.
+
 ### Fedora
 
 Fedora users can find `glab` as `glab` in the official repositories.
