@@ -267,7 +267,7 @@ func handleIssueLinks(cmd *cobra.Command, client *gitlab.Client, repo glrepo.Int
 		}
 	}
 
-	// Handle unlinking issues - for now, show a message that this feature is not yet implemented
+	// Handle unlinking issues
 	if cmd.Flags().Changed("unlink-issues") {
 		unlinkIssues, err := cmd.Flags().GetIntSlice("unlink-issues")
 		if err != nil {
@@ -275,7 +275,31 @@ func handleIssueLinks(cmd *cobra.Command, client *gitlab.Client, repo glrepo.Int
 		}
 
 		if len(unlinkIssues) > 0 {
-			return nil, fmt.Errorf("unlinking issues is not yet implemented. Please use the GitLab web interface to remove issue links")
+			// First, get all existing relations for this issue
+			relations, _, err := client.IssueLinks.ListIssueRelations(repo.FullName(), issue.IID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get existing issue relations: %w", err)
+			}
+
+			// Create a map of target IID to link ID for easy lookup
+			linkMap := make(map[int]int)
+			for _, relation := range relations {
+				linkMap[relation.IID] = relation.IssueLinkID
+			}
+
+			for _, targetIssueIID := range unlinkIssues {
+				linkID, exists := linkMap[targetIssueIID]
+				if !exists {
+					return nil, fmt.Errorf("no link found to issue #%d", targetIssueIID)
+				}
+
+				fmt.Fprintf(out, "- Unlinking from issue #%d\n", targetIssueIID)
+				_, _, err := client.IssueLinks.DeleteIssueLink(repo.FullName(), issue.IID, linkID)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unlink issue #%d: %w", targetIssueIID, err)
+				}
+				actions = append(actions, fmt.Sprintf("unlinked from issue #%d", targetIssueIID))
+			}
 		}
 	}
 
