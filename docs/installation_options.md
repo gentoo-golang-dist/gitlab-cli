@@ -14,7 +14,7 @@ are maintained by the community.
 - [macOS](#macos)
 - [Windows](#windows)
 - [Linux](#linux)
-  - [Homebrew](#homebrew)
+  - [Homebrew](#homebrew) (officially supported)
   - [ASDF](#asdf)
   - [Arch Linux](#arch-linux)
   - [Alpine Linux](#alpine-linux)
