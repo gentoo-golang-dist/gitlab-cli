@@ -15,19 +15,19 @@ are maintained by the community.
 - [Windows](#windows)
 - [Linux](#linux)
   - [Homebrew](#homebrew)
-  - [mise-en-place](#mise-en-place)
   - [ASDF](#asdf)
-  - [Snapcraft (currently out of date)](#snapcraft)
   - [Arch Linux](#arch-linux)
   - [Alpine Linux](#alpine-linux)
     - [Install a pinned version from edge](#install-a-pinned-version-from-edge)
     - [Alpine Linux Docker-way](#alpine-linux-docker-way)
   - [Fedora](#fedora)
-  - [Nix/NixOS](#nixnixos)
-  - [WakeMeOps (Debian/Ubuntu)](#wakemeops-debianubuntu)
+  - [mise-en-place](#mise-en-place)
   - [MPR (Debian/Ubuntu)](#mpr-debianubuntu)
     - [Prebuilt-MPR](#prebuilt-mpr)
+  - [Nix/NixOS](#nixnixos)
+  - [Snapcraft (out of date)](#snapcraft)
   - [Spack](#spack)
+  - [WakeMeOps (Debian/Ubuntu)](#wakemeops-debianubuntu)
 - [Docker](#docker)
   - [GitLab CICD](#gitlab-cicd)
 
@@ -82,16 +82,6 @@ Installing from Homebrew is the officially supported installation method for Lin
 - Install with: `brew install glab`
 - Update with: `brew upgrade glab`
 
-### mise-en-place
-
-Add to the `[tools]` section of one of mise's configuration files:
-
-```toml
-"ubi:gitlab-org/cli" = { version = "latest", exe = "glab", provider = "gitlab" }
-```
-
-Then run `mise install` to install it.
-
 ### ASDF
 
 To install with the [ASDF tool version manager](https://asdf-vm.com/guide/introduction.html), run these commands:
@@ -99,18 +89,6 @@ To install with the [ASDF tool version manager](https://asdf-vm.com/guide/introd
 ```shell
 asdf plugin add glab; asdf install glab latest; asdf global glab latest
 ```
-
-### Snapcraft
-
-This method is out of date. See [issue 1127](https://gitlab.com/gitlab-org/cli/-/issues/1127) for more information.
-
-To install `glab` from the [Snap Store](https://snapcraft.io/glab):
-
-1. Make sure you have [snap installed](https://snapcraft.io/docs/installing-snapd) on your Linux distribution.
-1. Install the package: `sudo snap install --edge glab`
-1. Grant `glab` access to SSH keys: `sudo snap connect glab:ssh-keys`
-
-[![Download from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/glab)
 
 ### Arch Linux
 
@@ -169,21 +147,15 @@ Fedora users can find `glab` as `glab` in the official repositories.
 
 Install it with the command `dnf install glab`.
 
-### Nix/NixOS
+### mise-en-place
 
-Nix (NixOS) users can install from [nixpkgs](https://search.nixos.org/packages?channel=unstable&show=glab&from=0&size=30&sort=relevance&query=glab) with the command `nix-env -iA nixos.glab`.
+Add to the `[tools]` section of one of mise's configuration files:
 
-### WakeMeOps (Debian/Ubuntu)
-
-`glab` also exists in the [WakeMeOps repository](https://docs.wakemeops.com/packages/glab/):
-
-```shell
-# Add WakeMeOps repository
-curl -sSL "https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository" | sudo bash
-
-# Install glab
-sudo apt install glab
+```toml
+"ubi:gitlab-org/cli" = { version = "latest", exe = "glab", provider = "gitlab" }
 ```
+
+Then run `mise install` to install it.
 
 ### MPR (Debian/Ubuntu)
 
@@ -202,10 +174,38 @@ The above method downloads `glab` from source and builds it before packaging it 
 1. Set up [the Prebuilt-MPR on your system](https://docs.makedeb.org/prebuilt-mpr/getting-started/#setting-up-the-repository).
 1. Install with the command `sudo apt install glab`.
 
+### Nix/NixOS
+
+Nix (NixOS) users can install from [nixpkgs](https://search.nixos.org/packages?channel=unstable&show=glab&from=0&size=30&sort=relevance&query=glab) with the command `nix-env -iA nixos.glab`.
+
+### Snapcraft
+
+This method is out of date. See [issue 1127](https://gitlab.com/gitlab-org/cli/-/issues/1127) for more information.
+
+To install `glab` from the [Snap Store](https://snapcraft.io/glab):
+
+1. Make sure you have [snap installed](https://snapcraft.io/docs/installing-snapd) on your Linux distribution.
+1. Install the package: `sudo snap install --edge glab`
+1. Grant `glab` access to SSH keys: `sudo snap connect glab:ssh-keys`
+
+[![Download from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/glab)
+
 ### Spack
 
 - To install: `spack install glab`.
 - To update: `spack uninstall glab && spack install glab`
+
+### WakeMeOps (Debian/Ubuntu)
+
+`glab` also exists in the [WakeMeOps repository](https://docs.wakemeops.com/packages/glab/):
+
+```shell
+# Add WakeMeOps repository
+curl -sSL "https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository" | sudo bash
+
+# Install glab
+sudo apt install glab
+```
 
 ## Docker
 
