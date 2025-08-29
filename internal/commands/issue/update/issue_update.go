@@ -184,11 +184,14 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				l.DueDate = gitlab.Ptr(dueDate)
 			}
 
-			fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
+			// Only call UpdateIssue API if there are actual issue property changes
+			if len(actions) > 0 {
+				fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
 
-			issue, err = api.UpdateIssue(client, repo.FullName(), issue.IID, l)
-			if err != nil {
-				return err
+				issue, err = api.UpdateIssue(client, repo.FullName(), issue.IID, l)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Handle issue linking after the main update
@@ -196,6 +199,12 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Show "Updating issue" message if we only have linking operations
+			if len(actions) == 0 && len(linkActions) > 0 {
+				fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
+			}
+
 			actions = append(actions, linkActions...)
 
 			for _, s := range actions {
