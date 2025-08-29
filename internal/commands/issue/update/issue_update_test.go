@@ -54,7 +54,7 @@ func TestLinkTypeFlag_SetAndGet(t *testing.T) {
 	cmd := NewCmdUpdate(f)
 
 	// Test valid link types
-	validTypes := []string{"relates_to", "blocks", "blocked_by"}
+	validTypes := []string{"relates_to", "blocks", "is_blocked_by"}
 	for _, linkType := range validTypes {
 		err := cmd.Flags().Set("link-type", linkType)
 		assert.NoError(t, err)
@@ -82,8 +82,8 @@ func TestLinkTypeValidation(t *testing.T) {
 			expectValid: true,
 		},
 		{
-			name:        "valid blocked_by",
-			linkType:    "blocked_by",
+			name:        "valid is_blocked_by",
+			linkType:    "is_blocked_by",
 			expectValid: true,
 		},
 		{
@@ -107,9 +107,9 @@ func TestLinkTypeValidation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test the validation logic directly
 			validLinkTypes := map[string]bool{
-				"relates_to": true,
-				"blocks":     true,
-				"blocked_by": true,
+				"relates_to":    true,
+				"blocks":        true,
+				"is_blocked_by": true,
 			}
 
 			isValid := validLinkTypes[tt.linkType]
