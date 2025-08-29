@@ -27,6 +27,8 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			$ glab issue update 42 --unlabel working
 			$ glab issue update 42 --linked-issues 10,15 --link-type is_blocked_by
 			$ glab issue update 42 --unlink-issues 10,15
+			$ glab issue update 42 --epic 12345
+			$ glab issue update 42 --epic 0
 		`),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -184,6 +186,24 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				l.DueDate = gitlab.Ptr(dueDate)
 			}
 
+			// Handle epic assignment
+			if cmd.Flags().Changed("epic") {
+				epicID, err := cmd.Flags().GetInt("epic")
+				if err != nil {
+					return err
+				}
+
+				if epicID == 0 {
+					// Remove from epic
+					actions = append(actions, "removed from epic")
+					l.EpicID = gitlab.Ptr(0)
+				} else {
+					// Assign to epic
+					actions = append(actions, fmt.Sprintf("assigned to epic #%d", epicID))
+					l.EpicID = gitlab.Ptr(epicID)
+				}
+			}
+
 			// Only call UpdateIssue API if there are actual issue property changes
 			if len(actions) > 0 {
 				fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
@@ -233,6 +253,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	issueUpdateCmd.Flags().IntSlice("linked-issues", []int{}, "The IIDs of issues to link to this issue.")
 	issueUpdateCmd.Flags().String("link-type", "relates_to", "Type for the issue link (relates_to, blocks, is_blocked_by).")
 	issueUpdateCmd.Flags().IntSlice("unlink-issues", []int{}, "The IIDs of issues to unlink from this issue.")
+	issueUpdateCmd.Flags().Int("epic", 0, "ID of the epic to assign this issue to. Set to 0 to remove from epic.")
 
 	return issueUpdateCmd
 }

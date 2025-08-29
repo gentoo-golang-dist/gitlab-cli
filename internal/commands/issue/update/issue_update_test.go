@@ -30,6 +30,9 @@ func TestNewCmdUpdate_Flags(t *testing.T) {
 	unlinkIssuesFlag := cmd.Flags().Lookup("unlink-issues")
 	assert.NotNil(t, unlinkIssuesFlag)
 
+	epicFlag := cmd.Flags().Lookup("epic")
+	assert.NotNil(t, epicFlag)
+
 	// Test default values
 	linkType, err := cmd.Flags().GetString("link-type")
 	assert.NoError(t, err)
@@ -42,6 +45,10 @@ func TestNewCmdUpdate_Flags(t *testing.T) {
 	unlinkIssues, err := cmd.Flags().GetIntSlice("unlink-issues")
 	assert.NoError(t, err)
 	assert.Empty(t, unlinkIssues)
+
+	epicID, err := cmd.Flags().GetInt("epic")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, epicID)
 }
 
 func TestLinkTypeFlag_SetAndGet(t *testing.T) {
@@ -243,6 +250,65 @@ func TestStringConversionLogic(t *testing.T) {
 			// Test the string conversion logic used in TargetIssueIID
 			result := fmt.Sprintf("%d", tt.input)
 			assert.Equal(t, tt.expected, result, "String conversion failed")
+		})
+	}
+}
+
+func TestEpicFlag_SetAndGet(t *testing.T) {
+	cfg, err := config.Init()
+	assert.NoError(t, err)
+
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	f := cmdutils.NewFactory(ios, false, cfg, api.BuildInfo{})
+
+	cmd := NewCmdUpdate(f)
+
+	// Test setting epic values
+	testValues := []int{0, 12345, 999999}
+	for _, epicID := range testValues {
+		err := cmd.Flags().Set("epic", fmt.Sprintf("%d", epicID))
+		assert.NoError(t, err)
+
+		value, err := cmd.Flags().GetInt("epic")
+		assert.NoError(t, err)
+		assert.Equal(t, epicID, value)
+	}
+}
+
+func TestEpicAssignmentLogic(t *testing.T) {
+	tests := []struct {
+		name           string
+		epicID         int
+		expectedAction string
+	}{
+		{
+			name:           "assign to epic",
+			epicID:         12345,
+			expectedAction: "assigned to epic #12345",
+		},
+		{
+			name:           "remove from epic",
+			epicID:         0,
+			expectedAction: "removed from epic",
+		},
+		{
+			name:           "assign to different epic",
+			epicID:         99999,
+			expectedAction: "assigned to epic #99999",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test the epic assignment action message logic
+			var action string
+			if tt.epicID == 0 {
+				action = "removed from epic"
+			} else {
+				action = fmt.Sprintf("assigned to epic #%d", tt.epicID)
+			}
+
+			assert.Equal(t, tt.expectedAction, action, "Epic action message failed")
 		})
 	}
 }
