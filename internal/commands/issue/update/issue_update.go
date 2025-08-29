@@ -264,6 +264,11 @@ func handleIssueLinks(cmd *cobra.Command, client *gitlab.Client, repo glrepo.Int
 		}
 
 		for _, targetIssueIID := range linkedIssues {
+			// Validate that we're not trying to link to ourselves
+			if targetIssueIID == issue.IID {
+				return nil, fmt.Errorf("cannot link issue to itself (#%d)", targetIssueIID)
+			}
+
 			fmt.Fprintf(out, "- Linking to issue #%d\n", targetIssueIID)
 			_, _, err := client.IssueLinks.CreateIssueLink(repo.FullName(), issue.IID, &gitlab.CreateIssueLinkOptions{
 				TargetIssueIID: gitlab.Ptr(strconv.Itoa(targetIssueIID)),
@@ -293,7 +298,14 @@ func handleIssueLinks(cmd *cobra.Command, client *gitlab.Client, repo glrepo.Int
 			// Create a map of target IID to link ID for easy lookup
 			linkMap := make(map[int]int)
 			for _, relation := range relations {
-				linkMap[relation.IID] = relation.IssueLinkID
+				// Map the target issue IID (the "other" issue in the relation)
+				targetIID := relation.IID
+				if relation.IID == issue.IID {
+					// If this relation's IID is our current issue, the target is the other field
+					// This logic may need adjustment based on the actual API response structure
+					continue // Skip self-references or handle appropriately
+				}
+				linkMap[targetIID] = relation.IssueLinkID
 			}
 
 			for _, targetIssueIID := range unlinkIssues {

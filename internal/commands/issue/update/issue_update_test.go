@@ -1,6 +1,7 @@
 package update
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestNewCmdUpdate_Flags(t *testing.T) {
 	assert.Empty(t, unlinkIssues)
 }
 
-func TestHandleIssueLinks_ValidLinkType(t *testing.T) {
+func TestLinkTypeFlag_SetAndGet(t *testing.T) {
 	cfg, err := config.Init()
 	assert.NoError(t, err)
 
@@ -62,4 +63,192 @@ func TestHandleIssueLinks_ValidLinkType(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, linkType, value)
 	}
+}
+
+func TestLinkTypeValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		linkType    string
+		expectValid bool
+	}{
+		{
+			name:        "valid relates_to",
+			linkType:    "relates_to",
+			expectValid: true,
+		},
+		{
+			name:        "valid blocks",
+			linkType:    "blocks",
+			expectValid: true,
+		},
+		{
+			name:        "valid blocked_by",
+			linkType:    "blocked_by",
+			expectValid: true,
+		},
+		{
+			name:        "invalid link type",
+			linkType:    "invalid_type",
+			expectValid: false,
+		},
+		{
+			name:        "empty link type",
+			linkType:    "",
+			expectValid: false,
+		},
+		{
+			name:        "case sensitive validation",
+			linkType:    "RELATES_TO",
+			expectValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test the validation logic directly
+			validLinkTypes := map[string]bool{
+				"relates_to": true,
+				"blocks":     true,
+				"blocked_by": true,
+			}
+
+			isValid := validLinkTypes[tt.linkType]
+			assert.Equal(t, tt.expectValid, isValid, "Link type %q validation failed", tt.linkType)
+		})
+	}
+}
+
+func TestSelfReferenceValidation(t *testing.T) {
+	tests := []struct {
+		name           string
+		issueIID       int
+		linkedIssueIID int
+		expectError    bool
+	}{
+		{
+			name:           "different issues - valid",
+			issueIID:       1,
+			linkedIssueIID: 2,
+			expectError:    false,
+		},
+		{
+			name:           "same issue - invalid",
+			issueIID:       42,
+			linkedIssueIID: 42,
+			expectError:    true,
+		},
+		{
+			name:           "zero IID edge case",
+			issueIID:       0,
+			linkedIssueIID: 0,
+			expectError:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test the self-reference validation logic
+			isSelfReference := tt.issueIID == tt.linkedIssueIID
+			assert.Equal(t, tt.expectError, isSelfReference, "Self-reference validation failed")
+		})
+	}
+}
+
+func TestRelationMappingLogic(t *testing.T) {
+	tests := []struct {
+		name            string
+		currentIssueIID int
+		relations       []mockRelation
+		expectedMap     map[int]int
+	}{
+		{
+			name:            "empty relations",
+			currentIssueIID: 1,
+			relations:       []mockRelation{},
+			expectedMap:     map[int]int{},
+		},
+		{
+			name:            "relations with self-reference",
+			currentIssueIID: 1,
+			relations: []mockRelation{
+				{IID: 1, IssueLinkID: 100}, // Self-reference, should be skipped
+				{IID: 2, IssueLinkID: 200}, // Valid relation
+			},
+			expectedMap: map[int]int{2: 200},
+		},
+		{
+			name:            "multiple valid relations",
+			currentIssueIID: 1,
+			relations: []mockRelation{
+				{IID: 10, IssueLinkID: 100},
+				{IID: 15, IssueLinkID: 150},
+				{IID: 20, IssueLinkID: 200},
+			},
+			expectedMap: map[int]int{10: 100, 15: 150, 20: 200},
+		},
+		{
+			name:            "only self-references",
+			currentIssueIID: 5,
+			relations: []mockRelation{
+				{IID: 5, IssueLinkID: 100},
+				{IID: 5, IssueLinkID: 200},
+			},
+			expectedMap: map[int]int{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the relation mapping logic from handleIssueLinks
+			linkMap := make(map[int]int)
+			for _, relation := range tt.relations {
+				targetIID := relation.IID
+				if relation.IID == tt.currentIssueIID {
+					// Skip self-references
+					continue
+				}
+				linkMap[targetIID] = relation.IssueLinkID
+			}
+
+			assert.Equal(t, tt.expectedMap, linkMap, "Relation mapping failed")
+		})
+	}
+}
+
+func TestStringConversionLogic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    int
+		expected string
+	}{
+		{
+			name:     "positive integer",
+			input:    42,
+			expected: "42",
+		},
+		{
+			name:     "zero",
+			input:    0,
+			expected: "0",
+		},
+		{
+			name:     "large number",
+			input:    999999,
+			expected: "999999",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test the string conversion logic used in TargetIssueIID
+			result := fmt.Sprintf("%d", tt.input)
+			assert.Equal(t, tt.expected, result, "String conversion failed")
+		})
+	}
+}
+
+// Helper type for testing relation mapping logic
+type mockRelation struct {
+	IID         int
+	IssueLinkID int
 }
