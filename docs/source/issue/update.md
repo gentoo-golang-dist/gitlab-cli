@@ -22,6 +22,8 @@ glab issue update <id> [flags]
 ```console
 $ glab issue update 42 --label ui,ux
 $ glab issue update 42 --unlabel working
+$ glab issue update 42 --linked-issues 10,15 --link-type blocks
+$ glab issue update 42 --unlink-issues 10,15
 
 ```
 
@@ -33,12 +35,15 @@ $ glab issue update 42 --unlabel working
   -d, --description string   Issue description. Set to "-" to open an editor.
       --due-date string      A date in 'YYYY-MM-DD' format.
   -l, --label strings        Add labels.
+      --link-type string     Type for the issue link (relates_to, blocks, blocked_by). (default "relates_to")
+      --linked-issues ints   The IIDs of issues to link to this issue.
       --lock-discussion      Lock discussion on issue.
   -m, --milestone string     Title of the milestone to assign Set to "" or 0 to unassign.
   -p, --public               Make issue public.
   -t, --title string         Title of issue.
       --unassign             Unassign all users.
   -u, --unlabel strings      Remove labels.
+      --unlink-issues ints   The IIDs of issues to unlink from this issue.
       --unlock-discussion    Unlock discussion on issue.
   -w, --weight int           Set weight of the issue.
 ```
