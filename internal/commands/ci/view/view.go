@@ -66,6 +66,21 @@ type ViewJob struct {
 	OriginalBridge *gitlab.Bridge
 }
 
+type SearchState struct {
+	Active        bool
+	Query         string
+	Matches       []SearchMatch
+	CurrentMatch  int
+	LastScrollPos int
+	InputMode     bool
+}
+
+type SearchMatch struct {
+	Line  int
+	Start int
+	End   int
+}
+
 func ViewJobFromBridge(bridge *gitlab.Bridge) *ViewJob {
 	vj := &ViewJob{}
 	vj.ID = bridge.ID
@@ -96,6 +111,128 @@ func ViewJobFromJob(job *gitlab.Job) *ViewJob {
 	vj.OriginalJob = job
 	vj.Kind = Job
 	return vj
+}
+
+// getSearchState returns the search state for a given job name, creating a new one if needed
+func getSearchState(jobName string) *SearchState {
+	if searchStates == nil {
+		searchStates = make(map[string]*SearchState)
+	}
+
+	if state, exists := searchStates[jobName]; exists {
+		return state
+	}
+
+	// Create new search state with default values
+	state := &SearchState{
+		Active:        false,
+		Query:         "",
+		Matches:       []SearchMatch{},
+		CurrentMatch:  -1,
+		LastScrollPos: 0,
+		InputMode:     false,
+	}
+
+	searchStates[jobName] = state
+	return state
+}
+
+// clearSearchState removes the search state for a given job name
+func clearSearchState(jobName string) {
+	if searchStates != nil {
+		delete(searchStates, jobName)
+	}
+}
+
+// canActivateSearch checks if search can be activated (needs loaded content)
+func (s *SearchState) canActivateSearch(content string) bool {
+	return content != ""
+}
+
+// activateSearch enters search mode
+func (s *SearchState) activateSearch() {
+	s.Active = true
+	s.InputMode = true
+	s.Query = "/"
+}
+
+// deactivateSearch exits search mode
+func (s *SearchState) deactivateSearch() {
+	s.Active = false
+	s.InputMode = false
+	s.Query = ""
+	s.Matches = []SearchMatch{}
+	s.CurrentMatch = -1
+}
+
+// updateQuery updates the search query
+func (s *SearchState) updateQuery(query string) {
+	s.Query = query
+}
+
+// handleBackspace handles backspace key presses in search mode
+func (s *SearchState) handleBackspace(key tcell.Key) bool {
+	if !s.InputMode || len(s.Query) == 0 {
+		return false
+	}
+
+	if key == tcell.KeyBackspace || key == tcell.KeyBackspace2 {
+		if len(s.Query) > 1 {
+			s.Query = s.Query[:len(s.Query)-1]
+		} else {
+			// Exit search mode when deleting the last character (/)
+			s.deactivateSearch()
+		}
+		return true
+	}
+	return false
+}
+
+// performSearch searches for matches in the given content
+func (s *SearchState) performSearch(content, query string) []SearchMatch {
+	if query == "" {
+		s.Matches = []SearchMatch{}
+		return s.Matches
+	}
+
+	var matches []SearchMatch
+	lines := strings.Split(content, "\n")
+	lowerQuery := strings.ToLower(query)
+
+	for lineNum, line := range lines {
+		lowerLine := strings.ToLower(line)
+		searchStart := 0
+
+		for {
+			// Find next occurrence of query in the line (case-insensitive)
+			idx := strings.Index(lowerLine[searchStart:], lowerQuery)
+			if idx == -1 {
+				break
+			}
+
+			// Calculate actual position in original line
+			actualStart := searchStart + idx
+			actualEnd := actualStart + len(query)
+
+			matches = append(matches, SearchMatch{
+				Line:  lineNum,
+				Start: actualStart,
+				End:   actualEnd,
+			})
+
+			// Move search position past this match
+			searchStart = actualEnd
+		}
+	}
+
+	// Update state with the matches
+	s.Matches = matches
+	return matches
+}
+
+// getMatchCount returns the number of search matches
+func (s *SearchState) getMatchCount() int {
+	return len(s.Matches)
 }
 
 func NewCmdView(f cmdutils.Factory) *cobra.Command {
@@ -431,6 +568,7 @@ var (
 	jobs                      []*ViewJob
 	pipelines                 []gitlab.PipelineInfo
 	boxes                     map[string]*tview.TextView
+	searchStates              map[string]*SearchState
 )
 
 func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
