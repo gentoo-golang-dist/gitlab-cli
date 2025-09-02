@@ -235,6 +235,75 @@ func (s *SearchState) getMatchCount() int {
 	return len(s.Matches)
 }
 
+// shouldActivateSearch determines if search can be activated based on current state
+func shouldActivateSearch(logsVisible, modalVisible bool, logContent string) bool {
+	return logsVisible && !modalVisible && logContent != ""
+}
+
+// handleSearchKeyInput processes key input when search is active
+func handleSearchKeyInput(state *SearchState, key tcell.Key, char rune) bool {
+	if !state.Active || !state.InputMode {
+		return false
+	}
+
+	// Handle backspace keys (both KeyBackspace and KeyBackspace2 for cross-platform support)
+	if key == tcell.KeyBackspace || key == tcell.KeyBackspace2 {
+		return state.handleBackspace(key)
+	}
+
+	// Handle regular character input
+	if char != 0 && char != '\n' && char != '\r' {
+		state.Query += string(char)
+		return true
+	}
+
+	return false
+}
+
+// handleSearchEscape processes escape key when search might be active
+func handleSearchEscape(state *SearchState) bool {
+	if !state.Active {
+		return false // Let normal escape handling take over
+	}
+
+	state.deactivateSearch()
+	return true // Consumed the escape key
+}
+
+// handleSearchEnter processes enter key when search might be active
+func handleSearchEnter(state *SearchState, logContent string) bool {
+	if !state.Active {
+		return false // Let normal enter handling take over
+	}
+
+	if state.InputMode {
+		// Submit search query - switch from input mode to navigation mode
+		query := state.Query[1:] // Remove the leading "/"
+		state.performSearch(logContent, query)
+		state.InputMode = false
+		if len(state.Matches) > 0 {
+			state.CurrentMatch = 0 // Start at first match
+		}
+		return true // Consumed the enter key
+	} else {
+		// Navigate to next match
+		if len(state.Matches) > 0 {
+			state.CurrentMatch = (state.CurrentMatch + 1) % len(state.Matches)
+		}
+		return true // Consumed the enter key
+	}
+}
+
+// handleSearchSlash processes "/" key for search activation
+func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logContent string) bool {
+	if !shouldActivateSearch(logsVisible, modalVisible, logContent) {
+		return false // Don't consume the key
+	}
+
+	state.activateSearch()
+	return true // Consumed the "/" key
+}
+
 func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	opts := options{
 		io:           f.IO(),
@@ -395,6 +464,45 @@ func inputCapture(
 	commitSHA string,
 ) func(event *tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
+		// Handle search functionality when logs are visible
+		if logsVisible && curJob != nil {
+			searchState := getSearchState(curJob.Name)
+
+			// Get log content for search operations
+			var logContent string
+			if tv, exists := boxes["logs-"+curJob.Name]; exists {
+				logContent = tv.GetText(false) // false = don't strip formatting
+			}
+
+			// Handle slash key for search activation
+			if event.Rune() == '/' {
+				if handleSearchSlash(searchState, logsVisible, modalVisible, logContent) {
+					return nil // Consumed the key
+				}
+			}
+
+			// Handle escape key for search exit
+			if event.Key() == tcell.KeyEscape {
+				if handleSearchEscape(searchState) {
+					return nil // Consumed the key
+				}
+			}
+
+			// Handle enter key for search submission/navigation
+			if event.Key() == tcell.KeyEnter {
+				if handleSearchEnter(searchState, logContent) {
+					return nil // Consumed the key
+				}
+			}
+
+			// Handle character and backspace input in search mode
+			if searchState.Active && searchState.InputMode {
+				if handleSearchKeyInput(searchState, event.Key(), event.Rune()) {
+					return nil // Consumed the key
+				}
+			}
+		}
+
 		if event.Rune() == 'q' || event.Key() == tcell.KeyEscape {
 			switch {
 			case modalVisible:

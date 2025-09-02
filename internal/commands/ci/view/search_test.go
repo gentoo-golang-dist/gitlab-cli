@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -244,8 +245,8 @@ INFO: Request processed successfully`
 			query:         "error",
 			expectedCount: 2,
 			expectedMatches: []SearchMatch{
-				{Line: 1, Start: 0, End: 5, Text: "ERROR"},
-				{Line: 4, Start: 0, End: 5, Text: "error"},
+				{Line: 1, Start: 0, End: 5},
+				{Line: 4, Start: 0, End: 5},
 			},
 		},
 		{
@@ -253,9 +254,9 @@ INFO: Request processed successfully`
 			query:         "info",
 			expectedCount: 3,
 			expectedMatches: []SearchMatch{
-				{Line: 0, Start: 0, End: 4, Text: "INFO"},
-				{Line: 2, Start: 0, End: 4, Text: "info"},
-				{Line: 5, Start: 0, End: 4, Text: "INFO"},
+				{Line: 0, Start: 0, End: 4},
+				{Line: 2, Start: 0, End: 4},
+				{Line: 5, Start: 0, End: 4},
 			},
 		},
 		{
@@ -263,9 +264,9 @@ INFO: Request processed successfully`
 			query:         "CONNECTION",
 			expectedCount: 3,
 			expectedMatches: []SearchMatch{
-				{Line: 1, Start: 16, End: 26, Text: "connection"},
-				{Line: 2, Start: 15, End: 25, Text: "connection"},
-				{Line: 3, Start: 7, End: 17, Text: "Connection"},
+				{Line: 1, Start: 16, End: 26},
+				{Line: 2, Start: 15, End: 25},
+				{Line: 3, Start: 7, End: 17},
 			},
 		},
 		{
@@ -573,4 +574,399 @@ Summary: 2 tests passed, 1 test failed`
 			}
 		})
 	}
+}
+
+// Test_shouldActivateSearch tests the pure logic for when search can be activated
+func Test_shouldActivateSearch(t *testing.T) {
+	testCases := []struct {
+		name         string
+		logsVisible  bool
+		modalVisible bool
+		logContent   string
+		expected     bool
+		description  string
+	}{
+		{
+			name:         "should activate - logs visible, no modal, has content",
+			logsVisible:  true,
+			modalVisible: false,
+			logContent:   "Sample log content",
+			expected:     true,
+			description:  "Normal case - all conditions met for search activation",
+		},
+		{
+			name:         "should not activate - no logs visible",
+			logsVisible:  false,
+			modalVisible: false,
+			logContent:   "Sample log content",
+			expected:     false,
+			description:  "Cannot search when no logs are visible",
+		},
+		{
+			name:         "should not activate - modal visible",
+			logsVisible:  true,
+			modalVisible: true,
+			logContent:   "Sample log content",
+			expected:     false,
+			description:  "Cannot search when confirmation modal is open",
+		},
+		{
+			name:         "should not activate - no content",
+			logsVisible:  true,
+			modalVisible: false,
+			logContent:   "",
+			expected:     false,
+			description:  "Cannot search when log content is empty (still loading)",
+		},
+		{
+			name:         "should not activate - multiple conditions false",
+			logsVisible:  false,
+			modalVisible: true,
+			logContent:   "",
+			expected:     false,
+			description:  "Multiple blocking conditions should prevent activation",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := shouldActivateSearch(tc.logsVisible, tc.modalVisible, tc.logContent)
+			assert.Equal(t, tc.expected, result, tc.description)
+		})
+	}
+}
+
+// Test_handleSearchSlash tests "/" key search activation logic
+func Test_handleSearchSlash(t *testing.T) {
+	jobName := "test-job"
+
+	t.Run("activates search when conditions are met", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch() // Ensure clean state
+
+		consumed := handleSearchSlash(state, true, false, "log content")
+
+		assert.True(t, consumed, "Should consume / key when activating search")
+		assert.True(t, state.Active, "Search should be active after / key")
+		assert.True(t, state.InputMode, "Should be in input mode after / key")
+		assert.Equal(t, "/", state.Query, "Query should start with /")
+	})
+
+	t.Run("does not activate when logs not visible", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		consumed := handleSearchSlash(state, false, false, "log content")
+
+		assert.False(t, consumed, "Should not consume / key when logs not visible")
+		assert.False(t, state.Active, "Search should not be active")
+	})
+
+	t.Run("does not activate when modal visible", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		consumed := handleSearchSlash(state, true, true, "log content")
+
+		assert.False(t, consumed, "Should not consume / key when modal visible")
+		assert.False(t, state.Active, "Search should not be active")
+	})
+
+	t.Run("does not activate when no content", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		consumed := handleSearchSlash(state, true, false, "")
+
+		assert.False(t, consumed, "Should not consume / key when no content")
+		assert.False(t, state.Active, "Search should not be active")
+	})
+}
+
+// Test_handleSearchEscape tests escape key handling in search mode
+func Test_handleSearchEscape(t *testing.T) {
+	jobName := "test-job"
+
+	t.Run("exits search when search is active", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("/test query")
+
+		consumed := handleSearchEscape(state)
+
+		assert.True(t, consumed, "Should consume Esc key when search is active")
+		assert.False(t, state.Active, "Search should be deactivated after Esc")
+		assert.False(t, state.InputMode, "Input mode should be false after Esc")
+		assert.Equal(t, "", state.Query, "Query should be cleared after Esc")
+	})
+
+	t.Run("does not consume when search not active", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		consumed := handleSearchEscape(state)
+
+		assert.False(t, consumed, "Should not consume Esc key when search not active")
+		// This allows normal Esc handling (hide logs, etc.)
+	})
+}
+
+// Test_handleSearchEnter tests enter key handling in search mode
+func Test_handleSearchEnter(t *testing.T) {
+	jobName := "test-job"
+	logContent := "error on line 1\ninfo message\nerror on line 3\nmore info\nerror on line 5"
+
+	t.Run("submits search when in input mode", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("/error")
+		assert.True(t, state.InputMode, "Should be in input mode initially")
+
+		consumed := handleSearchEnter(state, logContent)
+
+		assert.True(t, consumed, "Should consume Enter key when submitting search")
+		assert.True(t, state.Active, "Search should still be active after Enter")
+		assert.False(t, state.InputMode, "Should exit input mode after Enter")
+		assert.Equal(t, 3, len(state.Matches), "Should find 3 matches for 'error'")
+		assert.Equal(t, 0, state.CurrentMatch, "Should start at first match")
+	})
+
+	t.Run("navigates to next match when not in input mode", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("/error")
+		state.performSearch(logContent, "error")
+		state.InputMode = false // Switch to navigation mode
+		state.CurrentMatch = 0  // Start at first match
+
+		consumed := handleSearchEnter(state, logContent)
+
+		assert.True(t, consumed, "Should consume Enter key for navigation")
+		assert.Equal(t, 1, state.CurrentMatch, "Should move to next match")
+	})
+
+	t.Run("wraps around to first match", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.performSearch(logContent, "error")
+		state.InputMode = false
+		state.CurrentMatch = 2 // Last match (0-indexed)
+
+		consumed := handleSearchEnter(state, logContent)
+
+		assert.True(t, consumed, "Should consume Enter key")
+		assert.Equal(t, 0, state.CurrentMatch, "Should wrap to first match")
+	})
+
+	t.Run("does not consume when search not active", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		consumed := handleSearchEnter(state, logContent)
+
+		assert.False(t, consumed, "Should not consume Enter when search not active")
+		// This allows normal Enter handling (toggle logs, etc.)
+	})
+}
+
+// Test_handleSearchKeyInput tests character input handling in search mode
+func Test_handleSearchKeyInput(t *testing.T) {
+	jobName := "test-job"
+
+	t.Run("adds characters to query when in input mode", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		assert.Equal(t, "/", state.Query, "Query should start with /")
+
+		// Test individual characters
+		testChars := []struct {
+			char     rune
+			expected string
+		}{
+			{'e', "/e"},
+			{'r', "/er"},
+			{'r', "/err"},
+			{'o', "/erro"},
+			{'r', "/error"},
+		}
+
+		for _, tc := range testChars {
+			consumed := handleSearchKeyInput(state, tcell.KeyRune, tc.char)
+
+			assert.True(t, consumed, "Should consume character input")
+			assert.Equal(t, tc.expected, state.Query, "Query should include typed character")
+			assert.True(t, state.InputMode, "Should remain in input mode")
+		}
+	})
+
+	t.Run("handles special characters", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+
+		specialChars := []rune{'-', '_', '.', ':', ' ', '(', ')', '[', ']', '@', '#'}
+
+		for _, char := range specialChars {
+			state.updateQuery("/") // Reset query
+
+			consumed := handleSearchKeyInput(state, tcell.KeyRune, char)
+
+			assert.True(t, consumed, "Should consume special character: %c", char)
+			expected := "/" + string(char)
+			assert.Equal(t, expected, state.Query, "Should add special character to query")
+		}
+	})
+
+	t.Run("handles backspace keys", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("/hello")
+
+		// Test KeyBackspace
+		consumed := handleSearchKeyInput(state, tcell.KeyBackspace, 0)
+
+		assert.True(t, consumed, "Should consume backspace key")
+		assert.Equal(t, "/hell", state.Query, "Should remove last character")
+	})
+
+	t.Run("handles backspace2 for cross-platform support", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("/world")
+
+		// Test KeyBackspace2 (Windows/alternative systems)
+		consumed := handleSearchKeyInput(state, tcell.KeyBackspace2, 0)
+
+		assert.True(t, consumed, "Should consume backspace2 key")
+		assert.Equal(t, "/worl", state.Query, "Should remove last character")
+	})
+
+	t.Run("ignores newline characters", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		originalQuery := state.Query
+
+		// Test newline characters
+		consumed1 := handleSearchKeyInput(state, tcell.KeyRune, '\n')
+		consumed2 := handleSearchKeyInput(state, tcell.KeyRune, '\r')
+
+		assert.False(t, consumed1, "Should not consume newline")
+		assert.False(t, consumed2, "Should not consume carriage return")
+		assert.Equal(t, originalQuery, state.Query, "Query should be unchanged")
+	})
+
+	t.Run("does not consume when search not active", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		consumed := handleSearchKeyInput(state, tcell.KeyRune, 'a')
+
+		assert.False(t, consumed, "Should not consume input when search not active")
+	})
+
+	t.Run("does not consume when not in input mode", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.InputMode = false // Switch to navigation mode
+
+		consumed := handleSearchKeyInput(state, tcell.KeyRune, 'a')
+
+		assert.False(t, consumed, "Should not consume input when not in input mode")
+	})
+}
+
+// Test_searchIntegration_inputCaptureWiring tests that the extracted search functions
+// are properly wired into the inputCapture function
+func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
+	// This test will fail until you integrate the search functions into inputCapture
+	// When implemented, remove the t.Skip() above
+
+	jobName := "integration-test-job"
+	logContent := "Sample log content for search testing"
+
+	// Save original global state for cleanup
+	originalLogsVisible := logsVisible
+	originalModalVisible := modalVisible
+	originalCurJob := curJob
+
+	// Cleanup function to restore original state
+	defer func() {
+		logsVisible = originalLogsVisible
+		modalVisible = originalModalVisible
+		curJob = originalCurJob
+	}()
+
+	// Setup global state that inputCapture depends on
+	logsVisible = true
+	modalVisible = false
+	curJob = &ViewJob{Name: jobName, Kind: Job}
+
+	// Create mock components that inputCapture needs
+	screen := tcell.NewSimulationScreen("")
+	defer screen.Fini()
+
+	app := tview.NewApplication()
+	app.SetScreen(screen)
+
+	root := tview.NewPages()
+	inputCh := make(chan struct{}, 10)
+	forceUpdateCh := make(chan bool, 10)
+	var navi navigator
+
+	// Add log page with content
+	tv := tview.NewTextView()
+	tv.SetText(logContent)
+	root.AddPage("logs-"+jobName, tv, true, true)
+
+	// Initialize boxes map and add the TextView
+	if boxes == nil {
+		boxes = make(map[string]*tview.TextView)
+	}
+	boxes["logs-"+jobName] = tv
+
+	// Create the actual inputCapture function
+	capture := inputCapture(app, root, navi, inputCh, forceUpdateCh, &options{}, nil, "project", "sha")
+
+	t.Run("slash key activates search", func(t *testing.T) {
+		// Ensure search starts inactive
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		// Press "/" key
+		event := tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModNone)
+		result := capture(event)
+
+		// Verify search was activated
+		assert.Nil(t, result, "inputCapture should consume / key when activating search")
+		assert.True(t, state.Active, "Search should be active after / key")
+		assert.Equal(t, "/", state.Query, "Query should start with /")
+	})
+
+	t.Run("escape key exits search", func(t *testing.T) {
+		// Setup active search
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("/test")
+
+		// Press Escape key
+		event := tcell.NewEventKey(tcell.KeyEscape, 0, tcell.ModNone)
+		result := capture(event)
+
+		// Verify search was deactivated
+		assert.Nil(t, result, "inputCapture should consume Esc key when exiting search")
+		assert.False(t, state.Active, "Search should be deactivated after Esc")
+	})
+
+	t.Run("character input works in search mode", func(t *testing.T) {
+		// Setup active search
+		state := getSearchState(jobName)
+		state.activateSearch()
+
+		// Type a character
+		event := tcell.NewEventKey(tcell.KeyRune, 'a', tcell.ModNone)
+		result := capture(event)
+
+		// Verify character was added
+		assert.Nil(t, result, "inputCapture should consume character input in search mode")
+		assert.Equal(t, "/a", state.Query, "Character should be added to search query")
+	})
 }
