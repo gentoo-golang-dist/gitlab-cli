@@ -923,6 +923,12 @@ func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
 	}
 	boxes["logs-"+jobName] = tv
 
+	// Initialize logViews map and add the TextView for search functionality
+	if logViews == nil {
+		logViews = make(map[string]*tview.TextView)
+	}
+	logViews["logs-"+jobName] = tv
+
 	// Create the actual inputCapture function
 	capture := inputCapture(app, root, navi, inputCh, forceUpdateCh, &options{}, nil, "project", "sha")
 
