@@ -35,12 +35,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/spf13/cobra v1.10.1
-	github.com/spf13/pflag v1.0.9
+	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/pretty v1.2.1
 	github.com/zalando/go-keyring v0.2.6
-	gitlab.com/gitlab-org/api/client-go v0.142.4
+	gitlab.com/gitlab-org/api/client-go v0.142.6
 	go.uber.org/goleak v1.3.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.41.0
