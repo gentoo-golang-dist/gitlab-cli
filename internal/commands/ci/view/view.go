@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -151,6 +152,7 @@ func (s *SearchState) canActivateSearch(content string) bool {
 
 // activateSearch enters search mode
 func (s *SearchState) activateSearch() {
+	debugLog("activateSearch - setting Active=true, InputMode=true, Query='/'")
 	s.Active = true
 	s.InputMode = true
 	s.Query = "/"
@@ -272,13 +274,26 @@ func handleSearchEscape(state *SearchState) bool {
 
 // handleSearchEnter processes enter key when search might be active
 func handleSearchEnter(state *SearchState, logContent string) bool {
+	debugLog("handleSearchEnter - Active:%v InputMode:%v Query:'%s' MatchCount:%d",
+		state.Active, state.InputMode, state.Query, len(state.Matches))
 	if !state.Active {
+		debugLog("handleSearchEnter - search not active, letting normal Enter handling take over")
 		return false // Let normal enter handling take over
 	}
 
 	if state.InputMode {
 		// Submit search query - switch from input mode to navigation mode
+		debugLog("handleSearchEnter - submitting search query")
 		query := state.Query[1:] // Remove the leading "/"
+
+		// If query is empty (just pressed "/" then Enter), don't perform search
+		// but still exit search mode and stay in log view
+		if strings.TrimSpace(query) == "" {
+			debugLog("handleSearchEnter - empty query, deactivating search")
+			state.deactivateSearch()
+			return true // Consume the key so it doesn't close the log
+		}
+
 		state.performSearch(logContent, query)
 		state.InputMode = false
 		if len(state.Matches) > 0 {
@@ -287,6 +302,7 @@ func handleSearchEnter(state *SearchState, logContent string) bool {
 		return true // Consumed the enter key
 	} else {
 		// Navigate to next match
+		debugLog("handleSearchEnter - navigating to next match")
 		if len(state.Matches) > 0 {
 			state.CurrentMatch = (state.CurrentMatch + 1) % len(state.Matches)
 		}
@@ -296,10 +312,14 @@ func handleSearchEnter(state *SearchState, logContent string) bool {
 
 // handleSearchSlash processes "/" key for search activation
 func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logContent string) bool {
+	debugLog("handleSearchSlash - logsVisible:%v modalVisible:%v contentLen:%d",
+		logsVisible, modalVisible, len(logContent))
 	if !shouldActivateSearch(logsVisible, modalVisible, logContent) {
+		debugLog("handleSearchSlash - shouldActivateSearch returned false")
 		return false // Don't consume the key
 	}
 
+	debugLog("handleSearchSlash - activating search")
 	state.activateSearch()
 	return true // Consumed the "/" key
 }
@@ -373,6 +393,10 @@ func (o *options) complete(args []string) error {
 }
 
 func (o *options) run() error {
+	// Initialize debug logging
+	initDebugLogger()
+	debugLog("Starting glab ci view")
+
 	client, err := o.gitlabClient()
 	if err != nil {
 		return err
@@ -464,34 +488,62 @@ func inputCapture(
 	commitSHA string,
 ) func(event *tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
+		// DEBUG: Trace input events
+		debugLog("inputCapture - Key:%v Rune:%c logsVisible:%v modalVisible:%v curJob:%s",
+			event.Key(), event.Rune(), logsVisible, modalVisible,
+			func() string {
+				if curJob != nil {
+					return curJob.Name
+				} else {
+					return "nil"
+				}
+			}())
+
 		// Handle search functionality when logs are visible
 		if logsVisible && curJob != nil {
 			searchState := getSearchState(curJob.Name)
+			debugLog("Search check - searchState.Active:%v InputMode:%v", searchState.Active, searchState.InputMode)
 
 			// Get log content for search operations
 			var logContent string
-			if tv, exists := boxes["logs-"+curJob.Name]; exists {
-				logContent = tv.GetText(false) // false = don't strip formatting
+			logsKey := "logs-" + curJob.Name
+			if logViews != nil {
+				if tv, exists := logViews[logsKey]; exists {
+					logContent = tv.GetText(false) // false = don't strip formatting
+					debugLog("Got log content from logViews %s, length: %d", logsKey, len(logContent))
+				} else {
+					debugLog("LogView %s not found in logViews map", logsKey)
+				}
+			} else {
+				debugLog("logViews map is nil")
 			}
 
 			// Handle slash key for search activation
 			if event.Rune() == '/' {
+				debugLog("Slash key pressed")
 				if handleSearchSlash(searchState, logsVisible, modalVisible, logContent) {
+					debugLog("Slash key consumed by search")
 					return nil // Consumed the key
 				}
 			}
 
 			// Handle escape key for search exit
 			if event.Key() == tcell.KeyEscape {
+				debugLog("Escape key pressed")
 				if handleSearchEscape(searchState) {
+					debugLog("Escape key consumed by search")
 					return nil // Consumed the key
 				}
 			}
 
 			// Handle enter key for search submission/navigation
 			if event.Key() == tcell.KeyEnter {
+				debugLog("Enter key pressed in search section")
 				if handleSearchEnter(searchState, logContent) {
+					debugLog("Enter key consumed by search")
 					return nil // Consumed the key
+				} else {
+					debugLog("Enter key NOT consumed by search - will go to normal handling")
 				}
 			}
 
@@ -609,12 +661,25 @@ func inputCapture(
 			app.ForceDraw()
 			return nil
 		case tcell.KeyEnter:
+			debugLog("Normal Enter key handling - modalVisible:%v curJob.Kind:%v",
+				modalVisible, func() string {
+					if curJob != nil {
+						return string(curJob.Kind)
+					} else {
+						return "nil"
+					}
+				}())
 			if !modalVisible {
 				if curJob.Kind == Job {
+					debugLog("Toggling logsVisible from %v to %v", logsVisible, !logsVisible)
 					logsVisible = !logsVisible
 					if !logsVisible {
+						debugLog("Hiding logs page for job: %s", curJob.Name)
 						root.HidePage("logs-" + curJob.Name)
+					} else {
+						debugLog("Will show logs for job: %s", curJob.Name)
 					}
+					debugLog("Sending to inputCh")
 					inputCh <- struct{}{}
 					app.ForceDraw()
 				} else {
@@ -676,7 +741,9 @@ var (
 	jobs                      []*ViewJob
 	pipelines                 []gitlab.PipelineInfo
 	boxes                     map[string]*tview.TextView
+	logViews                  map[string]*tview.TextView
 	searchStates              map[string]*SearchState
+	debugLogger               *log.Logger
 )
 
 func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
@@ -684,6 +751,37 @@ func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
 		return *commit.LastPipeline
 	}
 	return pipelines[len(pipelines)-1]
+}
+
+// Debug logging functions
+func initDebugLogger() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	logDir := filepath.Join(homeDir, ".glab-cli")
+	err = os.MkdirAll(logDir, 0755)
+	if err != nil {
+		return
+	}
+
+	logFile, err := os.OpenFile(
+		filepath.Join(logDir, "logs.txt"),
+		os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
+		0644,
+	)
+	if err != nil {
+		return
+	}
+
+	debugLogger = log.New(logFile, "[DEBUG] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+}
+
+func debugLog(format string, args ...interface{}) {
+	if debugLogger != nil {
+		debugLogger.Printf(format, args...)
+	}
 }
 
 // navigator manages the internal state for processing tcell.EventKeys
@@ -805,11 +903,29 @@ func jobsView(
 		curJob = jobs[0]
 	}
 	if modalVisible {
+		debugLog("jobsView - modalVisible=true, returning early")
 		return
 	}
+	debugLog("jobsView - logsVisible:%v curJob:%s",
+		logsVisible, func() string {
+			if curJob != nil {
+				return curJob.Name
+			} else {
+				return "nil"
+			}
+		}())
 	if logsVisible {
 		logsKey := "logs-" + curJob.Name
-		if !root.SwitchToPage(logsKey).HasPage(logsKey) {
+		debugLog("jobsView - checking for existing page: %s", logsKey)
+
+		// Check if there's any leftover search state that might interfere
+		searchState := getSearchState(curJob.Name)
+		debugLog("jobsView - search state for %s: Active=%t InputMode=%t Query='%s'", curJob.Name, searchState.Active, searchState.InputMode, searchState.Query)
+
+		pageExists := root.SwitchToPage(logsKey).HasPage(logsKey)
+		debugLog("jobsView - page %s exists: %v", logsKey, pageExists)
+		if !pageExists {
+			debugLog("jobsView - page %s does not exist, creating new one", logsKey)
 			tv := tview.NewTextView()
 			tv.
 				SetDynamicColors(true).
@@ -817,7 +933,16 @@ func jobsView(
 				SetBorderPadding(0, 0, 1, 1).
 				SetBorder(true)
 
+			// Store the TextView in logViews map for search functionality
+			if logViews == nil {
+				logViews = make(map[string]*tview.TextView)
+			}
+			logViews[logsKey] = tv
+			debugLog("jobsView - stored TextView in logViews map: %s", logsKey)
+
+			debugLog("jobsView - launching goroutine to fetch logs for: %s", curJob.Name)
 			go func() {
+				debugLog("goroutine - starting RunTraceSha for: %s", curJob.Name)
 				err := ciutils.RunTraceSha(
 					context.Background(),
 					apiClient,
@@ -827,11 +952,44 @@ func jobsView(
 					curJob.Name,
 				)
 				if err != nil {
+					debugLog("goroutine - RunTraceSha error for %s: %v", curJob.Name, err)
 					app.Stop()
 					log.Fatal(err)
 				}
+				debugLog("goroutine - RunTraceSha completed for: %s", curJob.Name)
+
+				// Verify content was written to TextView
+				content := tv.GetText(false)
+				debugLog("goroutine - TextView content length after RunTraceSha: %d", len(content))
+
+				// Force a UI update to ensure the content is displayed
+				debugLog("goroutine - calling app.Draw() to refresh UI after content load")
+				app.Draw()
+
+				// Also trigger the main UI loop
+				debugLog("goroutine - sending signal to inputCh to trigger main UI loop")
+				inputCh <- struct{}{}
 			}()
 			root.AddAndSwitchToPage("logs-"+curJob.Name, tv, true)
+			debugLog("jobsView - added and switched to new page: logs-%s", curJob.Name)
+		} else {
+			debugLog("jobsView - page %s already exists, switching to it", logsKey)
+			// Verify that SwitchToPage actually made it the front page
+			currentPageName, _ := root.GetFrontPage()
+			debugLog("jobsView - current front page after switch: %s", currentPageName)
+			// Verify the existing page has content
+			if logViews != nil {
+				if tv, exists := logViews[logsKey]; exists {
+					content := tv.GetText(false)
+					debugLog("jobsView - existing page %s content length: %d", logsKey, len(content))
+
+					// Check TextView properties
+					x, y, w, h := tv.GetRect()
+					debugLog("jobsView - TextView rect: (%d,%d,%d,%d)", x, y, w, h)
+				} else {
+					debugLog("jobsView - WARNING: page %s exists in root but not in logViews map", logsKey)
+				}
+			}
 		}
 		return
 	}
