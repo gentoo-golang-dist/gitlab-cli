@@ -67,12 +67,19 @@ type ViewJob struct {
 }
 
 type SearchState struct {
-	Active        bool
-	Query         string
-	Matches       []SearchMatch
-	CurrentMatch  int
-	LastScrollPos int
-	InputMode     bool
+	Active          bool
+	Query           string
+	Matches         []SearchMatch
+	CurrentMatch    int
+	LastScrollPos   int
+	InputMode       bool
+	OriginalContent string // Store the original log content with formatting before search highlighting
+}
+
+// LogState tracks the loading state of job logs
+type LogState struct {
+	Loading   bool // Whether logs are currently being fetched/streamed
+	Completed bool // Whether log streaming has completed
 }
 
 type SearchMatch struct {
@@ -142,6 +149,47 @@ func clearSearchState(jobName string) {
 	if searchStates != nil {
 		delete(searchStates, jobName)
 	}
+}
+
+// getLogState returns the log state for a given job name, creating a new one if needed
+func getLogState(jobName string) *LogState {
+	if logStates == nil {
+		logStates = make(map[string]*LogState)
+	}
+
+	if state, exists := logStates[jobName]; exists {
+		return state
+	}
+
+	// Create new log state with default values
+	state := &LogState{
+		Loading:   false,
+		Completed: false,
+	}
+
+	logStates[jobName] = state
+	return state
+}
+
+// setLogLoading marks a job's logs as currently loading
+func setLogLoading(jobName string, loading bool) {
+	state := getLogState(jobName)
+	state.Loading = loading
+}
+
+// setLogCompleted marks a job's logs as completed loading
+func setLogCompleted(jobName string, completed bool) {
+	state := getLogState(jobName)
+	state.Completed = completed
+	if completed {
+		state.Loading = false // Log is completed, so it's no longer loading
+	}
+}
+
+// isLogCompleted returns true if the job's logs have finished loading
+func isLogCompleted(jobName string) bool {
+	state := getLogState(jobName)
+	return state.Completed
 }
 
 // canActivateSearch checks if search can be activated (needs loaded content)
@@ -236,8 +284,13 @@ func (s *SearchState) getMatchCount() int {
 }
 
 // shouldActivateSearch determines if search can be activated based on current state
-func shouldActivateSearch(logsVisible, modalVisible bool, logContent string) bool {
-	return logsVisible && !modalVisible && logContent != ""
+func shouldActivateSearch(logsVisible, modalVisible bool, logContent string, jobName string) bool {
+	if !logsVisible || modalVisible || logContent == "" {
+		return false
+	}
+
+	// Only allow search activation if logs have finished loading
+	return isLogCompleted(jobName)
 }
 
 // handleSearchKeyInput processes key input when search is active
@@ -261,17 +314,19 @@ func handleSearchKeyInput(state *SearchState, key tcell.Key, char rune) bool {
 }
 
 // handleSearchEscape processes escape key when search might be active
-func handleSearchEscape(state *SearchState) bool {
+func handleSearchEscape(state *SearchState, jobName string) bool {
 	if !state.Active {
 		return false // Let normal escape handling take over
 	}
 
+	// Clear highlighting before deactivating search
+	clearSearchHighlighting(jobName)
 	state.deactivateSearch()
 	return true // Consumed the escape key
 }
 
 // handleSearchEnter processes enter key when search might be active
-func handleSearchEnter(state *SearchState, logContent string) bool {
+func handleSearchEnter(state *SearchState, logContent string, jobName string) bool {
 	if !state.Active {
 		return false // Let normal enter handling take over
 	}
@@ -292,6 +347,9 @@ func handleSearchEnter(state *SearchState, logContent string) bool {
 		if len(state.Matches) > 0 {
 			state.CurrentMatch = 0 // Start at first match
 		}
+
+		// Apply highlighting to the log content
+		applySearchHighlighting(jobName, query)
 		return true // Consumed the enter key
 	} else {
 		// Navigate to next match
@@ -303,8 +361,8 @@ func handleSearchEnter(state *SearchState, logContent string) bool {
 }
 
 // handleSearchSlash processes "/" key for search activation
-func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logContent string) bool {
-	if !shouldActivateSearch(logsVisible, modalVisible, logContent) {
+func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logContent string, jobName string) bool {
+	if !shouldActivateSearch(logsVisible, modalVisible, logContent, jobName) {
 		return false // Don't consume the key
 	}
 
@@ -354,6 +412,122 @@ func updateSearchDisplay(jobName string, app *tview.Application) {
 
 	if app != nil {
 		app.ForceDraw()
+	}
+}
+
+// highlightMatches adds tview markup to highlight search matches in log text
+func highlightMatches(logContent, searchQuery string) string {
+	if searchQuery == "" || logContent == "" {
+		return logContent
+	}
+
+	// Convert to lowercase for case-insensitive matching
+	lowerQuery := strings.ToLower(searchQuery)
+	lowerContent := strings.ToLower(logContent)
+
+	// Find all matches and build list of ranges to highlight
+	var highlights []struct {
+		start, end int
+	}
+
+	startPos := 0
+	for {
+		pos := strings.Index(lowerContent[startPos:], lowerQuery)
+		if pos == -1 {
+			break
+		}
+
+		actualPos := startPos + pos
+		highlights = append(highlights, struct{ start, end int }{
+			start: actualPos,
+			end:   actualPos + len(searchQuery),
+		})
+		startPos = actualPos + len(searchQuery)
+	}
+
+	// If no matches found, return original content
+	if len(highlights) == 0 {
+		return logContent
+	}
+
+	// Build result string with highlighting markup
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, highlight := range highlights {
+		// Add text before highlight
+		if highlight.start > lastEnd {
+			result.WriteString(logContent[lastEnd:highlight.start])
+		}
+
+		// Add highlighted text with tview markup
+		matchedText := logContent[highlight.start:highlight.end]
+		result.WriteString("[red::]")
+		result.WriteString(matchedText)
+		result.WriteString("[white::-]")
+
+		lastEnd = highlight.end
+	}
+
+	// Add remaining text after last highlight
+	if lastEnd < len(logContent) {
+		result.WriteString(logContent[lastEnd:])
+	}
+
+	return result.String()
+}
+
+// applySearchHighlighting applies search highlighting to the log TextView for a specific job
+func applySearchHighlighting(jobName, searchQuery string) {
+	if logViews == nil {
+		return
+	}
+
+	logsKey := "logs-" + jobName
+	tv, exists := logViews[logsKey]
+	if !exists {
+		return
+	}
+
+	searchState := getSearchState(jobName)
+
+	// Use the original content that was captured when logs completed
+	// This prevents any accumulation of newlines or highlighting artifacts
+	if searchState.OriginalContent == "" {
+		// Fallback: if for some reason original content wasn't captured, use current content
+		searchState.OriginalContent = tv.GetText(false)
+	}
+
+	// Always apply highlighting to the stored original content
+	highlightedContent := highlightMatches(searchState.OriginalContent, searchQuery)
+
+	// Strip any trailing newline to prevent accumulation when TextView adds its own
+	highlightedContent = strings.TrimSuffix(highlightedContent, "\n")
+
+	// Update the TextView with highlighted content
+	tv.SetText(highlightedContent)
+}
+
+// clearSearchHighlighting removes search highlighting from the log TextView
+func clearSearchHighlighting(jobName string) {
+	if logViews == nil {
+		return
+	}
+
+	logsKey := "logs-" + jobName
+	tv, exists := logViews[logsKey]
+	if !exists {
+		return
+	}
+
+	// Restore the original content with its original formatting
+	searchState := getSearchState(jobName)
+	if searchState.OriginalContent != "" {
+		// Strip any trailing newline to prevent accumulation when TextView adds its own
+		originalContent := strings.TrimSuffix(searchState.OriginalContent, "\n")
+		tv.SetText(originalContent)
+		// Clear the stored original content since we're exiting search mode
+		searchState.OriginalContent = ""
 	}
 }
 
@@ -537,7 +711,7 @@ func inputCapture(
 
 			// Handle slash key for search activation
 			if event.Rune() == '/' {
-				if handleSearchSlash(searchState, logsVisible, modalVisible, logContent) {
+				if handleSearchSlash(searchState, logsVisible, modalVisible, logContent, curJob.Name) {
 					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
@@ -545,7 +719,7 @@ func inputCapture(
 
 			// Handle escape key for search exit
 			if event.Key() == tcell.KeyEscape {
-				if handleSearchEscape(searchState) {
+				if handleSearchEscape(searchState, curJob.Name) {
 					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
@@ -553,7 +727,7 @@ func inputCapture(
 
 			// Handle enter key for search submission/navigation
 			if event.Key() == tcell.KeyEnter {
-				if handleSearchEnter(searchState, logContent) {
+				if handleSearchEnter(searchState, logContent, curJob.Name) {
 					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
@@ -744,6 +918,7 @@ var (
 	logViews                  map[string]*tview.TextView
 	logFrames                 map[string]*tview.Frame
 	searchStates              map[string]*SearchState
+	logStates                 map[string]*LogState // Track log loading state per job
 )
 
 func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
@@ -902,7 +1077,25 @@ func jobsView(
 			logViews[logsKey] = tv
 			logFrames[logsKey] = frame
 
+			// Mark logs as loading when we start fetching
+			setLogLoading(curJob.Name, true)
+			setLogCompleted(curJob.Name, false)
+
 			go func() {
+				defer func() {
+					// Mark logs as completed when done (whether successful or error)
+					setLogCompleted(curJob.Name, true)
+
+					// Capture the final log content immediately when streaming completes
+					// This ensures we get the clean, final content before any highlighting
+					searchState := getSearchState(curJob.Name)
+					if searchState.OriginalContent == "" {
+						originalContent := tv.GetText(false)
+						// Strip any trailing newline to prevent accumulation issues
+						searchState.OriginalContent = strings.TrimSuffix(originalContent, "\n")
+					}
+				}()
+
 				err := ciutils.RunTraceSha(
 					context.Background(),
 					apiClient,

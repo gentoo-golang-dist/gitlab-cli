@@ -630,7 +630,13 @@ func Test_shouldActivateSearch(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := shouldActivateSearch(tc.logsVisible, tc.modalVisible, tc.logContent)
+			// Set up log state if the test expects search to be successful
+			if tc.expected {
+				logState := getLogState("test-job")
+				logState.Completed = true
+			}
+
+			result := shouldActivateSearch(tc.logsVisible, tc.modalVisible, tc.logContent, "test-job")
 			assert.Equal(t, tc.expected, result, tc.description)
 		})
 	}
@@ -644,7 +650,11 @@ func Test_handleSearchSlash(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch() // Ensure clean state
 
-		consumed := handleSearchSlash(state, true, false, "log content")
+		// Set up log state for successful activation
+		logState := getLogState(jobName)
+		logState.Completed = true
+
+		consumed := handleSearchSlash(state, true, false, "log content", jobName)
 
 		assert.True(t, consumed, "Should consume / key when activating search")
 		assert.True(t, state.Active, "Search should be active after / key")
@@ -656,7 +666,7 @@ func Test_handleSearchSlash(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch()
 
-		consumed := handleSearchSlash(state, false, false, "log content")
+		consumed := handleSearchSlash(state, false, false, "log content", jobName)
 
 		assert.False(t, consumed, "Should not consume / key when logs not visible")
 		assert.False(t, state.Active, "Search should not be active")
@@ -666,7 +676,7 @@ func Test_handleSearchSlash(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch()
 
-		consumed := handleSearchSlash(state, true, true, "log content")
+		consumed := handleSearchSlash(state, true, true, "log content", jobName)
 
 		assert.False(t, consumed, "Should not consume / key when modal visible")
 		assert.False(t, state.Active, "Search should not be active")
@@ -676,7 +686,7 @@ func Test_handleSearchSlash(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch()
 
-		consumed := handleSearchSlash(state, true, false, "")
+		consumed := handleSearchSlash(state, true, false, "", jobName)
 
 		assert.False(t, consumed, "Should not consume / key when no content")
 		assert.False(t, state.Active, "Search should not be active")
@@ -692,7 +702,7 @@ func Test_handleSearchEscape(t *testing.T) {
 		state.activateSearch()
 		state.updateQuery("/test query")
 
-		consumed := handleSearchEscape(state)
+		consumed := handleSearchEscape(state, jobName)
 
 		assert.True(t, consumed, "Should consume Esc key when search is active")
 		assert.False(t, state.Active, "Search should be deactivated after Esc")
@@ -704,7 +714,7 @@ func Test_handleSearchEscape(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch()
 
-		consumed := handleSearchEscape(state)
+		consumed := handleSearchEscape(state, jobName)
 
 		assert.False(t, consumed, "Should not consume Esc key when search not active")
 		// This allows normal Esc handling (hide logs, etc.)
@@ -722,7 +732,7 @@ func Test_handleSearchEnter(t *testing.T) {
 		state.updateQuery("/error")
 		assert.True(t, state.InputMode, "Should be in input mode initially")
 
-		consumed := handleSearchEnter(state, logContent)
+		consumed := handleSearchEnter(state, logContent, jobName)
 
 		assert.True(t, consumed, "Should consume Enter key when submitting search")
 		assert.True(t, state.Active, "Search should still be active after Enter")
@@ -739,7 +749,7 @@ func Test_handleSearchEnter(t *testing.T) {
 		state.InputMode = false // Switch to navigation mode
 		state.CurrentMatch = 0  // Start at first match
 
-		consumed := handleSearchEnter(state, logContent)
+		consumed := handleSearchEnter(state, logContent, jobName)
 
 		assert.True(t, consumed, "Should consume Enter key for navigation")
 		assert.Equal(t, 1, state.CurrentMatch, "Should move to next match")
@@ -752,7 +762,7 @@ func Test_handleSearchEnter(t *testing.T) {
 		state.InputMode = false
 		state.CurrentMatch = 2 // Last match (0-indexed)
 
-		consumed := handleSearchEnter(state, logContent)
+		consumed := handleSearchEnter(state, logContent, jobName)
 
 		assert.True(t, consumed, "Should consume Enter key")
 		assert.Equal(t, 0, state.CurrentMatch, "Should wrap to first match")
@@ -762,7 +772,7 @@ func Test_handleSearchEnter(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch()
 
-		consumed := handleSearchEnter(state, logContent)
+		consumed := handleSearchEnter(state, logContent, jobName)
 
 		assert.False(t, consumed, "Should not consume Enter when search not active")
 		// This allows normal Enter handling (toggle logs, etc.)
@@ -936,6 +946,10 @@ func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
 		// Ensure search starts inactive
 		state := getSearchState(jobName)
 		state.deactivateSearch()
+		
+		// Set up log state as completed so search can be activated
+		logState := getLogState(jobName)
+		logState.Completed = true
 
 		// Press "/" key
 		event := tcell.NewEventKey(tcell.KeyRune, '/', tcell.ModNone)
@@ -989,6 +1003,83 @@ func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
 		assert.NotNil(t, result, "inputCapture should never consume Ctrl+C, even in search mode")
 		assert.Equal(t, tcell.KeyCtrlC, result.Key(), "Should return the original Ctrl+C event")
 	})
+}
+
+// Test_searchHighlighting tests search term highlighting in log text
+func Test_searchHighlighting(t *testing.T) {
+	// This test verifies that search matches are properly highlighted with tview markup
+
+	testCases := []struct {
+		name           string
+		logContent     string
+		searchQuery    string
+		expectedOutput string
+		description    string
+	}{
+		{
+			name:           "single match highlighting",
+			logContent:     "This is an error message",
+			searchQuery:    "error",
+			expectedOutput: "This is an [red::]error[white::-] message",
+			description:    "Should highlight single occurrence of search term",
+		},
+		{
+			name:           "multiple matches on same line",
+			logContent:     "test error and another test error",
+			searchQuery:    "test",
+			expectedOutput: "[red::]test[white::-] error and another [red::]test[white::-] error",
+			description:    "Should highlight multiple occurrences on same line",
+		},
+		{
+			name:           "case insensitive highlighting",
+			logContent:     "ERROR in system and error in process",
+			searchQuery:    "error",
+			expectedOutput: "[red::]ERROR[white::-] in system and [red::]error[white::-] in process",
+			description:    "Should highlight matches regardless of case",
+		},
+		{
+			name:           "multiline content highlighting",
+			logContent:     "Line 1: info message\nLine 2: error occurred\nLine 3: info complete",
+			searchQuery:    "info",
+			expectedOutput: "Line 1: [red::]info[white::-] message\nLine 2: error occurred\nLine 3: [red::]info[white::-] complete",
+			description:    "Should highlight matches across multiple lines",
+		},
+		{
+			name:           "no matches - no highlighting",
+			logContent:     "This is a normal log message",
+			searchQuery:    "notfound",
+			expectedOutput: "This is a normal log message",
+			description:    "Should return original text when no matches found",
+		},
+		{
+			name:           "empty query - no highlighting",
+			logContent:     "This is a normal log message",
+			searchQuery:    "",
+			expectedOutput: "This is a normal log message",
+			description:    "Should return original text when query is empty",
+		},
+		{
+			name:           "special characters in search",
+			logContent:     "Connection [127.0.0.1:3306] established",
+			searchQuery:    "127.0.0.1",
+			expectedOutput: "Connection [[red::]127.0.0.1[white::-]:3306] established",
+			description:    "Should handle special characters in search terms",
+		},
+		{
+			name:           "partial word matching",
+			logContent:     "Processing request ID: req_12345_end",
+			searchQuery:    "req",
+			expectedOutput: "Processing [red::]req[white::-]uest ID: [red::]req[white::-]_12345_end",
+			description:    "Should highlight partial word matches",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := highlightMatches(tc.logContent, tc.searchQuery)
+			assert.Equal(t, tc.expectedOutput, result, tc.description)
+		})
+	}
 }
 
 // Test_searchUI_renderSearchBar tests that the search bar is displayed correctly
