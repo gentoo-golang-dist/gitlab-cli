@@ -312,6 +312,51 @@ func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logCo
 	return true // Consumed the "/" key
 }
 
+// updateSearchDisplay updates the search bar display for a specific job
+func updateSearchDisplay(jobName string, app *tview.Application) {
+	if logFrames == nil {
+		return
+	}
+
+	logsKey := "logs-" + jobName
+	frame, exists := logFrames[logsKey]
+	if !exists {
+		return
+	}
+
+	searchState := getSearchState(jobName)
+
+	// Clear previous footer text
+	frame.Clear()
+
+	if !searchState.Active {
+		// Keep footer space allocated but empty
+		frame.AddText(" ", false, tview.AlignLeft, tcell.ColorDefault)
+		return
+	}
+
+	if searchState.InputMode {
+		// Show search input with cursor indicator
+		frame.AddText(searchState.Query+"█", false, tview.AlignLeft, tcell.ColorYellow)
+	} else {
+		// Show search results navigation
+		if len(searchState.Matches) > 0 {
+			text := fmt.Sprintf("%s [%d/%d matches]",
+				searchState.Query[1:], // Remove leading /
+				searchState.CurrentMatch+1,
+				len(searchState.Matches))
+			frame.AddText(text, false, tview.AlignLeft, tcell.ColorGreen)
+		} else {
+			noMatchText := searchState.Query + " [no matches]"
+			frame.AddText(noMatchText, false, tview.AlignLeft, tcell.ColorRed)
+		}
+	}
+
+	if app != nil {
+		app.ForceDraw()
+	}
+}
+
 func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	opts := options{
 		io:           f.IO(),
@@ -472,6 +517,11 @@ func inputCapture(
 	commitSHA string,
 ) func(event *tcell.EventKey) *tcell.EventKey {
 	return func(event *tcell.EventKey) *tcell.EventKey {
+		// Never consume critical system keys - always let them pass through
+		if event.Key() == tcell.KeyCtrlC {
+			return event // Always pass through Ctrl+C for force quit
+		}
+
 		// Handle search functionality when logs are visible
 		if logsVisible && curJob != nil {
 			searchState := getSearchState(curJob.Name)
@@ -488,6 +538,7 @@ func inputCapture(
 			// Handle slash key for search activation
 			if event.Rune() == '/' {
 				if handleSearchSlash(searchState, logsVisible, modalVisible, logContent) {
+					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
 			}
@@ -495,6 +546,7 @@ func inputCapture(
 			// Handle escape key for search exit
 			if event.Key() == tcell.KeyEscape {
 				if handleSearchEscape(searchState) {
+					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
 			}
@@ -502,6 +554,7 @@ func inputCapture(
 			// Handle enter key for search submission/navigation
 			if event.Key() == tcell.KeyEnter {
 				if handleSearchEnter(searchState, logContent) {
+					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
 			}
@@ -509,6 +562,7 @@ func inputCapture(
 			// Handle character and backspace input in search mode
 			if searchState.Active && searchState.InputMode {
 				if handleSearchKeyInput(searchState, event.Key(), event.Rune()) {
+					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}
 			}
@@ -688,6 +742,7 @@ var (
 	pipelines                 []gitlab.PipelineInfo
 	boxes                     map[string]*tview.TextView
 	logViews                  map[string]*tview.TextView
+	logFrames                 map[string]*tview.Frame
 	searchStates              map[string]*SearchState
 )
 
@@ -697,7 +752,6 @@ func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
 	}
 	return pipelines[len(pipelines)-1]
 }
-
 
 // navigator manages the internal state for processing tcell.EventKeys
 type navigator struct {
@@ -830,11 +884,23 @@ func jobsView(
 				SetBorderPadding(0, 0, 1, 1).
 				SetBorder(true)
 
-			// Store the TextView in logViews map for search functionality
+			// Wrap TextView in Frame for search bar support
+			frame := tview.NewFrame(tv)
+			frame.SetBackgroundColor(tcell.ColorDefault)
+			// Remove Frame's internal borders/spacing - SetBorders(top, bottom, header, footer, left, right)
+			frame.SetBorders(0, 0, 0, 1, 0, 0)
+			// Pre-allocate footer space to prevent layout shift
+			frame.AddText(" ", false, tview.AlignLeft, tcell.ColorDefault)
+
+			// Store both TextView and Frame for search functionality
 			if logViews == nil {
 				logViews = make(map[string]*tview.TextView)
 			}
+			if logFrames == nil {
+				logFrames = make(map[string]*tview.Frame)
+			}
 			logViews[logsKey] = tv
+			logFrames[logsKey] = frame
 
 			go func() {
 				err := ciutils.RunTraceSha(
@@ -850,7 +916,7 @@ func jobsView(
 					log.Fatal(err)
 				}
 			}()
-			root.AddAndSwitchToPage("logs-"+curJob.Name, tv, true)
+			root.AddAndSwitchToPage("logs-"+curJob.Name, frame, true)
 		}
 		return
 	}
