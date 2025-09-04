@@ -201,7 +201,7 @@ func (s *SearchState) canActivateSearch(content string) bool {
 func (s *SearchState) activateSearch() {
 	s.Active = true
 	s.InputMode = true
-	s.Query = "/"
+	s.Query = ""
 }
 
 // deactivateSearch exits search mode
@@ -225,12 +225,8 @@ func (s *SearchState) handleBackspace(key tcell.Key) bool {
 	}
 
 	if key == tcell.KeyBackspace || key == tcell.KeyBackspace2 {
-		if len(s.Query) > 1 {
-			s.Query = s.Query[:len(s.Query)-1]
-		} else {
-			// Exit search mode when deleting the last character (/)
-			s.deactivateSearch()
-		}
+		// Remove the last character from the query
+		s.Query = s.Query[:len(s.Query)-1]
 		return true
 	}
 	return false
@@ -313,15 +309,15 @@ func handleSearchKeyInput(state *SearchState, key tcell.Key, char rune) bool {
 	return false
 }
 
-// handleSearchEscape processes escape key when search might be active
-func handleSearchEscape(state *SearchState, jobName string) bool {
-	if !state.Active {
+// handleEscape processes escape key when search might be active
+func (s *SearchState) handleEscape(jobName string) bool {
+	if !s.Active {
 		return false // Let normal escape handling take over
 	}
 
 	// Clear highlighting before deactivating search
 	clearSearchHighlighting(jobName)
-	state.deactivateSearch()
+	s.deactivateSearch()
 	return true // Consumed the escape key
 }
 
@@ -333,7 +329,7 @@ func handleSearchEnter(state *SearchState, logContent string, jobName string) bo
 
 	if state.InputMode {
 		// Submit search query - switch from input mode to navigation mode
-		query := state.Query[1:] // Remove the leading "/"
+		query := state.Query
 
 		// If query is empty (just pressed "/" then Enter), don't perform search
 		// but still exit search mode and stay in log view
@@ -360,8 +356,20 @@ func handleSearchEnter(state *SearchState, logContent string, jobName string) bo
 	}
 }
 
-// handleSearchSlash processes "/" key for search activation
+// handleSearchSlash processes "/" key for search activation or returning to input mode
 func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logContent string, jobName string) bool {
+	// If search is already active and in navigation mode, return to input mode (preserving query)
+	if state.Active && !state.InputMode {
+		state.InputMode = true
+		return true // Consumed the "/" key
+	}
+
+	// If search is already active and in input mode, let the "/" be typed as a character
+	if state.Active && state.InputMode {
+		return false // Don't consume the key, let it be handled by search input
+	}
+
+	// Otherwise, try to activate search (fresh start)
 	if !shouldActivateSearch(logsVisible, modalVisible, logContent, jobName) {
 		return false // Don't consume the key
 	}
@@ -395,17 +403,17 @@ func updateSearchDisplay(jobName string, app *tview.Application) {
 
 	if searchState.InputMode {
 		// Show search input with cursor indicator
-		frame.AddText(searchState.Query+"█", false, tview.AlignLeft, tcell.ColorYellow)
+		frame.AddText("Search: "+searchState.Query+"█", false, tview.AlignLeft, tcell.ColorYellow)
 	} else {
 		// Show search results navigation
 		if len(searchState.Matches) > 0 {
-			text := fmt.Sprintf("%s [%d/%d matches]",
-				searchState.Query[1:], // Remove leading /
+			text := fmt.Sprintf("Search: %s [%d/%d matches]",
+				searchState.Query,
 				searchState.CurrentMatch+1,
 				len(searchState.Matches))
 			frame.AddText(text, false, tview.AlignLeft, tcell.ColorGreen)
 		} else {
-			noMatchText := searchState.Query + " [no matches]"
+			noMatchText := fmt.Sprintf("Search: %s [no matches]", searchState.Query)
 			frame.AddText(noMatchText, false, tview.AlignLeft, tcell.ColorRed)
 		}
 	}
@@ -709,7 +717,7 @@ func inputCapture(
 				}
 			}
 
-			// Handle slash key for search activation
+			// Handle slash key for search activation or returning to input mode
 			if event.Rune() == '/' {
 				if handleSearchSlash(searchState, logsVisible, modalVisible, logContent, curJob.Name) {
 					updateSearchDisplay(curJob.Name, app)
@@ -719,7 +727,7 @@ func inputCapture(
 
 			// Handle escape key for search exit
 			if event.Key() == tcell.KeyEscape {
-				if handleSearchEscape(searchState, curJob.Name) {
+				if searchState.handleEscape(curJob.Name) {
 					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
 				}

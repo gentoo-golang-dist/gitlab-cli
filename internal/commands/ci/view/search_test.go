@@ -61,7 +61,7 @@ func Test_searchState_toggleSearchMode(t *testing.T) {
 		state.activateSearch()
 		assert.True(t, state.Active, "Search should be active after activation")
 		assert.True(t, state.InputMode, "Input mode should be true after activation")
-		assert.Equal(t, "/", state.Query, "Query should start with '/' after activation")
+		assert.Equal(t, "", state.Query, "Query should be empty after activation")
 	})
 
 	// Test search mode deactivation
@@ -70,7 +70,7 @@ func Test_searchState_toggleSearchMode(t *testing.T) {
 
 		// Start with active search
 		state.activateSearch()
-		state.updateQuery("/test")
+		state.updateQuery("test")
 
 		// Deactivate search
 		state.deactivateSearch()
@@ -88,15 +88,15 @@ func Test_searchState_toggleSearchMode(t *testing.T) {
 
 		// Activate search for job1
 		job1State.activateSearch()
-		job1State.updateQuery("/job1search")
+		job1State.updateQuery("job1search")
 
 		// Activate different search for job2
 		job2State.activateSearch()
-		job2State.updateQuery("/job2search")
+		job2State.updateQuery("job2search")
 
 		// Verify states are independent
-		assert.Equal(t, "/job1search", job1State.Query, "Job1 should maintain its search query")
-		assert.Equal(t, "/job2search", job2State.Query, "Job2 should maintain its search query")
+		assert.Equal(t, "job1search", job1State.Query, "Job1 should maintain its search query")
+		assert.Equal(t, "job2search", job2State.Query, "Job2 should maintain its search query")
 		assert.True(t, job1State.Active, "Job1 search should remain active")
 		assert.True(t, job2State.Active, "Job2 search should remain active")
 	})
@@ -128,8 +128,8 @@ func Test_searchState_updateQuery(t *testing.T) {
 		},
 		{
 			name:          "multiple characters",
-			input:         "/hello",
-			expectedQuery: "/hello",
+			input:         "hello",
+			expectedQuery: "hello",
 			expectedInput: true,
 		},
 		{
@@ -167,7 +167,7 @@ func Test_searchState_clearQuery(t *testing.T) {
 	jobName := "test-job"
 	state := getSearchState(jobName)
 	state.activateSearch()
-	state.updateQuery("/hello")
+	state.updateQuery("hello")
 
 	// Test backspace key (most systems)
 	t.Run("backspace key clears character", func(t *testing.T) {
@@ -182,7 +182,7 @@ func Test_searchState_clearQuery(t *testing.T) {
 
 	// Test backspace2 key (alternative systems, Windows)
 	t.Run("backspace2 key clears character", func(t *testing.T) {
-		state.updateQuery("/world")
+		state.updateQuery("world")
 		originalQuery := state.Query
 
 		handled := state.handleBackspace(tcell.KeyBackspace2)
@@ -194,19 +194,19 @@ func Test_searchState_clearQuery(t *testing.T) {
 
 	// Test clearing entire query
 	t.Run("clear entire query", func(t *testing.T) {
-		state.updateQuery("/test")
+		state.updateQuery("test")
 
-		// Keep backspacing until only slash remains
-		for len(state.Query) > 1 {
+		// Keep backspacing until the search query is empty
+		for len(state.Query) > 0 {
 			state.handleBackspace(tcell.KeyBackspace)
 		}
 
-		assert.Equal(t, "/", state.Query, "Query should be only slash after clearing")
+		assert.Equal(t, "", state.Query, "Query should be empty after clearing")
+		assert.True(t, state.Active, "Search should remain active after clearing query")
 
-		// One more backspace should exit search mode
-		handled := state.handleBackspace(tcell.KeyBackspace)
-		assert.True(t, handled, "Final backspace should be handled")
-		assert.False(t, state.Active, "Search should be deactivated after clearing slash")
+		handled := state.handleEscape("test-job")
+		assert.True(t, handled, "Escape key should be handled")
+		assert.False(t, state.Active, "Search should be deactivated after Escape key")
 	})
 
 	// Test backspace when not in input mode
@@ -324,14 +324,14 @@ func Test_searchState_persistenceAcrossJobSwitches(t *testing.T) {
 		// Job 1: Active search for "error"
 		state1 := getSearchState(job1)
 		state1.activateSearch()
-		state1.updateQuery("/error")
+		state1.updateQuery("error")
 		state1.InputMode = false // Switched to navigation mode
 		state1.CurrentMatch = 2  // On 3rd match
 
 		// Job 2: Active search for "info"
 		state2 := getSearchState(job2)
 		state2.activateSearch()
-		state2.updateQuery("/info")
+		state2.updateQuery("info")
 		state2.CurrentMatch = 0 // On 1st match
 
 		// Job 3: No search active
@@ -339,8 +339,8 @@ func Test_searchState_persistenceAcrossJobSwitches(t *testing.T) {
 		assert.False(t, state3.Active, "Job3 should have no active search")
 
 		// Verify states are independent
-		assert.Equal(t, "/error", state1.Query, "Job1 search query should persist")
-		assert.Equal(t, "/info", state2.Query, "Job2 search query should persist")
+		assert.Equal(t, "error", state1.Query, "Job1 search query should persist")
+		assert.Equal(t, "info", state2.Query, "Job2 search query should persist")
 		assert.Equal(t, "", state3.Query, "Job3 should have empty query")
 
 		assert.Equal(t, 2, state1.CurrentMatch, "Job1 match position should persist")
@@ -380,7 +380,7 @@ func Test_searchState_persistenceAcrossJobSwitches(t *testing.T) {
 		// Other jobs should be unaffected
 		state2 := getSearchState(job2)
 		assert.True(t, state2.Active, "Job2 search should remain active")
-		assert.Equal(t, "/info", state2.Query, "Job2 query should be preserved")
+		assert.Equal(t, "info", state2.Query, "Job2 query should be preserved")
 	})
 }
 
@@ -659,7 +659,7 @@ func Test_handleSearchSlash(t *testing.T) {
 		assert.True(t, consumed, "Should consume / key when activating search")
 		assert.True(t, state.Active, "Search should be active after / key")
 		assert.True(t, state.InputMode, "Should be in input mode after / key")
-		assert.Equal(t, "/", state.Query, "Query should start with /")
+		assert.Equal(t, "", state.Query, "Query should be empty when first activated")
 	})
 
 	t.Run("does not activate when logs not visible", func(t *testing.T) {
@@ -691,6 +691,48 @@ func Test_handleSearchSlash(t *testing.T) {
 		assert.False(t, consumed, "Should not consume / key when no content")
 		assert.False(t, state.Active, "Search should not be active")
 	})
+
+	t.Run("returns to input mode when in navigation mode", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		// Set up log state for successful activation
+		logState := getLogState(jobName)
+		logState.Completed = true
+
+		// Simulate a completed search (navigation mode)
+		state.Active = true
+		state.InputMode = false
+		state.Query = "existing search"
+
+		consumed := handleSearchSlash(state, true, false, "log content", jobName)
+
+		assert.True(t, consumed, "Should consume / key when returning to input mode")
+		assert.True(t, state.Active, "Search should remain active")
+		assert.True(t, state.InputMode, "Should be in input mode after / key")
+		assert.Equal(t, "existing search", state.Query, "Should preserve existing query")
+	})
+
+	t.Run("allows / to be typed when already in input mode", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.deactivateSearch()
+
+		// Set up log state for successful activation
+		logState := getLogState(jobName)
+		logState.Completed = true
+
+		// Start in input mode with some query
+		state.Active = true
+		state.InputMode = true
+		state.Query = "test"
+
+		consumed := handleSearchSlash(state, true, false, "log content", jobName)
+
+		assert.False(t, consumed, "Should not consume / key when already in input mode")
+		assert.True(t, state.Active, "Search should remain active")
+		assert.True(t, state.InputMode, "Should remain in input mode")
+		assert.Equal(t, "test", state.Query, "Query should be unchanged")
+	})
 }
 
 // Test_handleSearchEscape tests escape key handling in search mode
@@ -700,9 +742,9 @@ func Test_handleSearchEscape(t *testing.T) {
 	t.Run("exits search when search is active", func(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
-		state.updateQuery("/test query")
+		state.updateQuery("test query")
 
-		consumed := handleSearchEscape(state, jobName)
+		consumed := state.handleEscape(jobName)
 
 		assert.True(t, consumed, "Should consume Esc key when search is active")
 		assert.False(t, state.Active, "Search should be deactivated after Esc")
@@ -714,7 +756,7 @@ func Test_handleSearchEscape(t *testing.T) {
 		state := getSearchState(jobName)
 		state.deactivateSearch()
 
-		consumed := handleSearchEscape(state, jobName)
+		consumed := state.handleEscape(jobName)
 
 		assert.False(t, consumed, "Should not consume Esc key when search not active")
 		// This allows normal Esc handling (hide logs, etc.)
@@ -729,7 +771,7 @@ func Test_handleSearchEnter(t *testing.T) {
 	t.Run("submits search when in input mode", func(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
-		state.updateQuery("/error")
+		state.updateQuery("error")
 		assert.True(t, state.InputMode, "Should be in input mode initially")
 
 		consumed := handleSearchEnter(state, logContent, jobName)
@@ -744,7 +786,7 @@ func Test_handleSearchEnter(t *testing.T) {
 	t.Run("navigates to next match when not in input mode", func(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
-		state.updateQuery("/error")
+		state.updateQuery("error")
 		state.performSearch(logContent, "error")
 		state.InputMode = false // Switch to navigation mode
 		state.CurrentMatch = 0  // Start at first match
@@ -786,18 +828,18 @@ func Test_handleSearchKeyInput(t *testing.T) {
 	t.Run("adds characters to query when in input mode", func(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
-		assert.Equal(t, "/", state.Query, "Query should start with /")
+		assert.Equal(t, "", state.Query, "Query should be empty when first activated")
 
 		// Test individual characters
 		testChars := []struct {
 			char     rune
 			expected string
 		}{
-			{'e', "/e"},
-			{'r', "/er"},
-			{'r', "/err"},
-			{'o', "/erro"},
-			{'r', "/error"},
+			{'e', "e"},
+			{'r', "er"},
+			{'r', "err"},
+			{'o', "erro"},
+			{'r', "error"},
 		}
 
 		for _, tc := range testChars {
@@ -816,12 +858,12 @@ func Test_handleSearchKeyInput(t *testing.T) {
 		specialChars := []rune{'-', '_', '.', ':', ' ', '(', ')', '[', ']', '@', '#'}
 
 		for _, char := range specialChars {
-			state.updateQuery("/") // Reset query
+			state.updateQuery("") // Reset query
 
 			consumed := handleSearchKeyInput(state, tcell.KeyRune, char)
 
 			assert.True(t, consumed, "Should consume special character: %c", char)
-			expected := "/" + string(char)
+			expected := string(char)
 			assert.Equal(t, expected, state.Query, "Should add special character to query")
 		}
 	})
@@ -829,25 +871,25 @@ func Test_handleSearchKeyInput(t *testing.T) {
 	t.Run("handles backspace keys", func(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
-		state.updateQuery("/hello")
+		state.updateQuery("hello")
 
 		// Test KeyBackspace
 		consumed := handleSearchKeyInput(state, tcell.KeyBackspace, 0)
 
 		assert.True(t, consumed, "Should consume backspace key")
-		assert.Equal(t, "/hell", state.Query, "Should remove last character")
+		assert.Equal(t, "hell", state.Query, "Should remove last character")
 	})
 
 	t.Run("handles backspace2 for cross-platform support", func(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
-		state.updateQuery("/world")
+		state.updateQuery("world")
 
 		// Test KeyBackspace2 (Windows/alternative systems)
 		consumed := handleSearchKeyInput(state, tcell.KeyBackspace2, 0)
 
 		assert.True(t, consumed, "Should consume backspace2 key")
-		assert.Equal(t, "/worl", state.Query, "Should remove last character")
+		assert.Equal(t, "worl", state.Query, "Should remove last character")
 	})
 
 	t.Run("ignores newline characters", func(t *testing.T) {
@@ -946,7 +988,7 @@ func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
 		// Ensure search starts inactive
 		state := getSearchState(jobName)
 		state.deactivateSearch()
-		
+
 		// Set up log state as completed so search can be activated
 		logState := getLogState(jobName)
 		logState.Completed = true
@@ -958,14 +1000,14 @@ func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
 		// Verify search was activated
 		assert.Nil(t, result, "inputCapture should consume / key when activating search")
 		assert.True(t, state.Active, "Search should be active after / key")
-		assert.Equal(t, "/", state.Query, "Query should start with /")
+		assert.Equal(t, "", state.Query, "Query should be empty when first activated")
 	})
 
 	t.Run("escape key exits search", func(t *testing.T) {
 		// Setup active search
 		state := getSearchState(jobName)
 		state.activateSearch()
-		state.updateQuery("/test")
+		state.updateQuery("test")
 
 		// Press Escape key
 		event := tcell.NewEventKey(tcell.KeyEscape, 0, tcell.ModNone)
@@ -987,7 +1029,7 @@ func Test_searchIntegration_inputCaptureWiring(t *testing.T) {
 
 		// Verify character was added
 		assert.Nil(t, result, "inputCapture should consume character input in search mode")
-		assert.Equal(t, "/a", state.Query, "Character should be added to search query")
+		assert.Equal(t, "a", state.Query, "Character should be added to search query")
 	})
 
 	t.Run("ctrl+c is never consumed", func(t *testing.T) {
