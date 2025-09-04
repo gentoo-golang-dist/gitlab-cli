@@ -1259,7 +1259,7 @@ func Test_highlightMatchesWithCurrentMatch(t *testing.T) {
 			searchQuery:    "info",
 			currentMatch:   1,
 			totalMatches:   3,
-			expectedOutput: "Line 1: [red::]info[-:-:-] message\nLine 2: [black:yellow]info[-:-:-] data\nLine 3: [red::]info[-:-:-] complete",
+			expectedOutput: "Line 1: [\"match_0\"][yellow::]info[-:-:-][\"\"] message\nLine 2: [\"match_1\"][yellow:black]info[-:-:-][\"\"] data\nLine 3: [\"match_2\"][yellow::]info[-:-:-][\"\"] complete",
 			description:    "Should highlight current match across multiple lines",
 		},
 		{
@@ -1328,7 +1328,7 @@ func Test_searchNavigation_currentMatchTracking(t *testing.T) {
 		state := getSearchState(jobName)
 		state.activateSearch()
 		state.updateQuery("error")
-		
+
 		// Perform search - should start at first match
 		consumed := handleSearchEnter(state, logContent, jobName)
 
@@ -1369,5 +1369,245 @@ func Test_applySearchHighlightingWithCurrentMatch(t *testing.T) {
 		// Verify that the current match is highlighted differently
 		assert.Contains(t, highlightedText, "[black:yellow]error[-:-:-]", "Should contain current match highlighting")
 		assert.Contains(t, highlightedText, "[red::]error[-:-:-]", "Should contain regular match highlighting")
+	})
+}
+
+// Test_highlightMatchesWithRegions tests region-based highlighting for scrolling functionality
+func Test_highlightMatchesWithRegions(t *testing.T) {
+	testCases := []struct {
+		name           string
+		logContent     string
+		searchQuery    string
+		currentMatch   int
+		totalMatches   int
+		expectedOutput string
+		description    string
+	}{
+		{
+			name:           "single match with region",
+			logContent:     "This is an error message",
+			searchQuery:    "error",
+			currentMatch:   0,
+			totalMatches:   1,
+			expectedOutput: `This is an ["match_0"][yellow:black]error[-:-:-][""] message`,
+			description:    "Should wrap current match with region tag and highlight",
+		},
+		{
+			name:           "multiple matches - first match is current",
+			logContent:     "error in line 1 and error in line 2",
+			searchQuery:    "error",
+			currentMatch:   0,
+			totalMatches:   2,
+			expectedOutput: `["match_0"][yellow:black]error[-:-:-][""] in line 1 and ["match_1"][yellow::]error[-:-:-][""] in line 2`,
+			description:    "Should highlight current match with yellow, others with red, all with regions",
+		},
+		{
+			name:           "multiple matches - second match is current",
+			logContent:     "error in line 1 and error in line 2",
+			searchQuery:    "error",
+			currentMatch:   1,
+			totalMatches:   2,
+			expectedOutput: `["match_0"][yellow::]error[-:-:-][""] in line 1 and ["match_1"][yellow:black]error[-:-:-][""] in line 2`,
+			description:    "Should highlight current match with yellow, others with red",
+		},
+		{
+			name:           "multiline content with regions",
+			logContent:     "Line 1: info message\nLine 2: info data\nLine 3: info complete",
+			searchQuery:    "info",
+			currentMatch:   1,
+			totalMatches:   3,
+			expectedOutput: "Line 1: [\"match_0\"][yellow::]info[-:-:-][\"\"] message\nLine 2: [\"match_1\"][yellow:black]info[-:-:-][\"\"] data\nLine 3: [\"match_2\"][yellow::]info[-:-:-][\"\"] complete",
+			description:    "Should create regions across multiple lines with middle match current",
+		},
+		{
+			name:           "no current match set - all matches get regions but no special highlighting",
+			logContent:     "error here and error there",
+			searchQuery:    "error",
+			currentMatch:   -1,
+			totalMatches:   2,
+			expectedOutput: `["match_0"][yellow::]error[-:-:-][""] here and ["match_1"][yellow::]error[-:-:-][""] there`,
+			description:    "Should create regions for all matches without current match highlighting",
+		},
+		{
+			name:           "current match index out of bounds - all matches normal",
+			logContent:     "error here and error there",
+			searchQuery:    "error",
+			currentMatch:   5,
+			totalMatches:   2,
+			expectedOutput: `["match_0"][yellow::]error[-:-:-][""] here and ["match_1"][yellow::]error[-:-:-][""] there`,
+			description:    "Should handle invalid current match index gracefully",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := highlightMatchesWithRegions(tc.logContent, tc.searchQuery, tc.currentMatch)
+			assert.Equal(t, tc.expectedOutput, result, tc.description)
+		})
+	}
+}
+
+// Test_scrollToCurrentMatch tests the scrolling functionality
+func Test_scrollToCurrentMatch(t *testing.T) {
+	// Create a mock TextView
+	tv := tview.NewTextView()
+	tv.SetRegions(true) // Enable regions
+
+	testCases := []struct {
+		name         string
+		currentMatch int
+		totalMatches int
+		description  string
+	}{
+		{
+			name:         "scroll to first match",
+			currentMatch: 0,
+			totalMatches: 3,
+			description:  "Should highlight match_0 region and trigger scroll",
+		},
+		{
+			name:         "scroll to middle match",
+			currentMatch: 1,
+			totalMatches: 3,
+			description:  "Should highlight match_1 region and trigger scroll",
+		},
+		{
+			name:         "scroll to last match",
+			currentMatch: 2,
+			totalMatches: 3,
+			description:  "Should highlight match_2 region and trigger scroll",
+		},
+		{
+			name:         "invalid match index - no highlight",
+			currentMatch: -1,
+			totalMatches: 3,
+			description:  "Should clear all highlights when match index is invalid",
+		},
+		{
+			name:         "match index out of bounds",
+			currentMatch: 5,
+			totalMatches: 3,
+			description:  "Should clear all highlights when match index is out of bounds",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// This test verifies the scrollToCurrentMatch function works without panicking
+			// and properly sets up highlights. In a real implementation, we'd need to verify
+			// that the correct region is highlighted and ScrollToHighlight is called.
+			assert.NotPanics(t, func() {
+				scrollToCurrentMatch(tv, tc.currentMatch)
+			}, tc.description)
+		})
+	}
+}
+
+// Test_applySearchHighlightingWithRegions tests end-to-end region highlighting and scrolling
+func Test_applySearchHighlightingWithRegions(t *testing.T) {
+	jobName := "test-job"
+	logContent := "error line 1\nerror line 2\nerror line 3"
+
+	// Set up mock TextView with regions enabled
+	if logViews == nil {
+		logViews = make(map[string]*tview.TextView)
+	}
+	tv := tview.NewTextView()
+	tv.SetRegions(true)
+	tv.SetText(logContent)
+	logViews["logs-"+jobName] = tv
+
+	// Set up search state
+	state := getSearchState(jobName)
+	state.activateSearch()
+	state.performSearch(logContent, "error")
+	state.CurrentMatch = 1 // Set to second match
+	state.OriginalContent = logContent
+
+	t.Run("applies region highlighting with current match scrolling", func(t *testing.T) {
+		// Call the new function that applies region highlighting and scrolling
+		assert.NotPanics(t, func() {
+			applySearchHighlightingWithRegions(jobName, "error")
+		}, "Should apply region highlighting and scrolling without panicking")
+
+		// Get the updated text from TextView
+		highlightedText := tv.GetText(false)
+
+		// Verify that regions are created for matches
+		assert.Contains(t, highlightedText, `["match_0"]`, "Should contain region for first match")
+		assert.Contains(t, highlightedText, `["match_1"]`, "Should contain region for second match")
+		assert.Contains(t, highlightedText, `["match_2"]`, "Should contain region for third match")
+
+		// Verify current match highlighting
+		assert.Contains(t, highlightedText, `["match_1"][yellow:black]error[-:-:-][""]`, "Should highlight current match")
+		assert.Contains(t, highlightedText, `["match_0"][yellow::]error[-:-:-][""]`, "Should highlight other matches in yellow")
+	})
+}
+
+// Test_regionIDGeneration tests that region IDs are generated correctly
+func Test_regionIDGeneration(t *testing.T) {
+	testCases := []struct {
+		name        string
+		matchIndex  int
+		expectedID  string
+		description string
+	}{
+		{
+			name:        "first match",
+			matchIndex:  0,
+			expectedID:  "match_0",
+			description: "Should generate match_0 for first match",
+		},
+		{
+			name:        "middle match",
+			matchIndex:  5,
+			expectedID:  "match_5",
+			description: "Should generate match_5 for sixth match",
+		},
+		{
+			name:        "large match number",
+			matchIndex:  999,
+			expectedID:  "match_999",
+			description: "Should handle large match numbers",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := generateMatchRegionID(tc.matchIndex)
+			assert.Equal(t, tc.expectedID, result, tc.description)
+		})
+	}
+}
+
+// Test_clearSearchHighlightingWithRegions tests that regions are properly cleared
+func Test_clearSearchHighlightingWithRegions(t *testing.T) {
+	jobName := "test-job"
+	originalContent := "error line 1\nerror line 2"
+
+	// Set up mock TextView with regions enabled
+	if logViews == nil {
+		logViews = make(map[string]*tview.TextView)
+	}
+	tv := tview.NewTextView()
+	tv.SetRegions(true)
+	tv.SetText(`["match_0"][black:yellow]error[-:-:-][""] line 1\n["match_1"][red::]error[-:-:-][""] line 2`)
+	logViews["logs-"+jobName] = tv
+
+	// Set up search state
+	state := getSearchState(jobName)
+	state.OriginalContent = originalContent
+
+	t.Run("clears region highlights and restores original content", func(t *testing.T) {
+		clearSearchHighlightingWithRegions(jobName)
+
+		// Get the updated text from TextView
+		restoredText := tv.GetText(false)
+
+		// Verify that original content is restored without regions (TextView may add trailing newline)
+		expectedText := strings.TrimSuffix(restoredText, "\n")
+		assert.Equal(t, originalContent, expectedText, "Should restore original content without regions")
+		assert.NotContains(t, restoredText, `["match_`, "Should not contain any region tags")
+		assert.NotContains(t, restoredText, `[black:yellow]`, "Should not contain highlighting")
 	})
 }

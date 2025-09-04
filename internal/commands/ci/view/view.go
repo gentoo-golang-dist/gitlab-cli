@@ -315,8 +315,8 @@ func (s *SearchState) handleEscape(jobName string) bool {
 		return false // Let normal escape handling take over
 	}
 
-	// Clear highlighting before deactivating search
-	clearSearchHighlighting(jobName)
+	// Clear region highlighting before deactivating search
+	clearSearchHighlightingWithRegions(jobName)
 	s.deactivateSearch()
 	return true // Consumed the escape key
 }
@@ -344,15 +344,15 @@ func handleSearchEnter(state *SearchState, logContent string, jobName string) bo
 			state.CurrentMatch = 0 // Start at first match
 		}
 
-		// Apply highlighting with current match emphasis to the log content
-		applySearchHighlightingWithCurrentMatch(jobName, query)
+		// Apply region-based highlighting with current match emphasis and scrolling
+		applySearchHighlightingWithRegions(jobName, query)
 		return true // Consumed the enter key
 	} else {
 		// Navigate to next match
 		if len(state.Matches) > 0 {
 			state.CurrentMatch = (state.CurrentMatch + 1) % len(state.Matches)
-			// Update highlighting to emphasize the new current match
-			applySearchHighlightingWithCurrentMatch(jobName, state.Query)
+			// Update highlighting and scroll to the new current match
+			applySearchHighlightingWithRegions(jobName, state.Query)
 		}
 		return true // Consumed the enter key
 	}
@@ -487,7 +487,7 @@ func highlightMatches(logContent, searchQuery string) string {
 	return result.String()
 }
 
-// highlightMatchesWithCurrentMatch highlights all matches in the log content, 
+// highlightMatchesWithCurrentMatch highlights all matches in the log content,
 // with the current match emphasized differently from other matches
 func highlightMatchesWithCurrentMatch(logContent, searchQuery string, currentMatch int) string {
 	if searchQuery == "" {
@@ -535,7 +535,7 @@ func highlightMatchesWithCurrentMatch(logContent, searchQuery string, currentMat
 
 		// Add highlighted text with appropriate markup
 		matchedText := logContent[highlight.start:highlight.end]
-		
+
 		// Use different highlighting for current match vs other matches
 		if currentMatch >= 0 && currentMatch < len(highlights) && i == currentMatch {
 			// Current match: black text on bright yellow background (dramatic highlight)
@@ -589,39 +589,146 @@ func applySearchHighlightingWithCurrentMatch(jobName, searchQuery string) {
 	tv.SetText(highlightedContent)
 }
 
-// applySearchHighlighting applies search highlighting to the log TextView for a specific job
-func applySearchHighlighting(jobName, searchQuery string) {
+// generateMatchRegionID generates a unique region ID for a match index
+func generateMatchRegionID(matchIndex int) string {
+	return fmt.Sprintf("match_%d", matchIndex)
+}
+
+// highlightMatchesWithRegions highlights all matches and wraps them with region tags for scrolling
+func highlightMatchesWithRegions(logContent, searchQuery string, currentMatch int) string {
+	if searchQuery == "" {
+		return logContent
+	}
+
+	// Convert to lowercase for case-insensitive matching
+	lowerQuery := strings.ToLower(searchQuery)
+	lowerContent := strings.ToLower(logContent)
+
+	// Find all matches and build list of ranges to highlight
+	var highlights []struct {
+		start, end int
+	}
+
+	startPos := 0
+	for {
+		pos := strings.Index(lowerContent[startPos:], lowerQuery)
+		if pos == -1 {
+			break
+		}
+
+		actualPos := startPos + pos
+		highlights = append(highlights, struct{ start, end int }{
+			start: actualPos,
+			end:   actualPos + len(searchQuery),
+		})
+		startPos = actualPos + len(searchQuery)
+	}
+
+	// If no matches found, return original content
+	if len(highlights) == 0 {
+		return logContent
+	}
+
+	// Build result string with region tags and highlighting markup
+	var result strings.Builder
+	lastEnd := 0
+
+	for i, highlight := range highlights {
+		// Add text before highlight
+		if highlight.start > lastEnd {
+			result.WriteString(logContent[lastEnd:highlight.start])
+		}
+
+		// Generate region ID for this match
+		regionID := generateMatchRegionID(i)
+
+		// Add region start tag
+		result.WriteString(`["`)
+		result.WriteString(regionID)
+		result.WriteString(`"]`)
+
+		// Add highlighted text with appropriate markup
+		matchedText := logContent[highlight.start:highlight.end]
+
+		// Use different highlighting for current match vs other matches
+		if currentMatch >= 0 && currentMatch < len(highlights) && i == currentMatch {
+			// Current match: will be inverted by region highlight to yellow background with black text
+			result.WriteString("[yellow:black]")
+			result.WriteString(matchedText)
+			result.WriteString("[-:-:-]")
+		} else {
+			// Other matches: yellow text (no region highlighting so no inversion)
+			result.WriteString("[yellow::]")
+			result.WriteString(matchedText)
+			result.WriteString("[-:-:-]")
+		}
+
+		// Add region end tag
+		result.WriteString(`[""]`)
+
+		lastEnd = highlight.end
+	}
+
+	// Add remaining text after last highlight
+	if lastEnd < len(logContent) {
+		result.WriteString(logContent[lastEnd:])
+	}
+
+	return result.String()
+}
+
+// scrollToCurrentMatch highlights the current match region and scrolls to it
+func scrollToCurrentMatch(tv *tview.TextView, currentMatch int) {
+	if currentMatch < 0 {
+		// Clear all highlights if no valid current match
+		tv.Highlight()
+		return
+	}
+
+	// Generate region ID for the current match
+	regionID := generateMatchRegionID(currentMatch)
+
+	// Highlight the current match region (this will make it visually distinct with inverted colors)
+	tv.Highlight(regionID)
+
+	// Scroll to the highlighted region
+	tv.ScrollToHighlight()
+}
+
+// applySearchHighlightingWithRegions applies region-based search highlighting with scrolling
+func applySearchHighlightingWithRegions(jobName, searchQuery string) {
 	if logViews == nil {
 		return
 	}
 
-	logsKey := "logs-" + jobName
-	tv, exists := logViews[logsKey]
+	tv, exists := logViews["logs-"+jobName]
 	if !exists {
 		return
 	}
 
 	searchState := getSearchState(jobName)
-
-	// Use the original content that was captured when logs completed
-	// This prevents any accumulation of newlines or highlighting artifacts
-	if searchState.OriginalContent == "" {
-		// Fallback: if for some reason original content wasn't captured, use current content
-		searchState.OriginalContent = tv.GetText(false)
+	if !searchState.Active || searchQuery == "" {
+		return
 	}
 
-	// Always apply highlighting to the stored original content
-	highlightedContent := highlightMatches(searchState.OriginalContent, searchQuery)
+	// Get original content or current content
+	originalContent := searchState.OriginalContent
+	if originalContent == "" {
+		// If no original content stored, use current content (removing any existing markup)
+		originalContent = tv.GetText(false)
+		searchState.OriginalContent = originalContent
+	}
 
-	// Strip any trailing newline to prevent accumulation when TextView adds its own
-	highlightedContent = strings.TrimSuffix(highlightedContent, "\n")
-
-	// Update the TextView with highlighted content
+	// Apply region-based highlighting with current match emphasis
+	highlightedContent := highlightMatchesWithRegions(originalContent, searchQuery, searchState.CurrentMatch)
 	tv.SetText(highlightedContent)
+
+	// Scroll to the current match
+	scrollToCurrentMatch(tv, searchState.CurrentMatch)
 }
 
-// clearSearchHighlighting removes search highlighting from the log TextView
-func clearSearchHighlighting(jobName string) {
+// clearSearchHighlightingWithRegions removes region highlighting and restores original content
+func clearSearchHighlightingWithRegions(jobName string) {
 	if logViews == nil {
 		return
 	}
@@ -631,6 +738,9 @@ func clearSearchHighlighting(jobName string) {
 	if !exists {
 		return
 	}
+
+	// Clear all region highlights
+	tv.Highlight()
 
 	// Restore the original content with its original formatting
 	searchState := getSearchState(jobName)
@@ -1167,6 +1277,7 @@ func jobsView(
 			tv := tview.NewTextView()
 			tv.
 				SetDynamicColors(true).
+				SetRegions(true).
 				SetBackgroundColor(tcell.ColorDefault).
 				SetBorderPadding(0, 0, 1, 1).
 				SetBorder(true)
