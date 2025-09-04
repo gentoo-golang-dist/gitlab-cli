@@ -344,13 +344,15 @@ func handleSearchEnter(state *SearchState, logContent string, jobName string) bo
 			state.CurrentMatch = 0 // Start at first match
 		}
 
-		// Apply highlighting to the log content
-		applySearchHighlighting(jobName, query)
+		// Apply highlighting with current match emphasis to the log content
+		applySearchHighlightingWithCurrentMatch(jobName, query)
 		return true // Consumed the enter key
 	} else {
 		// Navigate to next match
 		if len(state.Matches) > 0 {
 			state.CurrentMatch = (state.CurrentMatch + 1) % len(state.Matches)
+			// Update highlighting to emphasize the new current match
+			applySearchHighlightingWithCurrentMatch(jobName, state.Query)
 		}
 		return true // Consumed the enter key
 	}
@@ -403,7 +405,7 @@ func updateSearchDisplay(jobName string, app *tview.Application) {
 
 	if searchState.InputMode {
 		// Show search input with cursor indicator
-		frame.AddText("Search: "+searchState.Query+"█", false, tview.AlignLeft, tcell.ColorYellow)
+		frame.AddText("Search: "+searchState.Query+"█", false, tview.AlignLeft, tcell.ColorDefault)
 	} else {
 		// Show search results navigation
 		if len(searchState.Matches) > 0 {
@@ -411,10 +413,10 @@ func updateSearchDisplay(jobName string, app *tview.Application) {
 				searchState.Query,
 				searchState.CurrentMatch+1,
 				len(searchState.Matches))
-			frame.AddText(text, false, tview.AlignLeft, tcell.ColorGreen)
+			frame.AddText(text, false, tview.AlignLeft, tcell.ColorDefault)
 		} else {
 			noMatchText := fmt.Sprintf("Search: %s [no matches]", searchState.Query)
-			frame.AddText(noMatchText, false, tview.AlignLeft, tcell.ColorRed)
+			frame.AddText(noMatchText, false, tview.AlignLeft, tcell.ColorDefault)
 		}
 	}
 
@@ -472,7 +474,7 @@ func highlightMatches(logContent, searchQuery string) string {
 		matchedText := logContent[highlight.start:highlight.end]
 		result.WriteString("[red::]")
 		result.WriteString(matchedText)
-		result.WriteString("[white::-]")
+		result.WriteString("[-:-:-]")
 
 		lastEnd = highlight.end
 	}
@@ -483,6 +485,108 @@ func highlightMatches(logContent, searchQuery string) string {
 	}
 
 	return result.String()
+}
+
+// highlightMatchesWithCurrentMatch highlights all matches in the log content, 
+// with the current match emphasized differently from other matches
+func highlightMatchesWithCurrentMatch(logContent, searchQuery string, currentMatch int) string {
+	if searchQuery == "" {
+		return logContent
+	}
+
+	// Convert to lowercase for case-insensitive matching
+	lowerQuery := strings.ToLower(searchQuery)
+	lowerContent := strings.ToLower(logContent)
+
+	// Find all matches and build list of ranges to highlight
+	var highlights []struct {
+		start, end int
+	}
+
+	startPos := 0
+	for {
+		pos := strings.Index(lowerContent[startPos:], lowerQuery)
+		if pos == -1 {
+			break
+		}
+
+		actualPos := startPos + pos
+		highlights = append(highlights, struct{ start, end int }{
+			start: actualPos,
+			end:   actualPos + len(searchQuery),
+		})
+		startPos = actualPos + len(searchQuery)
+	}
+
+	// If no matches found, return original content
+	if len(highlights) == 0 {
+		return logContent
+	}
+
+	// Build result string with highlighting markup
+	var result strings.Builder
+	lastEnd := 0
+
+	for i, highlight := range highlights {
+		// Add text before highlight
+		if highlight.start > lastEnd {
+			result.WriteString(logContent[lastEnd:highlight.start])
+		}
+
+		// Add highlighted text with appropriate markup
+		matchedText := logContent[highlight.start:highlight.end]
+		
+		// Use different highlighting for current match vs other matches
+		if currentMatch >= 0 && currentMatch < len(highlights) && i == currentMatch {
+			// Current match: black text on bright yellow background (dramatic highlight)
+			result.WriteString("[black:yellow]")
+			result.WriteString(matchedText)
+			result.WriteString("[-:-:-]")
+		} else {
+			// Other matches: red text
+			result.WriteString("[red::]")
+			result.WriteString(matchedText)
+			result.WriteString("[-:-:-]")
+		}
+
+		lastEnd = highlight.end
+	}
+
+	// Add remaining text after last highlight
+	if lastEnd < len(logContent) {
+		result.WriteString(logContent[lastEnd:])
+	}
+
+	return result.String()
+}
+
+// applySearchHighlightingWithCurrentMatch applies search highlighting with current match emphasis
+func applySearchHighlightingWithCurrentMatch(jobName, searchQuery string) {
+	if logViews == nil {
+		return
+	}
+
+	tv, exists := logViews["logs-"+jobName]
+	if !exists {
+		return
+	}
+
+	searchState := getSearchState(jobName)
+	if !searchState.Active || searchQuery == "" {
+		return
+	}
+
+	// Get original content or current content
+	originalContent := searchState.OriginalContent
+	if originalContent == "" {
+		// If no original content stored, use current content (removing any existing markup)
+		originalContent = tv.GetText(false)
+		searchState.OriginalContent = originalContent
+	}
+
+	// Apply highlighting with current match emphasis
+	highlightedContent := highlightMatchesWithCurrentMatch(originalContent, searchQuery, searchState.CurrentMatch)
+	tv.SetText(highlightedContent)
 }
 
 // applySearchHighlighting applies search highlighting to the log TextView for a specific job

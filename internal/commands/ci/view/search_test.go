@@ -1062,28 +1062,28 @@ func Test_searchHighlighting(t *testing.T) {
 			name:           "single match highlighting",
 			logContent:     "This is an error message",
 			searchQuery:    "error",
-			expectedOutput: "This is an [red::]error[white::-] message",
+			expectedOutput: "This is an [red::]error[-:-:-] message",
 			description:    "Should highlight single occurrence of search term",
 		},
 		{
 			name:           "multiple matches on same line",
 			logContent:     "test error and another test error",
 			searchQuery:    "test",
-			expectedOutput: "[red::]test[white::-] error and another [red::]test[white::-] error",
+			expectedOutput: "[red::]test[-:-:-] error and another [red::]test[-:-:-] error",
 			description:    "Should highlight multiple occurrences on same line",
 		},
 		{
 			name:           "case insensitive highlighting",
 			logContent:     "ERROR in system and error in process",
 			searchQuery:    "error",
-			expectedOutput: "[red::]ERROR[white::-] in system and [red::]error[white::-] in process",
+			expectedOutput: "[red::]ERROR[-:-:-] in system and [red::]error[-:-:-] in process",
 			description:    "Should highlight matches regardless of case",
 		},
 		{
 			name:           "multiline content highlighting",
 			logContent:     "Line 1: info message\nLine 2: error occurred\nLine 3: info complete",
 			searchQuery:    "info",
-			expectedOutput: "Line 1: [red::]info[white::-] message\nLine 2: error occurred\nLine 3: [red::]info[white::-] complete",
+			expectedOutput: "Line 1: [red::]info[-:-:-] message\nLine 2: error occurred\nLine 3: [red::]info[-:-:-] complete",
 			description:    "Should highlight matches across multiple lines",
 		},
 		{
@@ -1104,14 +1104,14 @@ func Test_searchHighlighting(t *testing.T) {
 			name:           "special characters in search",
 			logContent:     "Connection [127.0.0.1:3306] established",
 			searchQuery:    "127.0.0.1",
-			expectedOutput: "Connection [[red::]127.0.0.1[white::-]:3306] established",
+			expectedOutput: "Connection [[red::]127.0.0.1[-:-:-]:3306] established",
 			description:    "Should handle special characters in search terms",
 		},
 		{
 			name:           "partial word matching",
 			logContent:     "Processing request ID: req_12345_end",
 			searchQuery:    "req",
-			expectedOutput: "Processing [red::]req[white::-]uest ID: [red::]req[white::-]_12345_end",
+			expectedOutput: "Processing [red::]req[-:-:-]uest ID: [red::]req[-:-:-]_12345_end",
 			description:    "Should highlight partial word matches",
 		},
 	}
@@ -1213,4 +1213,161 @@ func Test_searchUI_renderSearchBar(t *testing.T) {
 			}, tc.description)
 		})
 	}
+}
+
+// Test_highlightMatchesWithCurrentMatch tests highlighting all matches with current match emphasized
+func Test_highlightMatchesWithCurrentMatch(t *testing.T) {
+	testCases := []struct {
+		name           string
+		logContent     string
+		searchQuery    string
+		currentMatch   int
+		totalMatches   int
+		expectedOutput string
+		description    string
+	}{
+		{
+			name:           "single match - current match highlighted",
+			logContent:     "This is an error message",
+			searchQuery:    "error",
+			currentMatch:   0,
+			totalMatches:   1,
+			expectedOutput: "This is an [black:yellow]error[-:-:-] message",
+			description:    "Should highlight current match differently from other matches",
+		},
+		{
+			name:           "multiple matches - first match is current",
+			logContent:     "error in line 1 and error in line 2",
+			searchQuery:    "error",
+			currentMatch:   0,
+			totalMatches:   2,
+			expectedOutput: "[black:yellow]error[-:-:-] in line 1 and [red::]error[-:-:-] in line 2",
+			description:    "Should highlight current match in yellow, others in red",
+		},
+		{
+			name:           "multiple matches - second match is current",
+			logContent:     "error in line 1 and error in line 2",
+			searchQuery:    "error",
+			currentMatch:   1,
+			totalMatches:   2,
+			expectedOutput: "[red::]error[-:-:-] in line 1 and [black:yellow]error[-:-:-] in line 2",
+			description:    "Should highlight current match in yellow, others in red",
+		},
+		{
+			name:           "multiple matches across lines - middle match current",
+			logContent:     "Line 1: info message\nLine 2: info data\nLine 3: info complete",
+			searchQuery:    "info",
+			currentMatch:   1,
+			totalMatches:   3,
+			expectedOutput: "Line 1: [red::]info[-:-:-] message\nLine 2: [black:yellow]info[-:-:-] data\nLine 3: [red::]info[-:-:-] complete",
+			description:    "Should highlight current match across multiple lines",
+		},
+		{
+			name:           "no current match set - all matches highlighted normally",
+			logContent:     "error here and error there",
+			searchQuery:    "error",
+			currentMatch:   -1,
+			totalMatches:   2,
+			expectedOutput: "[red::]error[-:-:-] here and [red::]error[-:-:-] there",
+			description:    "Should highlight all matches normally when no current match is set",
+		},
+		{
+			name:           "current match index out of bounds - all matches highlighted normally",
+			logContent:     "error here and error there",
+			searchQuery:    "error",
+			currentMatch:   5,
+			totalMatches:   2,
+			expectedOutput: "[red::]error[-:-:-] here and [red::]error[-:-:-] there",
+			description:    "Should highlight all matches normally when current match index is invalid",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := highlightMatchesWithCurrentMatch(tc.logContent, tc.searchQuery, tc.currentMatch)
+			assert.Equal(t, tc.expectedOutput, result, tc.description)
+		})
+	}
+}
+
+// Test_searchNavigation_currentMatchTracking tests that current match is properly tracked during navigation
+func Test_searchNavigation_currentMatchTracking(t *testing.T) {
+	jobName := "test-job"
+	logContent := "error on line 1\ninfo message\nerror on line 3\nmore info\nerror on line 5"
+
+	t.Run("current match advances with Enter key", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("error")
+		state.performSearch(logContent, "error")
+		state.InputMode = false // Switch to navigation mode
+		state.CurrentMatch = 0  // Start at first match
+
+		// Navigate to next match
+		consumed := handleSearchEnter(state, logContent, jobName)
+
+		assert.True(t, consumed, "Should consume Enter key for navigation")
+		assert.Equal(t, 1, state.CurrentMatch, "Should move to second match")
+	})
+
+	t.Run("current match wraps around at end", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.performSearch(logContent, "error")
+		state.InputMode = false
+		state.CurrentMatch = 2 // Last match (0-indexed)
+
+		// Navigate past last match
+		consumed := handleSearchEnter(state, logContent, jobName)
+
+		assert.True(t, consumed, "Should consume Enter key")
+		assert.Equal(t, 0, state.CurrentMatch, "Should wrap to first match")
+	})
+
+	t.Run("current match updates when new search is performed", func(t *testing.T) {
+		state := getSearchState(jobName)
+		state.activateSearch()
+		state.updateQuery("error")
+		
+		// Perform search - should start at first match
+		consumed := handleSearchEnter(state, logContent, jobName)
+
+		assert.True(t, consumed, "Should consume Enter key when submitting search")
+		assert.False(t, state.InputMode, "Should exit input mode after Enter")
+		assert.Equal(t, 3, len(state.Matches), "Should find 3 matches for 'error'")
+		assert.Equal(t, 0, state.CurrentMatch, "Should start at first match")
+	})
+}
+
+// Test_applySearchHighlightingWithCurrentMatch tests that search highlighting with current match works end-to-end
+func Test_applySearchHighlightingWithCurrentMatch(t *testing.T) {
+	jobName := "test-job"
+	logContent := "error line 1\nerror line 2\nerror line 3"
+
+	// Set up mock TextView
+	if logViews == nil {
+		logViews = make(map[string]*tview.TextView)
+	}
+	tv := tview.NewTextView()
+	tv.SetText(logContent)
+	logViews["logs-"+jobName] = tv
+
+	// Set up search state
+	state := getSearchState(jobName)
+	state.activateSearch()
+	state.performSearch(logContent, "error")
+	state.CurrentMatch = 1 // Set to second match
+	state.OriginalContent = logContent
+
+	t.Run("applies highlighting with current match emphasis", func(t *testing.T) {
+		// This would call the new function that applies highlighting with current match
+		applySearchHighlightingWithCurrentMatch(jobName, "error")
+
+		// Get the updated text from TextView
+		highlightedText := tv.GetText(false)
+
+		// Verify that the current match is highlighted differently
+		assert.Contains(t, highlightedText, "[black:yellow]error[-:-:-]", "Should contain current match highlighting")
+		assert.Contains(t, highlightedText, "[red::]error[-:-:-]", "Should contain regular match highlighting")
+	})
 }
