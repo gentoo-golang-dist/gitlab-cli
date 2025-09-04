@@ -239,17 +239,20 @@ func (s *SearchState) performSearch(content, query string) []SearchMatch {
 		return s.Matches
 	}
 
+	s.Query = query
+
 	var matches []SearchMatch
 	lines := strings.Split(content, "\n")
-	lowerQuery := strings.ToLower(query)
+
+	// Always do case-insensitive search
+	searchQuery := strings.ToLower(query)
 
 	for lineNum, line := range lines {
-		lowerLine := strings.ToLower(line)
+		searchLine := strings.ToLower(line)
 		searchStart := 0
-
 		for {
-			// Find next occurrence of query in the line (case-insensitive)
-			idx := strings.Index(lowerLine[searchStart:], lowerQuery)
+			// Find next occurrence of query in the line
+			idx := strings.Index(searchLine[searchStart:], searchQuery)
 			if idx == -1 {
 				break
 			}
@@ -358,6 +361,69 @@ func handleSearchEnter(state *SearchState, logContent string, jobName string) bo
 	}
 }
 
+// handleSearchNext navigates to the next search match
+func handleSearchNext(state *SearchState, jobName string) bool {
+	if !state.Active || len(state.Matches) == 0 {
+		return false
+	}
+
+	// Move to next match with wrap-around
+	state.CurrentMatch = (state.CurrentMatch + 1) % len(state.Matches)
+
+	// Apply region-based highlighting with current match emphasis and scrolling
+	applySearchHighlightingWithRegions(jobName, state.Query)
+	return true
+}
+
+// handleSearchPrevious navigates to the previous search match
+func handleSearchPrevious(state *SearchState, jobName string) bool {
+	if !state.Active || len(state.Matches) == 0 {
+		return false
+	}
+
+	// Move to previous match with wrap-around
+	state.CurrentMatch--
+	if state.CurrentMatch < 0 {
+		state.CurrentMatch = len(state.Matches) - 1
+	}
+
+	// Apply region-based highlighting with current match emphasis and scrolling
+	applySearchHighlightingWithRegions(jobName, state.Query)
+	return true
+}
+
+// handleLogBeginning scrolls to the beginning of the log
+func handleLogBeginning(jobName string) bool {
+	if logViews == nil {
+		return false
+	}
+
+	logsKey := "logs-" + jobName
+	tv, exists := logViews[logsKey]
+	if !exists {
+		return false
+	}
+
+	tv.ScrollToBeginning()
+	return true
+}
+
+// handleLogEnd scrolls to the end of the log
+func handleLogEnd(jobName string) bool {
+	if logViews == nil {
+		return false
+	}
+
+	logsKey := "logs-" + jobName
+	tv, exists := logViews[logsKey]
+	if !exists {
+		return false
+	}
+
+	tv.ScrollToEnd()
+	return true
+}
+
 // handleSearchSlash processes "/" key for search activation or returning to input mode
 func handleSearchSlash(state *SearchState, logsVisible, modalVisible bool, logContent string, jobName string) bool {
 	// If search is already active and in navigation mode, return to input mode (preserving query)
@@ -405,7 +471,8 @@ func updateSearchDisplay(jobName string, app *tview.Application) {
 
 	if searchState.InputMode {
 		// Show search input with cursor indicator
-		frame.AddText("Search: "+searchState.Query+"█", false, tview.AlignLeft, tcell.ColorDefault)
+		searchText := "Search: " + searchState.Query + "█"
+		frame.AddText(searchText, false, tview.AlignLeft, tcell.ColorDefault)
 	} else {
 		// Show search results navigation
 		if len(searchState.Matches) > 0 {
@@ -431,7 +498,7 @@ func highlightMatches(logContent, searchQuery string) string {
 		return logContent
 	}
 
-	// Convert to lowercase for case-insensitive matching
+	// Always do case-insensitive search
 	lowerQuery := strings.ToLower(searchQuery)
 	lowerContent := strings.ToLower(logContent)
 
@@ -494,7 +561,7 @@ func highlightMatchesWithCurrentMatch(logContent, searchQuery string, currentMat
 		return logContent
 	}
 
-	// Convert to lowercase for case-insensitive matching
+	// Always do case-insensitive search
 	lowerQuery := strings.ToLower(searchQuery)
 	lowerContent := strings.ToLower(logContent)
 
@@ -600,7 +667,7 @@ func highlightMatchesWithRegions(logContent, searchQuery string, currentMatch in
 		return logContent
 	}
 
-	// Convert to lowercase for case-insensitive matching
+	// Always do case-insensitive search
 	lowerQuery := strings.ToLower(searchQuery)
 	lowerContent := strings.ToLower(logContent)
 
@@ -773,7 +840,8 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		- 'Ctrl+D' to cancel a job. If the selected job isn't running or pending, quits the CI/CD view.
 		- 'Ctrl+Q' to quit the CI/CD view.
 		- 'Ctrl+Space' to suspend application and view the logs. Similar to 'glab pipeline ci trace'.
-		- '/' to search logs. Type your search query, hit 'Enter' to perform the search. 'Esc' exits search
+		- '/' to search logs. 'Enter' performs the search, 'n' and 'N' selects next/previous result. 'Esc' exits search
+
 		Supports vi style bindings and arrow keys for navigating jobs, logs, and search results
 	`),
 		Example: heredoc.Doc(`
@@ -953,6 +1021,36 @@ func inputCapture(
 				if handleSearchEnter(searchState, logContent, curJob.Name) {
 					updateSearchDisplay(curJob.Name, app)
 					return nil // Consumed the key
+				}
+			}
+
+			// Handle n/N keys for search navigation (only when search is active and not in input mode)
+			if searchState.Active && !searchState.InputMode {
+				if event.Rune() == 'n' {
+					if handleSearchNext(searchState, curJob.Name) {
+						updateSearchDisplay(curJob.Name, app)
+						return nil // Consumed the key
+					}
+				}
+				if event.Rune() == 'N' {
+					if handleSearchPrevious(searchState, curJob.Name) {
+						updateSearchDisplay(curJob.Name, app)
+						return nil // Consumed the key
+					}
+				}
+			}
+
+			// Handle </> keys for log navigation (when logs are visible but search is not in input mode)
+			if !searchState.InputMode {
+				if event.Rune() == '<' {
+					if handleLogBeginning(curJob.Name) {
+						return nil // Consumed the key
+					}
+				}
+				if event.Rune() == '>' {
+					if handleLogEnd(curJob.Name) {
+						return nil // Consumed the key
+					}
 				}
 			}
 
