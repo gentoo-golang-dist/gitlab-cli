@@ -1259,7 +1259,7 @@ func Test_highlightMatchesWithCurrentMatch(t *testing.T) {
 			searchQuery:    "info",
 			currentMatch:   1,
 			totalMatches:   3,
-			expectedOutput: "Line 1: [\"match_0\"][yellow::]info[-:-:-][\"\"] message\nLine 2: [\"match_1\"][yellow:black]info[-:-:-][\"\"] data\nLine 3: [\"match_2\"][yellow::]info[-:-:-][\"\"] complete",
+			expectedOutput: "Line 1: [red::]info[-:-:-] message\nLine 2: [black:yellow]info[-:-:-] data\nLine 3: [red::]info[-:-:-] complete",
 			description:    "Should highlight current match across multiple lines",
 		},
 		{
