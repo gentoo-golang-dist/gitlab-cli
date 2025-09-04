@@ -259,7 +259,7 @@ func (s *SearchState) performSearch(content, query string) []SearchMatch {
 
 			// Calculate actual position in original line
 			actualStart := searchStart + idx
-			actualEnd := actualStart + len(query)
+			actualEnd := actualStart + len(searchQuery)
 
 			matches = append(matches, SearchMatch{
 				Line:  lineNum,
