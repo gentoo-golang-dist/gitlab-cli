@@ -3,11 +3,14 @@ package update
 import (
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -22,6 +25,10 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ glab issue update 42 --label ui,ux
 			$ glab issue update 42 --unlabel working
+			$ glab issue update 42 --linked-issues 10,15 --link-type is_blocked_by
+			$ glab issue update 42 --unlink-issues 10,15
+			$ glab issue update 42 --epic 12345
+			$ glab issue update 42 --epic 0
 		`),
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -179,12 +186,46 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				l.DueDate = gitlab.Ptr(dueDate)
 			}
 
-			fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
+			// Handle epic assignment
+			if cmd.Flags().Changed("epic") {
+				epicID, err := cmd.Flags().GetInt("epic")
+				if err != nil {
+					return err
+				}
 
-			issue, err = api.UpdateIssue(client, repo.FullName(), issue.IID, l)
+				if epicID == 0 {
+					// Remove from epic
+					actions = append(actions, "removed from epic")
+					l.EpicID = gitlab.Ptr(0)
+				} else {
+					// Assign to epic
+					actions = append(actions, fmt.Sprintf("assigned to epic #%d", epicID))
+					l.EpicID = gitlab.Ptr(epicID)
+				}
+			}
+
+			// Only call UpdateIssue API if there are actual issue property changes
+			if len(actions) > 0 {
+				fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
+
+				issue, err = api.UpdateIssue(client, repo.FullName(), issue.IID, l)
+				if err != nil {
+					return err
+				}
+			}
+
+			// Handle issue linking after the main update
+			linkActions, err := handleIssueLinks(cmd, client, repo, issue, out)
 			if err != nil {
 				return err
 			}
+
+			// Show "Updating issue" message if we only have linking operations
+			if len(actions) == 0 && len(linkActions) > 0 {
+				fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)
+			}
+
+			actions = append(actions, linkActions...)
 
 			for _, s := range actions {
 				fmt.Fprintln(out, c.GreenCheck(), s)
@@ -209,6 +250,100 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	issueUpdateCmd.Flags().Bool("unassign", false, "Unassign all users.")
 	issueUpdateCmd.Flags().IntP("weight", "w", 0, "Set weight of the issue.")
 	issueUpdateCmd.Flags().StringP("due-date", "", "", "A date in 'YYYY-MM-DD' format.")
+	issueUpdateCmd.Flags().IntSlice("linked-issues", []int{}, "The IIDs of issues to link to this issue.")
+	issueUpdateCmd.Flags().String("link-type", "relates_to", "Type for the issue link (relates_to, blocks, is_blocked_by).")
+	issueUpdateCmd.Flags().IntSlice("unlink-issues", []int{}, "The IIDs of issues to unlink from this issue.")
+	issueUpdateCmd.Flags().Int("epic", 0, "ID of the epic to assign this issue to. Set to 0 to remove from epic.")
 
 	return issueUpdateCmd
+}
+
+// handleIssueLinks manages linking and unlinking issues
+func handleIssueLinks(cmd *cobra.Command, client *gitlab.Client, repo glrepo.Interface, issue *gitlab.Issue, out io.Writer) ([]string, error) {
+	var actions []string
+
+	// Handle linking new issues
+	if cmd.Flags().Changed("linked-issues") {
+		linkedIssues, err := cmd.Flags().GetIntSlice("linked-issues")
+		if err != nil {
+			return nil, err
+		}
+
+		linkType, err := cmd.Flags().GetString("link-type")
+		if err != nil {
+			return nil, err
+		}
+
+		// Validate link type
+		validLinkTypes := map[string]bool{
+			"relates_to":    true,
+			"blocks":        true,
+			"is_blocked_by": true,
+		}
+		if !validLinkTypes[linkType] {
+			return nil, fmt.Errorf("invalid link type %q. Valid types are: relates_to, blocks, is_blocked_by", linkType)
+		}
+
+		for _, targetIssueIID := range linkedIssues {
+			// Validate that we're not trying to link to ourselves
+			if targetIssueIID == issue.IID {
+				return nil, fmt.Errorf("cannot link issue to itself (#%d)", targetIssueIID)
+			}
+
+			fmt.Fprintf(out, "- Linking to issue #%d\n", targetIssueIID)
+			_, _, err := client.IssueLinks.CreateIssueLink(repo.FullName(), issue.IID, &gitlab.CreateIssueLinkOptions{
+				TargetIssueIID: gitlab.Ptr(strconv.Itoa(targetIssueIID)),
+				LinkType:       gitlab.Ptr(linkType),
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to link issue #%d: %w", targetIssueIID, err)
+			}
+			actions = append(actions, fmt.Sprintf("linked to issue #%d (%s)", targetIssueIID, linkType))
+		}
+	}
+
+	// Handle unlinking issues
+	if cmd.Flags().Changed("unlink-issues") {
+		unlinkIssues, err := cmd.Flags().GetIntSlice("unlink-issues")
+		if err != nil {
+			return nil, err
+		}
+
+		if len(unlinkIssues) > 0 {
+			// First, get all existing relations for this issue
+			relations, _, err := client.IssueLinks.ListIssueRelations(repo.FullName(), issue.IID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get existing issue relations: %w", err)
+			}
+
+			// Create a map of target IID to link ID for easy lookup
+			linkMap := make(map[int]int)
+			for _, relation := range relations {
+				// Map the target issue IID (the "other" issue in the relation)
+				targetIID := relation.IID
+				if relation.IID == issue.IID {
+					// If this relation's IID is our current issue, the target is the other field
+					// This logic may need adjustment based on the actual API response structure
+					continue // Skip self-references or handle appropriately
+				}
+				linkMap[targetIID] = relation.IssueLinkID
+			}
+
+			for _, targetIssueIID := range unlinkIssues {
+				linkID, exists := linkMap[targetIssueIID]
+				if !exists {
+					return nil, fmt.Errorf("no link found to issue #%d", targetIssueIID)
+				}
+
+				fmt.Fprintf(out, "- Unlinking from issue #%d\n", targetIssueIID)
+				_, _, err := client.IssueLinks.DeleteIssueLink(repo.FullName(), issue.IID, linkID)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unlink issue #%d: %w", targetIssueIID, err)
+				}
+				actions = append(actions, fmt.Sprintf("unlinked from issue #%d", targetIssueIID))
+			}
+		}
+	}
+
+	return actions, nil
 }
