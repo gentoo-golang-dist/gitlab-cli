@@ -47,8 +47,6 @@ func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, e
 }
 
 func TestCIRun(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name string
 		cli  string
@@ -295,8 +293,6 @@ func runCommandWithRepoOverride(t *testing.T, rt http.RoundTripper, cli string) 
 }
 
 func TestCIRunRepoOverride(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name string
 		cli  string
