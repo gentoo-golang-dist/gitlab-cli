@@ -189,7 +189,7 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int, error) {
 		return inputs.PipelineId, nil
 	}
 
-	branch := GetBranchWithRepoOverride(inputs.Branch, inputs.RepoOverride, nil, opts.Repo, opts.Client)
+	branch := GetBranchWithRepoOverride(inputs.Branch, "", nil, opts.Repo, opts.Client)
 	if branch == "" {
 		return 0, fmt.Errorf("unable to determine branch")
 	}
