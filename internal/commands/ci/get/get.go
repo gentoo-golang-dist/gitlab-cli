@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
+	"golang.org/x/sync/errgroup"
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
@@ -130,35 +132,41 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 					return err
 				}
 
+				// Build a filtered list of bridges that actually have downstream pipelines.
+				var filteredBridges []*gitlab.Bridge
 				for _, bridge := range bridges {
 					if bridge.DownstreamPipeline != nil {
-
-						childPipeline, _, err := client.Pipelines.GetPipeline(bridge.DownstreamPipeline.ProjectID, bridge.DownstreamPipeline.ID)
-						if err != nil {
-							return err
-						}
-
-						childJobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
-							return client.Jobs.ListPipelineJobs(bridge.DownstreamPipeline.ProjectID, childPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
-						})
-						if err != nil {
-							return err
-						}
-						var childVariables []*gitlab.PipelineVariable
-						if showVariables {
-							childVariables, _, err = client.Pipelines.GetPipelineVariables(bridge.DownstreamPipeline.ProjectID, childPipeline.ID)
-							if err != nil {
-								return err
-							}
-						}
-						pipelineBridges = append(pipelineBridges, PipelineBridge{
-							Pipeline:  childPipeline,
-							Bridge:    bridge,
-							Jobs:      childJobs,
-							Variables: childVariables,
-						})
+						filteredBridges = append(filteredBridges, bridge)
 					}
 				}
+
+				results := make([]PipelineBridge, len(filteredBridges))
+
+				g, ctx := errgroup.WithContext(cmd.Context())
+				sem := make(chan struct{}, 20) // Limit to 20 concurrent fetches
+
+				for i, bridge := range filteredBridges {
+					i, br := i, bridge
+					g.Go(func() error {
+						sem <- struct{}{}        // acquire
+						defer func() { <-sem }() // release
+
+						pb, err := fetchDownstreamPipeline(ctx, apiClient, br, showVariables)
+						if err != nil {
+							return err
+						}
+						results[i] = pb
+						return nil
+					})
+				}
+
+				// Wait for all workers and return any error.
+				if err := g.Wait(); err != nil {
+					return err
+				}
+
+				// Append results in order.
+				pipelineBridges = append(pipelineBridges, results...)
 			}
 
 			var variables []*gitlab.PipelineVariable
@@ -291,4 +299,36 @@ func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isChild ...
 		}
 		fmt.Fprintln(dest, varTable.String())
 	}
+}
+
+func fetchDownstreamPipeline(ctx context.Context, apiClient *gitlab.Client, br *gitlab.Bridge, showVariables bool) (PipelineBridge, error) {
+	// Get the downstream pipeline
+	childPipeline, _, err := apiClient.Pipelines.GetPipeline(br.DownstreamPipeline.ProjectID, br.DownstreamPipeline.ID, gitlab.WithContext(ctx))
+	if err != nil {
+		return PipelineBridge{}, err
+	}
+
+	// Get jobs for the downstream pipeline
+	childJobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
+		return apiClient.Jobs.ListPipelineJobs(br.DownstreamPipeline.ProjectID, childPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(ctx))
+	})
+	if err != nil {
+		return PipelineBridge{}, err
+	}
+
+	// Optionally fetch variables
+	var childVariables []*gitlab.PipelineVariable
+	if showVariables {
+		childVariables, _, err = apiClient.Pipelines.GetPipelineVariables(br.DownstreamPipeline.ProjectID, childPipeline.ID, gitlab.WithContext(ctx))
+		if err != nil {
+			return PipelineBridge{}, err
+		}
+	}
+
+	return PipelineBridge{
+		Pipeline:  childPipeline,
+		Bridge:    br,
+		Jobs:      childJobs,
+		Variables: childVariables,
+	}, nil
 }
