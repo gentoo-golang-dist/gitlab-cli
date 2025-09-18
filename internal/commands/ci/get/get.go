@@ -151,7 +151,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 						sem <- struct{}{}        // acquire
 						defer func() { <-sem }() // release
 
-						pb, err := fetchDownstreamPipeline(ctx, apiClient, br, showVariables)
+						pb, err := fetchDownstreamPipeline(ctx, client, br, showVariables)
 						if err != nil {
 							return err
 						}
