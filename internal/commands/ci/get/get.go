@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"strconv"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -17,6 +18,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
@@ -143,13 +145,19 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				results := make([]PipelineBridge, len(filteredBridges))
 
 				g, ctx := errgroup.WithContext(cmd.Context())
-				sem := make(chan struct{}, 20) // Limit to 20 concurrent fetches
+				sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
 
 				for i, bridge := range filteredBridges {
 					i, br := i, bridge
+
+					if err := sem.Acquire(ctx, 1); err != nil {
+						// If context is cancelled or acquire fails, stop and return error.
+						return err
+					}
+
 					g.Go(func() error {
-						sem <- struct{}{}        // acquire
-						defer func() { <-sem }() // release
+						// Ensure the token is released when the worker finishes.
+						defer sem.Release(1)
 
 						pb, err := fetchDownstreamPipeline(ctx, client, br, showVariables)
 						if err != nil {
