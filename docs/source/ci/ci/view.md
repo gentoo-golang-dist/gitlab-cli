@@ -25,7 +25,9 @@ Use arrow keys to navigate jobs and logs.
 - 'Ctrl+D' to cancel a job. If the selected job isn't running or pending, quits the CI/CD view.
 - 'Ctrl+Q' to quit the CI/CD view.
 - 'Ctrl+Space' to suspend application and view the logs. Similar to 'glab pipeline ci trace'.
-Supports vi style bindings and arrow keys for navigating jobs and logs.
+- '/' to search logs. 'Enter' performs the search, 'n' and 'N' selects next/previous result. 'Esc' exits search
+
+Supports vi style bindings and arrow keys for navigating jobs, logs, and search results
 
 ```plaintext
 glab ci ci view [branch/tag] [flags]
