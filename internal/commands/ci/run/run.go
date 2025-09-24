@@ -107,14 +107,14 @@ func resolveBranch(cmd *cobra.Command, f cmdutils.Factory) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var branch string
 	if br != "" {
-		branch = br
-	} else if currentBranch, err := f.Branch(); err == nil {
-		branch = currentBranch
-	} else {
-		// `ci run` is running out of a git repo
-		fmt.Fprintln(f.IO().StdOut, "not in a Git repository. Using repository argument.")
+		return br, nil // Use explicit branch flag
+	}
+
+	// Check if we're using repo override
+	repoOverride, _ := cmd.Flags().GetString("repo")
+	if repoOverride != "" {
+		// Using -R flag, ignore local branch and use target repo's default
 		client, err := f.GitLabClient()
 		if err != nil {
 			return "", err
@@ -123,9 +123,25 @@ func resolveBranch(cmd *cobra.Command, f cmdutils.Factory) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		branch = ciutils.GetDefaultBranch(repo, client)
+		return ciutils.GetDefaultBranch(repo, client), nil
 	}
-	return branch, nil
+
+	// Not using repo override, use local branch
+	if currentBranch, err := f.Branch(); err == nil {
+		return currentBranch, nil
+	}
+
+	// Fallback to default branch when not in a git repo
+	fmt.Fprintln(f.IO().StdOut, "not in a Git repository. Using repository argument.")
+	client, err := f.GitLabClient()
+	if err != nil {
+		return "", err
+	}
+	repo, err := f.BaseRepo()
+	if err != nil {
+		return "", err
+	}
+	return ciutils.GetDefaultBranch(repo, client), nil
 }
 
 func createMrPipeline(branch string, f cmdutils.Factory, apiClient *gitlab.Client, repo glrepo.Interface) (*gitlab.PipelineInfo, error) {

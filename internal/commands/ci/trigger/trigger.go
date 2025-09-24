@@ -50,10 +50,12 @@ func NewCmdTrigger(f cmdutils.Factory) *cobra.Command {
 			}
 			branch, _ := cmd.Flags().GetString("branch")
 			pipelineId, _ := cmd.Flags().GetInt("pipeline-id")
+			repoOverride, _ := cmd.Flags().GetString("repo")
 			jobID, err := ciutils.GetJobId(&ciutils.JobInputs{
 				JobName:         jobName,
 				Branch:          branch,
 				PipelineId:      pipelineId,
+				RepoOverride:    repoOverride,
 				SelectionPrompt: "Select pipeline job to trigger:",
 				SelectionPredicate: func(s *gitlab.Job) bool {
 					return s.Status == "manual"

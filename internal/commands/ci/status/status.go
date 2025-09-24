@@ -60,8 +60,9 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 			repoName := repo.FullName()
 			dbg.Debug("Repository:", repoName)
 
-			// Get the correct branch name using the utility function
-			branch = ciutils.GetBranch(branch, func() (string, error) {
+			// Check for repo override and handle branch resolution accordingly
+			repoOverride, _ := cmd.Flags().GetString("repo")
+			branch = ciutils.GetBranchWithRepoOverride(branch, repoOverride, func() (string, error) {
 				return f.Branch()
 			}, repo, client)
 			dbg.Debug("Using branch:", branch)

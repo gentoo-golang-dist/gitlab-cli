@@ -189,7 +189,7 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int, error) {
 		return inputs.PipelineId, nil
 	}
 
-	branch := GetBranch(inputs.Branch, nil, opts.Repo, opts.Client)
+	branch := GetBranchWithRepoOverride(inputs.Branch, inputs.RepoOverride, nil, opts.Repo, opts.Client)
 	if branch == "" {
 		return 0, fmt.Errorf("unable to determine branch")
 	}
@@ -218,10 +218,32 @@ func GetDefaultBranch(repo glrepo.Interface, client *gitlab.Client) string {
 }
 
 // GetBranch returns the specified branch, current git branch, or the default branch from API
+// It properly handles repo overrides by checking if a different repository is being targeted
 func GetBranch(branch string, currentBranch func() (string, error), repo glrepo.Interface, client *gitlab.Client) string {
 	if branch != "" {
 		return branch
 	}
+	if currentBranch != nil {
+		if gitBranch, _ := currentBranch(); gitBranch != "" {
+			return gitBranch
+		}
+	}
+	return GetDefaultBranch(repo, client)
+}
+
+// GetBranchWithRepoOverride returns the specified branch, current git branch (if no repo override),
+// or the default branch from API. It checks for repo overrides and handles them appropriately.
+func GetBranchWithRepoOverride(branch string, repoOverride string, currentBranch func() (string, error), repo glrepo.Interface, client *gitlab.Client) string {
+	if branch != "" {
+		return branch
+	}
+
+	// If using repo override (-R flag), don't use local git branch
+	if repoOverride != "" {
+		return GetDefaultBranch(repo, client)
+	}
+
+	// No repo override, safe to use local git branch
 	if currentBranch != nil {
 		if gitBranch, _ := currentBranch(); gitBranch != "" {
 			return gitBranch
@@ -324,6 +346,7 @@ type JobInputs struct {
 	JobName            string
 	Branch             string
 	PipelineId         int
+	RepoOverride       string // Set when using -R flag to indicate repo override
 	SelectionPrompt    string
 	SelectionPredicate func(s *gitlab.Job) bool
 }

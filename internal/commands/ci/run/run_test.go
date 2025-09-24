@@ -29,6 +29,7 @@ func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, e
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
+		cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
 	)
 
 	factory.BranchStub = func() (string, error) {
@@ -263,6 +264,122 @@ func TestCIRunMrPipeline(t *testing.T) {
 			} else {
 				assert.Errorf(t, err, "error running command `ci run %s`: %v", tc.cli, err)
 			}
+		})
+	}
+}
+
+func runCommandWithRepoOverride(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error, func()) {
+	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
+	factory := cmdtest.NewTestFactory(ios,
+		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
+		cmdtest.WithBaseRepo("OTHER", "TARGET", glinstance.DefaultHostname),
+	)
+
+	// This simulates being in a local git repo with a different branch name
+	factory.BranchStub = func() (string, error) {
+		return "feature-branch-not-in-target", nil
+	}
+
+	restoreCmd := run.SetPrepareCmd(func(cmd *exec.Cmd) run.Runnable {
+		return &test.OutputStub{}
+	})
+
+	// Create the command with the parent ci command to get proper flag inheritance
+	cmd := NewCmdRun(factory)
+	// Manually add the repo flag since we're testing in isolation
+	cmd.Flags().StringP("repo", "R", "", "Select another repository using the OWNER/REPO format or the project ID. Supports group namespaces.")
+
+	cmdOut, err := cmdtest.ExecuteCommand(cmd, cli, stdout, stderr)
+
+	return cmdOut, err, restoreCmd
+}
+
+func TestCIRunRepoOverride(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		cli  string
+
+		expectedPOSTBody string
+		expectedOut      string
+		repoOverride     bool
+	}{
+		{
+			name:             "when running `ci run` without repo override, uses current branch",
+			cli:              "",
+			expectedPOSTBody: `"ref":"feature-branch-not-in-target"`,
+			expectedOut:      "Created pipeline (id: 123), status: created, ref: feature-branch-not-in-target, weburl: https://gitlab.com/OTHER/TARGET/-/pipelines/123\n",
+			repoOverride:     false,
+		},
+		{
+			name:             "when running `ci run` with repo override but no branch flag, uses target repo default branch",
+			cli:              "-R OTHER/TARGET",
+			expectedPOSTBody: `"ref":"main"`,
+			expectedOut:      "Created pipeline (id: 123), status: created, ref: main, weburl: https://gitlab.com/OTHER/TARGET/-/pipelines/123\n",
+			repoOverride:     true,
+		},
+		{
+			name:             "when running `ci run` with repo override and explicit branch, uses explicit branch",
+			cli:              "-R OTHER/TARGET -b develop",
+			expectedPOSTBody: `"ref":"develop"`,
+			expectedOut:      "Created pipeline (id: 123), status: created, ref: develop, weburl: https://gitlab.com/OTHER/TARGET/-/pipelines/123\n",
+			repoOverride:     true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fakeHTTP := &httpmock.Mocker{
+				MatchURL: httpmock.PathAndQuerystring,
+			}
+			defer fakeHTTP.Verify(t)
+
+			// Mock getting the default branch for repo override
+			if tc.repoOverride && tc.cli != "-R OTHER/TARGET -b develop" {
+				// Only mock the API call when we actually need to get the default branch
+				fakeHTTP.RegisterResponder(http.MethodGet, "/api/v4/projects/OTHER/TARGET",
+					httpmock.NewStringResponse(http.StatusOK, `{
+						"id": 42,
+						"name": "TARGET",
+						"default_branch": "main"
+					}`))
+			}
+
+			fakeHTTP.RegisterResponder(http.MethodPost, "/api/v4/projects/OTHER/TARGET/pipeline",
+				func(req *http.Request) (*http.Response, error) {
+					rb, _ := io.ReadAll(req.Body)
+
+					var response map[string]interface{}
+					err := json.Unmarshal(rb, &response)
+					if err != nil {
+						fmt.Printf("Error when parsing response body %s\n", rb)
+					}
+
+					// Ensure CLI runs CI on correct branch
+					assert.Contains(t, string(rb), tc.expectedPOSTBody)
+
+					ref := response["ref"].(string)
+					resp, _ := httpmock.NewStringResponse(http.StatusOK, fmt.Sprintf(`{
+						"id": 123,
+						"iid": 123,
+						"project_id": 42,
+						"status": "created",
+						"ref": "%s",
+						"web_url": "https://gitlab.com/OTHER/TARGET/-/pipelines/123"
+					}`, ref))(req)
+					return resp, nil
+				},
+			)
+
+			output, err, restoreCmd := runCommandWithRepoOverride(t, fakeHTTP, tc.cli)
+			defer restoreCmd()
+
+			if err != nil {
+				t.Fatalf("Unexpected error: %s", err)
+			}
+
+			assert.Equal(t, tc.expectedOut, output.String())
 		})
 	}
 }

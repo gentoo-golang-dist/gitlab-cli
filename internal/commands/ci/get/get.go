@@ -65,8 +65,9 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			if pipelineId != 0 {
 				msgNotFound = fmt.Sprintf("No pipeline with the given ID: %d", pipelineId)
 			} else {
-				// Use enhanced branch resolution that supports API fallback
-				branch = ciutils.GetBranch(branch, func() (string, error) {
+				// Use enhanced branch resolution that supports repo override detection
+				repoOverride, _ := cmd.Flags().GetString("repo")
+				branch = ciutils.GetBranchWithRepoOverride(branch, repoOverride, func() (string, error) {
 					return f.Branch()
 				}, repo, client)
 

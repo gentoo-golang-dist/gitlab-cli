@@ -80,8 +80,15 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			// Check if we're using repo override
+			repoOverride, _ := cmd.Flags().GetString("repo")
+
 			if branch != "" {
 				c.Ref = gitlab.Ptr(branch)
+			} else if repoOverride != "" {
+				// Using -R flag, ignore local branch and use target repo's default
+				c.Ref = gitlab.Ptr(ciutils.GetDefaultBranch(repo, client))
 			} else if currentBranch, err := f.Branch(); err == nil {
 				c.Ref = gitlab.Ptr(currentBranch)
 			} else {
