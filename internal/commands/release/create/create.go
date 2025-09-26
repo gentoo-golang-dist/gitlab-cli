@@ -217,6 +217,7 @@ func (o *options) complete(flags *pflag.FlagSet, args []string) error {
 	o.assetFiles = assetFiles
 
 	if o.assetLinksAsJSON != "" {
+		fmt.Printf("[DEBUG] assets links are: %x - (%q) (args: %+v)\n", []byte(o.assetLinksAsJSON), o.assetLinksAsJSON, os.Args)
 		err := json.Unmarshal([]byte(o.assetLinksAsJSON), &o.assetLink)
 		if err != nil {
 			return fmt.Errorf("failed to parse JSON string: %w", err)
