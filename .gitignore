@@ -72,3 +72,7 @@ scripts/commit-lint/node_modules/
 
 # See https://gitlab.com/gitlab-org/cli/-/merge_requests/2387#note_2751915451
 /.gitlab-secrets
+
+# Temporary Inno Setup scripts & DLLs in root folder
+/*.iss
+/*.dll
