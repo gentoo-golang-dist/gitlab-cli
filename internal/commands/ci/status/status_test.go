@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -130,4 +131,87 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			assert.Equal(t, tt.wantPipeline.Status, pipeline.Status)
 		})
 	}
+}
+
+func TestCiStatusCommand_NoPrompt(t *testing.T) {
+	// Test that the command exits cleanly when NO_PROMPT is enabled
+	// and doesn't hang waiting for user input
+	tc := gitlabtesting.NewTestClient(t)
+
+	// Mock a finished pipeline so the command doesn't loop
+	tc.MockPipelines.EXPECT().
+		GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}).
+		Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil)
+
+	// Mock jobs for the pipeline - need to handle pagination
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", 1, gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Job{
+			{ID: 1, Name: "test", Stage: "test", Status: "success"},
+		}, &gitlab.Response{NextPage: 0}, nil)
+
+	// Create test IO streams with prompts disabled
+	ios, _, stdout, stderr := cmdtest.TestIOStreams(
+		cmdtest.WithTestIOStreamsAsTTY(true),
+	)
+	ios.SetPrompt("true") // Disable prompts
+
+	factory := cmdtest.NewTestFactory(ios,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBranch("main"),
+	)
+
+	cmd := NewCmdStatus(factory)
+	cmd.SetArgs([]string{})
+
+	// This should complete without hanging
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	// Verify command completed without errors
+	// The actual output validation is less important than ensuring
+	// the command doesn't hang when NO_PROMPT is enabled
+	_ = stdout.String()
+	_ = stderr.String()
+}
+
+func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
+	// Test that the command shows pipeline status and exits cleanly
+	// when dealing with a finished pipeline (no interactive prompts needed)
+	tc := gitlabtesting.NewTestClient(t)
+
+	// Mock a finished pipeline
+	tc.MockPipelines.EXPECT().
+		GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}).
+		Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil)
+
+	// Mock jobs for the pipeline - need to handle pagination
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", 1, gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Job{
+			{ID: 1, Name: "test", Stage: "test", Status: "success"},
+		}, &gitlab.Response{NextPage: 0}, nil)
+
+	// Create test IO streams with prompts enabled but not TTY
+	// This way we test the non-interactive path
+	ios, _, stdout, stderr := cmdtest.TestIOStreams(
+		cmdtest.WithTestIOStreamsAsTTY(false),
+	)
+
+	factory := cmdtest.NewTestFactory(ios,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBranch("main"),
+	)
+
+	cmd := NewCmdStatus(factory)
+	cmd.SetArgs([]string{})
+
+	// This should complete without hanging since the pipeline is finished
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	// Verify command completed without errors
+	// The focus here is ensuring finished pipelines don't get stuck in prompts
+	_ = stdout.String()
+	_ = stderr.String()
 }
