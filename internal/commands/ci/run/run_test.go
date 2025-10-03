@@ -11,39 +11,18 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
 
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/survivorbat/huhtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
-type ResponseJSON struct {
+type responseJSON struct {
 	Ref string `json:"ref"`
-}
-
-func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error, func()) {
-	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
-	factory := cmdtest.NewTestFactory(ios,
-		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
-		cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
-	)
-
-	factory.BranchStub = func() (string, error) {
-		return "custom-branch-123", nil
-	}
-
-	restoreCmd := run.SetPrepareCmd(func(cmd *exec.Cmd) run.Runnable {
-		return &test.OutputStub{}
-	})
-
-	cmd := NewCmdRun(factory)
-	cmdOut, err := cmdtest.ExecuteCommand(cmd, cli, stdout, stderr)
-
-	return cmdOut, err, restoreCmd
 }
 
 func TestCIRun(t *testing.T) {
@@ -103,6 +82,12 @@ func TestCIRun(t *testing.T) {
 			expectedPOSTBody: `"ref":"main","variables":[{"key":"FOO","value":"bar","variable_type":"env_var"},{"key":"BAR","value":"xxx","variable_type":"env_var"}]`,
 			expectedOut:      "Created pipeline (id: 123), status: created, ref: main, weburl: https://gitlab.com/OWNER/REPO/-/pipelines/123\n",
 		},
+		{
+			name:             "when running `ci run` with untyped input",
+			cli:              "-b main -i key1:val1 --input key2:val2",
+			expectedPOSTBody: `"ref":"main","inputs":{"key1":"val1","key2":"val2"}`,
+			expectedOut:      "Created pipeline (id: 123), status: created, ref: main, weburl: https://gitlab.com/OWNER/REPO/-/pipelines/123\n",
+		},
 	}
 
 	for _, tc := range tests {
@@ -116,7 +101,7 @@ func TestCIRun(t *testing.T) {
 				func(req *http.Request) (*http.Response, error) {
 					rb, _ := io.ReadAll(req.Body)
 
-					var response ResponseJSON
+					var response responseJSON
 					err := json.Unmarshal(rb, &response)
 					if err != nil {
 						fmt.Printf("Error when parsing response body %s\n", rb)
@@ -135,13 +120,21 @@ func TestCIRun(t *testing.T) {
 				},
 			)
 
-			output, err, restoreCmd := runCommand(t, fakeHTTP, tc.cli)
-			defer restoreCmd()
+			execFunc := cmdtest.SetupCmdForTest(t, NewCmdRun, true,
+				cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: fakeHTTP}, "", glinstance.DefaultHostname).Lab()),
+				cmdtest.WithBranch("custom-branch-123"),
+			)
+			restoreCmd := run.SetPrepareCmd(func(cmd *exec.Cmd) run.Runnable {
+				return &test.OutputStub{}
+			})
+			t.Cleanup(restoreCmd)
+
+			out, err := execFunc(tc.cli)
 
 			assert.NoErrorf(t, err, "error running command `ci run %s`: %v", tc.cli, err)
 
-			assert.Equal(t, tc.expectedOut, output.String())
-			assert.Equal(t, tc.expectedErr, output.Stderr())
+			assert.Equal(t, tc.expectedOut, out.OutBuf.String())
+			assert.Equal(t, tc.expectedErr, out.ErrBuf.String())
 		})
 	}
 }
@@ -176,8 +169,20 @@ func TestCIRunMrPipeline(t *testing.T) {
 		{
 			name:        "mr flag with branch specified & no MRs",
 			cli:         "--mr --branch branch_without_mrs",
-			expectedErr: "error running command `ci run --mr --branch branch_without_mrs`: no open merge request available for \"branch_without_mrs\"",
+			expectedErr: "branch_without_mrs",
 			mrIid:       1234,
+		},
+		{
+			name:        "MR with variable flag",
+			cli:         "--mr --variables key:val",
+			expectedErr: "if any flags in the group [mr variables] are set none of the others can be",
+			mrIid:       1235,
+		},
+		{
+			name:        "MR with input flag",
+			cli:         "--mr --input key:val",
+			expectedErr: "if any flags in the group [mr input] are set none of the others can be",
+			mrIid:       1236,
 		},
 	}
 
@@ -242,25 +247,25 @@ func TestCIRunMrPipeline(t *testing.T) {
 				}
 				return nil, fmt.Errorf("unexpected branch in this mock :(")
 			}
-			as, restoreAsk := prompt.InitAskStubber()
-			defer restoreAsk()
-
-			as.Stub([]*prompt.QuestionStub{
-				{
-					Name:  "mr",
-					Value: "!1234 (my_branch_with_a_myriad_of_mrs) by @Chris Harms",
-				},
+			execFunc := cmdtest.SetupCmdForTest(t, NewCmdRun, true,
+				cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: fakeHTTP}, "", glinstance.DefaultHostname).Lab()),
+				cmdtest.WithBranch("custom-branch-123"),
+				cmdtest.WithResponder(t, huhtest.NewResponder().AddSelect("Multiple merge requests exist for this branch", 0).MatchRegexp()),
+			)
+			restoreCmd := run.SetPrepareCmd(func(cmd *exec.Cmd) run.Runnable {
+				return &test.OutputStub{}
 			})
-			output, err, restoreCmd := runCommand(t, fakeHTTP, tc.cli)
-			defer restoreCmd()
+			t.Cleanup(restoreCmd)
+
+			out, err := execFunc(tc.cli)
 
 			if tc.expectedErr == "" {
 				assert.NoErrorf(t, err, "error running command `ci run %s`: %v", tc.cli, err)
 
-				assert.Equal(t, tc.expectedOut, output.String())
-				assert.Equal(t, tc.expectedErr, output.Stderr())
+				assert.Contains(t, out.OutBuf.String(), tc.expectedOut)
+				assert.Equal(t, tc.expectedErr, out.ErrBuf.String())
 			} else {
-				assert.Errorf(t, err, "error running command `ci run %s`: %v", tc.cli, err)
+				assert.ErrorContains(t, err, tc.expectedErr)
 			}
 		})
 	}

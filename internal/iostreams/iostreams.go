@@ -2,6 +2,7 @@ package iostreams
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -11,8 +12,10 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/charmbracelet/huh"
 	"github.com/google/shlex"
 	"github.com/muesli/termenv"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type IOStreams struct {
@@ -253,15 +256,26 @@ func (s *IOStreams) IsInputTTY() bool {
 }
 
 func (s *IOStreams) ResolveBackgroundColor(style string) string {
-	if style == "" {
-		style = os.Getenv("GLAMOUR_STYLE")
+	styleEnvVar := os.Getenv("GLAB_GLAMOUR_STYLE")
+	deprecatedStyleEnvVar := os.Getenv("GLAMOUR_STYLE")
+
+	if styleEnvVar != "" && style != "auto" {
+		s.backgroundColor = styleEnvVar
+		return styleEnvVar
 	}
-	if style != "" && style != "auto" {
+
+	if deprecatedStyleEnvVar != "" && style != "auto" {
+		utils.PrintDeprecationWarning("GLAMOUR_STYLE")
+		s.backgroundColor = deprecatedStyleEnvVar
+		return deprecatedStyleEnvVar
+	}
+
+	// if we aren't using env vars we use the value from the config
+	if styleEnvVar == "" && deprecatedStyleEnvVar == "" {
 		s.backgroundColor = style
-		return style
 	}
-	if (!s.ColorEnabled()) ||
-		(s.pagerProcess != nil) {
+
+	if (!s.ColorEnabled()) || (s.pagerProcess != nil) {
 		s.backgroundColor = "none"
 		return "none"
 	}
@@ -306,4 +320,30 @@ func (s *IOStreams) Hyperlink(displayText, targetURL string) string {
 	closeSequence := "\x1b]8;;\x1b\\"
 
 	return openSequence + displayText + closeSequence
+}
+
+func (s *IOStreams) Confirm(ctx context.Context, result *bool, title string) error {
+	return s.Run(ctx,
+		huh.NewConfirm().
+			Title(title).
+			Affirmative("Yes!").
+			Negative("No.").
+			Value(result))
+}
+
+func (s *IOStreams) Select(ctx context.Context, result *string, title string, options []string) error {
+	return s.Run(ctx,
+		huh.NewSelect[string]().
+			Title(title).
+			Options(huh.NewOptions(options...)...).
+			Value(result))
+}
+
+func (s *IOStreams) Run(ctx context.Context, field huh.Field) error {
+	group := huh.NewGroup(field)
+	form := huh.NewForm(group).
+		WithInput(s.In).
+		WithOutput(s.StdOut).
+		WithShowHelp(false)
+	return form.RunWithContext(ctx)
 }
