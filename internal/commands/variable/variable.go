@@ -9,6 +9,7 @@ import (
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/list"
 	setCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/set"
 	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/update"
+	importCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/import"
 )
 
 func NewVariableCmd(f cmdutils.Factory) *cobra.Command {
@@ -26,5 +27,6 @@ func NewVariableCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.AddCommand(updateCmd.NewCmdUpdate(f, nil))
 	cmd.AddCommand(getCmd.NewCmdGet(f, nil))
 	cmd.AddCommand(exportCmd.NewCmdExport(f, nil))
+	cmd.AddCommand(importCmd.NewCmdImport(f, nil))
 	return cmd
 }
