@@ -86,7 +86,6 @@ func (o *options) run() error {
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
-	// Setup API client
 	var repoHost string
 	if baseRepo, err := o.baseRepo(); err == nil {
 		repoHost = baseRepo.RepoHost()
@@ -97,7 +96,6 @@ func (o *options) run() error {
 	}
 	client := apiClient.Lab()
 
-	// Import for group or project
 	if o.group != "" {
 		return o.importGroupVariables(client, variables)
 	}
@@ -114,9 +112,8 @@ func (o *options) importProjectVariables(client *clientgo.Client, project string
 		_, resp, err := client.ProjectVariables.GetVariable(project, v.Key, nil)
 		if err == nil && resp.StatusCode == 200 {
 			if !o.update {
-				return fmt.Errorf("variable %q already exists", v.Key)
+				return fmt.Errorf("variable %q already exists. use --update if you wish to override it", v.Key)
 			}
-			// Update existing variable
 			_, _, err := client.ProjectVariables.UpdateVariable(project, v.Key, &clientgo.UpdateProjectVariableOptions{
 				Value:            &v.Value,
 				Protected:        &v.Protected,
@@ -131,7 +128,6 @@ func (o *options) importProjectVariables(client *clientgo.Client, project string
 			}
 			fmt.Fprintf(o.io.StdOut, "Updated variable: %s\n", v.Key)
 		} else {
-			// Create new variable
 			_, _, err := client.ProjectVariables.CreateVariable(project, &clientgo.CreateProjectVariableOptions{
 				Key:              &v.Key,
 				Value:            &v.Value,
@@ -158,7 +154,6 @@ func (o *options) importGroupVariables(client *clientgo.Client, vars []clientgo.
 			if !o.update {
 				return fmt.Errorf("variable %q already exists", v.Key)
 			}
-			// Update existing variable
 			_, _, err := client.GroupVariables.UpdateVariable(o.group, v.Key, &clientgo.UpdateGroupVariableOptions{
 				Value:            &v.Value,
 				Protected:        &v.Protected,
@@ -173,7 +168,6 @@ func (o *options) importGroupVariables(client *clientgo.Client, vars []clientgo.
 			}
 			fmt.Fprintf(o.io.StdOut, "Updated variable: %s\n", v.Key)
 		} else {
-			// Create new variable
 			_, _, err := client.GroupVariables.CreateVariable(o.group, &clientgo.CreateGroupVariableOptions{
 				Key:              &v.Key,
 				Value:            &v.Value,
