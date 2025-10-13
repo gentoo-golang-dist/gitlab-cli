@@ -189,6 +189,8 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int, error) {
 		return inputs.PipelineId, nil
 	}
 
+	// Reset branch context to "" when switching repositories to ensure we use the target
+	// repo's default branch instead of the local branch name, which might not exist in the target repo
 	branch := GetBranchWithRepoOverride(inputs.Branch, "", nil, opts.Repo, opts.Client)
 	if branch == "" {
 		return 0, fmt.Errorf("unable to determine branch")
