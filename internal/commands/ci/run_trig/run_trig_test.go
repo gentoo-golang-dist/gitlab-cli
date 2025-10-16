@@ -118,7 +118,7 @@ func TestCIRun(t *testing.T) {
 	}
 }
 
-func runCommandWithRepoOverride(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+func runTrigCommandWithRepoOverride(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
@@ -215,7 +215,7 @@ func TestCIRunTrigRepoOverride(t *testing.T) {
 				},
 			)
 
-			output, err := runCommandWithRepoOverride(t, fakeHTTP, tc.cli)
+			output, err := runTrigCommandWithRepoOverride(t, fakeHTTP, tc.cli)
 			if err != nil {
 				t.Fatalf("Unexpected error: %s", err)
 			}

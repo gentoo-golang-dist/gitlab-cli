@@ -390,3 +390,30 @@ func IDsFromArgs(args []string) ([]int, error) {
 	}
 	return parsedValues, nil
 }
+
+// ResolveBranchForCI resolves the branch to use for CI operations
+// Handles --branch flag, --repo override logic, and local branch fallback
+// This consolidates duplicate branch resolution logic across CI commands
+func ResolveBranchForCI(branchFlag string, repoOverride string, f func() (string, error), repo glrepo.Interface, client *gitlab.Client, stdout io.Writer) (string, error) {
+	// 1. Check explicit --branch flag first
+	if branchFlag != "" {
+		return branchFlag, nil
+	}
+
+	// 2. Check for --repo override (use target repo's default branch)
+	if repoOverride != "" {
+		// Using -R flag, ignore local branch and use target repo's default
+		return GetDefaultBranch(repo, client), nil
+	}
+
+	// 3. Use local branch if in git repo
+	if currentBranch, err := f(); err == nil {
+		return currentBranch, nil
+	}
+
+	// 4. Fallback to default branch when not in git repo
+	if stdout != nil {
+		fmt.Fprintln(stdout, "not in a Git repository. Using repository argument.")
+	}
+	return GetDefaultBranch(repo, client), nil
+}
