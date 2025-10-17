@@ -108,10 +108,8 @@ func resolveBranch(cmd *cobra.Command, f cmdutils.Factory) (string, error) {
 		return "", err
 	}
 
-	// Check if we're using repo override
 	repoOverride, _ := cmd.Flags().GetString("repo")
 
-	// We need client and repo for the consolidated function
 	client, err := f.GitLabClient()
 	if err != nil {
 		return "", err
@@ -121,7 +119,6 @@ func resolveBranch(cmd *cobra.Command, f cmdutils.Factory) (string, error) {
 		return "", err
 	}
 
-	// Use consolidated branch resolution logic, but handle the special error case for run command
 	resolvedBranch, err := ciutils.ResolveBranchForCI(br, repoOverride, f.Branch, repo, client, nil)
 	if err != nil {
 		return "", err
