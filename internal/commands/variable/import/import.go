@@ -60,6 +60,8 @@ func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 	cmd.Flags().BoolVar(&opts.fromStdin, "stdin", false, "Read JSON from standard input.")
 	cmd.Flags().BoolVar(&opts.update, "update", false, "Update existing variables instead of throwing an error.")
 
+	cmd.MarkFlagsMutuallyExclusive("file", "stdin")
+
 	return cmd
 }
 
@@ -73,7 +75,7 @@ func (o *options) run() error {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 	} else if o.fromStdin {
-		input, err = io.ReadAll(os.Stdin)
+		input, err = io.ReadAll(o.io.In)
 		if err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)
 		}
