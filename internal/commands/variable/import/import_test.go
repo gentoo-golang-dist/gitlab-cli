@@ -18,6 +18,7 @@ import (
 )
 
 func Test_NewCmdImport(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		cli      string
@@ -56,7 +57,6 @@ func Test_NewCmdImport(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
 			io, _, _, _ := cmdtest.TestIOStreams()
 			f := cmdtest.NewTestFactory(io)
 
@@ -90,12 +90,13 @@ func Test_NewCmdImport(t *testing.T) {
 }
 
 func Test_run_FileAndStdin(t *testing.T) {
+	t.Parallel()
 	io, _, _, _ := cmdtest.TestIOStreams()
 	f := cmdtest.NewTestFactory(io)
 
-	tmpFile, err := os.CreateTemp("", "vars.json")
+	tmpFile, err := os.CreateTemp(t.TempDir(), "vars.json")
 	assert.NoError(t, err)
-	defer os.Remove(tmpFile.Name())
+	t.Cleanup(func() { os.Remove(tmpFile.Name()) })
 
 	variables := []gitlab.ProjectVariable{{Key: "VAR1", Value: "value1"}}
 	data, _ := json.Marshal(variables)
@@ -140,7 +141,6 @@ func Test_run_FileAndStdin(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
 			err := test.opts.run()
 			assert.ErrorContains(t, err, test.expectError)
 		})
