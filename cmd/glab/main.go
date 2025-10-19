@@ -223,6 +223,7 @@ func main() {
 		fang.WithoutCompletions(),
 		fang.WithoutManpage(),
 		fang.WithColorSchemeFunc(gitLabColorScheme),
+		fang.WithErrorHandler(cmdutils.GitLabErrorHandler),
 	); err != nil {
 		var exitError *cmdutils.ExitError
 		if errors.As(err, &exitError) {
@@ -291,7 +292,7 @@ func isUpdateCheckEnabled(f cmdutils.Factory) bool {
 	val, err := f.Config().Get("", "check_update")
 	// WARN: I return true here since I think we should always check for updates
 	// and an error likely indicates that the value wasn't found in the config.
-	if err != nil {
+	if err != nil || val == "" {
 		return true
 	}
 
