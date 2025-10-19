@@ -39,10 +39,10 @@ func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 		Short:   "Import variables from JSON into a project or group.",
 		Aliases: []string{"im"},
 		Example: heredoc.Doc(`
-			$ glab variable import -f variables.json
+			$ glab variable import --file variables.json
+			$ glab variable import --file vars.json --update
 			$ cat variables.json | glab variable import --stdin
-			$ glab variable import -g mygroup -f group_vars.json
-			$ glab variable import -f vars.json --update
+			$ glab variable import --group mygroup --file group_vars.json
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -55,7 +55,7 @@ func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 		},
 	}
 
-	cmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repository argument is set.")
+	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Select a group or subgroup. Ignored if a repository argument is set.")
 	cmd.Flags().StringVarP(&opts.filePath, "file", "f", "", "Path to JSON file containing variables.")
 	cmd.Flags().BoolVar(&opts.fromStdin, "stdin", false, "Read JSON from standard input.")
 	cmd.Flags().BoolVar(&opts.update, "update", false, "Update existing variables instead of throwing an error.")
@@ -76,6 +76,9 @@ func (o *options) run() error {
 		input, err = io.ReadAll(os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)
+		}
+		if len(input) == 0 {
+			return fmt.Errorf("failed to read from stdin: no data")
 		}
 	} else {
 		return fmt.Errorf("no input source provided: use --file or --stdin")
