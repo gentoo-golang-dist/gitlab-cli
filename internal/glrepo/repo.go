@@ -175,7 +175,7 @@ func FromURL(u *url.URL, defaultHostname string) (Interface, error) {
 	cfg, err := config.ParseDefaultConfig()
 	// an error is fine here, there might not be a config available
 	if err == nil {
-		apiHost, _ = cfg.Get(u.Hostname(), "api_host")
+		apiHost, _ = cfg.Get(u.Host, "api_host")
 	}
 
 	if apiHost != "" {
@@ -200,11 +200,11 @@ func FromURL(u *url.URL, defaultHostname string) (Interface, error) {
 	if repo != "" && pathWithoutRepo != "" {
 		parts := strings.SplitN(pathWithoutRepo, "/", 2)
 		if len(parts) == 1 {
-			return NewWithHost(parts[0], repo, u.Hostname()), nil
+			return NewWithHost(parts[0], repo, u.Host), nil
 		}
 
 		if len(parts) == 2 {
-			return NewWithGroup(parts[0], parts[1], repo, u.Hostname(), defaultHostname), nil
+			return NewWithGroup(parts[0], parts[1], repo, u.Host, defaultHostname), nil
 		}
 	}
 	return nil, fmt.Errorf("invalid path: %s", u.Path)
