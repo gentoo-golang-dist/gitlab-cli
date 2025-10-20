@@ -36,7 +36,7 @@ func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 
 	cmd := &cobra.Command{
 		Use:     "import",
-		Short:   "Import variables from JSON into a project or group.",
+		Short:   "Import variables from JSON or STDIN into a project or group.",
 		Aliases: []string{"im"},
 		Example: heredoc.Doc(`
 			$ glab variable import --file variables.json

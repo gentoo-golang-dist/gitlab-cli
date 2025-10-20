@@ -22,25 +22,28 @@ glab variable import [flags]
 im
 ```
 
+## Examples
 
 ```console
 $ glab variable import --file variables.json
 $ glab variable import --file vars.json --update
 $ cat variables.json | glab variable import --stdin
 $ glab variable import --group mygroup --file group_vars.json
+
 ```
 
 ## Options
 
 ```plaintext
-  -f, --file string       Path to JSON file containing variables.
-  --stdin                 Read JSON from standard input.
-  -g, --group string      Select a group or subgroup. Ignored if a repository argument is set.
-  --update                Update existing variables instead of throwing an error.
+  -f, --file string    Path to JSON file containing variables.
+  -g, --group string   Select a group or subgroup. Ignored if a repository argument is set.
+      --stdin          Read JSON from standard input.
+      --update         Update existing variables instead of throwing an error.
 ```
 
 ## Options inherited from parent commands
 
 ```plaintext
-  -h, --help   Show help for this command.
+  -h, --help              Show help for this command.
+  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
 ```

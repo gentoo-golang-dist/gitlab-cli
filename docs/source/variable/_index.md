@@ -35,6 +35,7 @@ var
 - [`delete`](delete.md)
 - [`export`](export.md)
 - [`get`](get.md)
+- [`import`](import.md)
 - [`list`](list.md)
 - [`set`](set.md)
 - [`update`](update.md)

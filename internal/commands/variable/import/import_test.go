@@ -57,6 +57,7 @@ func Test_NewCmdImport(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			io, _, _, _ := cmdtest.TestIOStreams()
 			f := cmdtest.NewTestFactory(io)
 
@@ -141,6 +142,7 @@ func Test_run_FileAndStdin(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 			err := test.opts.run()
 			assert.ErrorContains(t, err, test.expectError)
 		})
