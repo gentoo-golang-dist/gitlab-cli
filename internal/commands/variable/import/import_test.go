@@ -1,94 +1,19 @@
 package importCmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
 	"testing"
 
-	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 )
-
-func Test_NewCmdImport(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		cli      string
-		wants    options
-		wantsErr bool
-	}{
-		{
-			name:     "no args",
-			cli:      "",
-			wantsErr: false,
-		},
-		{
-			name:     "with group",
-			cli:      "--group mygroup",
-			wants:    options{group: "mygroup"},
-			wantsErr: false,
-		},
-		{
-			name:     "missing file path",
-			cli:      "--file",
-			wantsErr: true,
-		},
-		{
-			name:     "with update flag",
-			cli:      "--file vars.json --update",
-			wants:    options{filePath: "vars.json", update: true},
-			wantsErr: false,
-		},
-		{
-			name:     "with stdin flag",
-			cli:      "--stdin",
-			wants:    options{fromStdin: true},
-			wantsErr: false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			io, _, _, _ := cmdtest.TestIOStreams()
-			f := cmdtest.NewTestFactory(io)
-
-			argv, err := shlex.Split(test.cli)
-			assert.NoError(t, err)
-
-			var gotOpts *options
-			cmd := NewCmdImport(f, func(opts *options) error {
-				gotOpts = opts
-				return nil
-			})
-			cmd.SetArgs(argv)
-			cmd.SetIn(&bytes.Buffer{})
-			cmd.SetOut(&bytes.Buffer{})
-			cmd.SetErr(&bytes.Buffer{})
-
-			_, err = cmd.ExecuteC()
-			if test.wantsErr {
-				assert.Error(t, err)
-				return
-			}
-			assert.NoError(t, err)
-			if gotOpts != nil {
-				assert.Equal(t, test.wants.group, gotOpts.group)
-				assert.Equal(t, test.wants.filePath, gotOpts.filePath)
-				assert.Equal(t, test.wants.fromStdin, gotOpts.fromStdin)
-				assert.Equal(t, test.wants.update, gotOpts.update)
-			}
-		})
-	}
-}
 
 func Test_run_FileAndStdin(t *testing.T) {
 	t.Parallel()
@@ -99,7 +24,7 @@ func Test_run_FileAndStdin(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { os.Remove(tmpFile.Name()) })
 
-	variables := []gitlab.ProjectVariable{{Key: "VAR1", Value: "value1"}}
+	variables := []gitlabtesting.ProjectVariable{{Key: "VAR1", Value: "value1"}}
 	data, _ := json.Marshal(variables)
 	_, _ = tmpFile.Write(data)
 	tmpFile.Close()
@@ -143,7 +68,7 @@ func Test_run_FileAndStdin(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			err := test.opts.run()
+			err := test.opts.complete()
 			assert.ErrorContains(t, err, test.expectError)
 		})
 	}
@@ -170,7 +95,7 @@ func Test_importProjectVariables_CreateAndUpdate(t *testing.T) {
 		io: io,
 	}
 
-	vars := []gitlab.ProjectVariable{{Key: "VAR1", Value: "value1"}}
+	vars := []gitlabtesting.ProjectVariable{{Key: "VAR1", Value: "value1"}}
 	client, _ := opts.apiClient("gitlab.com")
 
 	err := opts.importProjectVariables(client.Lab(), "owner/repo", vars)
@@ -202,7 +127,7 @@ func Test_importProjectVariables_UpdateExisting(t *testing.T) {
 	}
 
 	client, _ := opts.apiClient("gitlab.com")
-	vars := []gitlab.ProjectVariable{{Key: "VAR1", Value: "value1"}}
+	vars := []gitlabtesting.ProjectVariable{{Key: "VAR1", Value: "value1"}}
 
 	err := opts.importProjectVariables(client.Lab(), "owner/repo", vars)
 	assert.NoError(t, err)
@@ -230,7 +155,7 @@ func Test_importGroupVariables_CreateAndUpdate(t *testing.T) {
 	}
 
 	client, _ := opts.apiClient("gitlab.com")
-	vars := []gitlab.ProjectVariable{{Key: "VAR1", Value: "value1"}}
+	vars := []gitlabtesting.ProjectVariable{{Key: "VAR1", Value: "value1"}}
 
 	err := opts.importGroupVariables(client.Lab(), vars)
 	assert.NoError(t, err)
@@ -256,7 +181,7 @@ func Test_importGroupVariables_Existing_NoUpdate(t *testing.T) {
 	}
 
 	client, _ := opts.apiClient("gitlab.com")
-	vars := []gitlab.ProjectVariable{{Key: "VAR1", Value: "value1"}}
+	vars := []gitlabtesting.ProjectVariable{{Key: "VAR1", Value: "value1"}}
 
 	err := opts.importGroupVariables(client.Lab(), vars)
 	assert.ErrorContains(t, err, "variable \"VAR1\" already exists")

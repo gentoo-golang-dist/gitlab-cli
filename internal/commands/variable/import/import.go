@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
-	clientgo "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -25,6 +26,8 @@ type options struct {
 	filePath  string
 	fromStdin bool
 	update    bool // true => update existing vars, false => error if exists
+
+	variables []gitlab.ProjectVariable
 }
 
 func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Command {
@@ -39,17 +42,47 @@ func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 		Short:   "Import variables from JSON or STDIN into a project or group.",
 		Aliases: []string{"im"},
 		Example: heredoc.Doc(`
+			# Example JSON file format (variables.json)
+			[
+				{
+					"key": "DATABASE_URL",
+					"value": "postgres://user:password@host/db",
+					"protected": true,
+					"masked": false,
+					"environment_scope": "*",
+					"variable_type": "env_var",
+					"description": "Database connection string"
+				},
+				{
+					"key": "API_KEY",
+					"value": "secret_key_here",
+					"masked": true,
+					"masked_and_hidden": true,
+					"protected": false,
+					"environment_scope": "production",
+					"variable_type": "env_var",
+					"description": "API key for production services"
+				}
+			]
+
+			# Import variables from a JSON file into the current project
 			$ glab variable import --file variables.json
+
+			# Import and update existing variables if they already exist
 			$ glab variable import --file vars.json --update
+
+			# Import variables from standard input
 			$ cat variables.json | glab variable import --stdin
+
+			# Import variables into a specific group or subgroup
 			$ glab variable import --group mygroup --file group_vars.json
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if runE != nil {
-				return runE(opts)
+			if err := opts.complete(); err != nil {
+				return err
 			}
 			return opts.run()
 		},
@@ -65,16 +98,18 @@ func NewCmdImport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 	return cmd
 }
 
-func (o *options) run() error {
+func (o *options) complete() error {
 	var input []byte
 	var err error
 
-	if o.filePath != "" {
+	switch {
+	case o.filePath != "":
 		input, err = os.ReadFile(o.filePath)
 		if err != nil {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
-	} else if o.fromStdin {
+
+	case o.fromStdin:
 		input, err = io.ReadAll(o.io.In)
 		if err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)
@@ -82,14 +117,20 @@ func (o *options) run() error {
 		if len(input) == 0 {
 			return fmt.Errorf("failed to read from stdin: no data")
 		}
-	} else {
+
+	default:
 		return fmt.Errorf("no input source provided: use --file or --stdin")
 	}
 
-	var variables []clientgo.ProjectVariable
-	if err := json.Unmarshal(input, &variables); err != nil {
+	if err := json.Unmarshal(input, &o.variables); err != nil {
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
+
+	return nil
+}
+
+func (o *options) run() error {
+	var err error
 
 	var repoHost string
 	if baseRepo, err := o.baseRepo(); err == nil {
@@ -101,47 +142,50 @@ func (o *options) run() error {
 	}
 	client := apiClient.Lab()
 
-	if o.group != "" {
-		return o.importGroupVariables(client, variables)
-	}
+	switch {
+	case o.group != "":
+		return o.importGroupVariables(client, o.variables)
 
-	repo, err := o.baseRepo()
-	if err != nil {
-		return err
+	default:
+		repo, err := o.baseRepo()
+		if err != nil {
+			return err
+		}
+		return o.importProjectVariables(client, repo.FullName(), o.variables)
 	}
-	return o.importProjectVariables(client, repo.FullName(), variables)
 }
 
-func (o *options) importProjectVariables(client *clientgo.Client, project string, vars []clientgo.ProjectVariable) error {
+func (o *options) importProjectVariables(client *gitlab.Client, project string, vars []gitlab.ProjectVariable) error {
 	for _, v := range vars {
 		_, resp, err := client.ProjectVariables.GetVariable(project, v.Key, nil)
-		if err == nil && resp.StatusCode == 200 {
+		if err == nil && resp.StatusCode == http.StatusOK {
 			if !o.update {
 				return fmt.Errorf("variable %q already exists. use --update if you wish to override it", v.Key)
 			}
-			_, _, err := client.ProjectVariables.UpdateVariable(project, v.Key, &clientgo.UpdateProjectVariableOptions{
-				Value:            &v.Value,
-				Protected:        &v.Protected,
-				Masked:           &v.Masked,
-				EnvironmentScope: &v.EnvironmentScope,
-				VariableType:     &v.VariableType,
-				Description:      &v.Description,
-				Raw:              &v.Raw,
+			_, _, err := client.ProjectVariables.UpdateVariable(project, v.Key, &gitlab.UpdateProjectVariableOptions{
+				Value:            gitlab.Ptr(v.Value),
+				Description:      gitlab.Ptr(v.Description),
+				EnvironmentScope: gitlab.Ptr(v.EnvironmentScope),
+				Masked:           gitlab.Ptr(v.Masked),
+				Protected:        gitlab.Ptr(v.Protected),
+				Raw:              gitlab.Ptr(v.Raw),
+				VariableType:     gitlab.Ptr(v.VariableType),
 			})
 			if err != nil {
 				return fmt.Errorf("failed to update variable %s: %w", v.Key, err)
 			}
 			fmt.Fprintf(o.io.StdOut, "Updated variable: %s\n", v.Key)
 		} else {
-			_, _, err := client.ProjectVariables.CreateVariable(project, &clientgo.CreateProjectVariableOptions{
-				Key:              &v.Key,
-				Value:            &v.Value,
-				Protected:        &v.Protected,
-				Masked:           &v.Masked,
-				EnvironmentScope: &v.EnvironmentScope,
-				VariableType:     &v.VariableType,
-				Description:      &v.Description,
-				Raw:              &v.Raw,
+			_, _, err := client.ProjectVariables.CreateVariable(project, &gitlab.CreateProjectVariableOptions{
+				Key:              gitlab.Ptr(v.Key),
+				Value:            gitlab.Ptr(v.Value),
+				Description:      gitlab.Ptr(v.Description),
+				EnvironmentScope: gitlab.Ptr(v.EnvironmentScope),
+				Masked:           gitlab.Ptr(v.Masked),
+				MaskedAndHidden:  gitlab.Ptr(v.Hidden),
+				Protected:        gitlab.Ptr(v.Protected),
+				Raw:              gitlab.Ptr(v.Raw),
+				VariableType:     gitlab.Ptr(v.VariableType),
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create variable %s: %w", v.Key, err)
@@ -152,36 +196,37 @@ func (o *options) importProjectVariables(client *clientgo.Client, project string
 	return nil
 }
 
-func (o *options) importGroupVariables(client *clientgo.Client, vars []clientgo.ProjectVariable) error {
+func (o *options) importGroupVariables(client *gitlab.Client, vars []gitlab.ProjectVariable) error {
 	for _, v := range vars {
 		_, resp, err := client.GroupVariables.GetVariable(o.group, v.Key, nil)
-		if err == nil && resp.StatusCode == 200 {
+		if err == nil && resp.StatusCode == http.StatusOK {
 			if !o.update {
 				return fmt.Errorf("variable %q already exists", v.Key)
 			}
-			_, _, err := client.GroupVariables.UpdateVariable(o.group, v.Key, &clientgo.UpdateGroupVariableOptions{
-				Value:            &v.Value,
-				Protected:        &v.Protected,
-				Masked:           &v.Masked,
-				EnvironmentScope: &v.EnvironmentScope,
-				VariableType:     &v.VariableType,
-				Description:      &v.Description,
-				Raw:              &v.Raw,
+			_, _, err := client.GroupVariables.UpdateVariable(o.group, v.Key, &gitlab.UpdateGroupVariableOptions{
+				Value:            gitlab.Ptr(v.Value),
+				Description:      gitlab.Ptr(v.Description),
+				EnvironmentScope: gitlab.Ptr(v.EnvironmentScope),
+				Masked:           gitlab.Ptr(v.Masked),
+				Protected:        gitlab.Ptr(v.Protected),
+				Raw:              gitlab.Ptr(v.Raw),
+				VariableType:     gitlab.Ptr(v.VariableType),
 			})
 			if err != nil {
 				return fmt.Errorf("failed to update variable %s: %w", v.Key, err)
 			}
 			fmt.Fprintf(o.io.StdOut, "Updated variable: %s\n", v.Key)
 		} else {
-			_, _, err := client.GroupVariables.CreateVariable(o.group, &clientgo.CreateGroupVariableOptions{
-				Key:              &v.Key,
-				Value:            &v.Value,
-				Protected:        &v.Protected,
-				Masked:           &v.Masked,
-				EnvironmentScope: &v.EnvironmentScope,
-				VariableType:     &v.VariableType,
-				Description:      &v.Description,
-				Raw:              &v.Raw,
+			_, _, err := client.GroupVariables.CreateVariable(o.group, &gitlab.CreateGroupVariableOptions{
+				Key:              gitlab.Ptr(v.Key),
+				Value:            gitlab.Ptr(v.Value),
+				Description:      gitlab.Ptr(v.Description),
+				EnvironmentScope: gitlab.Ptr(v.EnvironmentScope),
+				Masked:           gitlab.Ptr(v.Masked),
+				MaskedAndHidden:  gitlab.Ptr(v.Hidden),
+				Protected:        gitlab.Ptr(v.Protected),
+				VariableType:     gitlab.Ptr(v.VariableType),
+				Raw:              gitlab.Ptr(v.Raw),
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create variable %s: %w", v.Key, err)
