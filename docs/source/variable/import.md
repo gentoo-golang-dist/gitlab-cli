@@ -25,9 +25,39 @@ im
 ## Examples
 
 ```console
+# Example JSON file format (variables.json)
+[
+	{
+		"key": "DATABASE_URL",
+		"value": "postgres://user:password@host/db",
+		"protected": true,
+		"masked": false,
+		"environment_scope": "*",
+		"variable_type": "env_var",
+		"description": "Database connection string"
+	},
+	{
+		"key": "API_KEY",
+		"value": "secret_key_here",
+  	"masked": true,
+	  "masked_and_hidden": true,
+	  "protected": false,
+	  "environment_scope": "production",
+    "variable_type": "env_var",
+	  "description": "API key for production services"
+	}
+]
+
+# Import variables from a JSON file into the current project
 $ glab variable import --file variables.json
+
+# Import and update existing variables if they already exist
 $ glab variable import --file vars.json --update
+
+# Import variables from standard input
 $ cat variables.json | glab variable import --stdin
+
+# Import variables into a specific group or subgroup
 $ glab variable import --group mygroup --file group_vars.json
 
 ```
