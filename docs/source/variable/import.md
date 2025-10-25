@@ -28,22 +28,22 @@ im
 # Example JSON file format (variables.json)
 [
 	{
-		"key": "DATABASE_URL",
-		"value": "postgres://user:password@host/db",
-		"protected": true,
-		"masked": false,
-		"environment_scope": "*",
-		"variable_type": "env_var",
-		"description": "Database connection string"
+      "key": "DATABASE_URL",
+	  "value": "postgres://user:password@host/db",
+	  "protected": true,
+	  "masked": false,
+	  "environment_scope": "*",
+	  "variable_type": "env_var",
+	  "description": "Database connection string"
 	},
 	{
-		"key": "API_KEY",
-		"value": "secret_key_here",
-  	"masked": true,
+	  "key": "API_KEY",
+	  "value": "secret_key_here",
+	  "masked": true,
 	  "masked_and_hidden": true,
 	  "protected": false,
 	  "environment_scope": "production",
-    "variable_type": "env_var",
+	  "variable_type": "env_var",
 	  "description": "API key for production services"
 	}
 ]
