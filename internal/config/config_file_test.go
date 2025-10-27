@@ -477,3 +477,159 @@ func Test_ConfigFile_PureFunction(t *testing.T) {
 	_, err := os.Stat(configDir)
 	assert.True(t, os.IsNotExist(err), "ConfigFile should not create directories")
 }
+
+func Test_ConfigMerging_GlobalKeys(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create system config directory
+	systemConfigDir := t.TempDir()
+	systemGlabDir := filepath.Join(systemConfigDir, "glab-cli")
+	err := os.MkdirAll(systemGlabDir, 0o750)
+	require.NoError(t, err)
+
+	// Create user config directory
+	userConfigDir := t.TempDir()
+	userGlabDir := filepath.Join(userConfigDir, "glab-cli")
+	err = os.MkdirAll(userGlabDir, 0o750)
+	require.NoError(t, err)
+
+	// Write system config with some global settings
+	systemConfigContent := `editor: vim
+git_protocol: ssh
+pager: less
+`
+	systemConfigFile := filepath.Join(systemGlabDir, "config.yml")
+	err = os.WriteFile(systemConfigFile, []byte(systemConfigContent), 0o600)
+	require.NoError(t, err)
+
+	// Write user config that overrides some settings and adds new ones
+	userConfigContent := `editor: nano
+browser: firefox
+`
+	userConfigFile := filepath.Join(userGlabDir, "config.yml")
+	err = os.WriteFile(userConfigFile, []byte(userConfigContent), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG environment variables
+	t.Setenv("XDG_CONFIG_DIRS", systemConfigDir)
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+	xdg.Reload()
+
+	// Parse config (should merge)
+	cfg, err := ParseDefaultConfig()
+	require.NoError(t, err)
+
+	// Check merged values
+	editor, _ := cfg.Get("", "editor")
+	assert.Equal(t, "nano", editor) // User override
+
+	gitProtocol, _ := cfg.Get("", "git_protocol")
+	assert.Equal(t, "ssh", gitProtocol) // From system
+
+	pager, _ := cfg.Get("", "pager")
+	assert.Equal(t, "less", pager) // From system
+
+	browser, _ := cfg.Get("", "browser")
+	assert.Equal(t, "firefox", browser) // From user
+}
+
+func Test_ConfigMerging_HostSettings(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create system config directory
+	systemConfigDir := t.TempDir()
+	systemGlabDir := filepath.Join(systemConfigDir, "glab-cli")
+	err := os.MkdirAll(systemGlabDir, 0o750)
+	require.NoError(t, err)
+
+	// Create user config directory
+	userConfigDir := t.TempDir()
+	userGlabDir := filepath.Join(userConfigDir, "glab-cli")
+	err = os.MkdirAll(userGlabDir, 0o750)
+	require.NoError(t, err)
+
+	// Write system config with host settings
+	systemConfigContent := `hosts:
+  gitlab.com:
+    api_protocol: https
+    token: system_token
+  gitlab.example.com:
+    api_protocol: https
+    token: example_token
+`
+	systemConfigFile := filepath.Join(systemGlabDir, "config.yml")
+	err = os.WriteFile(systemConfigFile, []byte(systemConfigContent), 0o600)
+	require.NoError(t, err)
+
+	// Write user config with overlapping and new host settings
+	userConfigContent := `hosts:
+  gitlab.com:
+    token: user_token
+  gitlab.another.com:
+    api_protocol: https
+    token: another_token
+`
+	userConfigFile := filepath.Join(userGlabDir, "config.yml")
+	err = os.WriteFile(userConfigFile, []byte(userConfigContent), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG environment variables
+	t.Setenv("XDG_CONFIG_DIRS", systemConfigDir)
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+	xdg.Reload()
+
+	// Parse config (should merge)
+	cfg, err := ParseDefaultConfig()
+	require.NoError(t, err)
+
+	// gitlab.com: should have merged settings (user token overrides system)
+	token, _ := cfg.Get("gitlab.com", "token")
+	assert.Equal(t, "user_token", token)
+	apiProtocol, _ := cfg.Get("gitlab.com", "api_protocol")
+	assert.Equal(t, "https", apiProtocol) // From system
+
+	// gitlab.example.com: only in system config
+	exampleToken, _ := cfg.Get("gitlab.example.com", "token")
+	assert.Equal(t, "example_token", exampleToken)
+
+	// gitlab.another.com: only in user config
+	anotherToken, _ := cfg.Get("gitlab.another.com", "token")
+	assert.Equal(t, "another_token", anotherToken)
+}
+
+func Test_ConfigMerging_NoMergingWithGLABConfigDir(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create system config directory (should be ignored)
+	systemConfigDir := t.TempDir()
+	systemGlabDir := filepath.Join(systemConfigDir, "glab-cli")
+	err := os.MkdirAll(systemGlabDir, 0o750)
+	require.NoError(t, err)
+
+	systemConfigContent := `editor: system_editor
+`
+	systemConfigFile := filepath.Join(systemGlabDir, "config.yml")
+	err = os.WriteFile(systemConfigFile, []byte(systemConfigContent), 0o600)
+	require.NoError(t, err)
+
+	// Create GLAB_CONFIG_DIR
+	glabConfigDir := t.TempDir()
+	glabConfigFile := filepath.Join(glabConfigDir, "config.yml")
+	glabConfigContent := `editor: glab_editor
+`
+	err = os.WriteFile(glabConfigFile, []byte(glabConfigContent), 0o600)
+	require.NoError(t, err)
+
+	// Set environment variables
+	t.Setenv("GLAB_CONFIG_DIR", glabConfigDir)
+	t.Setenv("XDG_CONFIG_DIRS", systemConfigDir)
+	xdg.Reload()
+
+	// Parse config (should NOT merge, only use GLAB_CONFIG_DIR)
+	cfg, err := ParseDefaultConfig()
+	require.NoError(t, err)
+
+	// Should only have settings from GLAB_CONFIG_DIR
+	editor, _ := cfg.Get("", "editor")
+	assert.Equal(t, "glab_editor", editor)
+}
