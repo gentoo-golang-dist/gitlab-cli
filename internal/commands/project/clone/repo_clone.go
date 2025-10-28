@@ -124,9 +124,13 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 			dbg.Debug("Args:", strings.Join(args, " "))
 			dbg.Debug("GitFlags:", strings.Join(opts.gitFlags, " "))
 			if nArgs := len(args); nArgs > 0 {
-				ctxOpts.Repo = args[0]
-				if nArgs > 1 && !opts.preserveNamespace {
-					opts.dir = args[1]
+				if opts.groupName != "" && !opts.preserveNamespace {
+					opts.dir = args[0]
+				} else {
+					ctxOpts.Repo = args[0]
+					if nArgs > 1 && !opts.preserveNamespace {
+						opts.dir = args[1]
+					}
 				}
 			}
 			dbg.Debug("Dir:", opts.dir)
