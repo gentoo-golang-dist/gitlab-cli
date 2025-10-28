@@ -29,6 +29,7 @@ import (
 	"github.com/charmbracelet/fang"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/spf13/cobra"
+	"gitlab.com/gitlab-org/cli/cmd/glab/security"
 )
 
 var (
@@ -165,6 +166,7 @@ func main() {
 	)
 
 	setupSurveyCore(cmdFactory.IO())
+	security.CheckRoot()
 
 	// Setup command
 	var expandedArgs []string
