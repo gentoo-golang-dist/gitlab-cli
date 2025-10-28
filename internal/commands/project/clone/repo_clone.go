@@ -3,6 +3,7 @@ package clone
 import (
 	"errors"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -124,7 +125,7 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 			dbg.Debug("Args:", strings.Join(args, " "))
 			dbg.Debug("GitFlags:", strings.Join(opts.gitFlags, " "))
 			if nArgs := len(args); nArgs > 0 {
-				if opts.groupName != "" && !opts.preserveNamespace {
+				if opts.groupName != "" {
 					opts.dir = args[0]
 				} else {
 					ctxOpts.Repo = args[0]
@@ -257,7 +258,17 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 		ctxOpt := *ctxOpts
 		ctxOpt.Project = project
 		ctxOpt.Repo = project.PathWithNamespace
-		err = cloneRun(opts, &ctxOpt)
+		opt := *opts
+		if opts.dir != "" {
+			if opts.preserveNamespace {
+				namespacedDir := project.PathWithNamespace
+				opt.dir = opts.dir + "/" + namespacedDir
+				opt.preserveNamespace = false
+			} else {
+				opt.dir = opts.dir + "/" + path.Base(project.PathWithNamespace)
+			}
+		}
+		err = cloneRun(&opt, &ctxOpt)
 		if err != nil {
 			finalOutput = append(finalOutput, fmt.Sprintf("%s %s - Error: %q", c.RedCheck(), project.PathWithNamespace, err.Error()))
 		} else {
