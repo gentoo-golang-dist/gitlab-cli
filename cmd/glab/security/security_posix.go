@@ -10,35 +10,39 @@ import (
 // CheckRoot performs a security check to ensure the binary is not run as root
 // with setuid or setgid bits set, which is a security risk.
 func CheckRoot() {
-	// 1. Check if the effective user ID is root (EUID=0)
-	if os.Geteuid() != 0 {
-		// Not running as root, so we are safe.
-		return
-	}
-
-	// 2. Get the path to the running executable
+	// Get the path to the running executable
 	executablePath, err := os.Executable()
 	if err != nil {
-		// If we can't get the executable path, we can't check its perms.
-		// It's safer to warn, but we'll allow execution to continue.
 		fmt.Fprintf(os.Stderr, "Warning: could not determine executable path: %v\n", err)
 		return
 	}
 
-	// 3. Get the file stats (os.Stat follows symlinks)
-	stat, err := os.Stat(executablePath)
+	// Get file info and check raw mode bits
+	fileInfo, err := os.Stat(executablePath)
 	if err != nil {
-		// Similar to above, warn but continue.
 		fmt.Fprintf(os.Stderr, "Warning: could not stat executable: %v\n", err)
 		return
 	}
 
-	// 4. Check the file mode for setuid or setgid bits
-	mode := stat.Mode()
-	if mode&os.ModeSetuid != 0 || mode&os.ModeSetgid != 0 {
-		// 5. This is the dangerous condition. Print error and exit.
-		fmt.Fprintln(os.Stderr, "Error: running as root with the setuid or setgid bit set is not allowed")
-		fmt.Fprintln(os.Stderr, "Please remove the setuid/setgid bit from the binary: chmod -s $(which glab)")
+	// Get raw mode bits including setuid/setgid bits
+	mode := fileInfo.Mode()
+	fmt.Fprintf(os.Stderr, "Debug: File mode: %v\n", mode)
+
+	// Check for setuid/setgid using Mode's built-in checks
+	if mode&os.ModeSetuid != 0 {
+		fmt.Fprintln(os.Stderr, "Error: setuid bit is set on the binary which is not allowed")
+		fmt.Fprintf(os.Stderr, "Please remove the setuid bit: sudo chmod u-s %s\n", executablePath)
 		os.Exit(1)
+	}
+
+	if mode&os.ModeSetgid != 0 {
+		fmt.Fprintln(os.Stderr, "Error: setgid bit is set on the binary which is not allowed")
+		fmt.Fprintf(os.Stderr, "Please remove the setgid bit: sudo chmod g-s %s\n", executablePath)
+		os.Exit(1)
+	}
+
+	// Warn if running as root
+	if os.Geteuid() == 0 {
+		fmt.Fprintln(os.Stderr, "Warning: Running glab as root is not recommended")
 	}
 }
