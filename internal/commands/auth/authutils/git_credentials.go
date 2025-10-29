@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	"gitlab.com/gitlab-org/cli/internal/git"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
 	"gitlab.com/gitlab-org/cli/internal/run"
 
-	"github.com/AlecAivazis/survey/v2"
+	"github.com/charmbracelet/huh"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/google/shlex"
 )
@@ -28,10 +27,11 @@ func (gc *GitCredentialFlow) Prompt(hostname, protocol string) error {
 		return nil
 	}
 
-	err := prompt.AskOne(&survey.Confirm{
-		Message: "Authenticate Git with your GitLab credentials?",
-		Default: true,
-	}, &gc.shouldSetup)
+	gc.shouldSetup = true // default value
+	err := huh.NewConfirm().
+		Title("Authenticate Git with your GitLab credentials?").
+		Value(&gc.shouldSetup).
+		Run()
 	if err != nil {
 		return fmt.Errorf("could not prompt: %w", err)
 	}

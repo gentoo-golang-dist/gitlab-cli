@@ -18,6 +18,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/charmbracelet/huh"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
@@ -307,14 +308,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		user, _, err := apiClient.Lab().Users.CurrentUser()
 		if err == nil {
 			username := user.Username
-			var keepGoing bool
-			err = survey.AskOne(&survey.Confirm{
-				Message: fmt.Sprintf(
+			keepGoing := false // default value
+			err = huh.NewConfirm().
+				Title(fmt.Sprintf(
 					"You're already logged into %s as %s. Do you want to re-authenticate?",
 					hostname,
-					username),
-				Default: false,
-			}, &keepGoing)
+					username)).
+				Value(&keepGoing).
+				Run()
 			if err != nil {
 				return fmt.Errorf("could not prompt: %w", err)
 			}
