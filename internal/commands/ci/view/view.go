@@ -217,14 +217,14 @@ func (o *options) run() error {
 			return err
 		}
 
+		if commit.LastPipeline == nil {
+			return fmt.Errorf("Can't find pipeline for commit: %s", commit.ID)
+		}
+
 		pipelineID = commit.LastPipeline.ID
 		webURL = commit.LastPipeline.WebURL
 		pipelineCreatedAt = *commit.LastPipeline.CreatedAt
 		commitSHA = commit.ID
-	}
-
-	if commit.LastPipeline == nil {
-		return fmt.Errorf("Can't find pipeline for commit: %s", commit.ID)
 	}
 
 	if o.openInBrowser { // open in browser if --web flag is specified
