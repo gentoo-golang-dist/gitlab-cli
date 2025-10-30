@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"           // v1 - used by huh
 	lipglossv2 "github.com/charmbracelet/lipgloss/v2" // v2 - used by fang
+	"github.com/muesli/termenv"
 )
 
 // GitLabColors contains the GitLab product color palette.
@@ -67,16 +68,32 @@ func FangColorScheme(lightDarkFunc lipglossv2.LightDarkFunc) fang.ColorScheme {
 
 // HuhTheme returns a huh theme with GitLab product colors.
 // This ensures consistent branding across interactive prompts.
-// Note: huh uses lipgloss v1, not v2.
+// Note: huh uses lipgloss v1, which doesn't support adaptive colors like v2,
+// so we detect the terminal background and choose appropriate colors.
 func HuhTheme() *huh.Theme {
 	theme := huh.ThemeBase()
 
-	// GitLab brand colors (lipgloss v1 colors for huh)
-	gitlabPurple := lipgloss.Color("#7759C2")
-	gitlabOrange := lipgloss.Color("#FC6D26")
-	gitlabBlue := lipgloss.Color("#1068BF")
-	gitlabRed := lipgloss.Color("#C91C00")
-	gitlabSubtle := lipgloss.Color("#6B6B73")
+	// Detect terminal background to choose appropriate colors
+	isDark := termenv.HasDarkBackground()
+
+	// GitLab brand colors adapted for terminal background
+	var gitlabPurple, gitlabOrange, gitlabBlue, gitlabRed, gitlabSubtle lipgloss.Color
+
+	if isDark {
+		// Dark terminal: use lighter, brighter colors for visibility
+		gitlabPurple = lipgloss.Color("#A989F5") // Lighter purple for dark backgrounds
+		gitlabOrange = lipgloss.Color("#FC6D26") // Orange works on both
+		gitlabBlue = lipgloss.Color("#4285F4")   // Lighter blue
+		gitlabRed = lipgloss.Color("#F97583")    // Lighter red
+		gitlabSubtle = lipgloss.Color("#B0B0B0") // Lighter gray
+	} else {
+		// Light terminal: use darker colors for contrast
+		gitlabPurple = lipgloss.Color("#7759C2") // Darker purple for light backgrounds
+		gitlabOrange = lipgloss.Color("#FC6D26") // Orange works on both
+		gitlabBlue = lipgloss.Color("#1068BF")   // Darker blue
+		gitlabRed = lipgloss.Color("#C91C00")    // Darker red
+		gitlabSubtle = lipgloss.Color("#6B6B73") // Darker gray
+	}
 
 	// Focused field styles (when user is interacting)
 	theme.Focused.Base = theme.Focused.Base.BorderForeground(gitlabPurple)
