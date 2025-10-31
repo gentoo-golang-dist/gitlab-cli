@@ -58,5 +58,6 @@ func CheckRoot() {
 		}
 	}
 
+	fmt.Fprint(os.Stderr, msg)
 	os.Exit(1)
 }
