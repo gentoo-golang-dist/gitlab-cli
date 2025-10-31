@@ -29,7 +29,7 @@ import (
 	"github.com/charmbracelet/fang"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/spf13/cobra"
-	"gitlab.com/gitlab-org/cli/cmd/glab/security"
+	"gitlab.com/gitlab-org/cli/internal/security"
 )
 
 var (
