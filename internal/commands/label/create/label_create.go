@@ -52,6 +52,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			if s, _ := cmd.Flags().GetString("description"); s != "" {
 				l.Description = gitlab.Ptr(s)
 			}
+			if s, _ := cmd.Flags().GetInt("priority"); s != 0 {
+				l.Priority = gitlab.Ptr(s)
+			}
 			label, _, err := client.Labels.CreateLabel(repo.FullName(), l)
 			if err != nil {
 				return err
@@ -65,6 +68,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	_ = labelCreateCmd.MarkFlagRequired("name")
 	labelCreateCmd.Flags().StringP("color", "c", "#428BCA", "Color of the label, in plain or HEX code.")
 	labelCreateCmd.Flags().StringP("description", "d", "", "Label description.")
+	labelCreateCmd.Flags().IntP("priority", "p", 0, "Label priority.")
 
 	return labelCreateCmd
 }
