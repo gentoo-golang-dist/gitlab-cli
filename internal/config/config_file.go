@@ -17,14 +17,35 @@ var (
 	configError  error
 )
 
+// legacyConfigDir returns the legacy config directory (~/.config/glab-cli).
+// This was the default location before XDG platform-specific paths were adopted.
+func legacyConfigDir() string {
+	home := os.Getenv("HOME")
+	if home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".config", "glab-cli")
+}
+
 // ConfigDir returns the config directory for writing configuration.
-// It respects GLAB_CONFIG_DIR as the highest priority override,
-// otherwise uses XDG_CONFIG_HOME (defaulting to ~/.config).
+// It respects GLAB_CONFIG_DIR as the highest priority override.
+// For backward compatibility, if a legacy config exists at ~/.config/glab-cli/,
+// that location continues to be used. Otherwise, uses XDG_CONFIG_HOME.
 func ConfigDir() string {
 	glabDir := os.Getenv("GLAB_CONFIG_DIR")
 	if glabDir != "" {
 		return glabDir
 	}
+
+	// Check for legacy config location for backward compatibility
+	legacyDir := legacyConfigDir()
+	if legacyDir != "" {
+		legacyConfigFile := filepath.Join(legacyDir, "config.yml")
+		if _, err := os.Stat(legacyConfigFile); err == nil {
+			return legacyDir
+		}
+	}
+
 	return filepath.Join(xdg.ConfigHome, "glab-cli")
 }
 
@@ -36,12 +57,13 @@ func ConfigFile() string {
 	return filepath.Join(ConfigDir(), "config.yml")
 }
 
-// SearchConfigFile searches for an existing config file across all XDG config paths.
+// SearchConfigFile searches for an existing config file across all config paths.
 // It respects GLAB_CONFIG_DIR as the highest priority override.
 // Search order:
 // 1. $GLAB_CONFIG_DIR/config.yml (if GLAB_CONFIG_DIR is set)
-// 2. $XDG_CONFIG_HOME/glab-cli/config.yml (default: ~/.config/glab-cli/config.yml)
-// 3. $XDG_CONFIG_DIRS/glab-cli/config.yml (default: /etc/xdg/glab-cli/config.yml)
+// 2. ~/.config/glab-cli/config.yml (legacy location, for backward compatibility)
+// 3. $XDG_CONFIG_HOME/glab-cli/config.yml (platform-specific XDG location)
+// 4. $XDG_CONFIG_DIRS/glab-cli/config.yml (system-wide configs)
 //
 // Returns the path to the first config file found, or an error if none exist.
 func SearchConfigFile() (string, error) {
@@ -56,6 +78,15 @@ func SearchConfigFile() (string, error) {
 		return configPath, os.ErrNotExist
 	}
 
+	// Check legacy location first for backward compatibility
+	legacyDir := legacyConfigDir()
+	if legacyDir != "" {
+		legacyConfigPath := filepath.Join(legacyDir, "config.yml")
+		if _, err := os.Stat(legacyConfigPath); err == nil {
+			return legacyConfigPath, nil
+		}
+	}
+
 	// XDG search: user config → system configs
 	configPath, err := xdg.SearchConfigFile("glab-cli/config.yml")
 	if err != nil {
@@ -64,11 +95,56 @@ func SearchConfigFile() (string, error) {
 	return configPath, nil
 }
 
+// checkForDuplicateConfigs warns if configs exist in both legacy and XDG locations.
+// This can happen if a user upgraded to an XDG version that broke their legacy config,
+// created a new config in the XDG location, then upgraded to a version with backward
+// compatibility that now prefers the legacy config.
+func checkForDuplicateConfigs() {
+	// Only check if GLAB_CONFIG_DIR is not set
+	if os.Getenv("GLAB_CONFIG_DIR") != "" {
+		return
+	}
+
+	legacyDir := legacyConfigDir()
+	if legacyDir == "" {
+		return
+	}
+
+	legacyConfigPath := filepath.Join(legacyDir, "config.yml")
+	xdgConfigPath := filepath.Join(xdg.ConfigHome, "glab-cli", "config.yml")
+
+	// Check if both exist and are different locations
+	if legacyConfigPath == xdgConfigPath {
+		return
+	}
+
+	legacyExists := false
+	if _, err := os.Stat(legacyConfigPath); err == nil {
+		legacyExists = true
+	}
+
+	xdgExists := false
+	if _, err := os.Stat(xdgConfigPath); err == nil {
+		xdgExists = true
+	}
+
+	if legacyExists && xdgExists {
+		fmt.Fprintf(os.Stderr, "Warning: Config files found in both legacy and XDG locations.\n")
+		fmt.Fprintf(os.Stderr, "  Using (legacy): %s\n", legacyConfigPath)
+		fmt.Fprintf(os.Stderr, "  Ignoring (XDG): %s\n", xdgConfigPath)
+		fmt.Fprintf(os.Stderr, "Consider consolidating to one location to avoid confusion.\n")
+	}
+}
+
 // Init initialises and returns the cached configuration
 func Init() (Config, error) {
 	if cachedConfig != nil || configError != nil {
 		return cachedConfig, configError
 	}
+
+	// Check for duplicate configs and warn user
+	checkForDuplicateConfigs()
+
 	cachedConfig, configError = ParseDefaultConfig()
 
 	if os.IsNotExist(configError) {

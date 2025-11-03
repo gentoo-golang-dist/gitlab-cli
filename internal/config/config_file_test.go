@@ -298,6 +298,10 @@ host: https://gitlab.mycompany.org
 func Test_SearchConfigFile_UserConfig(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
 
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
 	// Create a temporary user config directory
 	userConfigDir := t.TempDir()
 	userConfigFile := filepath.Join(userConfigDir, "glab-cli", "config.yml")
@@ -320,6 +324,10 @@ func Test_SearchConfigFile_UserConfig(t *testing.T) {
 
 func Test_SearchConfigFile_SystemConfig(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
+
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 
 	// Create temporary directories for system and user configs
 	userConfigDir := t.TempDir()
@@ -345,6 +353,10 @@ func Test_SearchConfigFile_SystemConfig(t *testing.T) {
 
 func Test_SearchConfigFile_Precedence(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
+
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 
 	// Create temporary directories
 	userConfigDir := t.TempDir()
@@ -376,6 +388,10 @@ func Test_SearchConfigFile_Precedence(t *testing.T) {
 
 func Test_SearchConfigFile_NotFound(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
+
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 
 	// Use empty temp directories (no config files)
 	userConfigDir := t.TempDir()
@@ -433,6 +449,10 @@ func Test_SearchConfigFile_GLABConfigDirNotFound(t *testing.T) {
 func Test_ConfigFile_XDGCompliance(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
 
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
 	userConfigDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
 	xdg.Reload() // Reload XDG paths after env change
@@ -446,6 +466,10 @@ func Test_ConfigFile_XDGCompliance(t *testing.T) {
 func Test_ConfigDir_XDGCompliance(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
 
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
 	userConfigDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
 	xdg.Reload() // Reload XDG paths after env change
@@ -458,6 +482,10 @@ func Test_ConfigDir_XDGCompliance(t *testing.T) {
 
 func Test_ConfigFile_PureFunction(t *testing.T) {
 	test.ClearEnvironmentVariables(t)
+
+	// Set HOME to prevent legacy config detection from finding real config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
 
 	// ConfigFile() should be a pure function that just returns a path
 	userConfigDir := t.TempDir()
@@ -476,4 +504,78 @@ func Test_ConfigFile_PureFunction(t *testing.T) {
 	configDir := filepath.Dir(configFile)
 	_, err := os.Stat(configDir)
 	assert.True(t, os.IsNotExist(err), "ConfigFile should not create directories")
+}
+
+func Test_ConfigDir_LegacyBackwardCompatibility(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create a temporary home directory
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	// Create legacy config directory and file
+	legacyDir := filepath.Join(homeDir, ".config", "glab-cli")
+	err := os.MkdirAll(legacyDir, 0o750)
+	require.NoError(t, err)
+
+	legacyConfigFile := filepath.Join(legacyDir, "config.yml")
+	err = os.WriteFile(legacyConfigFile, []byte("test: legacy"), 0o600)
+	require.NoError(t, err)
+
+	// Even though XDG_CONFIG_HOME might point elsewhere, if legacy config exists,
+	// ConfigDir should return the legacy location
+	xdgConfigHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdgConfigHome)
+	xdg.Reload()
+
+	configDir := ConfigDir()
+
+	// Should use legacy location since the config file exists there
+	assert.Equal(t, legacyDir, configDir)
+}
+
+func Test_ConfigDir_NewInstallation(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create a temporary home directory with NO legacy config
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	// Set XDG_CONFIG_HOME to a new location
+	xdgConfigHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdgConfigHome)
+	xdg.Reload()
+
+	configDir := ConfigDir()
+
+	// Should use XDG location since no legacy config exists
+	expectedDir := filepath.Join(xdgConfigHome, "glab-cli")
+	assert.Equal(t, expectedDir, configDir)
+}
+
+func Test_SearchConfigFile_LegacyLocation(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create a temporary home directory
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	// Create legacy config
+	legacyDir := filepath.Join(homeDir, ".config", "glab-cli")
+	err := os.MkdirAll(legacyDir, 0o750)
+	require.NoError(t, err)
+
+	legacyConfigFile := filepath.Join(legacyDir, "config.yml")
+	err = os.WriteFile(legacyConfigFile, []byte("test: legacy"), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG_CONFIG_HOME to a different location
+	xdgConfigHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdgConfigHome)
+	xdg.Reload()
+
+	// SearchConfigFile should find the legacy config first
+	foundPath, err := SearchConfigFile()
+	require.NoError(t, err)
+	assert.Equal(t, legacyConfigFile, foundPath)
 }
