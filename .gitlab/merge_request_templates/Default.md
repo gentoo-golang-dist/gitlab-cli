@@ -25,4 +25,5 @@ Resolves #[issue_number]
 - [ ] Chore (Related to CI or Packaging to platforms)
 - [ ] Test gap
 
-/label ~"devops::create" ~"group::code review" ~"Category:GitLab CLI" ~"cli"
+/label ~"devops::create" ~"group::code review" ~"Category:GitLab CLI" ~"cli" ~"section::dev"
+/assign me
