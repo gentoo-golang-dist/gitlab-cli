@@ -2,13 +2,13 @@ package iostreams
 
 import "fmt"
 
-// Log prints output to StdErr
-func (s *IOStreams) Log(msg ...any) {
+// LogLogError prints output to StdErr
+func (s *IOStreams) LogError(msg ...any) {
 	fmt.Fprintln(s.StdErr, msg...)
 }
 
-// Logf formats according to a format specifier and writes to StdErr
-func (s *IOStreams) Logf(format string, a ...any) {
+// LogLogErrorf formats according to a format specifier and writes to StdErr
+func (s *IOStreams) LogErrorf(format string, a ...any) {
 	fmt.Fprintf(s.StdErr, format, a...)
 }
 
