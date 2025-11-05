@@ -7,26 +7,27 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/help"
 	aliasCmd "gitlab.com/gitlab-org/cli/internal/commands/alias"
 	apiCmd "gitlab.com/gitlab-org/cli/internal/commands/api"
 	authCmd "gitlab.com/gitlab-org/cli/internal/commands/auth"
 	changelogCmd "gitlab.com/gitlab-org/cli/internal/commands/changelog"
-	pipelineCmd "gitlab.com/gitlab-org/cli/internal/commands/ci"
 	clusterCmd "gitlab.com/gitlab-org/cli/internal/commands/cluster"
 	completionCmd "gitlab.com/gitlab-org/cli/internal/commands/completion"
 	configCmd "gitlab.com/gitlab-org/cli/internal/commands/config"
 	deployKeyCmd "gitlab.com/gitlab-org/cli/internal/commands/deploy-key"
 	duoCmd "gitlab.com/gitlab-org/cli/internal/commands/duo"
 	gpgCmd "gitlab.com/gitlab-org/cli/internal/commands/gpg-key"
-	"gitlab.com/gitlab-org/cli/internal/commands/help"
 	incidentCmd "gitlab.com/gitlab-org/cli/internal/commands/incident"
 	issueCmd "gitlab.com/gitlab-org/cli/internal/commands/issue"
 	iterationCmd "gitlab.com/gitlab-org/cli/internal/commands/iteration"
 	jobCmd "gitlab.com/gitlab-org/cli/internal/commands/job"
 	labelCmd "gitlab.com/gitlab-org/cli/internal/commands/label"
 	mcpCmd "gitlab.com/gitlab-org/cli/internal/commands/mcp"
+	milestoneCmd "gitlab.com/gitlab-org/cli/internal/commands/milestone"
 	mrCmd "gitlab.com/gitlab-org/cli/internal/commands/mr"
 	opentofuCmd "gitlab.com/gitlab-org/cli/internal/commands/opentofu"
+	pipelineCmd "gitlab.com/gitlab-org/cli/internal/commands/ci"
 	projectCmd "gitlab.com/gitlab-org/cli/internal/commands/project"
 	releaseCmd "gitlab.com/gitlab-org/cli/internal/commands/release"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
@@ -130,31 +131,32 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(updateCmd.NewCheckUpdateCmd(f))
 	rootCmd.AddCommand(authCmd.NewCmdAuth(f))
 
+	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))
 	rootCmd.AddCommand(changelogCmd.NewCmdChangelog(f))
 	rootCmd.AddCommand(clusterCmd.NewCmdCluster(f))
+	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
+	rootCmd.AddCommand(duoCmd.NewCmdDuo(f))
+	rootCmd.AddCommand(gpgCmd.NewCmdGPGKey(f))
+	rootCmd.AddCommand(incidentCmd.NewCmdIncident(f))
 	rootCmd.AddCommand(issueCmd.NewCmdIssue(f))
 	rootCmd.AddCommand(iterationCmd.NewCmdIteration(f))
-	rootCmd.AddCommand(incidentCmd.NewCmdIncident(f))
 	rootCmd.AddCommand(jobCmd.NewCmdJob(f))
 	rootCmd.AddCommand(labelCmd.NewCmdLabel(f))
+	rootCmd.AddCommand(mcpCmd.NewCmdMCP(f))
+	rootCmd.AddCommand(milestoneCmd.NewCmdMilestone(f))
 	rootCmd.AddCommand(mrCmd.NewCmdMR(f))
+	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
 	rootCmd.AddCommand(pipelineCmd.NewCmdCI(f))
 	rootCmd.AddCommand(projectCmd.NewCmdRepo(f))
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
-	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
-	rootCmd.AddCommand(gpgCmd.NewCmdGPGKey(f))
-	rootCmd.AddCommand(userCmd.NewCmdUser(f))
-	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
-	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
-	rootCmd.AddCommand(duoCmd.NewCmdDuo(f))
-	rootCmd.AddCommand(mcpCmd.NewCmdMCP(f))
-	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
+	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
 	rootCmd.AddCommand(stackCmd.NewCmdStack(f))
-	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
-	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
+	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
+	rootCmd.AddCommand(userCmd.NewCmdUser(f))
+	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 
 	// TODO: This can probably be removed by GitLab 18.3
 	// See: https://gitlab.com/gitlab-org/cli/-/issues/7885
