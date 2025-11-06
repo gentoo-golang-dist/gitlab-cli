@@ -28,14 +28,6 @@ func CheckRoot() {
 	hasSetuid := mode&os.ModeSetuid != 0
 	hasSetgid := mode&os.ModeSetgid != 0
 
-	// If neither special bit is present, optionally warn about running as root
-	if !hasSetuid && !hasSetgid {
-		if os.Geteuid() == 0 {
-			fmt.Fprintln(os.Stderr, "Warning: running glab as root is not recommended")
-		}
-		return
-	}
-
 	// Build a concise error message covering both cases.
 	msg := "Error: unsafe file permissions detected on the glab binary.\n"
 	msg += "The binary has the following special permission(s):"
