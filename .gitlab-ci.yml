@@ -81,12 +81,14 @@ include:
   variables:
     GODEBUG: gocachetest=1
     GOCACHE: $CI_PROJECT_DIR/.gocache-$CI_COMMIT_REF_PROTECTED
+    GOPATH: $CI_PROJECT_DIR/.go
   before_script:
     - mkdir -p "$GOCACHE"
     - go env GOCACHE
   cache:
     paths:
       - $CI_PROJECT_DIR/.gocache-false/
+      - .go/pkg/mod/
     key: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}"
 
 .documentation:
