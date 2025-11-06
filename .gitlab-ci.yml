@@ -79,14 +79,15 @@ include:
 # From: https://docs.gitlab.com/ci/caching/#cache-go-dependencies
 .go-cache:
   variables:
-    GOPATH: $CI_PROJECT_DIR/.go
-    GOLANGCI_LINT_CACHE: $CI_PROJECT_DIR/.golangci-lint
+    GODEBUG: gocachetest=1
+    GOCACHE: $CI_PROJECT_DIR/.gocache-$CI_COMMIT_REF_PROTECTED
   before_script:
-    - mkdir -p .go .golangci-lint
+    - mkdir -p "$GOCACHE"
+    - go env GOCACHE
   cache:
     paths:
-      - .go/pkg/mod/
-      - .golangci-lint/
+      - $CI_PROJECT_DIR/.gocache-false/
+    key: "${CI_JOB_NAME}-${CI_COMMIT_REF_SLUG}"
 
 .documentation:
   stage: documentation
