@@ -1,5 +1,9 @@
 golang 1.25.3
 
+# For formatting Go code
+gofumpt 0.7.0
+goimports 0.29.0
+
 # For linting Go code
 golangci-lint 2.6.1
 
@@ -8,3 +12,6 @@ markdownlint-cli2 0.18.1
 lychee 0.18.1
 vale 3.11.2
 node 23.11.0
+
+# For git hooks
+lefthook 2.0.2
