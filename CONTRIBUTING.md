@@ -84,6 +84,59 @@ Build with: `make` or `go build -o bin/glab ./cmd/glab/main.go`
 
 Run the new binary as: `./bin/glab`
 
+### Git hooks with Lefthook (optional)
+
+This project supports [Lefthook](https://github.com/evilmartians/lefthook) for managing Git hooks. Lefthook helps catch issues before pushing to CI by running checks locally.
+
+#### Quick setup
+
+1. Install lefthook:
+   ```bash
+   # Using Homebrew (macOS/Linux)
+   brew install lefthook
+
+   # Using Go
+   go install github.com/evilmartians/lefthook@latest
+
+   # Using npm
+   npm install -g lefthook
+   ```
+
+2. Install development tools:
+   ```bash
+   make bootstrap
+   ```
+
+3. Enable the hooks:
+   ```bash
+   lefthook install
+   ```
+
+#### Available hooks
+
+- **pre-commit**: Formats and lints Go code, reminds you to regenerate docs if command files changed
+- **commit-msg**: Validates commit messages follow [conventional commits](https://www.conventionalcommits.org/) format
+- **pre-push**: Runs markdown linting (markdownlint, vale, lychee) on changed documentation files
+
+#### Graceful degradation
+
+If a required tool is not installed, the hook will display a warning and skip that check. This means you can install lefthook immediately and add tools incrementally. All validation also runs in CI, so nothing is missed.
+
+#### Skipping hooks
+
+If you need to skip hooks temporarily:
+
+```bash
+# Skip all hooks for one commit
+LEFTHOOK=0 git commit -m "message"
+
+# Skip all hooks for one push
+LEFTHOOK=0 git push
+
+# Skip specific hook
+LEFTHOOK_EXCLUDE=pre-push git push
+```
+
 ### Running tests
 
 Run tests with: `go test ./...` or `make test`.

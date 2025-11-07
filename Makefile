@@ -181,6 +181,34 @@ list-todo: ## Detect FIXME, TODO and other comment keywords
 gen-config: ## Generate config stub from lockfile
 	cd internal/config && go generate
 
+.PHONY: bootstrap
+bootstrap: ## Install development tools for git hooks
+	@echo "Installing development tools..."
+	@echo ""
+	@echo "Installing Go tools..."
+	go install mvdan.cc/gofumpt@latest
+	go install golang.org/x/tools/cmd/goimports@latest
+	@echo ""
+	@echo "Installing documentation tools..."
+	@if command -v npm > /dev/null 2>&1; then \
+		npm install -g markdownlint-cli2; \
+	else \
+		echo "⚠️  npm not found. Skipping markdownlint-cli2 installation."; \
+		echo "   Install Node.js from https://nodejs.org/ to enable markdown linting."; \
+	fi
+	@echo ""
+	@echo "⚠️  The following tools require manual installation:"
+	@echo "   - vale: https://vale.sh/docs/vale-cli/installation/"
+	@echo "   - lychee: https://github.com/lycheeverse/lychee#installation"
+	@if command -v brew > /dev/null 2>&1; then \
+		echo ""; \
+		echo "You can install them via Homebrew:"; \
+		echo "   brew install vale lychee"; \
+	fi
+	@echo ""
+	@echo "To enable git hooks, run: lefthook install"
+	@echo "To install lefthook, visit: https://github.com/evilmartians/lefthook#installation"
+
 # Add custom targets here
 -include custom.mk
 
