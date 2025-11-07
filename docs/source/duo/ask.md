@@ -14,7 +14,20 @@ Generate Git commands from natural language.
 
 ## Synopsis
 
-Generate Git commands from natural language.
+Generate Git commands from natural language using AI assistance.
+
+This command allows you to describe what you want to do in plain language,
+and GitLab Duo will suggest the appropriate Git commands to accomplish your goal.
+The AI provides both the commands and an explanation of what they do.
+
+After receiving the suggested commands, you can choose to execute them directly
+from the CLI with confirmation prompts for each command.
+
+This feature is particularly useful for:
+- Retrieving forgotten Git commands
+- Learning how to accomplish specific Git operations
+- Getting guidance on complex Git workflows
+- Reducing context switching during development
 
 ```plaintext
 glab duo ask <prompt> [flags]
@@ -25,6 +38,12 @@ glab duo ask <prompt> [flags]
 ```console
 $ glab duo ask list last 10 commit titles
 > A list of Git commands to show the titles of the latest 10 commits with an explanation and an option to execute the commands.
+
+$ glab duo ask how do I undo my last commit
+> Suggestions for undoing the last commit with explanations of different approaches.
+
+$ glab duo ask show me files changed in the last commit
+> Commands to display files modified in the most recent commit.
 
 ```
 
