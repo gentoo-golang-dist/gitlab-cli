@@ -18,12 +18,12 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 			$ glab attestation verify filename.txt --project 123
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Hello, world.")
+			fmt.Println("WFAWFAWFA")
 			return nil
 		},
 	}
 
-	// mrApproveCmd.Flags().StringP("sha", "s", "", "SHA, which must match the SHA of the HEAD commit of the merge request.")
+	attestationVerifyCmd.Flags().StringP("sha", "s", "", "SHA, which must match the SHA of the HEAD commit of the merge request.")
 
 	return attestationVerifyCmd
 }
