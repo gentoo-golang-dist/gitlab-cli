@@ -26,6 +26,7 @@ import (
 	labelCmd "gitlab.com/gitlab-org/cli/internal/commands/label"
 	mcpCmd "gitlab.com/gitlab-org/cli/internal/commands/mcp"
 	mrCmd "gitlab.com/gitlab-org/cli/internal/commands/mr"
+	attestationCmd "gitlab.com/gitlab-org/cli/internal/commands/attestation"
 	opentofuCmd "gitlab.com/gitlab-org/cli/internal/commands/opentofu"
 	projectCmd "gitlab.com/gitlab-org/cli/internal/commands/project"
 	releaseCmd "gitlab.com/gitlab-org/cli/internal/commands/release"
@@ -138,6 +139,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(jobCmd.NewCmdJob(f))
 	rootCmd.AddCommand(labelCmd.NewCmdLabel(f))
 	rootCmd.AddCommand(mrCmd.NewCmdMR(f))
+	rootCmd.AddCommand(attestationCmd.NewCmdMR(f))
 	rootCmd.AddCommand(pipelineCmd.NewCmdCI(f))
 	rootCmd.AddCommand(projectCmd.NewCmdRepo(f))
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
