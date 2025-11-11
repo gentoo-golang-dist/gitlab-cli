@@ -28,28 +28,34 @@ func CheckRoot() {
 	hasSetuid := mode&os.ModeSetuid != 0
 	hasSetgid := mode&os.ModeSetgid != 0
 
-	// Build a concise error message covering both cases.
-	msg := "Error: unsafe file permissions detected on the glab binary.\n"
-	msg += "The binary has the following special permission(s):"
-	if hasSetuid {
-		msg += " setuid"
-	}
-	if hasSetgid {
-		if hasSetuid {
-			msg += " and"
-		}
-		msg += " setgid"
-	}
-	msg += ".\n"
-	msg += fmt.Sprintf("Please remove these bits and set safe permissions (for example 0755):\n  sudo chmod 0755 %s\n", executablePath)
+	// Only treat as an error when either setuid or setgid is present.
+	if hasSetuid || hasSetgid {
+		fmt.Fprintln(os.Stderr, "Error: unsafe file permissions detected on the glab binary.")
 
-	// If possible, also report if the file is owned by root (uid/gid == 0).
+		if hasSetuid && hasSetgid {
+			fmt.Fprintln(os.Stderr, "The permission bits that must be removed are: setuid, setgid.")
+		} else if hasSetuid {
+			fmt.Fprintln(os.Stderr, "The permission bits that must be removed are: setuid.")
+		} else if hasSetgid {
+			fmt.Fprintln(os.Stderr, "The permission bits that must be removed are: setgid.")
+		}
+
+		fmt.Fprintf(os.Stderr, "Please remove these bits and set safe permissions (for example 0755):\n  sudo chmod 0755 %s\n", executablePath)
+
+		// If possible, also report if the file is owned by root (uid/gid == 0).
+		if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
+			if stat.Uid == 0 || stat.Gid == 0 {
+				fmt.Fprintf(os.Stderr, "Note: the file is owned by uid=%d gid=%d. If this binary should not be root-owned, consider changing ownership.\n", stat.Uid, stat.Gid)
+			}
+		}
+
+		os.Exit(1)
+	}
+
+	// If the binary is root-owned but does not have setuid/setgid, print an informational note only.
 	if stat, ok := fileInfo.Sys().(*syscall.Stat_t); ok {
 		if stat.Uid == 0 || stat.Gid == 0 {
-			msg += fmt.Sprintf("Note: the file is owned by uid=%d gid=%d. If this binary should not be root-owned, consider changing ownership.\n", stat.Uid, stat.Gid)
+			fmt.Fprintf(os.Stderr, "Note: the file is owned by uid=%d gid=%d. The binary does not have setuid/setgid but is root-owned.\n", stat.Uid, stat.Gid)
 		}
 	}
-
-	fmt.Fprint(os.Stderr, msg)
-	os.Exit(1)
 }
