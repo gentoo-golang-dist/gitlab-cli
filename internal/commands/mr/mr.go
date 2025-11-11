@@ -7,6 +7,7 @@ import (
 	mrApproversCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/approvers"
 	mrCheckoutCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/checkout"
 	mrCloseCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/close"
+	mrCommentCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/comment"
 	mrCreateCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/create"
 	mrDeleteCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/delete"
 	mrDiffCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/diff"
@@ -53,6 +54,7 @@ func NewCmdMR(f cmdutils.Factory) *cobra.Command {
 	mrCmd.AddCommand(mrApproversCmd.NewCmdApprovers(f))
 	mrCmd.AddCommand(mrCheckoutCmd.NewCmdCheckout(f))
 	mrCmd.AddCommand(mrCloseCmd.NewCmdClose(f))
+	mrCmd.AddCommand(mrCommentCmd.NewCmdComment(f))
 	mrCmd.AddCommand(mrCreateCmd.NewCmdCreate(f))
 	mrCmd.AddCommand(mrDeleteCmd.NewCmdDelete(f))
 	mrCmd.AddCommand(mrDiffCmd.NewCmdDiff(f, nil))

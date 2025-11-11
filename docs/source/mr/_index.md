@@ -39,6 +39,7 @@ $ glab mr note -m "needs to do X before it can be merged" branch-foo
 - [`approvers`](approvers.md)
 - [`checkout`](checkout.md)
 - [`close`](close.md)
+- [`comment`](comment/_index.md)
 - [`create`](create.md)
 - [`delete`](delete.md)
 - [`diff`](diff.md)
