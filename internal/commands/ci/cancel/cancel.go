@@ -10,7 +10,7 @@ import (
 func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cancel <command>",
-		Short: "Cancel a running pipeline or job.",
+		Short: "Cancel asdfsdfdsfsdfs running pipeline or job.",
 	}
 
 	cmd.AddCommand(cancelPipelineCmd.NewCmdCancel(f))
