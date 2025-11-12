@@ -119,6 +119,7 @@ func TestCIRun(t *testing.T) {
 }
 
 func runTrigCommandWithRepoOverride(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
@@ -175,6 +176,7 @@ func TestCIRunTrigRepoOverride(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			fakeHTTP := &httpmock.Mocker{
 				MatchURL: httpmock.PathAndQuerystring,
 			}
