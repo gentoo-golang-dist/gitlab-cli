@@ -3,6 +3,7 @@ package duo
 import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	duoAskCmd "gitlab.com/gitlab-org/cli/internal/commands/duo/ask"
+	duoCliCmd "gitlab.com/gitlab-org/cli/internal/commands/duo/cli"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ func NewCmdDuo(f cmdutils.Factory) *cobra.Command {
 	}
 
 	duoCmd.AddCommand(duoAskCmd.NewCmdAsk(f))
+	duoCmd.AddCommand(duoCliCmd.NewCmdCli(f))
 
 	return duoCmd
 }

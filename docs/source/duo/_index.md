@@ -29,3 +29,4 @@ Git operations. You can accomplish specific tasks without switching contexts.
 ## Subcommands
 
 - [`ask`](ask.md)
+- [`cli`](cli.md)
