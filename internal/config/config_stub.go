@@ -105,6 +105,24 @@ func rootConfig() *yaml.Node {
 						Value: "true",
 					},
 					{
+						HeadComment: "# Automatically run GitLab Duo CLI without prompting (true/false). Set to true to skip the confirmation prompt.",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_auto_run",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Share GitLab token with Duo CLI (true/false). Set to true to always share, false to never share, or leave empty to be prompted each time.",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_share_token",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
 						HeadComment: "# Configuration specific for GitLab instances.",
 						Kind:        yaml.ScalarNode,
 						Value:       "hosts",

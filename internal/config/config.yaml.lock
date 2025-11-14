@@ -20,6 +20,10 @@ no_prompt: false
 # See https://docs.gitlab.com/administration/settings/usage_statistics/
 # for more information
 telemetry: true
+# Automatically run GitLab Duo CLI without prompting (true/false). Set to true to skip the confirmation prompt.
+duo_cli_auto_run:
+# Share GitLab token with Duo CLI (true/false). Set to true to always share, false to never share, or leave empty to be prompted each time.
+duo_cli_share_token:
 # Configuration specific for GitLab instances.
 hosts:
     gitlab.com:
