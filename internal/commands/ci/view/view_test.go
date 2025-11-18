@@ -11,6 +11,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
+	testingutils "gitlab.com/gitlab-org/cli/internal/testing"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -433,27 +434,29 @@ func Test_LinkJobsNegative(t *testing.T) {
 }
 
 func Test_jobsView(t *testing.T) {
+	// Setup OpenCensus cleanup for this test
+	testingutils.SetupOpenCensusForTest(t)
 	expected := []string{
 		"  ┌────────────────────┐      ┌────────────────────┐      ┌────────────────────┐        ",
 		"  │       Stage1       │      │       Stage2       │      │       Stage3       │        ",
 		"  └────────────────────┘      └────────────────────┘      └────────────────────┘        ",
 		"                                                                                        ",
-		"  ╔✔ stage1-job1-reall…╗      ┌───● stage2-job1────┐      ┌───■ stage3-job1────┐        ",
+		"  ╔✔ stage1-job1-reall…╗      ┌────● stage2-job1───┐      ┌────■ stage3-job1───┐        ",
 		"  ║                    ║      │                    │      │                    │        ",
 		"  ║             01m 01s║═╦══╦═│                    │═╦══╦═│                    │        ",
 		"  ╚════════════════════╝ ║  ║ └────────────────────┘ ║  ║ └────────────────────┘        ",
 		"                         ║  ║                        ║  ║                               ",
-		"  ┌───✔ stage1-job2────┐ ║  ║ ┌───● stage2-job2────┐ ║  ║ ┌───■ stage3-job2────┐        ",
+		"  ┌────✔ stage1-job2───┐ ║  ║ ┌────● stage2-job2───┐ ║  ║ ┌────■ stage3-job2───┐        ",
 		"  │                    │ ║  ║ │                    │ ║  ║ │                   »│        ",
 		"  │                    │═╝  ╠═│                    │═╝  ╚═│                    │        ",
 		"  └────────────────────┘ ║  ║ └────────────────────┘ ║    └────────────────────┘        ",
 		"                         ║  ║                        ║                                  ",
-		"  ┌───✔ stage1-job3────┐ ║  ║ ┌───● stage2-job3────┐ ║                                  ",
+		"  ┌────✔ stage1-job3───┐ ║  ║ ┌────● stage2-job3───┐ ║                                  ",
 		"  │                    │ ║  ║ │                    │ ║                                  ",
 		"  │                    │═╝  ╚═│                    │═╝                                  ",
 		"  └────────────────────┘ ║    └────────────────────┘                                    ",
 		"                         ║                                                              ",
-		"  ┌───✘ stage1-job4────┐ ║                                                              ",
+		"  ┌────✘ stage1-job4───┐ ║                                                              ",
 		"  │                    │ ║                                                              ",
 		"  │                    │═╝                                                              ",
 		"  └────────────────────┘                                                                ",

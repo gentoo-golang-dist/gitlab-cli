@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
+	testingutils "gitlab.com/gitlab-org/cli/internal/testing"
 	"go.uber.org/goleak"
 )
 
@@ -18,8 +19,12 @@ func TestGlab(t *testing.T) { // nolint:unparam
 }
 
 func TestMain(m *testing.M) {
+	// Disable OpenCensus telemetry globally for tests
+	testingutils.DisableOpenCensusGlobally()
+	
 	goleak.VerifyTestMain(m,
 		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"), // HTTP keep-alive connections
+		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"), // OpenCensus telemetry worker
 	)
 }
 

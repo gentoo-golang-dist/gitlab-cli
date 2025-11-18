@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
@@ -34,6 +35,10 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 			$ glab attestation verify filename.txt --project 123
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Disable OpenCensus telemetry in test environments
+			if os.Getenv("TESTING") == "true" || os.Getenv("GO_TEST") == "1" {
+				os.Setenv("OPENCENSUS_DISABLE", "true")
+			}
 			opts := tuf.DefaultOptions()
 			client, err := tuf.New(opts)
 			if err != nil {
