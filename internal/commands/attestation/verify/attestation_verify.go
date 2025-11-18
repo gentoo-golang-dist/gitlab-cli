@@ -23,17 +23,33 @@ func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstra
 	return v.keyTrustedMaterial.PublicKeyVerifier(hint)
 }
 
+type options struct {
+	project string
+
+	keyID int
+}
 
 func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
+	opts := &options{
+		// io:           f.IO(),
+		// gitlabClient: f.GitLabClient,
+		// baseRepo:     f.BaseRepo,
+	}
+
 	attestationVerifyCmd := &cobra.Command{
-		Use:   "verify",
+		Use:   "verify <artifact_path>",
 		Short: `Verify the provenance of a specific artifact or file`,
 		Long:  ``,
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			$ glab attestation verify filename.txt --project gilab-org/gitlab
 			$ glab attestation verify filename.txt --project 123
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println(args[0]);
+			fmt.Println(opts.project);
+			return nil;
+
 			opts := tuf.DefaultOptions()
 			client, err := tuf.New(opts)
 			if err != nil {
@@ -60,7 +76,7 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 				panic(err)
 			}
 
-			b, err := bundle.LoadJSONFromPath("./examples/bundle-provenance.json")
+			b, err := bundle.LoadJSONFromPath("../examples/bundle-provenance.json")
 			if err != nil {
 				panic(err)
 			}
@@ -80,7 +96,8 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	// mrApproveCmd.Flags().StringP("sha", "s", "", "SHA, which must match the SHA of the HEAD commit of the merge request.")
+	attestationVerifyCmd.Flags().StringVarP(&opts.project, "project", "p", "", "Project id or path")
+	attestationVerifyCmd.MarkFlagRequired("project")
 
 	return attestationVerifyCmd
 }
