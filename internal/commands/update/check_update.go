@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 
@@ -53,6 +55,9 @@ func NewCheckUpdateCmd(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
+// clientCreator is a variable that can be overridden for testing
+var clientCreator = createUnauthenticatedClient
+
 func CheckUpdate(f cmdutils.Factory, silentSuccess bool) error {
 	moreThan24hAgo, err := checkLastUpdate(f)
 	if err != nil {
@@ -63,23 +68,19 @@ func CheckUpdate(f cmdutils.Factory, silentSuccess bool) error {
 		return nil
 	}
 
-	// We set the project to the `glab` project to check for `glab` updates
-	repo, err := glrepo.FromFullName(defaultProjectURL, f.DefaultHostname())
-	if err != nil {
-		return err
-	}
-	apiClient, err := f.ApiClient(repo.RepoHost())
+	// Create an unauthenticated API client to check for updates on the public gitlab.com/gitlab-org/cli project.
+	// We explicitly avoid using user credentials since:
+	// 1. The releases endpoint is public and doesn't require authentication
+	// 2. Using user credentials (especially from GITLAB_TOKEN env var) can cause issues
+	//    when users have tokens for self-hosted instances that aren't valid for gitlab.com
+	apiClient, err := clientCreator(f.BuildInfo().UserAgent())
 	if err != nil {
 		return err
 	}
 	gitlabClient := apiClient.Lab()
 
-	// Since the `gitlab.com/gitlab-org/cli` is public, we remove the token
-	// for this single request. When users have a `GITLAB_TOKEN` set with a
-	// token for GitLab Self-Managed or GitLab Dedicated, we shouldn't use it
-	// to authenticate to gitlab.com.
 	releases, _, err := gitlabClient.Releases.ListReleases(
-		repo.FullName(), &gitlab.ListReleasesOptions{ListOptions: gitlab.ListOptions{Page: 1, PerPage: 1}}, gitlab.WithToken(gitlab.PrivateToken, ""))
+		"gitlab-org/cli", &gitlab.ListReleasesOptions{ListOptions: gitlab.ListOptions{Page: 1, PerPage: 1}})
 	if err != nil {
 		return fmt.Errorf("failed checking for glab updates: %s", err.Error())
 	}
@@ -107,15 +108,38 @@ func CheckUpdate(f cmdutils.Factory, silentSuccess bool) error {
 	return nil
 }
 
+// createUnauthenticatedClient creates an API client without authentication for accessing
+// public endpoints on gitlab.com. This avoids issues where user credentials (especially
+// from environment variables like GITLAB_TOKEN) might be for self-hosted instances
+// and invalid for gitlab.com.
+func createUnauthenticatedClient(userAgent string, options ...api.ClientOption) (*api.Client, error) {
+	// Create a client with an empty token for unauthenticated requests
+	opts := []api.ClientOption{
+		api.WithBaseURL(glinstance.APIEndpoint(glinstance.DefaultHostname, glinstance.DefaultProtocol, "")),
+		api.WithUserAgent(userAgent),
+	}
+	opts = append(opts, options...)
+
+	return api.NewClient(
+		func(c *http.Client) (gitlab.AuthSource, error) {
+			// Use AccessTokenAuthSource with empty token for public API access
+			return gitlab.AccessTokenAuthSource{Token: ""}, nil
+		},
+		opts...,
+	)
+}
+
 // Don't CheckUpdate if previous command is CheckUpdate
-// or it’s Completion, so it doesn’t take a noticably long time
-// to start new shells and we don’t encourage users setting
+// or it's Completion, so it doesn't take a noticably long time
+// to start new shells and we don't encourage users setting
 // `check_update` to false in the config.
+// Also skip for git-credential to avoid interfering with Git operations.
 func ShouldSkipUpdate(previousCommand string) bool {
 	isCheckUpdate := previousCommand == commandUse || utils.PresentInStringSlice(commandAliases, previousCommand)
 	isCompletion := previousCommand == "completion"
+	isGitCredential := previousCommand == "git-credential"
 
-	return isCheckUpdate || isCompletion
+	return isCheckUpdate || isCompletion || isGitCredential
 }
 
 func isOlderVersion(latestVersion, appVersion string) bool {
