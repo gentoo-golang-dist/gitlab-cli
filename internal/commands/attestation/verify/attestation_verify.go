@@ -1,9 +1,12 @@
-package approve
+package verify
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
@@ -61,6 +64,32 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 }
 
 func (o *options) run() error {
+	hash, err := o.sha256(o.filename)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(hash)
+
+	return nil
+}
+
+func (o *options) sha256(filename string) (string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func (o *options) retrieve() error {
 	client, err := o.gitlabClient()
 	if err != nil {
 		return err

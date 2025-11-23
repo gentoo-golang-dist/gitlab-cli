@@ -1,4 +1,4 @@
-package mr
+package attestation
 
 import (
 	"github.com/MakeNowJust/heredoc/v2"
