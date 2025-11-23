@@ -8,6 +8,9 @@ go 1.25.3
 // https://github.com/timofurrer/huhtest/commit/46976a734937473c024ca7e50beee3c7a43fb528
 replace github.com/survivorbat/huhtest => github.com/timofurrer/huhtest v0.0.0-20250922072747-46976a734937
 
+// TODO: Remove
+replace gitlab.com/gitlab-org/api/client-go => /Users/samroque-worcel/code/client-go
+
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
@@ -221,7 +224,7 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/godbus/dbus/v5 v5.2.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
