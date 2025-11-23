@@ -38,6 +38,7 @@ $ glab issue note -m "closing because !123 was merged" <issue number>
 
 - [`board`](board/_index.md)
 - [`close`](close.md)
+- [`comment`](comment/_index.md)
 - [`create`](create.md)
 - [`delete`](delete.md)
 - [`list`](list.md)
