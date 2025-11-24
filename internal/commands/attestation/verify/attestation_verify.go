@@ -77,12 +77,17 @@ func (o *options) run() error {
 		return err
 	}
 
-	provenance, err := o.retrieveProvenance(client, hash)
+	provenance, err := o.retrieveProvenanceMetadata(client, hash)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Download url is ", provenance.DownloadUrl)
+	bundle, err := o.downloadBundle(client, provenance.IID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("att: '%s'", bundle)
 
 	return nil
 }
@@ -102,7 +107,7 @@ func (o *options) sha256(filename string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (o *options) retrieveProvenance(client *gitlab.Client, hash string) (*gitlab.Attestation, error) {
+func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, hash string) (*gitlab.Attestation, error) {
 	listAttestationsOptions := &gitlab.ListAttestationsOptions{
 		Hash: hash,
 	}
@@ -119,6 +124,19 @@ func (o *options) retrieveProvenance(client *gitlab.Client, hash string) (*gitla
 	}
 
 	return nil, fmt.Errorf("Unable to find a provenance statement for %s", hash)
+}
+
+func (o *options) downloadBundle(client *gitlab.Client, AttestationIID int) (string, error) {
+	downloadAttestationOptions := &gitlab.DownloadAttestationOptions{
+		AttestationIID: AttestationIID,
+	}
+
+	provenanceStatement, _, err := client.Attestations.DownloadAttestation(o.project, downloadAttestationOptions)
+	if err != nil {
+		return "", err
+	}
+
+	return provenanceStatement, nil
 }
 
 func (o *options) verify() error {
