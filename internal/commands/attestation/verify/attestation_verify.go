@@ -51,7 +51,10 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.filename = args[0]
 
-			opts.run()
+			err := opts.run()
+			if err != nil {
+				return err
+			}
 
 			return nil
 		},
@@ -64,12 +67,22 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 }
 
 func (o *options) run() error {
+	client, err := o.gitlabClient()
+	if err != nil {
+		return err
+	}
+
 	hash, err := o.sha256(o.filename)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(hash)
+	provenance, err := o.retrieveProvenance(client, hash)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Download url is ", provenance.DownloadUrl)
 
 	return nil
 }
@@ -89,15 +102,23 @@ func (o *options) sha256(filename string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (o *options) retrieve() error {
-	client, err := o.gitlabClient()
-	if err != nil {
-		return err
+func (o *options) retrieveProvenance(client *gitlab.Client, hash string) (*gitlab.Attestation, error) {
+	listAttestationsOptions := &gitlab.ListAttestationsOptions{
+		Hash: hash,
 	}
 
-	client.Attestations.ListAttestations(o.project, nil)
+	attestations, _, err := client.Attestations.ListAttestations(o.project, listAttestationsOptions)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil
+	for _, attestation := range attestations {
+		if attestation.PredicateKind == "provenance" {
+			return attestation, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Unable to find a provenance statement for %s", hash)
 }
 
 func (o *options) verify() error {
