@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 )
 
 type verifyTrustedMaterial struct {
@@ -29,6 +30,7 @@ func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstra
 
 type options struct {
 	gitlabClient func() (*gitlab.Client, error)
+	defaultHostname string
 
 	project string
 	filename string
@@ -37,6 +39,7 @@ type options struct {
 func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		gitlabClient: f.GitLabClient,
+		defaultHostname: f.DefaultHostname(),
 	}
 
 	attestationVerifyCmd := &cobra.Command{
@@ -72,12 +75,12 @@ func (o *options) run() error {
 		return err
 	}
 
-	hash, err := o.sha256(o.filename)
+	subject_digest, err := o.sha256(o.filename)
 	if err != nil {
 		return err
 	}
 
-	provenance, err := o.retrieveProvenanceMetadata(client, hash)
+	provenance, err := o.retrieveProvenanceMetadata(client, subject_digest)
 	if err != nil {
 		return err
 	}
@@ -87,7 +90,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	fmt.Printf("att: '%s'", bundle)
+	o.verify(client, subject_digest, o.project, bundle)
 
 	return nil
 }
@@ -107,9 +110,9 @@ func (o *options) sha256(filename string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, hash string) (*gitlab.Attestation, error) {
+func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, subject_digest string) (*gitlab.Attestation, error) {
 	listAttestationsOptions := &gitlab.ListAttestationsOptions{
-		Hash: hash,
+		SubjectDigest: subject_digest,
 	}
 
 	attestations, _, err := client.Attestations.ListAttestations(o.project, listAttestationsOptions)
@@ -123,30 +126,30 @@ func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, hash string)
 		}
 	}
 
-	return nil, fmt.Errorf("Unable to find a provenance statement for %s", hash)
+	return nil, fmt.Errorf("Unable to find a provenance statement for %s", subject_digest)
 }
 
-func (o *options) downloadBundle(client *gitlab.Client, AttestationIID int) (string, error) {
+func (o *options) downloadBundle(client *gitlab.Client, AttestationIID int) ([]byte, error) {
 	downloadAttestationOptions := &gitlab.DownloadAttestationOptions{
 		AttestationIID: AttestationIID,
 	}
 
 	provenanceStatement, _, err := client.Attestations.DownloadAttestation(o.project, downloadAttestationOptions)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return provenanceStatement, nil
 }
 
-func (o *options) verify() error {
+func (o *options) verify(client *gitlab.Client, subject_digest string, repo string, bundleBytes []byte) error {
 	opts := tuf.DefaultOptions()
-	client, err := tuf.New(opts)
+	tufClient, err := tuf.New(opts)
 	if err != nil {
 		panic(err)
 	}
 
-	trustedMaterial, err := root.GetTrustedRoot(client)
+	trustedMaterial, err := root.GetTrustedRoot(tufClient)
 	if err != nil {
 		panic(err)
 	}
@@ -156,22 +159,26 @@ func (o *options) verify() error {
 		panic(err)
 	}
 
-	digest, err := hex.DecodeString("76176ffa33808b54602c7c35de5c6e9a4deb96066dba6533f50ac234f4f1f4c6b3527515dc17c06fbe2860030f410eee69ea20079bd3a2c6f3dcf3b329b10751")
+	digest, err := hex.DecodeString(subject_digest)
 	if err != nil {
 		panic(err)
 	}
 
-	certID, err := verify.NewShortCertificateIdentity("https://token.actions.githubusercontent.com", "", "", "^https://github.com/sigstore/sigstore-js/")
+	expectedIssuer := fmt.Sprintf("https://%s", o.defaultHostname)
+	expectedSanRegex := fmt.Sprintf("^https://%s/%s/", o.defaultHostname, o.project)
+	certID, err := verify.NewShortCertificateIdentity(expectedIssuer, "", "", expectedSanRegex)
 	if err != nil {
 		panic(err)
 	}
 
-	b, err := bundle.LoadJSONFromPath("../examples/bundle-provenance.json")
+	var bundle bundle.Bundle
+	bundle.Bundle = new(protobundle.Bundle)
+	err = bundle.UnmarshalJSON(bundleBytes)
 	if err != nil {
 		panic(err)
 	}
 
-	result, err := sev.Verify(b, verify.NewPolicy(verify.WithArtifactDigest("sha512", digest), verify.WithCertificateIdentity(certID)))
+	result, err := sev.Verify(&bundle, verify.NewPolicy(verify.WithArtifactDigest("sha256", digest), verify.WithCertificateIdentity(certID)))
 	if err != nil {
 		panic(err)
 	}
