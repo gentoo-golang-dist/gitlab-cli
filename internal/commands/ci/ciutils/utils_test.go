@@ -271,7 +271,7 @@ func TestGetJobId(t *testing.T) {
 			client, _ := f.GitLabClient()
 			repo, _ := f.BaseRepo()
 
-			output, err := GetJobId(&JobInputs{
+			output, err := GetJobId(t.Context(), &JobInputs{
 				JobName:    tc.jobName,
 				PipelineId: tc.pipelineId,
 				Branch:     "main",
@@ -438,7 +438,7 @@ func TestTraceJob(t *testing.T) {
 			client, _ := f.GitLabClient()
 			repo, _ := f.BaseRepo()
 
-			err := TraceJob(&JobInputs{
+			err := TraceJob(t.Context(), &JobInputs{
 				JobName:    tc.jobName,
 				PipelineId: tc.pipelineId,
 				Branch:     "main",
