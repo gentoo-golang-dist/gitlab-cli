@@ -3,7 +3,6 @@ package verify
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -90,7 +89,13 @@ func (o *options) run() error {
 		return err
 	}
 
-	o.verify(client, subject_digest, o.project, bundle)
+	err = o.verify(client, subject_digest, o.project, bundle)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Artifact provenance successfully verified. Signatures confirm %s was attested by %s",
+		o.filename, o.project)
 
 	return nil
 }
@@ -146,48 +151,43 @@ func (o *options) verify(client *gitlab.Client, subject_digest string, repo stri
 	opts := tuf.DefaultOptions()
 	tufClient, err := tuf.New(opts)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	trustedMaterial, err := root.GetTrustedRoot(tufClient)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	sev, err := verify.NewVerifier(trustedMaterial, verify.WithSignedCertificateTimestamps(1), verify.WithTransparencyLog(1), verify.WithObserverTimestamps(1))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	digest, err := hex.DecodeString(subject_digest)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	expectedIssuer := fmt.Sprintf("https://%s", o.defaultHostname)
 	expectedSanRegex := fmt.Sprintf("^https://%s/%s/", o.defaultHostname, o.project)
 	certID, err := verify.NewShortCertificateIdentity(expectedIssuer, "", "", expectedSanRegex)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	var bundle bundle.Bundle
 	bundle.Bundle = new(protobundle.Bundle)
 	err = bundle.UnmarshalJSON(bundleBytes)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	result, err := sev.Verify(&bundle, verify.NewPolicy(verify.WithArtifactDigest("sha256", digest), verify.WithCertificateIdentity(certID)))
+	// If and only if verification is successful, Verify will return a VerificationResult struct whose contents' integrity have been verified.
+	_, err = sev.Verify(&bundle, verify.NewPolicy(verify.WithArtifactDigest("sha256", digest), verify.WithCertificateIdentity(certID)))
 	if err != nil {
-		panic(err)
+		return err
 	}
-
-	marshaled, err := json.MarshalIndent(result, "", "   ")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(marshaled))
 
 	return nil
 }
