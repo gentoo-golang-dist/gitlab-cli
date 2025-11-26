@@ -13,6 +13,7 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/spf13/cobra"
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
@@ -74,6 +75,11 @@ func (o *options) run() error {
 		return err
 	}
 
+	project, err := api.GetProject(client, o.project)
+	if err != nil {
+		return err
+	}
+
 	subject_digest, err := o.sha256(o.filename)
 	if err != nil {
 		return err
@@ -89,7 +95,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	err = o.verify(client, subject_digest, o.project, bundle)
+	err = o.verify(client, subject_digest, project.PathWithNamespace, bundle)
 	if err != nil {
 		return err
 	}
@@ -134,9 +140,9 @@ func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, subject_dige
 	return nil, fmt.Errorf("Unable to find a provenance statement for %s", subject_digest)
 }
 
-func (o *options) downloadBundle(client *gitlab.Client, AttestationIID int) ([]byte, error) {
+func (o *options) downloadBundle(client *gitlab.Client, attestationIID int) ([]byte, error) {
 	downloadAttestationOptions := &gitlab.DownloadAttestationOptions{
-		AttestationIID: AttestationIID,
+		AttestationIID: attestationIID,
 	}
 
 	provenanceStatement, _, err := client.Attestations.DownloadAttestation(o.project, downloadAttestationOptions)
@@ -147,7 +153,7 @@ func (o *options) downloadBundle(client *gitlab.Client, AttestationIID int) ([]b
 	return provenanceStatement, nil
 }
 
-func (o *options) verify(client *gitlab.Client, subject_digest string, repo string, bundleBytes []byte) error {
+func (o *options) verify(client *gitlab.Client, subjectDigest string, repoPath string, bundleBytes []byte) error {
 	opts := tuf.DefaultOptions()
 	tufClient, err := tuf.New(opts)
 	if err != nil {
@@ -164,13 +170,13 @@ func (o *options) verify(client *gitlab.Client, subject_digest string, repo stri
 		return err
 	}
 
-	digest, err := hex.DecodeString(subject_digest)
+	digest, err := hex.DecodeString(subjectDigest)
 	if err != nil {
 		return err
 	}
 
 	expectedIssuer := fmt.Sprintf("https://%s", o.defaultHostname)
-	expectedSanRegex := fmt.Sprintf("^https://%s/%s/", o.defaultHostname, o.project)
+	expectedSanRegex := fmt.Sprintf("^https://%s/%s/", o.defaultHostname, repoPath)
 	certID, err := verify.NewShortCertificateIdentity(expectedIssuer, "", "", expectedSanRegex)
 	if err != nil {
 		return err
