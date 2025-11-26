@@ -274,17 +274,33 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 				// Fall back to manual entry
 				hostname = opts.defaultHostname
 				apiHostname = hostname
-				err := survey.AskOne(&survey.Input{
-					Message: "GitLab hostname:",
-				}, &hostname, survey.WithValidator(hostnameValidator))
+
+				hostnameInput := huh.NewInput().
+					Title("GitLab hostname:").
+					Value(&hostname).
+					Placeholder(opts.defaultHostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err := opts.IO.Run(ctx, hostnameInput)
 				if err != nil {
 					return fmt.Errorf("could not prompt: %w", err)
 				}
-				err = survey.AskOne(&survey.Input{
-					Message: "API hostname:",
-					Help:    "For instances with a different hostname for the API endpoint.",
-					Default: hostname,
-				}, &apiHostname, survey.WithValidator(hostnameValidator))
+
+				// Set default for API hostname
+				if apiHostname == opts.defaultHostname {
+					apiHostname = hostname
+				}
+
+				apiHostnameInput := huh.NewInput().
+					Title("API hostname:").
+					Description("For instances with a different hostname for the API endpoint.").
+					Value(&apiHostname).
+					Placeholder(hostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err = opts.IO.Run(ctx, apiHostnameInput)
 				if err != nil {
 					return fmt.Errorf("could not prompt: %w", err)
 				}
@@ -318,17 +334,33 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			if isSelfHosted {
 				hostname = opts.defaultHostname
 				apiHostname = hostname
-				err := survey.AskOne(&survey.Input{
-					Message: "GitLab hostname:",
-				}, &hostname, survey.WithValidator(hostnameValidator))
+
+				hostnameInput := huh.NewInput().
+					Title("GitLab hostname:").
+					Value(&hostname).
+					Placeholder(opts.defaultHostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err := opts.IO.Run(ctx, hostnameInput)
 				if err != nil {
 					return fmt.Errorf("could not prompt: %w", err)
 				}
-				err = survey.AskOne(&survey.Input{
-					Message: "API hostname:",
-					Help:    "For instances with a different hostname for the API endpoint.",
-					Default: hostname,
-				}, &apiHostname, survey.WithValidator(hostnameValidator))
+
+				// Set default for API hostname
+				if apiHostname == opts.defaultHostname {
+					apiHostname = hostname
+				}
+
+				apiHostnameInput := huh.NewInput().
+					Title("API hostname:").
+					Description("For instances with a different hostname for the API endpoint.").
+					Value(&apiHostname).
+					Placeholder(hostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err = opts.IO.Run(ctx, apiHostnameInput)
 				if err != nil {
 					return fmt.Errorf("could not prompt: %w", err)
 				}
@@ -392,10 +424,12 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return fmt.Errorf("could not get sign-in type: %w", err)
 		}
 
-		err = survey.AskOne(&survey.Input{
-			Message: "What domains does this host use for the container registry and image dependency proxy?",
-			Default: defaultContainerRegistryDomainsString(hostname),
-		}, &containerRegistryDomains)
+		containerRegistryDomains = defaultContainerRegistryDomainsString(hostname)
+		containerRegistryInput := huh.NewInput().
+			Title("What domains does this host use for the container registry and image dependency proxy?").
+			Value(&containerRegistryDomains).
+			Placeholder(defaultContainerRegistryDomainsString(hostname))
+		err = opts.IO.Run(ctx, containerRegistryInput)
 		if err != nil {
 			return fmt.Errorf("could not get container registry domains: %w", err)
 		}
@@ -576,9 +610,17 @@ func showTokenPrompt(io *iostreams.IOStreams, hostname string) (string, error) {
 	fmt.Fprintln(io.StdErr, heredoc.Doc(getAccessTokenTip(hostname)))
 
 	var token string
-	err := survey.AskOne(&survey.Password{
-		Message: "Paste your authentication token:",
-	}, &token, survey.WithValidator(survey.Required))
+	tokenInput := huh.NewInput().
+		Title("Paste your authentication token:").
+		Value(&token).
+		EchoMode(huh.EchoModePassword).
+		Validate(func(s string) error {
+			if s == "" {
+				return fmt.Errorf("required")
+			}
+			return nil
+		})
+	err := io.Run(context.Background(), tokenInput)
 	if err != nil {
 		return "", fmt.Errorf("could not prompt: %w", err)
 	}
