@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 )
@@ -29,17 +30,19 @@ func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstra
 }
 
 type options struct {
-	gitlabClient func() (*gitlab.Client, error)
+	gitlabClient    func() (*gitlab.Client, error)
 	defaultHostname string
+	io              *iostreams.IOStreams
 
-	project string
+	project  string
 	filename string
 }
 
 func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
-		gitlabClient: f.GitLabClient,
+		gitlabClient:    f.GitLabClient,
 		defaultHostname: f.DefaultHostname(),
+		io:              f.IO(),
 	}
 
 	attestationVerifyCmd := &cobra.Command{
@@ -100,8 +103,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	fmt.Printf("Artifact provenance successfully verified. Signatures confirm %s was attested by %s",
-		o.filename, o.project)
+	o.success()
 
 	return nil
 }
@@ -196,4 +198,13 @@ func (o *options) verify(client *gitlab.Client, subjectDigest string, repoPath s
 	}
 
 	return nil
+}
+
+func (o *options) success() {
+	c := o.io.Color()
+	out := o.io.StdOut
+
+	fmt.Fprint(out, c.Green("VERIFIED"))
+	fmt.Fprintf(out, " • Artifact provenance successfully verified. Signatures confirm %s was attested by %s\n", o.filename, o.project)
+	fmt.Fprintln(out)
 }
