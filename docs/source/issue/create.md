@@ -36,12 +36,12 @@ $ glab issue create -m release-1.0.1 -t "security fix" --label security --web --
 ## Options
 
 ```plaintext
-  -a, --assignee usernames     Assign issue to people by their usernames.
+  -a, --assignee usernames     Assign issue to people by their usernames. Repeat flag for multiple assignees.
   -c, --confidential           Set an issue to be confidential. (default false)
   -d, --description string     Issue description.
       --due-date string        A date in 'YYYY-MM-DD' format.
       --epic int               ID of the epic to add the issue to.
-  -l, --label strings          Add label by name. Multiple labels should be comma-separated.
+  -l, --label strings          Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.
       --link-type string       Type for the issue link (default "relates_to")
       --linked-issues ints     The IIDs of issues that this issue links to.
       --linked-mr int          The IID of a merge request in which to resolve all issues.
