@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 )
 
@@ -34,13 +35,44 @@ func ConfigKeyEquivalence(key string) string {
 func EnvKeyEquivalence(key string) []string {
 	key = strings.ToLower(key)
 	// we only have a set default for one setting right now
+
+	ciAutologinEnabled := os.Getenv("FF_GLAB_ENABLE_CI_AUTOLOGIN") == "true" && os.Getenv("GITLAB_CI") == "true"
+
 	switch key {
 	case "api_host":
-		return []string{"GITLAB_API_HOST"}
+		keys := []string{"GITLAB_API_HOST"}
+		if ciAutologinEnabled {
+			keys = append(keys, "CI_SERVER_FQDN")
+		}
+		return keys
+	case "api_protocol":
+		if ciAutologinEnabled {
+			return []string{"CI_SERVER_PROTOCOL"}
+		}
 	case "host":
-		return []string{"GITLAB_HOST", "GITLAB_URI", "GL_HOST"}
+		keys := []string{"GITLAB_HOST", "GITLAB_URI", "GL_HOST"}
+		if ciAutologinEnabled {
+			keys = append(keys, "CI_SERVER_FQDN")
+		}
+		return keys
 	case "token":
 		return []string{"GITLAB_TOKEN", "GITLAB_ACCESS_TOKEN", "OAUTH_TOKEN"}
+	case "job_token":
+		if ciAutologinEnabled {
+			return []string{"CI_JOB_TOKEN"}
+		}
+	case "ca_cert":
+		if ciAutologinEnabled {
+			return []string{"CI_SERVER_TLS_CA_FILE"}
+		}
+	case "client_cert":
+		if ciAutologinEnabled {
+			return []string{"CI_SERVER_TLS_CERT_FILE"}
+		}
+	case "client_key":
+		if ciAutologinEnabled {
+			return []string{"CI_SERVER_TLS_KEY_FILE"}
+		}
 	case "no_prompt":
 		return []string{"NO_PROMPT", "PROMPT_DISABLED"}
 	case "telemetry":
@@ -51,9 +83,9 @@ func EnvKeyEquivalence(key string) []string {
 		return []string{"GIT_REMOTE_URL_VAR", "GIT_REMOTE_ALIAS", "REMOTE_ALIAS", "REMOTE_NICKNAME", "GIT_REMOTE_NICKNAME"}
 	case "client_id":
 		return []string{"GITLAB_CLIENT_ID"}
-	default:
-		return []string{strings.ToUpper(key)}
 	}
+
+	return []string{strings.ToUpper(key)}
 }
 
 func defaultFor(key string) string {
