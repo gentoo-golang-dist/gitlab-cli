@@ -83,12 +83,12 @@ func (o *options) run() error {
 		return err
 	}
 
-	subject_digest, err := o.sha256(o.filename)
+	subjectDigest, err := o.sha256(o.filename)
 	if err != nil {
 		return err
 	}
 
-	provenance, err := o.retrieveProvenanceMetadata(client, subject_digest)
+	provenance, err := o.retrieveProvenanceMetadata(client, subjectDigest)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	err = o.verify(client, subject_digest, project.PathWithNamespace, bundle)
+	err = o.verify(client, subjectDigest, project.PathWithNamespace, bundle)
 	if err != nil {
 		return err
 	}
@@ -123,12 +123,8 @@ func (o *options) sha256(filename string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, subject_digest string) (*gitlab.Attestation, error) {
-	listAttestationsOptions := &gitlab.ListAttestationsOptions{
-		SubjectDigest: subject_digest,
-	}
-
-	attestations, _, err := client.Attestations.ListAttestations(o.project, listAttestationsOptions)
+func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, subjectDigest string) (*gitlab.Attestation, error) {
+	attestations, _, err := client.Attestations.ListAttestations(o.project, subjectDigest)
 	if err != nil {
 		return nil, err
 	}
@@ -139,15 +135,11 @@ func (o *options) retrieveProvenanceMetadata(client *gitlab.Client, subject_dige
 		}
 	}
 
-	return nil, fmt.Errorf("Unable to find a provenance statement for %s", subject_digest)
+	return nil, fmt.Errorf("Unable to find a provenance statement for %s", subjectDigest)
 }
 
-func (o *options) downloadBundle(client *gitlab.Client, attestationIID int) ([]byte, error) {
-	downloadAttestationOptions := &gitlab.DownloadAttestationOptions{
-		AttestationIID: attestationIID,
-	}
-
-	provenanceStatement, _, err := client.Attestations.DownloadAttestation(o.project, downloadAttestationOptions)
+func (o *options) downloadBundle(client *gitlab.Client, attestationIID int64) ([]byte, error) {
+	provenanceStatement, _, err := client.Attestations.DownloadAttestation(o.project, attestationIID)
 	if err != nil {
 		return nil, err
 	}
