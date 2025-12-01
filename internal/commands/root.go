@@ -147,7 +147,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(milestoneCmd.NewCmdMilestone(f))
 	rootCmd.AddCommand(mrCmd.NewCmdMR(f))
 	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
-	rootCmd.AddCommand(attestationCmd.NewCmdMR(f))
+	rootCmd.AddCommand(attestationCmd.NewCmdAttestation(f))
 	rootCmd.AddCommand(pipelineCmd.NewCmdCI(f))
 	rootCmd.AddCommand(projectCmd.NewCmdRepo(f))
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))

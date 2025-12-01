@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmdMR(f cmdutils.Factory) *cobra.Command {
+func NewCmdAttestation(f cmdutils.Factory) *cobra.Command {
 	attestationCmd := &cobra.Command{
 		Use:   "attestation <command> [flags]",
 		Short: `Functionality related to software attestations, e.g. SLSA.`,
