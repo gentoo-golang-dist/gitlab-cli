@@ -46,6 +46,13 @@ func Test_NewCmdStatus(t *testing.T) {
 				showToken: true,
 			},
 		},
+		{
+			name: "all flag set",
+			cli:  "--all",
+			wants: options{
+				all: true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -73,6 +80,8 @@ func Test_NewCmdStatus(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.Equal(t, tt.wants.hostname, gotOpts.hostname)
+			assert.Equal(t, tt.wants.showToken, gotOpts.showToken)
+			assert.Equal(t, tt.wants.all, gotOpts.all)
 		})
 	}
 }
@@ -306,5 +315,34 @@ git_protocol: ssh
 		err := opts.run()
 		assert.Equal(t, "No GitLab instances have been authenticated with glab. Run `glab auth login` to authenticate.\n", err.Error())
 		assert.Empty(t, stdout.String())
+	})
+}
+
+func Test_statusRun_flagValidation(t *testing.T) {
+	defer config.StubConfig(`---
+hosts:
+  gitlab.alpinelinux.org:
+    token: "********************"
+    git_protocol: ssh
+    api_protocol: https
+`, "")()
+
+	configs, err := config.ParseConfig("config.yml")
+	assert.Nil(t, err)
+
+	io, _, _, _ := cmdtest.TestIOStreams()
+	opts := &options{
+		config: func() config.Config {
+			return configs
+		},
+		io:       io,
+		all:      true,
+		hostname: "gitlab.alpinelinux.org",
+	}
+
+	t.Run("both --all and --hostname flags set", func(t *testing.T) {
+		err := opts.run()
+		assert.NotNil(t, err)
+		assert.Equal(t, "cannot use both --all and --hostname flags together", err.Error())
 	})
 }
