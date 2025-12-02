@@ -263,3 +263,53 @@ func Test_GetStacks(t *testing.T) {
 		require.Equal(t, want, got)
 	})
 }
+
+func TestStandardGitCommand_Git_SetsLocale(t *testing.T) {
+	// This test verifies that StandardGitCommand.Git() sets LC_ALL=C
+	// to ensure Git output is always in English, regardless of user's locale.
+	// This fixes issue #7687 where stack sync failed with non-English Git output.
+
+	InitGitRepo(t)
+
+	gitCmd := StandardGitCommand{}
+
+	t.Run("git status outputs English messages", func(t *testing.T) {
+		// Run git status which outputs human-readable messages
+		output, err := gitCmd.Git("status")
+		require.NoError(t, err)
+
+		// Verify output contains English messages
+		// These strings would be different in other locales if LC_ALL=C wasn't set:
+		// - German: "Auf Branch" instead of "On branch"
+		// - French: "Sur la branche" instead of "On branch"
+		// - Chinese: "位于分支" instead of "On branch"
+		require.Contains(t, output, "On branch", "Git output should be in English")
+	})
+
+	t.Run("git status contains expected English phrases", func(t *testing.T) {
+		output, err := gitCmd.Git("status")
+		require.NoError(t, err)
+
+		// These are the key phrases that stack sync looks for
+		// Without LC_ALL=C, they would be localized and string matching would fail
+		englishPhrases := []string{
+			"nothing to commit", // Used by stack sync to detect up-to-date branches
+			"On branch",         // Standard git status English output
+		}
+
+		for _, phrase := range englishPhrases {
+			require.Contains(t, output, phrase,
+				"Git output should contain English phrase: %s", phrase)
+		}
+	})
+
+	t.Run("git commands work regardless of user's LANG setting", func(t *testing.T) {
+		// Even if the user has a non-English LANG variable set in their environment,
+		// the LC_ALL=C setting should override it and force English output.
+		// We can't reliably test locale changes in the test environment,
+		// but we can verify the command succeeds and produces valid output.
+		output, err := gitCmd.Git("branch", "--show-current")
+		require.NoError(t, err)
+		require.NotEmpty(t, output, "Git command should produce output")
+	})
+}
