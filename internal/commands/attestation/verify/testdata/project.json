@@ -1,0 +1,24 @@
+{
+  "id": 3,
+  "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+  "description_html": "<p data-sourcepos=\"1:1-1:56\" dir=\"auto\">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>",
+  "default_branch": "main",
+  "visibility": "private",
+  "ssh_url_to_repo": "git@example.com:diaspora/diaspora-project-site.git",
+  "http_url_to_repo": "http://example.com/diaspora/diaspora-project-site.git",
+  "web_url": "http://example.com/diaspora/diaspora-project-site",
+  "readme_url": "http://example.com/diaspora/diaspora-project-site/blob/main/README.md",
+  "topics": [
+    "example",
+    "disapora project"
+  ],
+  "owner": {
+    "id": 3,
+    "name": "Diaspora",
+    "created_at": "2013-09-30T13:46:02Z"
+  },
+  "name": "Diaspora Project Site",
+  "name_with_namespace": "Diaspora / Diaspora Project Site",
+  "path": "diaspora-project-site",
+  "path_with_namespace": "OWNER/REPO"
+}
