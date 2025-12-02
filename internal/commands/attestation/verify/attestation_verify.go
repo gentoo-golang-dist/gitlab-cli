@@ -47,7 +47,7 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 
 	attestationVerifyCmd := &cobra.Command{
 		Use:   "verify <artifact_path>",
-		Short: `Verify the provenance of a specific artifact or file`,
+		Short: `Verify the provenance of a specific artifact or file (EXPERIMENTAL)`,
 		Long:  ``,
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`

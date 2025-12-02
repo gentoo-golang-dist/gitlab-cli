@@ -11,7 +11,7 @@ import (
 func NewCmdAttestation(f cmdutils.Factory) *cobra.Command {
 	attestationCmd := &cobra.Command{
 		Use:   "attestation <command> [flags]",
-		Short: `Functionality related to software attestations, e.g. SLSA.`,
+		Short: `Functionality related to software attestations, e.g. SLSA. (EXPERIMENTAL)`,
 		Long:  ``,
 		Example: heredoc.Doc(`
 			$ glab attestation verify filename.txt --project gilab-org/gitlab
