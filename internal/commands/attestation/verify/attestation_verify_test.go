@@ -3,10 +3,10 @@
 package verify
 
 import (
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
@@ -21,7 +21,11 @@ func runCommand(t *testing.T, rt http.RoundTripper, artifactPath string) (*test.
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
 	)
 	cmd := NewCmdVerify(factory)
-	cmd.Flags().Set("project", "OWNER/REPO")
+	err := cmd.Flags().Set("project", "OWNER/REPO")
+	if err != nil {
+		return nil, err
+	}
+	
 	return cmdtest.ExecuteCommand(cmd, artifactPath, stdout, stderr)
 }
 
