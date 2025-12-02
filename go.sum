@@ -1350,6 +1350,8 @@ gitlab.com/gitlab-org/api/client-go v0.160.0 h1:aMQzbcE8zFe0lR/J+a3zneEgH+/EBFs8
 gitlab.com/gitlab-org/api/client-go v0.160.0/go.mod h1:ooCNtKB7OyP7GBa279+HrUS3eeJF6Yi6XABZZy7RTSk=
 gitlab.com/gitlab-org/api/client-go v1.0.1 h1:8iwAG9XfL2f/OVcgjXYUBRR2J0bB0eh2niHti9R20Uw=
 gitlab.com/gitlab-org/api/client-go v1.0.1/go.mod h1:hxFLApm0RqUWU3xmXCrRpxO47BQnAIWdZh9VtMaV648=
+gitlab.com/gitlab-org/api/client-go v1.4.0 h1:DfCP4LJLsDwjmowXpMrhidMMffYAh68Q16v/+I20Q9c=
+gitlab.com/gitlab-org/api/client-go v1.4.0/go.mod h1:RQfw64j1FE+KMZUAKsi1ZOOvwbWxHn9SkyZg+IAvjk4=
 go.mongodb.org/mongo-driver v1.14.0 h1:P98w8egYRjYe3XDjxhYJagTokP/H6HzlsnojRgZRd80=
 go.mongodb.org/mongo-driver v1.14.0/go.mod h1:Vzb0Mk/pa7e6cWw85R4F/endUC3u0U9jGcNU603k65c=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=

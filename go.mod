@@ -8,9 +8,6 @@ go 1.25.4
 // https://github.com/timofurrer/huhtest/commit/46976a734937473c024ca7e50beee3c7a43fb528
 replace github.com/survivorbat/huhtest => github.com/timofurrer/huhtest v0.0.0-20250922072747-46976a734937
 
-// TODO: Remove
-replace gitlab.com/gitlab-org/api/client-go => /Users/samroque-worcel/code/client-go
-
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
@@ -54,7 +51,7 @@ require (
 	github.com/survivorbat/huhtest v0.0.2
 	github.com/tidwall/pretty v1.2.1
 	github.com/zalando/go-keyring v0.2.6
-	gitlab.com/gitlab-org/api/client-go v1.0.1
+	gitlab.com/gitlab-org/api/client-go v1.4.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/mock v0.6.0
 	golang.org/x/crypto v0.45.0
