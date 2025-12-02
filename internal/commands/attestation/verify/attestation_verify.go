@@ -66,8 +66,15 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	attestationVerifyCmd.Flags().StringVarP(&opts.project, "project", "p", "", "Project id or path")
-	attestationVerifyCmd.MarkFlagRequired("project")
+	err := attestationVerifyCmd.Flags().StringVarP(&opts.project, "project", "p", "", "Project id or path")
+	if err != nil {
+		return err
+	}
+
+	err = attestationVerifyCmd.MarkFlagRequired("project")
+	if err != nil {
+		return err
+	}
 
 	return attestationVerifyCmd
 }
