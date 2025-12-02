@@ -8,16 +8,18 @@ import (
 	"os"
 
 	"github.com/MakeNowJust/heredoc/v2"
+	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	protobundle "github.com/sigstore/protobuf-specs/gen/pb-go/bundle/v1"
 )
 
 type verifyTrustedMaterial struct {
@@ -49,7 +51,7 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 		Use:   "verify <artifact_path>",
 		Short: `Verify the provenance of a specific artifact or file (EXPERIMENTAL)`,
 		Long:  ``,
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			$ glab attestation verify filename.txt --project gilab-org/gitlab
 			$ glab attestation verify filename.txt --project 123
@@ -66,14 +68,10 @@ func NewCmdVerify(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	err := attestationVerifyCmd.Flags().StringVarP(&opts.project, "project", "p", "", "Project id or path")
+	attestationVerifyCmd.Flags().StringVarP(&opts.project, "project", "p", "", "Project id or path")
+	err := attestationVerifyCmd.MarkFlagRequired("project")
 	if err != nil {
-		return err
-	}
-
-	err = attestationVerifyCmd.MarkFlagRequired("project")
-	if err != nil {
-		return err
+		panic(err)
 	}
 
 	return attestationVerifyCmd

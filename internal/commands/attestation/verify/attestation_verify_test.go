@@ -3,9 +3,10 @@
 package verify
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -25,7 +26,7 @@ func runCommand(t *testing.T, rt http.RoundTripper, artifactPath string) (*test.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return cmdtest.ExecuteCommand(cmd, artifactPath, stdout, stderr)
 }
 
@@ -44,7 +45,7 @@ func Test_AttestationVerify(t *testing.T) {
 
 	artifactPath := "testdata/example_artifact.txt"
 	output, err := runCommand(t, fakeHTTP, artifactPath)
-	
+
 	// This is the latest point at which we can test without hitting Sigstore infrastructure
 	expectedErrorMsg := "failed to verify signature: provided artifact digests does not match digests in statement"
 	if assert.EqualErrorf(t, err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err) {
