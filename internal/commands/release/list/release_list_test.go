@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/google/shlex"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	cmdTestUtils "gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
-	"github.com/acarl005/stripansi"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 func TestNewCmdReleaseList(t *testing.T) {
@@ -30,14 +30,7 @@ func TestNewCmdReleaseList(t *testing.T) {
 			TagName:     tag,
 			Name:        tag,
 			Description: "Dummy description for " + tag,
-			Author: struct {
-				ID        int    `json:"id"`
-				Name      string `json:"name"`
-				Username  string `json:"username"`
-				State     string `json:"state"`
-				AvatarURL string `json:"avatar_url"`
-				WebURL    string `json:"web_url"`
-			}{
+			Author: gitlab.BasicUser{
 				ID:       1,
 				Name:     "John Dev Wick",
 				Username: "jdwick",
@@ -55,14 +48,7 @@ func TestNewCmdReleaseList(t *testing.T) {
 			TagName:     "0.1.0",
 			Name:        "Initial Release",
 			Description: "Dummy description for 0.1.0",
-			Author: struct {
-				ID        int    `json:"id"`
-				Name      string `json:"name"`
-				Username  string `json:"username"`
-				State     string `json:"state"`
-				AvatarURL string `json:"avatar_url"`
-				WebURL    string `json:"web_url"`
-			}{
+			Author: gitlab.BasicUser{
 				ID:       1,
 				Name:     "John Dev Wick",
 				Username: "jdwick",

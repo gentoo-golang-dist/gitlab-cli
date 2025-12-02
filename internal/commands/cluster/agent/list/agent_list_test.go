@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
-
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestAgentList(t *testing.T) {
@@ -24,7 +24,7 @@ func TestAgentList(t *testing.T) {
 	exec := cmdtest.SetupCmdForTest(t, NewCmdAgentList, false, cmdtest.WithGitLabClient(tc.Client))
 
 	tc.MockClusterAgents.EXPECT().
-		ListAgents("OWNER/REPO", &gitlab.ListAgentsOptions{Page: 1, PerPage: 30}).
+		ListAgents("OWNER/REPO", &gitlab.ListAgentsOptions{ListOptions: gitlab.ListOptions{Page: 1, PerPage: 30}}).
 		Return([]*gitlab.Agent{
 			{
 				ID:        1,
@@ -66,7 +66,7 @@ func TestAgentList_Pagination(t *testing.T) {
 	exec := cmdtest.SetupCmdForTest(t, NewCmdAgentList, false, cmdtest.WithGitLabClient(tc.Client))
 
 	tc.MockClusterAgents.EXPECT().
-		ListAgents("OWNER/REPO", &gitlab.ListAgentsOptions{Page: 2, PerPage: 1}).
+		ListAgents("OWNER/REPO", &gitlab.ListAgentsOptions{ListOptions: gitlab.ListOptions{Page: 2, PerPage: 1}}).
 		Return([]*gitlab.Agent{
 			{
 				ID:        2,

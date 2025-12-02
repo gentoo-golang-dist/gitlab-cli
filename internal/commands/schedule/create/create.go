@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 var variableList []string
@@ -84,7 +84,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	scheduleCreateCmd.Flags().String("cron", "", "Cron interval pattern.")
 	scheduleCreateCmd.Flags().String("cronTimeZone", "UTC", "Cron timezone.")
 	scheduleCreateCmd.Flags().Bool("active", true, "Whether or not the schedule is active.")
-	scheduleCreateCmd.Flags().StringSliceVar(&variableList, "variable", []string{}, "Pass variables to schedule in the format <key>:<value>.")
+	scheduleCreateCmd.Flags().StringSliceVar(&variableList, "variable", []string{}, "Pass variables to schedule in the format <key>:<value>. Repeat flag for multiple variables.")
 
 	_ = scheduleCreateCmd.MarkFlagRequired("ref")
 	_ = scheduleCreateCmd.MarkFlagRequired("cron")

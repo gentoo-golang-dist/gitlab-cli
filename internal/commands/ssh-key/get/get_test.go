@@ -8,8 +8,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -38,7 +40,7 @@ func Test_GetSSHKey(t *testing.T) {
 			ExpectedMsg: []string{"ssh-ed25519 example"},
 			cli:         "123",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockUsers.EXPECT().GetSSHKey(123).Return(testKey, nil, nil)
+				tc.MockUsers.EXPECT().GetSSHKey(int64(123)).Return(testKey, nil, nil)
 			},
 		},
 		{

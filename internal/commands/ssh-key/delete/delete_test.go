@@ -8,7 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -30,7 +32,7 @@ func Test_DeleteSSHKey(t *testing.T) {
 			cli:         "123",
 			wantErr:     false,
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockUsers.EXPECT().DeleteSSHKey(123).Return(nil, nil)
+				tc.MockUsers.EXPECT().DeleteSSHKey(int64(123)).Return(nil, nil)
 			},
 		},
 		{
@@ -39,7 +41,7 @@ func Test_DeleteSSHKey(t *testing.T) {
 			wantErr:    true,
 			wantStderr: "404",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockUsers.EXPECT().DeleteSSHKey(0).Return(nil, errors.New("404 Not Found"))
+				tc.MockUsers.EXPECT().DeleteSSHKey(int64(0)).Return(nil, errors.New("404 Not Found"))
 			},
 		},
 		{
@@ -48,7 +50,7 @@ func Test_DeleteSSHKey(t *testing.T) {
 			wantErr:    true,
 			wantStderr: "404",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockUsers.EXPECT().DeleteSSHKey(999).Return(nil, errors.New("404 Not found"))
+				tc.MockUsers.EXPECT().DeleteSSHKey(int64(999)).Return(nil, errors.New("404 Not found"))
 			},
 		},
 		{
@@ -64,7 +66,7 @@ func Test_DeleteSSHKey(t *testing.T) {
 			wantErr:    true,
 			wantStderr: "401",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockUsers.EXPECT().DeleteSSHKey(123).Return(nil, errors.New("401 Unauthorized"))
+				tc.MockUsers.EXPECT().DeleteSSHKey(int64(123)).Return(nil, errors.New("401 Unauthorized"))
 			},
 		},
 		{
@@ -73,7 +75,7 @@ func Test_DeleteSSHKey(t *testing.T) {
 			wantErr:    true,
 			wantStderr: "404 Not found",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockUsers.EXPECT().DeleteSSHKey(0).Return(nil, errors.New("404 Not found"))
+				tc.MockUsers.EXPECT().DeleteSSHKey(int64(0)).Return(nil, errors.New("404 Not found"))
 			},
 		},
 	}

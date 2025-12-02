@@ -3,15 +3,16 @@ package check_manifest_usage
 import (
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/text"
-	"gopkg.in/yaml.v3"
 )
 
 type options struct {
@@ -121,8 +122,8 @@ func listAllGroupsForGroup(apiClient *gitlab.Client, group string) ([]*gitlab.Gr
 func listAllProjectsForGroup(apiClient *gitlab.Client, group string, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
 	l := &gitlab.ListGroupProjectsOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.projectPerPage,
-			Page:    opts.projectPage,
+			PerPage: int64(opts.projectPerPage),
+			Page:    int64(opts.projectPage),
 		},
 	}
 
@@ -135,8 +136,10 @@ func checkManifestUsageInProject(apiClient *gitlab.Client, opts *options, projec
 	defer opts.io.StopSpinner("")
 
 	agents, _, err := apiClient.ClusterAgents.ListAgents(project.ID, &gitlab.ListAgentsOptions{
-		Page:    opts.agentPage,
-		PerPage: opts.agentPerPage,
+		ListOptions: gitlab.ListOptions{
+			Page:    int64(opts.agentPage),
+			PerPage: int64(opts.agentPerPage),
+		},
 	})
 	if err != nil {
 		return err

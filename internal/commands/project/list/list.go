@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
@@ -135,8 +135,8 @@ func (o *options) run() error {
 func listAllProjects(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
 	l := &gitlab.ListProjectsOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.perPage,
-			Page:    opts.page,
+			PerPage: int64(opts.perPage),
+			Page:    int64(opts.page),
 		},
 		OrderBy: gitlab.Ptr(opts.orderBy),
 	}
@@ -183,8 +183,8 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 
 	l := &gitlab.ListGroupProjectsOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.perPage,
-			Page:    opts.page,
+			PerPage: int64(opts.perPage),
+			Page:    int64(opts.page),
 		},
 		OrderBy: gitlab.Ptr(opts.orderBy),
 	}
@@ -224,8 +224,8 @@ func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.P
 	l := &gitlab.ListProjectsOptions{
 		OrderBy: gitlab.Ptr(opts.orderBy),
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.perPage,
-			Page:    opts.page,
+			PerPage: int64(opts.perPage),
+			Page:    int64(opts.page),
 		},
 	}
 

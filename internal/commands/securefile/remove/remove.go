@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"strconv"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
 	forceDelete bool
-	fileID      int
+	fileID      int64
 
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
@@ -75,7 +76,7 @@ func (o *options) complete(args []string) error {
 	if err != nil {
 		return fmt.Errorf("Secure file ID must be an integer: %s", args[0])
 	}
-	o.fileID = fileID
+	o.fileID = int64(fileID)
 
 	return nil
 }

@@ -3,13 +3,13 @@ package edit
 import (
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
@@ -57,7 +57,7 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 			}
 			if cmd.Flags().Changed("priority") {
 				if s, err := cmd.Flags().GetInt("priority"); err == nil {
-					l.Priority = gitlab.Ptr(s)
+					l.Priority = gitlab.Ptr(int64(s))
 					change += fmt.Sprintf("Updated priority: %d\n", s)
 				} else {
 					return err

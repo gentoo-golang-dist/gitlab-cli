@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"strconv"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -45,7 +45,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Secure file ID must be an integer: %s", args[0])
 			}
 
-			file, _, err := client.SecureFiles.ShowSecureFileDetails(repo.FullName(), fileID)
+			file, _, err := client.SecureFiles.ShowSecureFileDetails(repo.FullName(), int64(fileID))
 			if err != nil {
 				return fmt.Errorf("Error getting secure file: %v", err)
 			}

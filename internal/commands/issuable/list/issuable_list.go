@@ -4,23 +4,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 type ListOptions struct {
@@ -47,8 +47,8 @@ type ListOptions struct {
 	Confidential bool
 
 	// Pagination
-	Page    int
-	PerPage int
+	Page    int64
+	PerPage int64
 
 	// Other
 	In string
@@ -156,16 +156,16 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 	issueListCmd.Flags().StringVar(&opts.NotAuthor, "not-author", "", fmt.Sprintf("Filter %s by not being by author(s) <username>.", issueType))
 	issueListCmd.Flags().StringVar(&opts.Search, "search", "", "Search <string> in the fields defined by '--in'.")
 	issueListCmd.Flags().StringVar(&opts.In, "in", "title,description", "search in: title, description.")
-	issueListCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, fmt.Sprintf("Filter %s by label <name>.", issueType))
-	issueListCmd.Flags().StringSliceVar(&opts.NotLabels, "not-label", []string{}, fmt.Sprintf("Filter %s by lack of label <name>.", issueType))
+	issueListCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, fmt.Sprintf("Filter %s by label <name>. Multiple labels can be comma-separated or specified by repeating the flag.", issueType))
+	issueListCmd.Flags().StringSliceVar(&opts.NotLabels, "not-label", []string{}, fmt.Sprintf("Filter %s by lack of label <name>. Multiple labels can be comma-separated or specified by repeating the flag.", issueType))
 	issueListCmd.Flags().StringVarP(&opts.Milestone, "milestone", "m", "", fmt.Sprintf("Filter %s by milestone <id>.", issueType))
 	issueListCmd.Flags().BoolVarP(&opts.All, "all", "A", false, fmt.Sprintf("Get all %ss.", issueType))
 	issueListCmd.Flags().BoolVarP(&opts.Closed, "closed", "c", false, fmt.Sprintf("Get only closed %ss.", issueType))
 	issueListCmd.Flags().BoolVarP(&opts.Confidential, "confidential", "C", false, fmt.Sprintf("Filter by confidential %ss.", issueType))
 	issueListCmd.Flags().StringVarP(&opts.OutputFormat, "output-format", "F", "details", "Options: 'details', 'ids', 'urls'.")
 	issueListCmd.Flags().StringVarP(&opts.Output, "output", "O", "text", "Options: 'text' or 'json'.")
-	issueListCmd.Flags().IntVarP(&opts.Page, "page", "p", 1, "Page number.")
-	issueListCmd.Flags().IntVarP(&opts.PerPage, "per-page", "P", 30, "Number of items to list per page.")
+	issueListCmd.Flags().Int64VarP(&opts.Page, "page", "p", 1, "Page number.")
+	issueListCmd.Flags().Int64VarP(&opts.PerPage, "per-page", "P", 30, "Number of items to list per page.")
 	issueListCmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repo argument is set.")
 	issueListCmd.Flags().IntVarP(&opts.Epic, "epic", "e", 0, "List issues belonging to a given epic (requires --group, no pagination support).")
 	issueListCmd.MarkFlagsMutuallyExclusive("output", "output-format")
@@ -221,7 +221,7 @@ func listRun(opts *ListOptions) error {
 			return err
 		}
 
-		listOpts.AssigneeID = gitlab.Ptr(uid)
+		listOpts.AssigneeID = gitlab.AssigneeID(uid)
 	}
 
 	if opts.NotAssignee != "" {
@@ -286,7 +286,7 @@ func listRun(opts *ListOptions) error {
 		issueType = opts.IssueType
 	}
 	if issueType == "issue" && opts.Iteration != 0 {
-		listOpts.IterationID = gitlab.Ptr(opts.Iteration)
+		listOpts.IterationID = gitlab.Ptr(int64(opts.Iteration))
 	}
 
 	var issues []*gitlab.Issue
@@ -319,7 +319,7 @@ func listRun(opts *ListOptions) error {
 		title.RepoName = repo.FullName()
 	}
 
-	title.Page = listOpts.Page
+	title.Page = int(listOpts.Page)
 	title.ListActionType = opts.ListType
 	title.CurrentPageTotal = len(issues)
 
@@ -352,7 +352,7 @@ func listRun(opts *ListOptions) error {
 	return nil
 }
 
-func userID(client *gitlab.Client, username string) (int, error) {
+func userID(client *gitlab.Client, username string) (int64, error) {
 	if username == "@me" {
 		me, _, err := client.Users.CurrentUser()
 		if err != nil {
@@ -386,7 +386,7 @@ func listEpicIssues(client *gitlab.Client, opts *ListOptions, projListOpts *gitl
 	listOpts.PerPage = min(maxIssues, api.MaxPerPage)
 
 	for {
-		is, req, err := client.EpicIssues.ListEpicIssues(opts.Group, opts.Epic, &listOpts) //nolint:staticcheck
+		is, req, err := client.EpicIssues.ListEpicIssues(opts.Group, int64(opts.Epic), &listOpts) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}
@@ -395,13 +395,13 @@ func listEpicIssues(client *gitlab.Client, opts *ListOptions, projListOpts *gitl
 		is = filterIssues(is, projListOpts)
 
 		// If the number of issues exceeds the page size, trim the list.
-		if len(issues)+len(is) > maxIssues {
-			is = is[:maxIssues-len(issues)]
+		if len(issues)+len(is) > int(maxIssues) {
+			is = is[:int(maxIssues)-len(issues)]
 		}
 
 		issues = append(issues, is...)
 
-		if len(issues) >= maxIssues || req.NextPage == 0 {
+		if len(issues) >= int(maxIssues) || req.NextPage == 0 {
 			break
 		}
 
@@ -424,11 +424,14 @@ func filterIssues(issues []*gitlab.Issue, opts *gitlab.ListProjectIssuesOptions)
 }
 
 func isMatch(issue *gitlab.Issue, opts *gitlab.ListProjectIssuesOptions) bool {
-	if opts.AssigneeID != nil && !hasAssignee(issue, *opts.AssigneeID) {
+	if opts.AssigneeID != nil && !hasAssignee(issue, opts.AssigneeID) {
 		return false
 	}
-	if opts.NotAssigneeID != nil && hasAssignee(issue, *opts.NotAssigneeID) {
-		return false
+	if opts.NotAssigneeID != nil {
+		notAssigneeIDValue := gitlab.AssigneeID(*opts.NotAssigneeID)
+		if hasAssignee(issue, notAssigneeIDValue) {
+			return false
+		}
 	}
 	if opts.AuthorID != nil && (issue.Author == nil || issue.Author.ID != *opts.AuthorID) {
 		return false
@@ -456,9 +459,19 @@ func isMatch(issue *gitlab.Issue, opts *gitlab.ListProjectIssuesOptions) bool {
 	return true
 }
 
-func hasAssignee(issue *gitlab.Issue, userID int) bool {
+func hasAssignee(issue *gitlab.Issue, userID *gitlab.AssigneeIDValue) bool {
+	// NOTE: this is just a hack to get back the assignee ID value
+	v := url.Values{}
+	if err := userID.EncodeValues("dummy", &v); err != nil {
+		return false
+	}
+	targetID, err := strconv.ParseInt(v.Get("dummy"), 10, 64)
+	if err != nil {
+		return false
+	}
+
 	for _, assignee := range issue.Assignees {
-		if assignee.ID == userID {
+		if assignee.ID == targetID {
 			return true
 		}
 	}
@@ -478,10 +491,6 @@ func stateMatches(issue *gitlab.Issue, opts *gitlab.ListProjectIssuesOptions) bo
 }
 
 func projectListIssueOptionsToGroup(l *gitlab.ListProjectIssuesOptions) *gitlab.ListGroupIssuesOptions {
-	var assigneeID *gitlab.AssigneeIDValue
-	if l.AssigneeID != nil {
-		assigneeID = gitlab.AssigneeID(*l.AssigneeID)
-	}
 	return &gitlab.ListGroupIssuesOptions{
 		ListOptions:        l.ListOptions,
 		State:              l.State,
@@ -493,7 +502,7 @@ func projectListIssueOptionsToGroup(l *gitlab.ListProjectIssuesOptions) *gitlab.
 		Scope:              l.Scope,
 		AuthorID:           l.AuthorID,
 		NotAuthorID:        l.NotAuthorID,
-		AssigneeID:         assigneeID,
+		AssigneeID:         l.AssigneeID,
 		NotAssigneeID:      l.NotAssigneeID,
 		AssigneeUsername:   l.AssigneeUsername,
 		MyReactionEmoji:    l.MyReactionEmoji,

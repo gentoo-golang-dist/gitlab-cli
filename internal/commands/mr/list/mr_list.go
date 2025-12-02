@@ -4,20 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 type options struct {
@@ -104,8 +102,8 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	}
 
 	cmdutils.EnableRepoOverride(mrListCmd, f)
-	mrListCmd.Flags().StringSliceVarP(&opts.labels, "label", "l", []string{}, "Filter merge request by label <name>.")
-	mrListCmd.Flags().StringSliceVar(&opts.notLabels, "not-label", []string{}, "Filter merge requests by not having label <name>.")
+	mrListCmd.Flags().StringSliceVarP(&opts.labels, "label", "l", []string{}, "Filter merge request by label <name>. Multiple labels can be comma-separated or specified by repeating the flag.")
+	mrListCmd.Flags().StringSliceVar(&opts.notLabels, "not-label", []string{}, "Filter merge requests by not having label <name>. Multiple labels can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringVar(&opts.author, "author", "", "Filter merge request by author <username>.")
 	mrListCmd.Flags().StringVarP(&opts.milestone, "milestone", "m", "", "Filter merge request by milestone <id>.")
 	mrListCmd.Flags().StringVarP(&opts.sourceBranch, "source-branch", "s", "", "Filter by source branch <name>.")
@@ -119,8 +117,8 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	mrListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
 	mrListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	mrListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users.")
-	mrListCmd.Flags().StringSliceVarP(&opts.reviewer, "reviewer", "r", []string{}, "Get only merge requests with users as reviewer.")
+	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users. Multiple users can be comma-separated or specified by repeating the flag.")
+	mrListCmd.Flags().StringSliceVarP(&opts.reviewer, "reviewer", "r", []string{}, "Get only merge requests with users as reviewer. Multiple users can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringVarP(&opts.sort, "sort", "S", "", "Sort merge requests by <field>. Sort options: asc, desc.")
 	mrListCmd.Flags().StringVarP(&opts.orderBy, "order", "o", "", "Order merge requests by <field>. Order options: created_at, title, merged_at or updated_at.")
 
@@ -224,10 +222,10 @@ func (o *options) run() error {
 		o.listType = "search"
 	}
 	if o.page != 0 {
-		l.Page = o.page
+		l.Page = int64(o.page)
 	}
 	if o.perPage != 0 {
-		l.PerPage = o.perPage
+		l.PerPage = int64(o.perPage)
 	}
 	if o.draft {
 		l.WIP = gitlab.Ptr("yes")
@@ -262,7 +260,7 @@ func (o *options) run() error {
 				return err
 			}
 			for _, user := range users {
-				assigneeIds = append(assigneeIds, user.ID)
+				assigneeIds = append(assigneeIds, int(user.ID))
 			}
 		}
 	}
@@ -277,7 +275,7 @@ func (o *options) run() error {
 				return err
 			}
 			for _, user := range users {
-				reviewerIds = append(reviewerIds, user.ID)
+				reviewerIds = append(reviewerIds, int(user.ID))
 			}
 		}
 	}
@@ -300,7 +298,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	title.Page = l.Page
+	title.Page = int(l.Page)
 	title.ListActionType = o.listType
 	title.CurrentPageTotal = len(mergeRequests)
 

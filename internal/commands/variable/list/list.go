@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
@@ -105,7 +105,12 @@ func (o *options) run() error {
 
 	if o.group != "" {
 		o.io.LogInfof("Listing variables for the %s group:\n\n", color.Bold(o.group))
-		listOpts := &gitlab.ListGroupVariablesOptions{Page: o.page, PerPage: o.perPage}
+		listOpts := &gitlab.ListGroupVariablesOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    int64(o.page),
+				PerPage: int64(o.perPage),
+			},
+		}
 		variables, _, err := client.GroupVariables.ListVariables(o.group, listOpts)
 		if err != nil {
 			return err
@@ -122,7 +127,12 @@ func (o *options) run() error {
 		}
 	} else if o.instance {
 		o.io.LogInfo("Listing variables for the instance\n\n")
-		listOpts := &gitlab.ListInstanceVariablesOptions{Page: o.page, PerPage: o.perPage}
+		listOpts := &gitlab.ListInstanceVariablesOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    int64(o.page),
+				PerPage: int64(o.perPage),
+			},
+		}
 		variables, _, err := client.InstanceVariables.ListVariables(listOpts)
 		if err != nil {
 			return err
@@ -142,8 +152,13 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		o.io.LogInfof("Listing variables for the %s project:\n\n", color.Bold(repo.FullName()))
-		listOpts := &gitlab.ListProjectVariablesOptions{Page: o.page, PerPage: o.perPage}
+		o.io.LogInfof("Listing variables from the %s project:\n\n", color.Bold(repo.FullName()))
+		listOpts := &gitlab.ListProjectVariablesOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    int64(o.page),
+				PerPage: int64(o.perPage),
+			},
+		}
 		variables, _, err := client.ProjectVariables.ListVariables(repo.FullName(), listOpts)
 		if err != nil {
 			return err

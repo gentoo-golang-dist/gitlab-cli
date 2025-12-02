@@ -8,10 +8,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_getPipelineWithFallback(t *testing.T) {
@@ -49,14 +51,14 @@ func Test_getPipelineWithFallback(t *testing.T) {
 					Return([]*gitlab.BasicMergeRequest{{IID: 1}}, nil, nil)
 
 				tc.MockMergeRequests.EXPECT().
-					GetMergeRequest("OWNER/REPO", 1, gomock.Any()).
+					GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
 					Return(&gitlab.MergeRequest{
 						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 1},
 						HeadPipeline:      &gitlab.Pipeline{ID: 2, Status: "running"},
 					}, nil, nil)
 
 				tc.MockPipelines.EXPECT().
-					GetPipeline("OWNER/REPO", 2, gomock.Any()).
+					GetPipeline("OWNER/REPO", int64(2), gomock.Any()).
 					Return(&gitlab.Pipeline{
 						ID:     2,
 						Status: "running",
@@ -97,7 +99,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 					ListProjectMergeRequests("OWNER/REPO", gomock.Any()).
 					Return([]*gitlab.BasicMergeRequest{{IID: 1}}, nil, nil)
 				tc.MockMergeRequests.EXPECT().
-					GetMergeRequest("OWNER/REPO", 1, gomock.Any()).
+					GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
 					Return(&gitlab.MergeRequest{
 						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 1},
 					}, nil, nil)
@@ -149,7 +151,7 @@ func TestCiStatusCommand_NoPrompt(t *testing.T) {
 
 		// Mock jobs for the pipeline - need to handle pagination
 		tc.MockJobs.EXPECT().
-			ListPipelineJobs("OWNER/REPO", 1, gomock.Any(), gomock.Any()).
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Job{
 				{ID: 1, Name: "test", Stage: "test", Status: "success"},
 			}, &gitlab.Response{NextPage: 0}, nil),
@@ -183,7 +185,7 @@ func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
 
 		// Mock jobs for the pipeline - need to handle pagination
 		tc.MockJobs.EXPECT().
-			ListPipelineJobs("OWNER/REPO", 1, gomock.Any(), gomock.Any()).
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Job{
 				{ID: 1, Name: "test", Stage: "test", Status: "success"},
 			}, &gitlab.Response{NextPage: 0}, nil),

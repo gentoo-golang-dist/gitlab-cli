@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/charmbracelet/glamour"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/browser"
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
@@ -162,6 +164,12 @@ func PresentInStringSlice(hay []string, needle string) bool {
 // PresentInIntSlice take a Hay (Slice of Ints) and a Needle (int)
 // and returns true based on whether or not the Needle is present in the hay.
 func PresentInIntSlice(hay []int, needle int) bool {
+	return slices.Contains(hay, needle)
+}
+
+// PresentInInt64Slice take a Hay (Slice of Int64s) and a Needle (int64)
+// and returns true based on whether or not the Needle is present in the hay.
+func PresentInInt64Slice(hay []int64, needle int64) bool {
 	return slices.Contains(hay, needle)
 }
 

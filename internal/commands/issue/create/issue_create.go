@@ -8,23 +8,22 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/utils"
-
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/prompt"
 	"gitlab.com/gitlab-org/cli/internal/recovery"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 var createIssue = func(client *gitlab.Client, projectID any, opts *gitlab.CreateIssueOptions) (*gitlab.Issue, error) {
@@ -42,14 +41,14 @@ type options struct {
 	Labels      []string `json:"labels,omitempty"`
 	Assignees   []string `json:"assignees,omitempty"`
 
-	Weight        int    `json:"weight,omitempty"`
-	Milestone     int    `json:"milestone,omitempty"`
-	LinkedMR      int    `json:"linked_mr,omitempty"`
+	Weight        int64  `json:"weight,omitempty"`
+	Milestone     int64  `json:"milestone,omitempty"`
+	LinkedMR      int64  `json:"linked_mr,omitempty"`
 	LinkedIssues  []int  `json:"linked_issues,omitempty"`
 	IssueLinkType string `json:"issue_link_type,omitempty"`
 	TimeEstimate  string `json:"time_estimate,omitempty"`
 	TimeSpent     string `json:"time_spent,omitempty"`
-	EpicID        int    `json:"epic_id,omitempty"`
+	EpicID        int64  `json:"epic_id,omitempty"`
 	DueDate       string `json:"due_date,omitempty"`
 
 	MilestoneFlag string `json:"milestone_flag"`
@@ -148,21 +147,21 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	}
 	issueCreateCmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Issue title.")
 	issueCreateCmd.Flags().StringVarP(&opts.Description, "description", "d", "", "Issue description.")
-	issueCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels should be comma-separated.")
-	issueCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign issue to people by their `usernames`.")
+	issueCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.")
+	issueCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign issue to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	issueCreateCmd.Flags().StringVarP(&opts.MilestoneFlag, "milestone", "m", "", "The global ID or title of a milestone to assign.")
 	issueCreateCmd.Flags().BoolVarP(&opts.IsConfidential, "confidential", "c", false, "Set an issue to be confidential. (default false)")
-	issueCreateCmd.Flags().IntVarP(&opts.LinkedMR, "linked-mr", "", 0, "The IID of a merge request in which to resolve all issues.")
-	issueCreateCmd.Flags().IntVarP(&opts.Weight, "weight", "w", 0, "Issue weight. Valid values are greater than or equal to 0.")
+	issueCreateCmd.Flags().Int64VarP(&opts.LinkedMR, "linked-mr", "", 0, "The IID of a merge request in which to resolve all issues.")
+	issueCreateCmd.Flags().Int64VarP(&opts.Weight, "weight", "w", 0, "Issue weight. Valid values are greater than or equal to 0.")
 	issueCreateCmd.Flags().BoolVarP(&opts.noEditor, "no-editor", "", false, "Don't open editor to enter a description. If set to true, uses prompt. (default false)")
 	issueCreateCmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "Don't prompt for confirmation to submit the issue.")
 	issueCreateCmd.Flags().BoolVar(&opts.web, "web", false, "Continue issue creation with web interface.")
-	issueCreateCmd.Flags().IntSliceVarP(&opts.LinkedIssues, "linked-issues", "", []int{}, "The IIDs of issues that this issue links to.")
+	issueCreateCmd.Flags().IntSliceVarP(&opts.LinkedIssues, "linked-issues", "", []int{}, "The IIDs of issues that this issue links to. Multiple IIDs can be comma-separated or specified by repeating the flag.")
 	issueCreateCmd.Flags().StringVarP(&opts.IssueLinkType, "link-type", "", "relates_to", "Type for the issue link")
 	issueCreateCmd.Flags().StringVarP(&opts.TimeEstimate, "time-estimate", "e", "", "Set time estimate for the issue.")
 	issueCreateCmd.Flags().StringVarP(&opts.TimeSpent, "time-spent", "s", "", "Set time spent for the issue.")
 	issueCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)")
-	issueCreateCmd.Flags().IntVarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
+	issueCreateCmd.Flags().Int64VarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
 
 	return issueCreateCmd

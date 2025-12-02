@@ -3,14 +3,14 @@ package list
 import (
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 var getRelease = func(client *gitlab.Client, projectID any, tag string) (*gitlab.Release, error) {
@@ -60,9 +60,9 @@ func run(factory cmdutils.Factory, cmd *cobra.Command) error {
 	l := &gitlab.ListReleasesOptions{}
 
 	page, _ := cmd.Flags().GetInt("page")
-	l.Page = page
+	l.Page = int64(page)
 	perPage, _ := cmd.Flags().GetInt("per-page")
-	l.PerPage = perPage
+	l.PerPage = int64(perPage)
 
 	tag, err := cmd.Flags().GetString("tag")
 	if err != nil {

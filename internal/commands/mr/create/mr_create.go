@@ -8,25 +8,23 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/AlecAivazis/survey/v2"
-	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/recovery"
-
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/prompt"
+	"gitlab.com/gitlab-org/cli/internal/recovery"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
@@ -39,7 +37,7 @@ type options struct {
 	Labels                []string `json:"labels,omitempty"`
 	Assignees             []string `json:"assignees,omitempty"`
 	Reviewers             []string `json:"reviewers,omitempty"`
-	Milestone             int      `json:"milestone,omitempty"`
+	Milestone             int64    `json:"milestone,omitempty"`
 	MilestoneFlag         string   `json:"milestone_flag,omitempty"`
 	MRCreateTargetProject string   `json:"mr_create_target_project,omitempty"`
 
@@ -146,9 +144,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().BoolVarP(&opts.ShouldPush, "push", "", false, "Push committed changes after creating merge request. Make sure you have committed changes.")
 	mrCreateCmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Supply a title for the merge request.")
 	mrCreateCmd.Flags().StringVarP(&opts.Description, "description", "d", "", "Supply a description for the merge request.")
-	mrCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels should be comma-separated.")
-	mrCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`.")
-	mrCreateCmd.Flags().StringSliceVarP(&opts.Reviewers, "reviewer", "", []string{}, "Request review from users by their `usernames`.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.Reviewers, "reviewer", "", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	mrCreateCmd.Flags().StringVarP(&opts.SourceBranch, "source-branch", "s", "", "Create a merge request from this branch. Default is the current branch.")
 	mrCreateCmd.Flags().StringVarP(&opts.TargetBranch, "target-branch", "b", "", "The target or base branch into which you want your code merged into.")
 	mrCreateCmd.Flags().BoolVarP(&opts.CreateSourceBranch, "create-source-branch", "", false, "Create a source branch if it does not exist.")
@@ -441,7 +439,7 @@ func (o *options) run() error {
 							templateContents += "Signed-off-by: " + u.Name + "<" + u.Email + ">"
 						}
 					case mrEmptyTemplate:
-						// blank merge request was choosen, leave templateContents empty
+						// blank merge request was chosen, leave templateContents empty
 						if o.signoff {
 							u, _, _ := client.Users.CurrentUser()
 							templateContents += "Signed-off-by: " + u.Name + "<" + u.Email + ">"
@@ -779,8 +777,8 @@ func generateMRCompareURL(opts *options) (string, error) {
 	q.Add("merge_request[description]", description)
 	q.Add("merge_request[source_branch]", opts.SourceBranch)
 	q.Add("merge_request[target_branch]", opts.TargetBranch)
-	q.Add("merge_request[source_project_id]", strconv.Itoa(opts.SourceProject.ID))
-	q.Add("merge_request[target_project_id]", strconv.Itoa(opts.TargetProject.ID))
+	q.Add("merge_request[source_project_id]", strconv.FormatInt(opts.SourceProject.ID, 10))
+	q.Add("merge_request[target_project_id]", strconv.FormatInt(opts.TargetProject.ID, 10))
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil

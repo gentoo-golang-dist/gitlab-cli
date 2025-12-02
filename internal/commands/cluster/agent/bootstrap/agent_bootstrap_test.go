@@ -10,12 +10,13 @@ import (
 	"testing"
 
 	"github.com/google/shlex"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
-	"github.com/stretchr/testify/assert"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestAgentBootstrap_FailsToGetDefaultBranchForDefaultManifestBranch(t *testing.T) {
@@ -76,7 +77,7 @@ func TestAgentBootstrap_HappyPath_AgentNotRegisteredYet(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -141,7 +142,7 @@ func TestAgentBootstrap_HappyPath_AgentAlreadyRegistered(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -201,7 +202,7 @@ func TestAgentBootstrap_HappyPath_NoEnvironmentCreation(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -265,7 +266,7 @@ func TestAgentBootstrap_HappyPath_CustomEnvironmentValues(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -335,7 +336,7 @@ func TestAgentBootstrap_HappyPath_NoReconcile(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -398,7 +399,7 @@ func TestAgentBootstrap_HappyPath_CustomFluxHelmManifestFileNames(t *testing.T) 
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -621,7 +622,7 @@ func TestAgentBootstrap_Error_createAgentTokenSecret(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(actualErr),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(actualErr),
 		stderr.EXPECT().Write([]byte("[FAILED]\n")),
 		stderr.EXPECT().Write(ContainsBytes([]byte(actualErr.Error()))),
 	)
@@ -671,7 +672,7 @@ func TestAgentBootstrap_Error_createHelmRepositoryManifest(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(file{}, actualErr),
@@ -727,7 +728,7 @@ func TestAgentBootstrap_Error_SyncFile_HelmRepositoryFile(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -788,7 +789,7 @@ func TestAgentBootstrap_Error_SyncFile_HelmReleaseFile(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -850,7 +851,7 @@ func TestAgentBootstrap_Error_reconcile(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),
@@ -907,7 +908,7 @@ func TestAgentBootstrap_HappyPath_WithoutFlux(t *testing.T) {
 		api.EXPECT().CreateAgentToken(agent.ID).Return(agentToken, nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Kubernetes Secret with Agent Token ... ")),
-		kubectlWrapper.EXPECT().createAgentTokenSecret(42, agentTokenValue).Return(nil),
+		kubectlWrapper.EXPECT().createAgentTokenSecret(int64(42), agentTokenValue).Return(nil),
 		stderr.EXPECT().Write([]byte("[OK]\n")),
 		stderr.EXPECT().Write([]byte("Creating Flux Helm Resources ... ")),
 		fluxWrapper.EXPECT().createHelmRepositoryManifest().Return(helmRepositoryFile, nil),

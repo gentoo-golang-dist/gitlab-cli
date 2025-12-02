@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/google/shlex"
-
-	"gitlab.com/gitlab-org/cli/internal/config"
-
 	"github.com/acarl005/stripansi"
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -38,14 +38,14 @@ func Test_deleteMergeRequest(t *testing.T) {
 	)
 	oldDeleteMR := api.DeleteMR
 
-	api.DeleteMR = func(client *gitlab.Client, projectID any, mrID int) error {
+	api.DeleteMR = func(client *gitlab.Client, projectID any, mrID int64) error {
 		if projectID == "" || projectID == "WRONG_REPO" || projectID == "expected_err" || mrID == 0 {
 			return fmt.Errorf("error expected")
 		}
 		return nil
 	}
 
-	api.GetMR = func(client *gitlab.Client, projectID any, mrID int, opts *gitlab.GetMergeRequestsOptions) (*gitlab.MergeRequest, error) {
+	api.GetMR = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.GetMergeRequestsOptions) (*gitlab.MergeRequest, error) {
 		if projectID == "" || projectID == "WRONG_REPO" || projectID == "expected_err" {
 			return nil, fmt.Errorf("error expected")
 		}

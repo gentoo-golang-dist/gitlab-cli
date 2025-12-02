@@ -3,7 +3,9 @@ package list
 import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -60,8 +62,10 @@ func (o *options) run() error {
 	}
 
 	listProjectDeployKeysOptions := &gitlab.ListProjectDeployKeysOptions{
-		Page:    o.page,
-		PerPage: o.perPage,
+		ListOptions: gitlab.ListOptions{
+			Page:    int64(o.page),
+			PerPage: int64(o.perPage),
+		},
 	}
 
 	baseRepo, err := o.baseRepo()

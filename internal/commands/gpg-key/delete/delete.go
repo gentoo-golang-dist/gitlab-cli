@@ -5,7 +5,9 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -16,7 +18,7 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
 
-	keyID int
+	keyID int64
 }
 
 func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
@@ -48,7 +50,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 
 func (o *options) complete(args []string) error {
 	if len(args) == 1 {
-		o.keyID = utils.StringToInt(args[0])
+		o.keyID = int64(utils.StringToInt(args[0]))
 	}
 
 	return nil

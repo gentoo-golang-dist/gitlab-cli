@@ -3,15 +3,15 @@ package contributors
 import (
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -83,8 +83,8 @@ func (o *options) run() error {
 	l := &gitlab.ListContributorsOptions{
 		OrderBy: gitlab.Ptr(o.orderBy),
 		ListOptions: gitlab.ListOptions{
-			Page:    o.page,
-			PerPage: o.perPage,
+			Page:    int64(o.page),
+			PerPage: int64(o.perPage),
 		},
 	}
 
@@ -100,7 +100,7 @@ func (o *options) run() error {
 	// Title
 	title := utils.NewListTitle("contributor")
 	title.RepoName = repo.FullName()
-	title.Page = l.Page
+	title.Page = int(l.Page)
 	title.CurrentPageTotal = len(users)
 
 	// List

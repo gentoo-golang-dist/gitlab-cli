@@ -10,10 +10,12 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"go.uber.org/mock/gomock"
 )
 
 func TestList_InvalidAgentID(t *testing.T) {
@@ -44,7 +46,7 @@ func TestList_FailToRetrieveTokens(t *testing.T) {
 
 	// setup mock expectations
 	tc.MockClusterAgents.EXPECT().
-		ListAgentTokens("OWNER/REPO", 1, nil, gomock.Any()).
+		ListAgentTokens("OWNER/REPO", int64(1), nil, gomock.Any()).
 		Return(nil, nil, errors.New("dummy API failure"))
 
 	// WHEN
@@ -70,7 +72,7 @@ func TestList_SingleToken(t *testing.T) {
 	// setup mock expectations
 	gomock.InOrder(
 		tc.MockClusterAgents.EXPECT().
-			ListAgentTokens("OWNER/REPO", 1, nil, gomock.Any()).
+			ListAgentTokens("OWNER/REPO", int64(1), nil, gomock.Any()).
 			Return([]*gitlab.AgentToken{
 				{
 					ID:              42,
@@ -84,7 +86,7 @@ func TestList_SingleToken(t *testing.T) {
 				},
 			}, nil, nil),
 		tc.MockUsers.EXPECT().
-			GetUser(100, gomock.Any(), gomock.Any()).
+			GetUser(int64(100), gomock.Any(), gomock.Any()).
 			Return(&gitlab.User{Username: "any-username"}, nil, nil),
 	)
 
@@ -117,7 +119,7 @@ func TestList_MultipleToken(t *testing.T) {
 	// setup mock expectations
 	gomock.InOrder(
 		tc.MockClusterAgents.EXPECT().
-			ListAgentTokens("OWNER/REPO", 1, nil, gomock.Any()).
+			ListAgentTokens("OWNER/REPO", int64(1), nil, gomock.Any()).
 			Return([]*gitlab.AgentToken{
 				{
 					ID:              42,
@@ -141,7 +143,7 @@ func TestList_MultipleToken(t *testing.T) {
 				},
 			}, nil, nil),
 		tc.MockUsers.EXPECT().
-			GetUser(100, gomock.Any(), gomock.Any()).
+			GetUser(int64(100), gomock.Any(), gomock.Any()).
 			Return(&gitlab.User{Username: "any-username"}, nil, nil),
 	)
 

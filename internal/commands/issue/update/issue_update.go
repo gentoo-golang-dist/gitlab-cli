@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
@@ -91,7 +91,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					return &cmdutils.FlagError{Err: errors.New("weight must be a positive integer or zero")}
 				}
 				actions = append(actions, fmt.Sprintf("set weight to %d", weight))
-				l.Weight = gitlab.Ptr(weight)
+				l.Weight = gitlab.Ptr(int64(weight))
 			}
 
 			if m, _ := cmd.Flags().GetString("description"); m != "" {
@@ -151,11 +151,11 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				} else {
 					// Unassign the Milestone
 					actions = append(actions, "unassigned milestone")
-					l.MilestoneID = gitlab.Ptr(0)
+					l.MilestoneID = gitlab.Ptr(int64(0))
 				}
 			}
 			if cmd.Flags().Changed("unassign") {
-				l.AssigneeIDs = &[]int{0} // 0 or an empty int[] is the documented way to unassign
+				l.AssigneeIDs = &[]int64{0} // 0 or an empty int[] is the documented way to unassign
 				actions = append(actions, "unassigned all users")
 			}
 			if ua != nil {
@@ -210,7 +210,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	issueUpdateCmd.Flags().BoolP("confidential", "c", false, "Make issue confidential")
 	issueUpdateCmd.Flags().StringP("milestone", "m", "", "Title of the milestone to assign Set to \"\" or 0 to unassign.")
 	issueUpdateCmd.Flags().
-		StringSliceP("assignee", "a", []string{}, "Assign users by username. Prefix with '!' or '-' to remove from existing assignees, or '+' to add new. Otherwise, replace existing assignees with these users.")
+		StringSliceP("assignee", "a", []string{}, "Assign users by username. Prefix with '!' or '-' to remove from existing assignees, or '+' to add new. Otherwise, replace existing assignees with these users. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	issueUpdateCmd.Flags().Bool("unassign", false, "Unassign all users.")
 	issueUpdateCmd.Flags().IntP("weight", "w", 0, "Set weight of the issue.")
 	issueUpdateCmd.Flags().StringP("due-date", "", "", "A date in 'YYYY-MM-DD' format.")

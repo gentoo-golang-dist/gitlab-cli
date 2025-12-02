@@ -6,23 +6,22 @@ import (
 	"io"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
 
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	issuableView "gitlab.com/gitlab-org/cli/internal/commands/issuable/view"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
-var listMRNotes = func(client *gitlab.Client, projectID any, mrID int, opts *gitlab.ListMergeRequestNotesOptions) ([]*gitlab.Note, error) {
+var listMRNotes = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestNotesOptions) ([]*gitlab.Note, error) {
 	if opts.PerPage == 0 {
 		opts.PerPage = api.DefaultListLimit
 	}
@@ -126,8 +125,8 @@ func (o *options) run(f cmdutils.Factory, args []string) error {
 		l := &gitlab.ListMergeRequestNotesOptions{
 			Sort: gitlab.Ptr("asc"),
 			ListOptions: gitlab.ListOptions{
-				Page:    o.commentPageNujmber,
-				PerPage: o.commentLimit,
+				Page:    int64(o.commentPageNujmber),
+				PerPage: int64(o.commentLimit),
 			},
 		}
 

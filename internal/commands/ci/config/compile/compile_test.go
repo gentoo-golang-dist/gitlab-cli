@@ -7,13 +7,14 @@ import (
 	"path"
 	"testing"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"go.uber.org/mock/gomock"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func Test_compileRun(t *testing.T) {
@@ -62,8 +63,8 @@ func Test_compileRun(t *testing.T) {
 
 			tc := gitlabtesting.NewTestClient(t)
 			gomock.InOrder(
-				tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(&gitlab.Project{ID: 123}, nil, nil).MaxTimes(1),
-				tc.MockValidate.EXPECT().ProjectNamespaceLint(123, gomock.Any()).Return(tt.expectedLintResponse, nil, nil).MaxTimes(1),
+				tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(&gitlab.Project{ID: int64(123)}, nil, nil).MaxTimes(1),
+				tc.MockValidate.EXPECT().ProjectNamespaceLint(int64(123), gomock.Any()).Return(tt.expectedLintResponse, nil, nil).MaxTimes(1),
 			)
 			options := []cmdtest.FactoryOption{cmdtest.WithGitLabClient(tc.Client)}
 			if !tt.showHaveBaseRepo {

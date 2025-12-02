@@ -15,18 +15,16 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"gitlab.com/gitlab-org/cli/internal/api"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	jsonPretty "github.com/tidwall/pretty"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -387,7 +385,7 @@ func fillPlaceholders(value string, opts *options) (string, error) {
 			h, _ := opts.apiClient(baseRepo.RepoHost())
 			project, e := baseRepo.Project(h.Lab())
 			if e == nil && project != nil {
-				return strconv.Itoa(project.ID)
+				return strconv.FormatInt(project.ID, 10)
 			}
 			err = e
 			return ""
@@ -556,6 +554,7 @@ func openUserFile(fn string, stdin io.ReadCloser) (io.ReadCloser, int64, error) 
 
 	s, err := os.Stat(fn)
 	if err != nil {
+		r.Close()
 		return r, -1, err
 	}
 

@@ -7,19 +7,19 @@ import (
 	"slices"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
-
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const (
@@ -36,7 +36,7 @@ type issueBoardViewOptions struct {
 
 type boardMeta struct {
 	name    string
-	id      int
+	id      int64
 	group   *gitlab.Group
 	project *gitlab.Project
 }
@@ -182,7 +182,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	viewCmd.Flags().
 		StringVarP(&opts.assignee, "assignee", "a", "", "Filter board issues by assignee username.")
 	viewCmd.Flags().
-		StringSliceVarP(&opts.labels, "labels", "l", []string{}, "Filter board issues by labels, comma separated.")
+		StringSliceVarP(&opts.labels, "labels", "l", []string{}, "Filter board issues by labels. Multiple labels can be comma-separated or specified by repeating the flag.")
 	viewCmd.Flags().
 		StringVarP(&opts.milestone, "milestone", "m", "", "Filter board issues by milestone.")
 	return viewCmd
@@ -390,13 +390,13 @@ func getBoardLists(apiClient *gitlab.Client, board boardMeta, repo glrepo.Interf
 			Color:     "#8ec07c",
 			TextColor: "#000000",
 		},
-		Position: len(boardLists),
+		Position: int64(len(boardLists)),
 	}
 	boardLists = append(boardLists, closed)
 	return boardLists, nil
 }
 
-func getGroupBoardIssues(apiClient *gitlab.Client, groupID int, opts *issueBoardViewOptions) ([]*gitlab.Issue, error) {
+func getGroupBoardIssues(apiClient *gitlab.Client, groupID int64, opts *issueBoardViewOptions) ([]*gitlab.Issue, error) {
 	reqOpts := opts.getListGroupIssueOptions()
 	if reqOpts.PerPage == 0 {
 		reqOpts.PerPage = api.DefaultListLimit

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )
@@ -14,7 +15,7 @@ func Test_issueMetadataFromURL(t *testing.T) {
 	tests := []struct {
 		name string
 		str  string
-		want int
+		want int64
 		path string
 	}{
 		{

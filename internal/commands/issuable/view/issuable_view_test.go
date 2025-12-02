@@ -12,17 +12,18 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/acarl005/stripansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	mainTest "gitlab.com/gitlab-org/cli/test"
@@ -73,7 +74,7 @@ func TestMain(m *testing.M) {
 	`))))
 
 	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
-	api.GetIssue = func(client *gitlab.Client, projectID any, issueID int) (*gitlab.Issue, error) {
+	api.GetIssue = func(client *gitlab.Client, projectID any, issueID int64) (*gitlab.Issue, error) {
 		if projectID == "" || projectID == "WRONG_REPO" || projectID == "expected_err" {
 			return nil, fmt.Errorf("error expected")
 		}
@@ -82,7 +83,7 @@ func TestMain(m *testing.M) {
 			return nil, err
 		}
 
-		testIssuable := testIssuables[issueID]
+		testIssuable := testIssuables[int(issueID)]
 		issueType := string(testIssuable.issueType)
 
 		return &gitlab.Issue{
@@ -169,7 +170,7 @@ func TestNewCmdView(t *testing.T) {
 			testIssuable := testIssuables[tt.issueID]
 			oldListIssueNotes := listIssueNotes
 			timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
-			listIssueNotes = func(client *gitlab.Client, projectID any, issueID int, opts *gitlab.ListIssueNotesOptions) ([]*gitlab.Note, error) {
+			listIssueNotes = func(client *gitlab.Client, projectID any, issueID int64, opts *gitlab.ListIssueNotesOptions) ([]*gitlab.Note, error) {
 				if projectID == "PROJECT_MR_WITH_EMPTY_NOTE" {
 					return []*gitlab.Note{}, nil
 				}

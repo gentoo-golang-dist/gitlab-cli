@@ -8,16 +8,15 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"golang.org/x/sync/errgroup"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"golang.org/x/sync/errgroup"
-
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 func DisplayIssueList(streams *iostreams.IOStreams, issues []*gitlab.Issue, projectID string) string {
@@ -107,10 +106,11 @@ func IssueFromArg(apiClientFunc func(repoHost string) (*api.Client, error), clie
 	issueIID, baseRepo := issueMetadataFromURL(arg, defaultHostname)
 	if issueIID == 0 {
 		var err error
-		issueIID, err = strconv.Atoi(strings.TrimPrefix(arg, "#"))
+		issueIIDInt, err := strconv.Atoi(strings.TrimPrefix(arg, "#"))
 		if err != nil {
 			return nil, nil, fmt.Errorf("invalid issue format: %q", arg)
 		}
+		issueIID = int64(issueIIDInt)
 	}
 
 	if baseRepo == nil {
@@ -144,7 +144,7 @@ func IssueFromArg(apiClientFunc func(repoHost string) (*api.Client, error), clie
 //		GROUP/SUBGROUP/../../REPO/-/issues/incident/id
 var issueURLPathRE = regexp.MustCompile(`^(/(?:[^-][^/]+/){2,})+(?:-/)?issues/(?:incident/)?(\d+)$`)
 
-func issueMetadataFromURL(s, defaultHostname string) (int, glrepo.Interface) {
+func issueMetadataFromURL(s, defaultHostname string) (int64, glrepo.Interface) {
 	u, err := url.Parse(s)
 	if err != nil {
 		return 0, nil
@@ -169,9 +169,9 @@ func issueMetadataFromURL(s, defaultHostname string) (int, glrepo.Interface) {
 	if err != nil {
 		return 0, nil
 	}
-	return issueIID, repo
+	return int64(issueIID), repo
 }
 
-func issueFromIID(apiClient *gitlab.Client, repo glrepo.Interface, issueIID int) (*gitlab.Issue, error) {
+func issueFromIID(apiClient *gitlab.Client, repo glrepo.Interface, issueIID int64) (*gitlab.Issue, error) {
 	return api.GetIssue(apiClient, repo.FullName(), issueIID)
 }

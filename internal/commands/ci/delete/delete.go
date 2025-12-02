@@ -7,18 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const (
@@ -128,10 +126,10 @@ func optsFromFlags(flags *pflag.FlagSet) *gitlab.ListProjectPipelinesOptions {
 	perPage, _ := flags.GetInt(FlagPerPage)
 
 	if perPage != 0 {
-		opts.PerPage = perPage
+		opts.PerPage = int64(perPage)
 	}
 	if page != 0 {
-		opts.Page = page
+		opts.Page = int64(page)
 	}
 
 	source, _ := flags.GetString(FlagSource)
@@ -173,7 +171,7 @@ func runDeletion(pipelineIDs []int, dryRunMode bool, w io.Writer, c *iostreams.C
 			continue
 		}
 
-		_, err := apiClient.Pipelines.DeletePipeline(repo.FullName(), id)
+		_, err := apiClient.Pipelines.DeletePipeline(repo.FullName(), int64(id))
 		if err != nil {
 			return err
 		}
@@ -196,7 +194,7 @@ func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, o
 		}
 
 		for _, item := range pipes {
-			pipelineIDs = append(pipelineIDs, item.ID)
+			pipelineIDs = append(pipelineIDs, int(item.ID))
 		}
 
 		opts.Page = resp.NextPage

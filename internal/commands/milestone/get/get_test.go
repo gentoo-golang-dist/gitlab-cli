@@ -7,11 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_GetProjectMilestone(t *testing.T) {
@@ -39,7 +41,7 @@ func Test_GetProjectMilestone(t *testing.T) {
 			ExpectedMsg: []string{"Title: Milestone title\nDescription: Example description\nState: closed\nDue Date: 2025-01-15\n\n"},
 			cli:         "123 --project 456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockMilestones.EXPECT().GetMilestone("456", 123).Return(testMilestone, nil, nil)
+				tc.MockMilestones.EXPECT().GetMilestone("456", int64(123)).Return(testMilestone, nil, nil)
 			},
 		},
 		{
@@ -47,7 +49,7 @@ func Test_GetProjectMilestone(t *testing.T) {
 			wantErr: true,
 			cli:     "111 --project 456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockMilestones.EXPECT().GetMilestone("456", 111).Return(nil, nil, errors.New("404 Not found"))
+				tc.MockMilestones.EXPECT().GetMilestone("456", int64(111)).Return(nil, nil, errors.New("404 Not found"))
 			},
 		},
 	}
@@ -106,7 +108,7 @@ func Test_GetGroupMilestone(t *testing.T) {
 			ExpectedMsg: []string{"Title: Milestone title\nDescription: Example description\nState: closed\nDue Date: 2025-01-15\n\n"},
 			cli:         "123 --group 456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockGroupMilestones.EXPECT().GetGroupMilestone(gomock.Any(), 123).Return(testMilestone, nil, nil)
+				tc.MockGroupMilestones.EXPECT().GetGroupMilestone(gomock.Any(), int64(123)).Return(testMilestone, nil, nil)
 			},
 		},
 		{
@@ -114,7 +116,7 @@ func Test_GetGroupMilestone(t *testing.T) {
 			wantErr: true,
 			cli:     "111 --group 456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockGroupMilestones.EXPECT().GetGroupMilestone(gomock.Any(), 111).Return(nil, nil, errors.New("404 Not found"))
+				tc.MockGroupMilestones.EXPECT().GetGroupMilestone(gomock.Any(), int64(111)).Return(nil, nil, errors.New("404 Not found"))
 			},
 		},
 	}

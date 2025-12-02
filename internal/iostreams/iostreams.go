@@ -3,6 +3,7 @@ package iostreams
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,9 +16,13 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/google/shlex"
 	"github.com/muesli/termenv"
+
 	"gitlab.com/gitlab-org/cli/internal/theme"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
+
+// ErrUserCancelled is returned when the user cancels a prompt (e.g., by pressing Ctrl+C)
+var ErrUserCancelled = errors.New("user cancelled")
 
 type IOStreams struct {
 	In     io.ReadCloser
@@ -347,5 +352,14 @@ func (s *IOStreams) Run(ctx context.Context, field huh.Field) error {
 		WithOutput(s.StdOut).
 		WithShowHelp(false).
 		WithTheme(theme.HuhTheme())
-	return form.RunWithContext(ctx)
+	err := form.RunWithContext(ctx)
+
+	// Convert huh.ErrUserAborted to iostreams.ErrUserCancelled for consistent error handling
+	// This allows callers to handle cancellation without depending on the huh library
+	if errors.Is(err, huh.ErrUserAborted) {
+		fmt.Fprintln(s.StdErr, "Cancelled.")
+		return ErrUserCancelled
+	}
+
+	return err
 }

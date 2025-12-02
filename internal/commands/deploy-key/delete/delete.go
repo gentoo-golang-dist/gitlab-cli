@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"strconv"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -20,7 +20,7 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
 
-	keyID int
+	keyID int64
 }
 
 func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
@@ -59,7 +59,7 @@ func (o *options) complete(args []string) error {
 		if err != nil {
 			return fmt.Errorf("Deploy key ID must be an integer: %s", args[0])
 		}
-		o.keyID = strInt
+		o.keyID = int64(strInt)
 	}
 
 	return nil

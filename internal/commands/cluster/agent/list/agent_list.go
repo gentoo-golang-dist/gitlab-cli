@@ -1,6 +1,10 @@
 package list
 
 import (
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
@@ -8,9 +12,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 type options struct {
@@ -58,8 +59,10 @@ func (o *options) run() error {
 	}
 
 	agents, _, err := client.ClusterAgents.ListAgents(repo.FullName(), &gitlab.ListAgentsOptions{
-		Page:    int(o.page),
-		PerPage: int(o.perPage),
+		ListOptions: gitlab.ListOptions{
+			Page:    int64(o.page),
+			PerPage: int64(o.perPage),
+		},
 	})
 	if err != nil {
 		return err

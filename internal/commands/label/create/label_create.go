@@ -1,13 +1,13 @@
 package create
 
 import (
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
@@ -52,7 +52,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			}
 			if cmd.Flags().Changed("priority") {
 				if s, err := cmd.Flags().GetInt("priority"); err == nil {
-					l.Priority = gitlab.Ptr(s)
+					l.Priority = gitlab.Ptr(int64(s))
 				} else {
 					return err
 				}
