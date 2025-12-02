@@ -46,5 +46,4 @@ func Test_AttestationVerify(t *testing.T) {
 	if assert.EqualErrorf(t, err, expectedErrorMsg, "Error should be: %v, got: %v", expectedErrorMsg, err) {
 		assert.Empty(t, output.Stderr())
 	}
-
 }
