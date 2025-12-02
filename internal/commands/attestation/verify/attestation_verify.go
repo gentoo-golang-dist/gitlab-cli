@@ -22,15 +22,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
 
-type verifyTrustedMaterial struct {
-	root.TrustedMaterial
-	keyTrustedMaterial root.TrustedMaterial
-}
-
-func (v *verifyTrustedMaterial) PublicKeyVerifier(hint string) (root.TimeConstrainedVerifier, error) {
-	return v.keyTrustedMaterial.PublicKeyVerifier(hint)
-}
-
 type options struct {
 	gitlabClient    func() (*gitlab.Client, error)
 	defaultHostname string
@@ -103,7 +94,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	err = o.verify(client, subjectDigest, project.PathWithNamespace, bundle)
+	err = o.verify(subjectDigest, project.PathWithNamespace, bundle)
 	if err != nil {
 		return err
 	}
@@ -152,7 +143,7 @@ func (o *options) downloadBundle(client *gitlab.Client, attestationIID int64) ([
 	return provenanceStatement, nil
 }
 
-func (o *options) verify(client *gitlab.Client, subjectDigest string, repoPath string, bundleBytes []byte) error {
+func (o *options) verify(subjectDigest string, repoPath string, bundleBytes []byte) error {
 	opts := tuf.DefaultOptions()
 	tufClient, err := tuf.New(opts)
 	if err != nil {
