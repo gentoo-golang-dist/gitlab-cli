@@ -59,6 +59,9 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 			$ glab variable export --per-page 1000 --page 1
 			$ glab variable export --group gitlab-org
 			$ glab variable export --group gitlab-org --per-page 1000 --page 1
+			$ glab variable export --output json
+			$ glab variable export --output env
+			$ glab variable export --output export
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -80,8 +83,12 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 	cmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repository argument is set.")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 100, "Number of items to list per page.")
-	cmd.Flags().StringVarP(&opts.outputFormat, "format", "F", "json", "Format of output: json, export, env.")
+	cmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "json", "Format output as: json, export, env.")
 	cmd.Flags().StringVarP(&opts.scope, "scope", "s", "*", "The environment_scope of the variables. Values: '*' (default), or specific environments.")
+
+	// Deprecated: --format flag, use --output instead
+	cmd.Flags().StringVar(&opts.outputFormat, "format", "json", "Format of output: json, export, env.")
+	_ = cmd.Flags().MarkDeprecated("format", "use --output instead.")
 
 	return cmd
 }
