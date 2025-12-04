@@ -1,6 +1,6 @@
 //go:build !integration
 
-package filter
+package utils
 
 import (
 	"reflect"
@@ -18,12 +18,12 @@ func TestFilter(t *testing.T) {
 		want []T
 	}
 
-	type accessToken struct {
+	type deployToken struct {
 		Active bool
 		Name   string
 	}
 
-	tokens := []accessToken{
+	tokens := []deployToken{
 		{Active: false, Name: "Token1"},
 		{Active: true, Name: "Token1"},
 		{Active: false, Name: "Token2"},
@@ -31,35 +31,35 @@ func TestFilter(t *testing.T) {
 		{Active: false, Name: "Token3"},
 	}
 
-	tests := []testCase[accessToken]{
+	tests := []testCase[deployToken]{
 		{
 			name: "find all active tokens",
-			args: args[accessToken]{
+			args: args[deployToken]{
 				s:    tokens,
-				test: func(t accessToken) bool { return t.Active },
+				test: func(t deployToken) bool { return t.Active },
 			},
-			want: []accessToken{
+			want: []deployToken{
 				{Active: true, Name: "Token1"},
 				{Active: true, Name: "Token2"},
 			},
 		},
 		{
 			name: "find active token by name",
-			args: args[accessToken]{
+			args: args[deployToken]{
 				s:    tokens,
-				test: func(t accessToken) bool { return t.Active && t.Name == "Token2" },
+				test: func(t deployToken) bool { return t.Active && t.Name == "Token2" },
 			},
-			want: []accessToken{
+			want: []deployToken{
 				{Active: true, Name: "Token2"},
 			},
 		},
 		{
 			name: "find no tokens",
-			args: args[accessToken]{
+			args: args[deployToken]{
 				s:    tokens,
-				test: func(t accessToken) bool { return t.Active && t.Name == "Token123" },
+				test: func(t deployToken) bool { return t.Active && t.Name == "Token123" },
 			},
-			want: []accessToken{},
+			want: []deployToken{},
 		},
 	}
 	for _, tt := range tests {

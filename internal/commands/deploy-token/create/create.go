@@ -12,12 +12,11 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/deploy-token/expirationdate"
-	"gitlab.com/gitlab-org/cli/internal/commands/deploy-token/filter"
-	"gitlab.com/gitlab-org/cli/internal/commands/deploy-token/tokenduration"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/tokenutil"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type options struct {
@@ -29,8 +28,8 @@ type options struct {
 	username     string
 	group        string
 	scopes       []string
-	duration     tokenduration.TokenDuration
-	expiresAt    expirationdate.ExpirationDate
+	duration     tokenutil.TokenDuration
+	expiresAt    tokenutil.ExpirationDate
 	outputFormat string
 }
 
@@ -101,7 +100,7 @@ func (o *options) complete(cmd *cobra.Command, args []string) error {
 
 	if time.Time(o.expiresAt).IsZero() && o.duration.Duration().Nanoseconds() != 0 {
 		fmt.Printf("Calculating expiration date using duration: %s\n", o.duration.String())
-		o.expiresAt = expirationdate.ExpirationDate(o.duration.CalculateExpirationDate())
+		o.expiresAt = tokenutil.ExpirationDate(o.duration.CalculateExpirationDate())
 	}
 
 	return nil
@@ -132,7 +131,7 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		tokens = filter.Filter(tokens, func(t *gitlab.DeployToken) bool {
+		tokens = utils.Filter(tokens, func(t *gitlab.DeployToken) bool {
 			return t.Name == o.name
 		})
 		if len(tokens) > 0 {
@@ -167,7 +166,7 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		tokens = filter.Filter(tokens, func(t *gitlab.DeployToken) bool {
+		tokens = utils.Filter(tokens, func(t *gitlab.DeployToken) bool {
 			return t.Name == o.name
 		})
 

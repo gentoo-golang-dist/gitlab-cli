@@ -1,4 +1,4 @@
-package expirationdate
+package tokenutil
 
 import (
 	"time"

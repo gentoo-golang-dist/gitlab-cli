@@ -1,4 +1,4 @@
-package filter
+package utils
 
 // Filter the slice for all elements which test positive
 func Filter[T any](s []T, test func(t T) bool) []T {

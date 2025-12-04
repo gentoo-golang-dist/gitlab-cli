@@ -1,6 +1,6 @@
 //go:build !integration
 
-package tokenduration
+package tokenutil
 
 import (
 	"testing"

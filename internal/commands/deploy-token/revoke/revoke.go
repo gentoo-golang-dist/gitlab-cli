@@ -12,10 +12,10 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/token/filter"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type options struct {
@@ -119,7 +119,7 @@ func (o *options) run() error {
 			return err
 		}
 		var token *gitlab.DeployToken
-		tokens = filter.Filter(tokens, func(t *gitlab.DeployToken) bool {
+		tokens = utils.Filter(tokens, func(t *gitlab.DeployToken) bool {
 			return (t.Name == o.name || t.ID == o.tokenID)
 		})
 		switch len(tokens) {
@@ -149,7 +149,7 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		tokens = filter.Filter(tokens, func(t *gitlab.DeployToken) bool {
+		tokens = utils.Filter(tokens, func(t *gitlab.DeployToken) bool {
 			return (t.Name == o.name || t.ID == o.tokenID)
 		})
 		var token *gitlab.DeployToken

@@ -14,12 +14,11 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/token/accesslevel"
-	"gitlab.com/gitlab-org/cli/internal/commands/token/expirationdate"
-	"gitlab.com/gitlab-org/cli/internal/commands/token/filter"
-	"gitlab.com/gitlab-org/cli/internal/commands/token/tokenduration"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/tokenutil"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type options struct {
@@ -33,8 +32,8 @@ type options struct {
 	group        string
 	accessLevel  accesslevel.AccessLevel
 	scopes       []string
-	duration     tokenduration.TokenDuration
-	expireAt     expirationdate.ExpirationDate
+	duration     tokenutil.TokenDuration
+	expireAt     tokenutil.ExpirationDate
 	outputFormat string
 }
 
@@ -43,7 +42,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		io:        f.IO(),
 		apiClient: f.ApiClient,
 		baseRepo:  f.BaseRepo,
-		duration:  tokenduration.TokenDuration(30 * 24 * time.Hour), // Default: 30 days
+		duration:  tokenutil.TokenDuration(30 * 24 * time.Hour), // Default: 30 days
 	}
 
 	cmd := &cobra.Command{
@@ -129,7 +128,7 @@ func (o *options) complete(cmd *cobra.Command, args []string) error {
 	}
 
 	if time.Time(o.expireAt).IsZero() {
-		o.expireAt = expirationdate.ExpirationDate(o.duration.CalculateExpirationDate())
+		o.expireAt = tokenutil.ExpirationDate(o.duration.CalculateExpirationDate())
 	}
 
 	return nil
@@ -177,7 +176,7 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		tokens = filter.Filter(tokens, func(t *gitlab.PersonalAccessToken) bool {
+		tokens = utils.Filter(tokens, func(t *gitlab.PersonalAccessToken) bool {
 			return t.Active && t.Name == o.name
 		})
 		if len(tokens) > 0 {
@@ -218,7 +217,7 @@ func (o *options) run() error {
 			if err != nil {
 				return err
 			}
-			tokens = filter.Filter(tokens, func(t *gitlab.GroupAccessToken) bool {
+			tokens = utils.Filter(tokens, func(t *gitlab.GroupAccessToken) bool {
 				return t.Active && t.Name == o.name
 			})
 			if len(tokens) > 0 {
@@ -251,7 +250,7 @@ func (o *options) run() error {
 			if err != nil {
 				return err
 			}
-			tokens = filter.Filter(tokens, func(t *gitlab.ProjectAccessToken) bool {
+			tokens = utils.Filter(tokens, func(t *gitlab.ProjectAccessToken) bool {
 				return t.Active && t.Name == o.name
 			})
 
