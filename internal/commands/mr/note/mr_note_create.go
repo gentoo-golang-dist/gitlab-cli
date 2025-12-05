@@ -3,6 +3,7 @@ package note
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -47,7 +48,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 			body, _ := cmd.Flags().GetString("message")
 
-			if body == "" {
+			if strings.TrimSpace(body) == "" {
 				editor, err := cmdutils.GetEditor(f.Config)
 				if err != nil {
 					return err
@@ -58,7 +59,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 					return err
 				}
 			}
-			if body == "" {
+			if strings.TrimSpace(body) == "" {
 				return fmt.Errorf("aborted... Note has an empty message.")
 			}
 
@@ -71,7 +72,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 					return fmt.Errorf("running merge request note deduplication: %v", err)
 				}
 				for _, noteInfo := range notes {
-					if noteInfo.Body == body {
+					if noteInfo.Body == strings.TrimSpace(body) {
 						fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, noteInfo.ID)
 						return nil
 					}
