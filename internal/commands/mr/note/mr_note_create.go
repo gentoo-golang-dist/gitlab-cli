@@ -1,6 +1,7 @@
 package note
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -12,7 +13,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 func NewCmdNote(f cmdutils.Factory) *cobra.Command {
@@ -53,12 +53,10 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 					return err
 				}
 
-				body = utils.Editor(utils.EditorOptions{
-					Label:         "Note message:",
-					Help:          "Enter the note message for the merge request. ",
-					FileName:      "*_MR_NOTE_EDITMSG.md",
-					EditorCommand: editor,
-				})
+				err = f.IO().Editor(context.Background(), &body, "Note message:", "", editor)
+				if err != nil {
+					return err
+				}
 			}
 			if body == "" {
 				return fmt.Errorf("aborted... Note has an empty message.")
