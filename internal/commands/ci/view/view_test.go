@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -31,8 +32,8 @@ func assertScreen(t *testing.T, screen tcell.Screen, expected []string) {
 		runes := make([]rune, len(str))
 		row := []rune(str)
 		for x, expectedRune := range row {
-			r, _, _, _ := screen.GetContent(x, y)
-			runes[x] = r
+			s, _, _ := screen.Get(x, y)
+			runes[x], _ = utf8.DecodeRuneInString(s)
 			_ = expectedRune
 			// assert.Equal(t, expectedRune, r, "%s != %s at (%d,%d)",
 			//	strconv.QuoteRune(expectedRune), strconv.QuoteRune(r), x, y)
@@ -1253,13 +1254,26 @@ func TestCIView(t *testing.T) {
 			httpMocks: []httpMock{
 				{
 					http.MethodGet,
-					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/repository/commits/foo",
+					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/pipelines/latest?ref=foo",
 					http.StatusOK,
 					`{
-						"id": "6104942438c14ec7bd21c6cd5bd995272b3faff6",
+						"id": 8,
+						"ref": "foo",
+						"sha": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
+						"status": "created",
+						"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/225",
+						"created_at": "2025-10-28T16:52:39.000+01:00"
+					}`,
+				},
+				{
+					http.MethodGet,
+					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/repository/commits/2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
+					http.StatusOK,
+					`{
+						"id": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
 						"last_pipeline": {
 							"id": 8,
-							"ref": "main",
+							"ref": "foo",
 							"sha": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
 							"status": "created",
 							"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/225",

@@ -54,7 +54,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Annotations: map[string]string{
-			"help:environment": heredoc.Doc(`
+			"help:environment": heredoc.Docf(`
 			BROWSER: The web browser to use for opening links.
 			Can be set in the config with 'glab config set browser mybrowser'.
 
@@ -67,7 +67,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 			Defaults to the 'client-id' for GitLab.com.
 
 			GITLAB_HOST or GL_HOST: If GitLab Self-Managed or GitLab Dedicated, specify the URL of the GitLab server.
-			(Example: https://gitlab.example.com) Defaults to https://gitlab.com.
+			(Example: %[1]shttps://gitlab.example.com%[1]s) Defaults to %[1]shttps://gitlab.com%[1]s.
 
 			GITLAB_TOKEN: An authentication token for API requests. Set this variable to
 			avoid prompts to authenticate. Overrides any previously-stored credentials.
@@ -97,7 +97,19 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 
 			VISUAL, EDITOR (in order of precedence): The editor tool to use for authoring text.
 			Can be set in the config with 'glab config set editor vim'.
-		`),
+
+			GLAB_ENABLE_CI_AUTOLOGIN [EXPERIMENTAL]: Set to true to enable auto-login in GitLab CI.
+			CI auto-login detects if glab is running in a GitLab CI job by checking the
+			predefined CI/CD variable 'GITLAB_CI'. If detected, it uses other predefined CI/CD variables
+			like 'CI_SERVER_FQDN' and 'CI_JOB_TOKEN' to log in.
+			Predefined CI/CD variables have the lowest priority. Even with auto-login enabled,
+			configuration-mapped variables like 'GITLAB_TOKEN' or 'GITLAB_HOST' take precedence over
+			the corresponding predefined variables.
+			Only glab commands that support 'CI_JOB_TOKEN' are available.
+			For a list of supported commands, see: https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access.
+			This flag is experimental.
+			Use it with caution and leave feedback in https://gitlab.com/gitlab-org/cli/-/work_items/8071.
+		`, "`"),
 			"help:feedback": heredoc.Docf(`
 			Encountered a bug or want to suggest a feature?
 			Open an issue using '%s'

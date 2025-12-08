@@ -18,10 +18,10 @@ require (
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/huh v0.8.0
 	github.com/coder/websocket v1.8.14
-	github.com/docker/cli v29.1.1+incompatible
+	github.com/docker/cli v29.1.2+incompatible
 	github.com/docker/docker-credential-helpers v0.9.4
 	github.com/dustin/go-humanize v1.0.1
-	github.com/gdamore/tcell/v2 v2.11.0
+	github.com/gdamore/tcell/v2 v2.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/renameio/v2 v2.0.1
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -31,7 +31,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/lunixbochs/vtclean v1.0.0
-	github.com/mark3labs/mcp-go v0.43.1
+	github.com/mark3labs/mcp-go v0.43.2
 	github.com/mattn/go-colorable v0.1.14
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.19
@@ -44,7 +44,7 @@ require (
 	github.com/rivo/tview v0.0.0-20240625185742-b0a7293b8130
 	github.com/sigstore/protobuf-specs v0.5.0
 	github.com/sigstore/sigstore-go v1.1.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -54,15 +54,16 @@ require (
 	gitlab.com/gitlab-org/api/client-go v1.4.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.45.0
+	golang.org/x/crypto v0.46.0
 	golang.org/x/oauth2 v0.33.0
-	golang.org/x/sync v0.18.0
-	golang.org/x/term v0.37.0
-	golang.org/x/text v0.31.0
+	golang.org/x/sync v0.19.0
+	golang.org/x/term v0.38.0
+	golang.org/x/text v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apimachinery v0.34.2
 	k8s.io/client-go v0.34.2
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
+	mvdan.cc/xurls/v2 v2.6.0
 	oss.terrastruct.com/d2 v0.7.1
 )
 
@@ -267,7 +268,7 @@ require (
 	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/image v0.20.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
