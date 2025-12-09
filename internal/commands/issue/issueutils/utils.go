@@ -65,50 +65,73 @@ func IssueState(c *iostreams.ColorPalette, i *gitlab.Issue) string {
 	}
 }
 
-func IssuesFromArgs(apiClientFunc func(repoHost string) (*api.Client, error), gitlabClient *gitlab.Client, baseRepoFn func() (glrepo.Interface, error), defaultHostname string, args []string) ([]*gitlab.Issue, glrepo.Interface, error) {
-	var baseRepo glrepo.Interface
-
+func IssuesFromArgs(apiClientFunc func(repoHost string) (*api.Client, error), gitlabClient *gitlab.Client, baseRepoFn func() (glrepo.Interface, error), defaultHostname string, args []string) ([]*gitlab.Issue, *gitlab.Client, glrepo.Interface, error) {
 	if len(args) <= 1 {
 		if len(args) == 1 {
 			args = strings.Split(args[0], ",")
 		}
 		if len(args) <= 1 {
-			issue, repo, err := IssueFromArg(apiClientFunc, gitlabClient, baseRepoFn, defaultHostname, args[0])
+			issue, client, baseRepo, err := IssueFromArg(apiClientFunc, gitlabClient, baseRepoFn, defaultHostname, args[0])
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			baseRepo = repo
-			return []*gitlab.Issue{issue}, baseRepo, err
+			return []*gitlab.Issue{issue}, client, baseRepo, err
 		}
 	}
 
+	// For multiple issues, we fetch them concurrently but they should all be from the same repo.
+	// We use the first successful result to determine the client and repo.
+	type result struct {
+		issue  *gitlab.Issue
+		client *gitlab.Client
+		repo   glrepo.Interface
+		index  int
+	}
+
 	errGroup, _ := errgroup.WithContext(context.Background())
+	results := make(chan result, len(args))
 	issues := make([]*gitlab.Issue, len(args))
+
 	for i, arg := range args {
 		i, arg := i, arg
 		errGroup.Go(func() error {
-			issue, repo, err := IssueFromArg(apiClientFunc, gitlabClient, baseRepoFn, defaultHostname, arg)
+			issue, cl, repo, err := IssueFromArg(apiClientFunc, gitlabClient, baseRepoFn, defaultHostname, arg)
 			if err != nil {
 				return err
 			}
-			baseRepo = repo
-			issues[i] = issue
+			results <- result{issue: issue, client: cl, repo: repo, index: i}
 			return nil
 		})
 	}
+
+	// Wait for all goroutines to complete
 	if err := errGroup.Wait(); err != nil {
-		return nil, nil, err
+		close(results)
+		return nil, nil, nil, err
 	}
-	return issues, baseRepo, nil
+	close(results)
+
+	// Collect results and use the first one for client and repo
+	var client *gitlab.Client
+	var baseRepo glrepo.Interface
+	for res := range results {
+		issues[res.index] = res.issue
+		if client == nil {
+			client = res.client
+			baseRepo = res.repo
+		}
+	}
+
+	return issues, client, baseRepo, nil
 }
 
-func IssueFromArg(apiClientFunc func(repoHost string) (*api.Client, error), client *gitlab.Client, baseRepoFn func() (glrepo.Interface, error), defaultHostname, arg string) (*gitlab.Issue, glrepo.Interface, error) {
+func IssueFromArg(apiClientFunc func(repoHost string) (*api.Client, error), client *gitlab.Client, baseRepoFn func() (glrepo.Interface, error), defaultHostname, arg string) (*gitlab.Issue, *gitlab.Client, glrepo.Interface, error) {
 	issueIID, baseRepo := issueMetadataFromURL(arg, defaultHostname)
 	if issueIID == 0 {
 		var err error
 		issueIIDInt, err := strconv.Atoi(strings.TrimPrefix(arg, "#"))
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid issue format: %q", arg)
+			return nil, nil, nil, fmt.Errorf("invalid issue format: %q", arg)
 		}
 		issueIID = int64(issueIIDInt)
 	}
@@ -117,18 +140,18 @@ func IssueFromArg(apiClientFunc func(repoHost string) (*api.Client, error), clie
 		var err error
 		baseRepo, err = baseRepoFn()
 		if err != nil {
-			return nil, nil, fmt.Errorf("could not determine base repository: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not determine base repository: %w", err)
 		}
 	} else {
 		a, err := apiClientFunc(baseRepo.RepoHost())
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		client = a.Lab()
 	}
 
 	issue, err := issueFromIID(client, baseRepo, issueIID)
-	return issue, baseRepo, err
+	return issue, client, baseRepo, err
 }
 
 // issueURLPathRE is a regex which matches the following patterns:

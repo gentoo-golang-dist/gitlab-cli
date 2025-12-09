@@ -110,7 +110,7 @@ func (o *options) run(issueType issuable.IssueType, args []string) error {
 	}
 	cfg := o.config()
 
-	issue, baseRepo, err := issueutils.IssueFromArg(o.apiClient, client, o.baseRepo, o.defaultHostname, args[0])
+	issue, client, baseRepo, err := issueutils.IssueFromArg(o.apiClient, client, o.baseRepo, o.defaultHostname, args[0])
 	if err != nil {
 		return err
 	}
