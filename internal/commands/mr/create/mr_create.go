@@ -210,7 +210,7 @@ func (o *options) validate(cmd *cobra.Command) error {
 }
 
 func parseIssue(apiClientFunc func(repoHost string) (*api.Client, error), gitlabClient *gitlab.Client, opts *options) (*gitlab.Issue, error) {
-	issue, _, err := issueutils.IssueFromArg(apiClientFunc, gitlabClient, opts.baseRepo, opts.defaultHostname, opts.RelatedIssue)
+	issue, _, _, err := issueutils.IssueFromArg(apiClientFunc, gitlabClient, opts.baseRepo, opts.defaultHostname, opts.RelatedIssue)
 	if err != nil {
 		return nil, err
 	}

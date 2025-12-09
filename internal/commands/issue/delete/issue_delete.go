@@ -46,7 +46,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			issues, repo, err := issueutils.IssuesFromArgs(f.ApiClient, client, f.BaseRepo, f.DefaultHostname(), args)
+			issues, client, repo, err := issueutils.IssuesFromArgs(f.ApiClient, client, f.BaseRepo, f.DefaultHostname(), args)
 			if err != nil {
 				return err
 			}
