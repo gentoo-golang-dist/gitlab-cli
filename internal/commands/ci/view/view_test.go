@@ -50,6 +50,15 @@ func assertScreen(t *testing.T, screen tcell.Screen, expected []string) {
 	for _, str := range actual {
 		t.Log(str)
 	}
+
+	t.Log("Lines with difference below:")
+	for i, str := range actual {
+		if str != expected[i] {
+			t.Logf("Difference at line %d\n", i)
+			t.Log(expected[i])
+			t.Log(str)
+		}
+	}
 }
 
 func Test_line(t *testing.T) {
@@ -439,22 +448,22 @@ func Test_jobsView(t *testing.T) {
 		"  │       Stage1       │      │       Stage2       │      │       Stage3       │        ",
 		"  └────────────────────┘      └────────────────────┘      └────────────────────┘        ",
 		"                                                                                        ",
-		"  ╔✔ stage1-job1-reall…╗      ┌───● stage2-job1────┐      ┌───■ stage3-job1────┐        ",
+		"  ╔✔ stage1-job1-reall…╗      ┌────● stage2-job1───┐      ┌────■ stage3-job1───┐        ",
 		"  ║                    ║      │                    │      │                    │        ",
 		"  ║             01m 01s║═╦══╦═│                    │═╦══╦═│                    │        ",
 		"  ╚════════════════════╝ ║  ║ └────────────────────┘ ║  ║ └────────────────────┘        ",
 		"                         ║  ║                        ║  ║                               ",
-		"  ┌───✔ stage1-job2────┐ ║  ║ ┌───● stage2-job2────┐ ║  ║ ┌───■ stage3-job2────┐        ",
+		"  ┌────✔ stage1-job2───┐ ║  ║ ┌────● stage2-job2───┐ ║  ║ ┌────■ stage3-job2───┐        ",
 		"  │                    │ ║  ║ │                    │ ║  ║ │                   »│        ",
 		"  │                    │═╝  ╠═│                    │═╝  ╚═│                    │        ",
 		"  └────────────────────┘ ║  ║ └────────────────────┘ ║    └────────────────────┘        ",
 		"                         ║  ║                        ║                                  ",
-		"  ┌───✔ stage1-job3────┐ ║  ║ ┌───● stage2-job3────┐ ║                                  ",
+		"  ┌────✔ stage1-job3───┐ ║  ║ ┌────● stage2-job3───┐ ║                                  ",
 		"  │                    │ ║  ║ │                    │ ║                                  ",
 		"  │                    │═╝  ╚═│                    │═╝                                  ",
 		"  └────────────────────┘ ║    └────────────────────┘                                    ",
 		"                         ║                                                              ",
-		"  ┌───✘ stage1-job4────┐ ║                                                              ",
+		"  ┌────✘ stage1-job4───┐ ║                                                              ",
 		"  │                    │ ║                                                              ",
 		"  │                    │═╝                                                              ",
 		"  └────────────────────┘                                                                ",
