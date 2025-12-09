@@ -161,7 +161,7 @@ func (o *options) run() error {
 	}
 	client := apiClient.Lab()
 
-	var apiTokens any
+	var apiTokens []any
 	var outputTokens Tokens
 	switch {
 	case o.user != "":
@@ -178,10 +178,10 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
+				apiTokens = append(apiTokens, token)
 				outputTokens = append(outputTokens, Token{
 					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
@@ -204,10 +204,10 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
+				apiTokens = append(apiTokens, token)
 				outputTokens = append(outputTokens, Token{
 					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
@@ -235,10 +235,10 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
+				apiTokens = append(apiTokens, token)
 				outputTokens = append(outputTokens, Token{
 					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
