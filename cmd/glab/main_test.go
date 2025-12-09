@@ -21,6 +21,7 @@ func TestGlab(t *testing.T) { // nolint:unparam
 func TestMain(m *testing.M) {
 	goleak.VerifyTestMain(m,
 		goleak.IgnoreTopFunction("internal/poll.runtime_pollWait"), // HTTP keep-alive connections
+		goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"), // https://github.com/census-instrumentation/opencensus-go/issues/1191
 	)
 }
 
