@@ -109,7 +109,13 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 		return err
 	}
 	skipGitInit, _ := cmd.Flags().GetBool("skipGitInit")
-	if !skipGitInit && f.IO().PromptEnabled() {
+
+	// Check if directory is already git initialized
+	gitDir := path.Join(config.GitDir(false)...)
+	_, statErr := os.Stat(gitDir)
+	isGitInitialized := statErr == nil
+
+	if !skipGitInit && !isGitInitialized && f.IO().PromptEnabled() {
 		doInit := true
 		err := f.IO().Confirm(cmd.Context(), &doInit, "Directory not Git initialized. Run `git init`?")
 		if err != nil || !doInit {
