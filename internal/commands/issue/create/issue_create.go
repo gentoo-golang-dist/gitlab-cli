@@ -52,6 +52,7 @@ type options struct {
 	DueDate       string `json:"due_date,omitempty"`
 
 	MilestoneFlag string `json:"milestone_flag"`
+	Template      string `json:"template,omitempty"`
 
 	IsConfidential bool `json:"is_confidential,omitempty"`
 
@@ -163,6 +164,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)")
 	issueCreateCmd.Flags().Int64VarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
+	issueCreateCmd.Flags().StringVarP(&opts.Template, "template", "", "", "Use a specific issue template by name.")
 
 	return issueCreateCmd
 }
@@ -201,9 +203,21 @@ var createRun = func(opts *options) error {
 		}
 	}
 
+	if opts.Template != "" {
+		templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, opts.Template)
+		if err != nil {
+			return fmt.Errorf("failed to load template %q: %w", opts.Template, err)
+		}
+		templateName = opts.Template
+		// If description is empty, use template contents
+		if opts.Description == "" {
+			opts.Description = templateContents
+		}
+	}
+
 	if opts.isInteractive {
 		// Step 1: Template selection (if not using --no-editor and description is empty)
-		if opts.Description == "" && !opts.noEditor {
+		if opts.Description == "" && !opts.noEditor && opts.Template == "" {
 			templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.IssueTemplate)
 			if err != nil {
 				return fmt.Errorf("error getting templates: %w", err)
