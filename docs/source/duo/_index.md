@@ -29,3 +29,5 @@ Git operations. You can accomplish specific tasks without switching contexts.
 ## Subcommands
 
 - [`ask`](ask.md)
+- [`claude`](claude/_index.md)
+- [`codex`](codex.md)
