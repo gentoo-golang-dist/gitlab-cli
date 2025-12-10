@@ -208,7 +208,6 @@ var createRun = func(opts *options) error {
 		if err != nil {
 			return fmt.Errorf("failed to load template %q: %w", opts.Template, err)
 		}
-		templateName = opts.Template
 		// If description is empty, use template contents
 		if opts.Description == "" {
 			opts.Description = templateContents
