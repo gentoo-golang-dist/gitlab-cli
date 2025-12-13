@@ -45,6 +45,7 @@ type options struct {
 	showResponseHeaders bool
 	paginate            bool
 	silent              bool
+	outputFormat        string
 }
 
 func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
@@ -110,11 +111,19 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 
 		- The original query must accept an %[1]s$endCursor: String%[1]s variable.
 		- The query must fetch the %[1]spageInfo{ hasNextPage, endCursor }%[1]s set of fields from a collection.
+
+		The %[1]s--output%[1]s flag controls the output format:
+
+		- %[1]sjson%[1]s (default): Pretty-printed JSON. Arrays are output as a single JSON array.
+		- %[1]sndjson%[1]s: Newline-delimited JSON. Each array element or object is output on a separate line.
+		  This format is more memory-efficient for large datasets and works well with tools like %[1]sjq%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
 			$ glab api projects/:fullpath/releases
 			$ glab api projects/gitlab-com%2Fwww-gitlab-com/issues
 			$ glab api issues --paginate
+			$ glab api issues --paginate --output ndjson
+			$ glab api issues --paginate --output ndjson | jq 'select(.state == "opened")'
 			$ glab api graphql -f query="query { currentUser { username } }"
 			$ glab api graphql -f query='
 			  query {
@@ -184,6 +193,7 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.paginate, "paginate", false, "Make additional HTTP requests to fetch all pages of results.")
 	cmd.Flags().StringVar(&opts.requestInputFile, "input", "", "The file to use as the body for the HTTP request.")
 	cmd.Flags().BoolVar(&opts.silent, "silent", false, "Do not print the response body.")
+	cmd.Flags().StringVar(&opts.outputFormat, "output", "json", "Format output as: json, ndjson.")
 	cmd.MarkFlagsMutuallyExclusive("paginate", "input")
 	return cmd
 }
@@ -202,6 +212,10 @@ func (o *options) validate(cmd *cobra.Command) error {
 
 	if o.paginate && !strings.EqualFold(o.requestMethod, http.MethodGet) && o.requestPath != "graphql" {
 		return &cmdutils.FlagError{Err: errors.New(`the '--paginate' option is not supported for non-GET requests.`)}
+	}
+
+	if o.outputFormat != "json" && o.outputFormat != "ndjson" {
+		return &cmdutils.FlagError{Err: fmt.Errorf("invalid output format %q: must be 'json' or 'ndjson'", o.outputFormat)}
 	}
 
 	return nil
@@ -335,7 +349,10 @@ func processResponse(resp *http.Response, opts *options, headersOutputStream io.
 	}
 
 	var err error
-	if isJSON && opts.io.ColorEnabled() {
+	// Handle NDJSON output format
+	if opts.outputFormat == "ndjson" && isJSON && resp.StatusCode == http.StatusOK {
+		err = streamNDJSON(responseBody, opts.io.StdOut)
+	} else if isJSON && opts.io.ColorEnabled() {
 		out := &bytes.Buffer{}
 		_, err = io.Copy(out, responseBody)
 		if err == nil {
@@ -362,6 +379,84 @@ func processResponse(resp *http.Response, opts *options, headersOutputStream io.
 	}
 
 	return "", nil
+}
+
+// streamNDJSON streams JSON response as newline-delimited JSON.
+// If the response is a JSON array, each element is written as a separate line.
+// If the response is a single JSON object, it's written as-is with a newline.
+func streamNDJSON(body io.Reader, out io.Writer) error {
+	dec := json.NewDecoder(body)
+	enc := json.NewEncoder(out)
+	enc.SetEscapeHTML(false)
+
+	// Peek at the first token to determine if it's an array or object
+	token, err := dec.Token()
+	if err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+
+	// Check if it's an array
+	if delim, ok := token.(json.Delim); ok && delim == '[' {
+		// Stream each array element as a separate line
+		for dec.More() {
+			var element json.RawMessage
+			if err := dec.Decode(&element); err != nil {
+				return err
+			}
+			if err := enc.Encode(&element); err != nil {
+				return err
+			}
+		}
+		// Consume the closing bracket
+		if _, err := dec.Token(); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// It's a single object or other value - we need to reconstruct it
+	// Read the rest of the body and output as a single line
+	var obj json.RawMessage
+
+	// We already consumed the first token, so we need to handle this differently
+	// For simplicity, let's buffer and re-parse
+	buf := &bytes.Buffer{}
+
+	// Write the token we already read
+	switch v := token.(type) {
+	case json.Delim:
+		buf.WriteRune(rune(v))
+	case string:
+		b, _ := json.Marshal(v)
+		buf.Write(b)
+	case float64, bool, nil:
+		b, _ := json.Marshal(v)
+		buf.Write(b)
+	}
+
+	// Copy the rest
+	remaining, err := io.ReadAll(dec.Buffered())
+	if err != nil {
+		return err
+	}
+	buf.Write(remaining)
+
+	// Read any remaining data from the original body
+	rest, err := io.ReadAll(body)
+	if err != nil {
+		return err
+	}
+	buf.Write(rest)
+
+	// Now parse the complete object
+	if err := json.Unmarshal(buf.Bytes(), &obj); err != nil {
+		return err
+	}
+
+	return enc.Encode(&obj)
 }
 
 var placeholderRE = regexp.MustCompile(`:(group/:namespace/:repo|namespace/:repo|fullpath|id|user|username|group|namespace|repo|branch)\b`)

@@ -66,6 +66,12 @@ no more pages of results remain. For GraphQL requests:
 - The original query must accept an `$endCursor: String` variable.
 - The query must fetch the `pageInfo{ hasNextPage, endCursor }` set of fields from a collection.
 
+The `--output` flag controls the output format:
+
+- `json` (default): Pretty-printed JSON. Arrays are output as a single JSON array.
+- `ndjson`: Newline-delimited JSON. Each array element or object is output on a separate line.
+  This format is more memory-efficient for large datasets and works well with tools like `jq`.
+
 ```plaintext
 glab api <endpoint> [flags]
 ```
@@ -76,6 +82,8 @@ glab api <endpoint> [flags]
 $ glab api projects/:fullpath/releases
 $ glab api projects/gitlab-com%2Fwww-gitlab-com/issues
 $ glab api issues --paginate
+$ glab api issues --paginate --output ndjson
+$ glab api issues --paginate --output ndjson | jq 'select(.state == "opened")'
 $ glab api graphql -f query="query { currentUser { username } }"
 $ glab api graphql -f query='
   query {
@@ -125,6 +133,7 @@ $ glab api graphql --paginate -f query='
   -i, --include                 Include HTTP response headers in the output.
       --input string            The file to use as the body for the HTTP request.
   -X, --method string           The HTTP method for the request. (default "GET")
+      --output string           Format output as: json, ndjson. (default "json")
       --paginate                Make additional HTTP requests to fetch all pages of results.
   -f, --raw-field stringArray   Add a string parameter.
       --silent                  Do not print the response body.

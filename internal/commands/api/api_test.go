@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/google/shlex"
@@ -517,6 +518,7 @@ func Test_apiRun_paginationGraphQL(t *testing.T) {
 		requestMethod: http.MethodPost,
 		requestPath:   "graphql",
 		paginate:      true,
+		outputFormat:  "json",
 	}
 
 	err := options.run(t.Context())
@@ -544,6 +546,145 @@ func Test_apiRun_paginationGraphQL(t *testing.T) {
 	endCursor, hasCursor := requestData.Variables["endCursor"].(string)
 	assert.Equal(t, true, hasCursor)
 	assert.Equal(t, "PAGE1_END", endCursor)
+}
+
+func Test_apiRun_ndjson(t *testing.T) {
+	ios, _, stdout, stderr := cmdtest.TestIOStreams()
+
+	var tr roundTripFunc = func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{`application/json`}},
+			Body:       io.NopCloser(bytes.NewBufferString(`[{"id":1,"title":"Issue 1"},{"id":2,"title":"Issue 2"}]`)),
+			Request:    req,
+		}, nil
+	}
+	a := cmdtest.NewTestApiClient(t, &http.Client{Transport: tr}, "OTOKEN", "gitlab.com")
+	options := options{
+		io: ios,
+		baseRepo: func() (glrepo.Interface, error) {
+			return nil, fmt.Errorf("not supposed to be called")
+		},
+		apiClient: func(repoHost string) (*api.Client, error) {
+			return a, nil
+		},
+		requestPath:  "issues",
+		outputFormat: "ndjson",
+	}
+
+	err := options.run(t.Context())
+	require.NoError(t, err)
+
+	// NDJSON should output each element on a separate line
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	assert.Equal(t, 2, len(lines), "should have 2 lines")
+
+	// Verify each line is valid JSON
+	var obj1, obj2 map[string]any
+	require.NoError(t, json.Unmarshal([]byte(lines[0]), &obj1))
+	require.NoError(t, json.Unmarshal([]byte(lines[1]), &obj2))
+
+	assert.Equal(t, float64(1), obj1["id"])
+	assert.Equal(t, "Issue 1", obj1["title"])
+	assert.Equal(t, float64(2), obj2["id"])
+	assert.Equal(t, "Issue 2", obj2["title"])
+	assert.Equal(t, "", stderr.String(), "stderr")
+}
+
+func Test_apiRun_ndjson_singleObject(t *testing.T) {
+	ios, _, stdout, stderr := cmdtest.TestIOStreams()
+
+	var tr roundTripFunc = func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{`application/json`}},
+			Body:       io.NopCloser(bytes.NewBufferString(`{"id":1,"title":"Single Issue"}`)),
+			Request:    req,
+		}, nil
+	}
+	a := cmdtest.NewTestApiClient(t, &http.Client{Transport: tr}, "OTOKEN", "gitlab.com")
+	options := options{
+		io: ios,
+		baseRepo: func() (glrepo.Interface, error) {
+			return nil, fmt.Errorf("not supposed to be called")
+		},
+		apiClient: func(repoHost string) (*api.Client, error) {
+			return a, nil
+		},
+		requestPath:  "issues/1",
+		outputFormat: "ndjson",
+	}
+
+	err := options.run(t.Context())
+	require.NoError(t, err)
+
+	// Single object should be output as one line
+	output := strings.TrimSpace(stdout.String())
+	assert.Equal(t, 1, len(strings.Split(output, "\n")), "should have 1 line")
+
+	var obj map[string]any
+	require.NoError(t, json.Unmarshal([]byte(output), &obj))
+	assert.Equal(t, float64(1), obj["id"])
+	assert.Equal(t, "Single Issue", obj["title"])
+	assert.Equal(t, "", stderr.String(), "stderr")
+}
+
+func Test_apiRun_ndjson_pagination(t *testing.T) {
+	ios, _, stdout, stderr := cmdtest.TestIOStreams()
+
+	requestCount := 0
+	responses := []*http.Response{
+		{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{`application/json`},
+				"Link":         []string{`<https://gitlab.com/api/v4/issues?page=2>; rel="next"`},
+			},
+			Body: io.NopCloser(bytes.NewBufferString(`[{"id":1,"title":"Issue 1"}]`)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{`application/json`},
+			},
+			Body: io.NopCloser(bytes.NewBufferString(`[{"id":2,"title":"Issue 2"}]`)),
+		},
+	}
+
+	var tr roundTripFunc = func(req *http.Request) (*http.Response, error) {
+		resp := responses[requestCount]
+		resp.Request = req
+		requestCount++
+		return resp, nil
+	}
+	a := cmdtest.NewTestApiClient(t, &http.Client{Transport: tr}, "OTOKEN", "gitlab.com")
+	options := options{
+		io: ios,
+		baseRepo: func() (glrepo.Interface, error) {
+			return nil, fmt.Errorf("not supposed to be called")
+		},
+		apiClient: func(repoHost string) (*api.Client, error) {
+			return a, nil
+		},
+		requestPath:  "issues",
+		paginate:     true,
+		outputFormat: "ndjson",
+	}
+
+	err := options.run(t.Context())
+	require.NoError(t, err)
+
+	// Should have 2 lines total (one from each page)
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	assert.Equal(t, 2, len(lines), "should have 2 lines from 2 pages")
+
+	var obj1, obj2 map[string]any
+	require.NoError(t, json.Unmarshal([]byte(lines[0]), &obj1))
+	require.NoError(t, json.Unmarshal([]byte(lines[1]), &obj2))
+
+	assert.Equal(t, float64(1), obj1["id"])
+	assert.Equal(t, float64(2), obj2["id"])
+	assert.Equal(t, "", stderr.String(), "stderr")
 }
 
 func Test_apiRun_inputFile(t *testing.T) {
