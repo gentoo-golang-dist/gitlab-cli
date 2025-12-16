@@ -21,9 +21,9 @@ Stores your credentials in the global configuration file
 To store your token in your operating system's keyring instead, use `--use-keyring`.
 After authentication, all `glab` commands use the stored credentials.
 
-If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN` are set,
-they take precedence over the stored credentials.
-When CI auto-login is enabled, these variables also override `CI_JOB_TOKEN`.
+If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN`
+are set, they take precedence over the stored credentials.
+These variables are ignored when CI auto-login is enabled with `GLAB_ENABLE_CI_AUTOLOGIN`.
 
 To pass a token on standard input, use `--stdin`.
 
@@ -53,9 +53,6 @@ $ glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host git
 # Non-interactive setup reading token from a file
 $ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
 
-# Semi-interactive OAuth login, skipping all prompts except browser auth
-$ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
-
 # Non-interactive CI/CD setup
 $ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 
@@ -64,17 +61,15 @@ $ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 ## Options
 
 ```plaintext
-  -a, --api-host string                     API host url.
-  -p, --api-protocol string                 API protocol: https, http
-      --container-registry-domains string   Container registry and image dependency proxy domains (comma-separated).
-  -g, --git-protocol string                 Git protocol: ssh, https, http
-      --hostname string                     The hostname of the GitLab instance to authenticate with.
-  -j, --job-token string                    CI job token.
-      --ssh-hostname string                 SSH hostname for instances with a different SSH endpoint.
-      --stdin                               Read token from standard input.
-  -t, --token string                        Your GitLab access token.
-      --use-keyring                         Store token in your operating system's keyring.
-      --web                                 Skip the login type prompt and use web/OAuth login.
+  -a, --api-host string       API host url.
+  -p, --api-protocol string   API protocol: https, http
+      --cookie-file string    Path to a Netscape/Mozilla format cookie file for IdP/SSO authentication.
+  -g, --git-protocol string   Git protocol: ssh, https, http
+      --hostname string       The hostname of the GitLab instance to authenticate with.
+  -j, --job-token string      CI job token.
+      --stdin                 Read token from standard input.
+  -t, --token string          Your GitLab access token.
+      --use-keyring           Store token in your operating system's keyring.
 ```
 
 ## Options inherited from parent commands
