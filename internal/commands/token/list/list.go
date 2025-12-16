@@ -172,7 +172,7 @@ func (o *options) run() error {
 		options := &gitlab.ListPersonalAccessTokensOptions{
 			UserID: &user.ID,
 		}
-		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.PersonalAccessToken, *gitlab.Response, error) {
+		tokens, err := api.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.PersonalAccessToken, *gitlab.Response, error) {
 			return client.PersonalAccessTokens.ListPersonalAccessTokens(options, p)
 		})
 		if err != nil {
@@ -198,7 +198,7 @@ func (o *options) run() error {
 		}
 	case o.group != "":
 		options := &gitlab.ListGroupAccessTokensOptions{}
-		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.GroupAccessToken, *gitlab.Response, error) {
+		tokens, err := api.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.GroupAccessToken, *gitlab.Response, error) {
 			return client.GroupAccessTokens.ListGroupAccessTokens(o.group, options, p)
 		})
 		if err != nil {
@@ -229,7 +229,7 @@ func (o *options) run() error {
 		}
 
 		opts := &gitlab.ListProjectAccessTokensOptions{}
-		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.ProjectAccessToken, *gitlab.Response, error) {
+		tokens, err := api.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.ProjectAccessToken, *gitlab.Response, error) {
 			return client.ProjectAccessTokens.ListProjectAccessTokens(repo.FullName(), opts, p)
 		})
 		if err != nil {

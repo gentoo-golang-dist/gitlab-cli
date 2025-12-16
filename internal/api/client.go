@@ -412,3 +412,18 @@ func Is404(err error) bool {
 
 	return false
 }
+
+// ScanAndCollect wraps gitlab.ScanAndCollect to ensure that empty results
+// return an empty slice []T instead of nil, which is important for consistent
+// JSON marshaling ([] instead of null).
+func ScanAndCollect[T any](f func(p gitlab.PaginationOptionFunc) ([]T, *gitlab.Response, error)) ([]T, error) {
+	items, err := gitlab.ScanAndCollect(f)
+	if err != nil {
+		return nil, err
+	}
+	// Ensure we return an empty slice instead of nil for consistent JSON output
+	if items == nil {
+		return make([]T, 0), nil
+	}
+	return items, nil
+}
