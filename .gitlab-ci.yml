@@ -246,6 +246,7 @@ lint:
       codequality: gl-code-quality-report.json
     paths:
       - gl-code-quality-report.json
+    expire_in: 30 days
 
 tests:unit:
   extends:
@@ -275,6 +276,7 @@ tests:unit:
     reports:
       junit: coverage.xml
     access: "developer"
+    expire_in: 30 days
 
 tests:integration:
   extends:
