@@ -148,27 +148,29 @@ changelog:
   # https://goreleaser.com/customization/changelog/
   use: gitlab
   sort: asc
+  abbrev: 8
+  format: '* <{{.WebURL}}|{{.SHA}}>: {{.Message}}{{if .AuthorName}} ({{.AuthorName}}{{if .AuthorEmail}} {{.AuthorEmail}}{{end}}){{end}}'
   filters:
     exclude:
       - "^Merge branch"
       - "^Update README.md"
   groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+    - title: ✨ Features
+      regexp: '^.*?feat(\([^)]+\))??!?:.+$'
       order: 0
-    - title: Bug Fixes
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+    - title: 🐛 Bug Fixes
+      regexp: '^.*?fix(\([^)]+\))??!?:.+$'
       order: 1
-    - title: Documentation
-      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+    - title: 📝 Documentation
+      regexp: '^.*?docs(\([^)]+\))??!?:.+$'
       order: 2
-    - title: Maintenance
-      regexp: '^.*?(chore|ci|refactor)(\([[:word:]]+\))??!?:.+$'
+    - title: 🔧 Maintenance
+      regexp: '^.*?(chore(?!\((deps|dependencies)\))|ci|refactor)(\([^)]+\))??!?:.+$'
       order: 3
-    - title: Dependencies
+    - title: 📦 Dependencies
       regexp: '^.*?chore\((deps|dependencies)\)[^:]*:.+$'
       order: 4
-    - title: Others
+    - title: 🔀 Others
       order: 999
 
 announce:
@@ -185,6 +187,6 @@ announce:
       :warning: _This is a pre-release version_
       {{ end }}
 
-      {{ .ReleaseNotes }}
+      {{ .ReleaseNotes | replace "###" "" | replace "##" "" }}
 
       <{{ .ReleaseURL }}|View Release on GitLab>
