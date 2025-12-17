@@ -154,16 +154,16 @@ changelog:
       - "^Update README.md"
   groups:
     - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      regexp: '^.*?feat(\([^)]+\))??!?:.+$'
       order: 0
     - title: Bug Fixes
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      regexp: '^.*?fix(\([^)]+\))??!?:.+$'
       order: 1
     - title: Documentation
-      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      regexp: '^.*?docs(\([^)]+\))??!?:.+$'
       order: 2
     - title: Maintenance
-      regexp: '^.*?(chore|ci|refactor)(\([[:word:]]+\))??!?:.+$'
+      regexp: '^.*?(chore(?!\((deps|dependencies)\))|ci|refactor)(\([^)]+\))??!?:.+$'
       order: 3
     - title: Dependencies
       regexp: '^.*?chore\((deps|dependencies)\)[^:]*:.+$'
