@@ -163,11 +163,11 @@ changelog:
     - title: 📝 Documentation
       regexp: '^.*?docs(\([^)]+\))??!?:.+$'
       order: 2
-    - title: 🔧 Maintenance
-      regexp: '^.*?(chore(?!\((deps|dependencies)\))|ci|refactor)(\([^)]+\))??!?:.+$'
-      order: 3
     - title: 📦 Dependencies
       regexp: '^.*?chore\((deps|dependencies)\)[^:]*:.+$'
+      order: 3
+    - title: 🔧 Maintenance
+      regexp: '^.*?(chore|ci|refactor)(\([^)]+\))??!?:.+$'
       order: 4
     - title: 🔀 Others
       order: 999
