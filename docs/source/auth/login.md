@@ -30,6 +30,11 @@ To pass a token on standard input, use `--stdin`.
 In interactive mode, `glab` detects GitLab instances from your Git remotes
 and lists them as options, so you do not have to type the hostname manually.
 
+For GitLab instances protected by SSO or Identity Providers (IdP), use the `--cookie-file`
+flag to provide browser session cookies for authentication. The cookie file must be in
+Netscape/Mozilla format (supports `#HttpOnly_` prefix). This requires a token for GitLab
+API authentication, while cookies handle the SSO/IdP layer.
+
 ```plaintext
 glab auth login [flags]
 ```
@@ -55,6 +60,9 @@ $ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:34
 
 # Non-interactive CI/CD setup
 $ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
+
+# Authenticate with SSO/IdP protected GitLab using cookies
+$ glab auth login --hostname gitlab.example.org --token glpat-xxx --cookie-file ~/cookies.txt
 
 ```
 
