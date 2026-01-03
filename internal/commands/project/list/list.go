@@ -1,12 +1,13 @@
 package list
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+	"gitlab.com/gitlab-org/cli/internal/output"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
@@ -24,6 +25,7 @@ type options struct {
 	includeSubgroups bool
 	perPage          int
 	page             int
+	paginate         bool
 	outputFormat     string
 	filterAll        bool
 	filterOwner      bool
@@ -64,6 +66,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	repoListCmd.Flags().StringVarP(&opts.sort, "sort", "s", "", "Return repositories sorted in asc or desc order.")
 	repoListCmd.Flags().StringVarP(&opts.group, "group", "g", "", "Return repositories in only the given group.")
 	repoListCmd.Flags().BoolVarP(&opts.includeSubgroups, "include-subgroups", "G", false, "Include projects in subgroups of this group. Default is false. Used with the '--group' flag.")
+	repoListCmd.Flags().BoolVar(&opts.paginate, "paginate", false, "Make additional api requests to fetch all pages of results.")
 	repoListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	repoListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
@@ -92,7 +95,7 @@ func (o *options) run() error {
 	}
 	gitlabClient := apiClient.Lab()
 
-	var projects []*gitlab.Project
+	var projects iter.Seq2[*gitlab.Project, error]
 	var resp *gitlab.Response
 	if len(o.group) > 0 {
 		projects, resp, err = listAllProjectsForGroup(gitlabClient, *o)
@@ -106,33 +109,17 @@ func (o *options) run() error {
 		return err
 	}
 
-	if o.outputFormat == "json" {
-		projectListJSON, _ := json.Marshal(projects)
-		fmt.Fprintln(o.io.StdOut, string(projectListJSON))
-	} else {
-		// Title
-		title := fmt.Sprintf("Showing %d of %d projects (Page %d of %d).\n", len(projects), resp.TotalItems, resp.CurrentPage, resp.TotalPages)
-
-		// List
-		table := tableprinter.NewTablePrinter()
-		if len(projects) > 0 {
-			table.AddRow("Project path", "Git URL", "Description")
-		}
-
-		for _, prj := range projects {
-			table.AddCell(c.Blue(prj.PathWithNamespace))
-			table.AddCell(prj.SSHURLToRepo)
-			table.AddCell(prj.Description)
-			table.EndRow()
-		}
-
-		fmt.Fprintf(o.io.StdOut, "%s\n%s\n", title, table.String())
-	}
-
-	return err
+	out := output.NewListOutput(o.outputFormat, projects, resp, o.paginate)
+	out.SetTableHeader("Project path", "Git URL", "Description")
+	out.SetTableRowRenderer(func(table *tableprinter.TablePrinter, prj *gitlab.Project) {
+		table.AddCell(c.Blue(prj.PathWithNamespace))
+		table.AddCell(prj.SSHURLToRepo)
+		table.AddCell(prj.Description)
+	})
+	return out.Render(o.io.StdOut)
 }
 
-func listAllProjects(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
+func listAllProjects(apiClient *gitlab.Client, opts options) (iter.Seq2[*gitlab.Project, error], *gitlab.Response, error) {
 	l := &gitlab.ListProjectsOptions{
 		ListOptions: gitlab.ListOptions{
 			PerPage: int64(opts.perPage),
@@ -169,10 +156,14 @@ func listAllProjects(apiClient *gitlab.Client, opts options) ([]*gitlab.Project,
 		l.Sort = gitlab.Ptr(opts.sort)
 	}
 
-	return apiClient.Projects.ListProjects(l)
+	listProjects := func() ([]*gitlab.Project, *gitlab.Response, error) {
+		return apiClient.Projects.ListProjects(l)
+	}
+
+	return output.Paginate(listProjects, &l.ListOptions, opts.paginate)
 }
 
-func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
+func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) (iter.Seq2[*gitlab.Project, error], *gitlab.Response, error) {
 	group, resp, err := apiClient.Groups.GetGroup(opts.group, &gitlab.GetGroupOptions{})
 	if err != nil {
 		if errors.Is(err, gitlab.ErrNotFound) {
@@ -217,10 +208,14 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 		l.Sort = gitlab.Ptr(opts.sort)
 	}
 
-	return apiClient.Groups.ListGroupProjects(group.ID, l)
+	listProjects := func() ([]*gitlab.Project, *gitlab.Response, error) {
+		return apiClient.Groups.ListGroupProjects(group.ID, l)
+	}
+
+	return output.Paginate(listProjects, &l.ListOptions, opts.paginate)
 }
 
-func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
+func listAllProjectsForUser(apiClient *gitlab.Client, opts options) (iter.Seq2[*gitlab.Project, error], *gitlab.Response, error) {
 	l := &gitlab.ListProjectsOptions{
 		OrderBy: gitlab.Ptr(opts.orderBy),
 		ListOptions: gitlab.ListOptions{
@@ -241,5 +236,9 @@ func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.P
 		l.Sort = gitlab.Ptr(opts.sort)
 	}
 
-	return apiClient.Projects.ListUserProjects(opts.user, l)
+	listProjects := func() ([]*gitlab.Project, *gitlab.Response, error) {
+		return apiClient.Projects.ListUserProjects(opts.user, l)
+	}
+
+	return output.Paginate(listProjects, &l.ListOptions, opts.paginate)
 }
