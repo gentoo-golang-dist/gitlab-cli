@@ -47,15 +47,15 @@ func DisplayRelease(io *iostreams.IOStreams, r *gitlab.Release, repo glrepo.Inte
 		description = r.Description
 	}
 
-	var assetsSources string
+	var assetsSources strings.Builder
 	for _, asset := range r.Assets.Sources {
-		assetsSources += asset.URL + "\n"
+		assetsSources.WriteString(asset.URL + "\n")
 	}
 
 	footer := fmt.Sprintf(c.Gray("View this release on GitLab at %s"), r.Links.Self)
 	return fmt.Sprintf("%s\n%s released this %s\n%s - %s\n%s\n%s\n%s\n%s\n%s\n\n%s", // whoops
 		c.Bold(r.Name), r.Author.Name, duration, r.Commit.ShortID, r.TagName, description, c.Bold("ASSETS"),
-		RenderReleaseAssertLinks(r.Assets.Links), c.Bold("SOURCES"), assetsSources, footer,
+		RenderReleaseAssertLinks(r.Assets.Links), c.Bold("SOURCES"), assetsSources.String(), footer,
 	)
 }
 

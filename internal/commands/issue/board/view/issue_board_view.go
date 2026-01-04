@@ -436,7 +436,7 @@ func filterIssues(
 	targetList *gitlab.BoardList,
 	opts *issueBoardViewOptions,
 ) string {
-	var boardIssues string
+	var boardIssues strings.Builder
 next:
 	for _, issue := range issues {
 		switch opts.state {
@@ -473,8 +473,8 @@ next:
 			assignee = issue.Assignee.Username //nolint:staticcheck
 		}
 
-		boardIssues += fmt.Sprintf("[white::b]%s\n%s[green:-:-]#%d[darkgray] - %s\n\n",
-			issue.Title, labelString, issue.IID, assignee)
+		boardIssues.WriteString(fmt.Sprintf("[white::b]%s\n%s[green:-:-]#%d[darkgray] - %s\n\n",
+			issue.Title, labelString, issue.IID, assignee))
 	}
-	return boardIssues
+	return boardIssues.String()
 }

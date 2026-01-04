@@ -207,7 +207,7 @@ func TestCIRunMrPipeline(t *testing.T) {
 					},
 				)
 			}
-			api.ListMRs = func(client *gitlab.Client, projectID interface{}, opts *gitlab.ListProjectMergeRequestsOptions, listOpts ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
+			api.ListMRs = func(client *gitlab.Client, projectID any, opts *gitlab.ListProjectMergeRequestsOptions, listOpts ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
 				if *opts.SourceBranch == "custom-branch-123" {
 					return []*gitlab.BasicMergeRequest{
 						{

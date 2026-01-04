@@ -85,7 +85,6 @@ func IssuesFromArgs(apiClientFunc func(repoHost string) (*api.Client, error), gi
 	errGroup, _ := errgroup.WithContext(context.Background())
 	issues := make([]*gitlab.Issue, len(args))
 	for i, arg := range args {
-		i, arg := i, arg
 		errGroup.Go(func() error {
 			issue, repo, err := IssueFromArg(apiClientFunc, gitlabClient, baseRepoFn, defaultHostname, arg)
 			if err != nil {

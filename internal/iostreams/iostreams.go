@@ -391,10 +391,7 @@ func (s *IOStreams) Select(ctx context.Context, result *string, title string, op
 
 func (s *IOStreams) MultiSelect(ctx context.Context, result *[]string, title string, options []string) error {
 	// Set a reasonable height limit for the multiselect to ensure it displays properly
-	limit := 10
-	if len(options) < limit {
-		limit = len(options)
-	}
+	limit := min(len(options), 10)
 
 	return s.Run(ctx,
 		huh.NewMultiSelect[string]().
@@ -417,12 +414,17 @@ func (s *IOStreams) Multiline(ctx context.Context, result *string, title, placeh
 	return s.Run(ctx, text)
 }
 
-func (s *IOStreams) Editor(ctx context.Context, result *string, title, defaultContent, editorCmd string) error {
+func (s *IOStreams) Editor(ctx context.Context, result *string, title, description, defaultContent, editorCmd string) error {
 	text := huh.NewText().
 		Title(title).
 		Value(result).
 		ExternalEditor(true).
 		EditorExtension(".md")
+
+	// Set the description (help text) if provided
+	if description != "" {
+		text = text.Description(description)
+	}
 
 	// Set the default content if provided
 	if defaultContent != "" {

@@ -394,8 +394,7 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 		buf.WriteString("|----------|-------------|\n")
 
 		// Parse the environment variables from the annotation
-		envLines := strings.Split(strings.TrimSpace(envHelp), "\n\n")
-		for _, envBlock := range envLines {
+		for envBlock := range strings.SplitSeq(strings.TrimSpace(envHelp), "\n\n") {
 			lines := strings.Split(envBlock, "\n")
 			if len(lines) > 0 {
 				firstLine := strings.TrimSpace(lines[0])

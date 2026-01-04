@@ -239,7 +239,6 @@ func MRsFromArgs(f cmdutils.Factory, args []string, state string) ([]*gitlab.Mer
 	errGroup, _ := errgroup.WithContext(context.Background())
 	mrs := make([]*gitlab.MergeRequest, len(args))
 	for i, arg := range args {
-		i, arg := i, arg
 		errGroup.Go(func() error {
 			// fetching multiple MRs does not return many major params in the payload
 			// so we fetch again using the single mr endpoint

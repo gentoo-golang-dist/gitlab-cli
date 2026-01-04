@@ -10,6 +10,7 @@ linters:
         - errcheck
         - govet
         - ineffassign
+        - modernize
         - nonamedreturns
         - staticcheck
         - unconvert
@@ -30,6 +31,9 @@ linters:
         disable:
           - fieldalignment
           - shadow
+      modernize:
+        disable:
+          - omitzero
       staticcheck:
         checks:
           - all

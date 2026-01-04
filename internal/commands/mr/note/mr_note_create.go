@@ -2,6 +2,7 @@ package note
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -12,7 +13,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 func NewCmdNote(f cmdutils.Factory) *cobra.Command {
@@ -47,20 +47,18 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 			body, _ := cmd.Flags().GetString("message")
 
-			if body == "" {
+			if strings.TrimSpace(body) == "" {
 				editor, err := cmdutils.GetEditor(f.Config)
 				if err != nil {
 					return err
 				}
 
-				body = utils.Editor(utils.EditorOptions{
-					Label:         "Note message:",
-					Help:          "Enter the note message for the merge request. ",
-					FileName:      "*_MR_NOTE_EDITMSG.md",
-					EditorCommand: editor,
-				})
+				err = f.IO().Editor(cmd.Context(), &body, "Note message:", "Enter the note message for the merge request.", "", editor)
+				if err != nil {
+					return err
+				}
 			}
-			if body == "" {
+			if strings.TrimSpace(body) == "" {
 				return fmt.Errorf("aborted... Note has an empty message.")
 			}
 
@@ -73,7 +71,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 					return fmt.Errorf("running merge request note deduplication: %v", err)
 				}
 				for _, noteInfo := range notes {
-					if noteInfo.Body == body {
+					if noteInfo.Body == strings.TrimSpace(body) {
 						fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, noteInfo.ID)
 						return nil
 					}

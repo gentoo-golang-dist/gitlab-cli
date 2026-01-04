@@ -148,27 +148,28 @@ changelog:
   # https://goreleaser.com/customization/changelog/
   use: gitlab
   sort: asc
+  abbrev: 8
   filters:
     exclude:
       - "^Merge branch"
       - "^Update README.md"
   groups:
-    - title: Features
-      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+    - title: ✨ Features
+      regexp: '^.*?feat(\([^)]+\))??!?:.+$'
       order: 0
-    - title: Bug Fixes
-      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+    - title: 🐛 Bug Fixes
+      regexp: '^.*?fix(\([^)]+\))??!?:.+$'
       order: 1
-    - title: Documentation
-      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+    - title: 📝 Documentation
+      regexp: '^.*?docs(\([^)]+\))??!?:.+$'
       order: 2
-    - title: Maintenance
-      regexp: '^.*?(chore|ci|refactor)(\([[:word:]]+\))??!?:.+$'
-      order: 3
-    - title: Dependencies
+    - title: 📦 Dependencies
       regexp: '^.*?chore\((deps|dependencies)\)[^:]*:.+$'
+      order: 3
+    - title: 🔧 Maintenance
+      regexp: '^.*?(chore|ci|refactor)(\([^)]+\))??!?:.+$'
       order: 4
-    - title: Others
+    - title: 🔀 Others
       order: 999
 
 announce:
@@ -181,18 +182,10 @@ announce:
     icon_emoji: ':rocket:'
     message_template: |
       :rocket: *glab {{ .Tag }}* has been released!
-      {{ if .IsPrerelease }}
+      {{ if .Prerelease }}
       :warning: _This is a pre-release version_
       {{ end }}
-      *What's Changed*
-      {{ range .Changelog.Groups -}}
-      {{ if gt (len .Items) 0 -}}
-      *{{ .Title }}*
-      {{ range .Items -}}
-      • {{ .Message }} - <{{ .WebURL }}|{{ .ShortHash }}>{{ if .AuthorName }} by {{ .AuthorName }}{{ if .AuthorEmail }} <{{ .AuthorEmail }}>{{ end }}{{ end }}
-      {{ end }}
-      {{ end -}}
-      {{ end }}
-      *Get the Release*
-      • <{{ .ReleaseURL }}|View on GitLab>
-      • <https://gitlab.com/gitlab-org/cli/-/releases/{{ .Tag }}|Download Assets>
+
+      {{ .ReleaseNotes }}
+
+      <{{ .ReleaseURL }}|View Release on GitLab>

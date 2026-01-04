@@ -474,32 +474,33 @@ func previewIssue(opts *options) error {
 }
 
 func generateIssueWebURL(opts *options) (string, error) {
-	description := opts.Description
+	var description strings.Builder
+	description.WriteString(opts.Description)
 
 	if len(opts.Labels) > 0 {
 		// this uses the slash commands to add labels to the description
 		// See https://docs.gitlab.com/user/project/quick_actions/
 		// See also https://gitlab.com/gitlab-org/gitlab-foss/-/issues/19731#note_32550046
-		description += "\n/label"
+		description.WriteString("\n/label")
 		for _, label := range opts.Labels {
-			description += fmt.Sprintf(" ~%q", label)
+			description.WriteString(fmt.Sprintf(" ~%q", label))
 		}
 	}
 	if len(opts.Assignees) > 0 {
 		// this uses the slash commands to add assignees to the description
-		description += fmt.Sprintf("\n/assign %s", strings.Join(opts.Assignees, ", "))
+		description.WriteString(fmt.Sprintf("\n/assign %s", strings.Join(opts.Assignees, ", ")))
 	}
 	if opts.Milestone != 0 {
 		// this uses the slash commands to add milestone to the description
-		description += fmt.Sprintf("\n/milestone %%%d", opts.Milestone)
+		description.WriteString(fmt.Sprintf("\n/milestone %%%d", opts.Milestone))
 	}
 	if opts.Weight != 0 {
 		// this uses the slash commands to add weight to the description
-		description += fmt.Sprintf("\n/weight %d", opts.Weight)
+		description.WriteString(fmt.Sprintf("\n/weight %d", opts.Weight))
 	}
 	if opts.IsConfidential {
 		// this uses the slash commands to add confidential to the description
-		description += "\n/confidential"
+		description.WriteString("\n/confidential")
 	}
 
 	u, err := url.Parse(opts.baseProject.WebURL)
@@ -510,7 +511,7 @@ func generateIssueWebURL(opts *options) (string, error) {
 
 	q := u.Query()
 	q.Set("issue[title]", opts.Title)
-	q.Add("issue[description]", description)
+	q.Add("issue[description]", description.String())
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil

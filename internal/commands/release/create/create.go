@@ -49,8 +49,7 @@ var noteOptionsNames = map[noteOptions]string{
 }
 
 type options struct {
-	// The following fields must be exported because of survey
-	// TODO: make survey independent of command options struct.
+	// The following fields must be exported for use with huh forms
 	Name               string
 	ReleaseNotesAction string
 
@@ -76,6 +75,7 @@ type options struct {
 	usePackageRegistry bool
 	packageName        string
 
+	ctx          context.Context
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
@@ -168,6 +168,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.ctx = cmd.Context()
 			if err := opts.complete(cmd.Flags(), args); err != nil {
 				return err
 			}
@@ -330,7 +331,16 @@ func createRun(opts *options) error {
 			opts.io.LogInfo(color.DotWarnIcon(), "Tag does not exist.")
 			opts.io.LogInfo(color.DotWarnIcon(), "No ref provided. Creating the tag from the latest state of the default branch.")
 			project, err := repo.Project(client)
-			if err == nil {
+			if err != nil {
+				// We are not able to retrieve the project from the API.
+				// This is most likely because we are running in CI with a CI Job Token
+				// which does not have access to the Projects API. Thus, let's check if we have access
+				// to the predefined CI/CD variable CI_DEFAULT_BRANCH and use it instead if available.
+				if defaultBranch, found := os.LookupEnv("CI_DEFAULT_BRANCH"); found {
+					opts.io.LogInfof("%s using default branch %q as ref from CI_DEFAULT_BRANCH\n", color.ProgressIcon(), defaultBranch)
+					opts.ref = defaultBranch
+				}
+			} else {
 				opts.io.LogInfof("%s using default branch %q as ref\n", color.ProgressIcon(), project.DefaultBranch)
 				opts.ref = project.DefaultBranch
 			}
@@ -395,7 +405,7 @@ func createRun(opts *options) error {
 			Value(&opts.ReleaseNotesAction))
 
 		// Run the combined form
-		err = opts.io.RunForm(context.Background(), fields...)
+		err = opts.io.RunForm(opts.ctx, fields...)
 		if err != nil {
 			return fmt.Errorf("could not prompt: %w", err)
 		}
@@ -419,7 +429,7 @@ func createRun(opts *options) error {
 		}
 
 		if openEditor {
-			err = opts.io.Editor(context.Background(), &opts.notes, "Release notes", editorContents, editorCommand)
+			err = opts.io.Editor(opts.ctx, &opts.notes, "Release notes", "", editorContents, editorCommand)
 			if err != nil {
 				return err
 			}

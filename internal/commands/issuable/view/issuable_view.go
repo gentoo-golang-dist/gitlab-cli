@@ -289,10 +289,10 @@ func rawIssuePreview(opts *options) string {
 
 // RawIssuableNotes returns a list of comments/notes in a raw format
 func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bool, issuableName string) string {
-	var out string
+	var out strings.Builder
 
 	if showComments {
-		out += "\n--\ncomments/notes:\n\n"
+		out.WriteString("\n--\ncomments/notes:\n\n")
 
 		if len(notes) > 0 {
 			for _, note := range notes {
@@ -301,17 +301,17 @@ func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bo
 				}
 
 				if note.System {
-					out += fmt.Sprintf("%s %s %s\n\n", note.Author.Username, note.Body, note.CreatedAt.String())
+					out.WriteString(fmt.Sprintf("%s %s %s\n\n", note.Author.Username, note.Body, note.CreatedAt.String()))
 				} else {
-					out += fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body)
+					out.WriteString(fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body))
 				}
 			}
 		} else {
-			out += fmt.Sprintf("There are no comments on this %s.\n", issuableName)
+			out.WriteString(fmt.Sprintf("There are no comments on this %s.\n", issuableName))
 		}
 	}
 
-	return out
+	return out.String()
 }
 
 func printJSONIssue(opts *options) {
