@@ -330,7 +330,9 @@ tests:integration:
     - !reference [.google-oidc:auth, after_script]
     - rm -rf .gitlab-secrets
 
-build_test:
+# Split build_test into two parallel jobs to stay under GitLab.com's 1GB artifact limit
+# See: https://docs.gitlab.com/user/gitlab_com/#cicd
+.build_test_base:
   extends: .release
   stage: build
   rules:
@@ -341,6 +343,32 @@ build_test:
     - changes:
         - .goreleaser.yml
         - .gitlab-ci.yml
+  needs:
+    - job: windows_installer
+      optional: false
+    - job: sign_windows_installer
+      optional: true
+
+build_test_linux:
+  extends: .build_test_base
+  script: |
+    docker run --rm --privileged \
+      -e CI=$CI \
+      -e CI_COMMIT_TAG=$CI_COMMIT_TAG \
+      -e GO_VERSION="$GO_VERSION" \
+      -e HOST_PWD=$PWD \
+      -v $PWD:/go/src/gitlab.com/gitlab-org/cli \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -w /go/src/gitlab.com/gitlab-org/cli \
+      goreleaser/goreleaser:nightly build --snapshot --id linux
+  artifacts:
+    name: goreleaser-artifacts-linux
+    paths:
+      - dist/linux_*
+    expire_in: 7 days
+
+build_test_other:
+  extends: .build_test_base
   script: |
     docker run --rm --privileged \
       -e CI=$CI \
@@ -353,17 +381,14 @@ build_test:
       -v $PWD:/go/src/gitlab.com/gitlab-org/cli \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -w /go/src/gitlab.com/gitlab-org/cli \
-      goreleaser/goreleaser:nightly release --skip=sign --snapshot
+      goreleaser/goreleaser:nightly build --snapshot --id macos --id windows --id freebsd
   artifacts:
-    name: goreleaser-artifacts
+    name: goreleaser-artifacts-other
     paths:
-      - dist/
+      - dist/macos_*
+      - dist/windows_*
+      - dist/freebsd_*
     expire_in: 7 days
-  needs:
-    - job: windows_installer
-      optional: false
-    - job: sign_windows_installer
-      optional: true
 
 release:
   extends: .release
