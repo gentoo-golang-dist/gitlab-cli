@@ -345,10 +345,7 @@ build_test:
         - .gitlab-ci.yml
   parallel:
     matrix:
-      - BUILD_ID: linux
-      - BUILD_ID: macos
-      - BUILD_ID: windows
-      - BUILD_ID: freebsd
+      - BUILD_ID: [linux, macos, windows, freebsd]
   script: |
     docker run --rm --privileged \
       -e CI=$CI \
