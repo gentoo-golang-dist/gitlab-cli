@@ -330,6 +330,8 @@ tests:integration:
     - !reference [.google-oidc:auth, after_script]
     - rm -rf .gitlab-secrets
 
+# Use parallel matrix to build each OS individually, staying under GitLab.com's 1GB artifact limit
+# See: https://docs.gitlab.com/user/gitlab_com/#cicd
 build_test:
   extends: .release
   stage: build
@@ -341,6 +343,12 @@ build_test:
     - changes:
         - .goreleaser.yml
         - .gitlab-ci.yml
+  parallel:
+    matrix:
+      - BUILD_ID: linux
+      - BUILD_ID: macos
+      - BUILD_ID: windows
+      - BUILD_ID: freebsd
   script: |
     docker run --rm --privileged \
       -e CI=$CI \
@@ -353,11 +361,11 @@ build_test:
       -v $PWD:/go/src/gitlab.com/gitlab-org/cli \
       -v /var/run/docker.sock:/var/run/docker.sock \
       -w /go/src/gitlab.com/gitlab-org/cli \
-      goreleaser/goreleaser:nightly release --skip=sign --snapshot
+      goreleaser/goreleaser:nightly build --snapshot --id $BUILD_ID
   artifacts:
-    name: goreleaser-artifacts
+    name: goreleaser-artifacts-$BUILD_ID
     paths:
-      - dist/
+      - dist/${BUILD_ID}_*
     expire_in: 7 days
   needs:
     - job: windows_installer
