@@ -141,7 +141,8 @@ func EditorPrompt(ctx context.Context, io *iostreams.IOStreams, response *string
 		defaultBody += templateContent
 	}
 
-	err := io.Editor(ctx, response, question, "", defaultBody, editorCommand)
+	// Use DirectEditor to skip the huh interactive text field and directly open the external editor
+	err := io.DirectEditor(ctx, response, defaultBody, editorCommand)
 	if err != nil {
 		return err
 	}
