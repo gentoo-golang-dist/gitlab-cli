@@ -42,6 +42,41 @@ var projectAccessTokenResponse = heredoc.Doc(`
 			"active": true,
 			"revoked": false,
 			"access_level": 10
+		},
+		{
+			"id": 10179585,
+			"user_id": 21973697,
+			"name": "sadfsdfsdG",
+			"scopes": [
+				"api",
+				"read_api"
+			],
+			"created_at": "2024-07-07T07:59:35.767Z",
+			"description": "example descriptioM",
+			"expires_at": "2024-08-06",
+			"active": false,
+			"revoked": true,
+			"access_level": 10
+		}
+	]
+`)
+
+var projectAccessTokenResponseJson = heredoc.Doc(`
+	[
+		{
+			"id": 10179584,
+			"user_id": 21973696,
+			"name": "sadfsdfsdf",
+			"scopes": [
+				"api",
+				"read_api"
+			],
+			"created_at": "2024-07-07T07:59:35.767Z",
+			"description": "example description",
+			"expires_at": "2024-08-06",
+			"active": true,
+			"revoked": false,
+			"access_level": 10
 		}
 	]
 `)
@@ -62,22 +97,23 @@ func TestListProjectAccessTokenAsText(t *testing.T) {
 	assert.Equal(t, heredoc.Doc(`
 		ID       NAME       DESCRIPTION         ACCESS_LEVEL ACTIVE  REVOKED  CREATED_AT           EXPIRES_AT LAST_USED_AT SCOPES      
 		10179584 sadfsdfsdf example description guest        true    false    2024-07-07T07:59:35Z 2024-08-06 -           api,read_api
+		10179585 sadfsdfsdG example descriptioM guest        false   true     2024-07-07T07:59:35Z 2024-08-06 -           api,read_api
 	`), out)
 	assert.Empty(t, output.Stderr())
 }
 
-func TestListProjectAccessTokenAsJSON(t *testing.T) {
+func TestListProjectAccessTokenActiveAsJSON(t *testing.T) {
 	fakeHTTP := &httpmock.Mocker{}
 	defer fakeHTTP.Verify(t)
 
 	fakeHTTP.RegisterResponder(http.MethodGet, "/api/v4/projects/OWNER/REPO/access_tokens",
 		httpmock.NewStringResponse(http.StatusOK, projectAccessTokenResponse))
-	output, err := runCommand(t, fakeHTTP, "--output json")
+	output, err := runCommand(t, fakeHTTP, "--active --output json")
 	if err != nil {
-		t.Errorf("error running command `token list --output json`: %v", err)
+		t.Errorf("error running command `token list --active --output json`: %v", err)
 	}
 	assert.Empty(t, output.Stderr())
-	assert.JSONEq(t, projectAccessTokenResponse, output.String())
+	assert.JSONEq(t, projectAccessTokenResponseJson, output.String())
 }
 
 var groupAccessTokenResponse = heredoc.Doc(`
