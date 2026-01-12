@@ -1,7 +1,10 @@
+//go:build !integration
+
 package create
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -10,15 +13,20 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
-
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
+	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 
 	factory := cmdtest.NewTestFactory(ios,
@@ -96,12 +104,11 @@ func TestReleaseCreate(t *testing.T) {
 			output, err := runCommand(t, fakeHTTP, tc.cli)
 
 			if assert.NoErrorf(t, err, "error running command `create %s`: %v", tc.cli, err) {
-				assert.Contains(t, output.Stderr(), `• Validating tag 0.0.1
-
+				assert.Contains(t, output.String(), `• Validating tag 0.0.1
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
 ✓ Release succeeded after`)
-				assert.Empty(t, output.String())
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}
@@ -204,14 +211,13 @@ func TestReleaseCreateWithFiles(t *testing.T) {
 			output, err := runCommand(t, fakeHTTP, tc.cli)
 
 			if assert.NoErrorf(t, err, "error running command `create %s`: %v", tc.cli, err) {
-				assert.Contains(t, output.Stderr(), `• Validating tag 0.0.1
-
+				assert.Contains(t, output.String(), `• Validating tag 0.0.1
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
 • Uploading release assets repo=OWNER/REPO tag=0.0.1
 • Uploading to release	file=testdata/test_file.txt name=test_file.txt
 ✓ Release succeeded after`)
-				assert.Empty(t, output.String())
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}
@@ -227,7 +233,6 @@ func TestReleaseCreate_WithAssetsLinksJSON(t *testing.T) {
 			name: "with direct_asset_path",
 			cli:  `0.0.1 --assets-links='[{"name": "any-name", "url": "https://example.com/any-asset-url", "direct_asset_path": "/any-path"}]'`,
 			expectedOutput: `• Validating tag 0.0.1
-
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
 • Uploading release assets repo=OWNER/REPO tag=0.0.1
@@ -238,7 +243,6 @@ func TestReleaseCreate_WithAssetsLinksJSON(t *testing.T) {
 			name: "with filepath aliased to direct_asset_path",
 			cli:  `0.0.1 --assets-links='[{"name": "any-name", "url": "https://example.com/any-asset-url", "filepath": "/any-path"}]'`,
 			expectedOutput: `• Validating tag 0.0.1
-
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
 • Uploading release assets repo=OWNER/REPO tag=0.0.1
@@ -306,8 +310,8 @@ func TestReleaseCreate_WithAssetsLinksJSON(t *testing.T) {
 			output, err := runCommand(t, fakeHTTP, tt.cli)
 
 			if assert.NoErrorf(t, err, "error running command `create %s`: %v", tt.cli, err) {
-				assert.Contains(t, output.Stderr(), tt.expectedOutput)
-				assert.Empty(t, output.String())
+				assert.Contains(t, output.String(), tt.expectedOutput)
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}
@@ -422,7 +426,7 @@ func TestReleaseCreateWithPublishToCatalog(t *testing.T) {
 				assert.Equal(t, tc.errMsg, err.Error())
 			} else {
 				assert.NoError(t, err)
-				assert.Contains(t, output.Stderr(), tc.wantOutput)
+				assert.Contains(t, output.String(), tc.wantOutput)
 			}
 		})
 	}
@@ -480,7 +484,7 @@ func TestReleaseCreate_NoUpdate(t *testing.T) {
 				assert.Contains(t, err.Error(), "release for tag \"0.0.1\" already exists and --no-update flag was specified")
 			} else {
 				assert.NoError(t, err)
-				assert.Contains(t, output.Stderr(), "Release created:")
+				assert.Contains(t, output.String(), "Release created:")
 			}
 		})
 	}
@@ -515,7 +519,6 @@ func TestReleaseCreate_MilestoneClosing(t *testing.T) {
 					}`))
 			},
 			wantOutput: `• Validating tag 0.0.1
-
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
 ✓ Closed milestone "v1.0"`,
@@ -526,7 +529,6 @@ func TestReleaseCreate_MilestoneClosing(t *testing.T) {
 			cli:            "0.0.1 --milestone 'v1.0' --no-close-milestone",
 			extraHttpStubs: nil,
 			wantOutput: `• Validating tag 0.0.1
-
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
 ✓ Skipping closing milestones`,
@@ -564,10 +566,91 @@ func TestReleaseCreate_MilestoneClosing(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Contains(t, output.Stderr(), tt.wantOutput)
+				assert.Contains(t, output.String(), tt.wantOutput)
 			}
 		})
 	}
+}
+
+func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
+	t.Setenv("CI_DEFAULT_BRANCH", "")
+
+	t.Run("use default branch from project API when available", func(t *testing.T) {
+		tc := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(
+			t,
+			NewCmdCreate,
+			false,
+			cmdtest.WithGitLabClient(tc.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+		)
+
+		notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
+		tc.MockTags.EXPECT().GetTag("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(&gitlab.Project{DefaultBranch: "some-default-branch"}, nil, nil)
+		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
+			Name:    gitlab.Ptr("0.0.1"),
+			TagName: gitlab.Ptr("0.0.1"),
+			Ref:     gitlab.Ptr("some-default-branch"),
+		}).Return(&gitlab.Release{}, nil, nil)
+
+		_, err := exec("0.0.1")
+		require.NoError(t, err)
+	})
+
+	t.Run("use default branch from environment if available and project API not available", func(t *testing.T) {
+		t.Setenv("CI_DEFAULT_BRANCH", "some-default-branch")
+
+		tc := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(
+			t,
+			NewCmdCreate,
+			false,
+			cmdtest.WithGitLabClient(tc.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+		)
+
+		notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
+		tc.MockTags.EXPECT().GetTag("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(nil, nil, errors.New("forbidden"))
+		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
+			Name:    gitlab.Ptr("0.0.1"),
+			TagName: gitlab.Ptr("0.0.1"),
+			Ref:     gitlab.Ptr("some-default-branch"),
+		}).Return(&gitlab.Release{}, nil, nil)
+
+		_, err := exec("0.0.1")
+		require.NoError(t, err)
+	})
+
+	t.Run("no explicit ref if default branch not in environment and project API not available", func(t *testing.T) {
+		tc := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(
+			t,
+			NewCmdCreate,
+			false,
+			cmdtest.WithGitLabClient(tc.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+		)
+
+		notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
+		tc.MockTags.EXPECT().GetTag("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(nil, nil, errors.New("forbidden"))
+		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
+			Name:    gitlab.Ptr("0.0.1"),
+			TagName: gitlab.Ptr("0.0.1"),
+			Ref:     nil,
+		}).Return(&gitlab.Release{}, nil, nil)
+
+		_, err := exec("0.0.1")
+		require.NoError(t, err)
+	})
 }
 
 func TestReleaseCreate_ExperimentalNotes(t *testing.T) {
@@ -667,8 +750,8 @@ func TestReleaseCreate_ExperimentalNotes(t *testing.T) {
 				assert.Equal(t, tt.errMsg, err.Error())
 			} else {
 				require.NoErrorf(t, err, "error running command `create %s`: %v", tt.cli, err)
-				assert.Contains(t, output.Stderr(), "✓ Release created:")
-				assert.Empty(t, output.String())
+				assert.Contains(t, output.String(), "✓ Release created:")
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}

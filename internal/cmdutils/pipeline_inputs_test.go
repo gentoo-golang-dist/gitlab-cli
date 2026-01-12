@@ -1,3 +1,5 @@
+//go:build !integration
+
 package cmdutils_test
 
 import (
@@ -5,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"

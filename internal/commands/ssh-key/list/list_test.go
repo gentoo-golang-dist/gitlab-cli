@@ -1,88 +1,91 @@
+//go:build !integration
+
 package list
 
 import (
-	"net/http"
 	"testing"
-
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
-	"gitlab.com/gitlab-org/cli/test"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func runCommand(t *testing.T, rt http.RoundTripper) (*test.CmdOut, error) {
-	ios, _, stdout, stderr := cmdtest.TestIOStreams()
-	factory := cmdtest.NewTestFactory(ios,
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname)),
-	)
-	cmd := NewCmdList(factory)
-	return cmdtest.ExecuteCommand(cmd, "", stdout, stderr)
-}
-
-func TestSSHKeyList(t *testing.T) {
-	type httpMock struct {
-		method string
-		path   string
-		status int
-		body   string
+func Test_ListSSHKey(t *testing.T) {
+	type testCase struct {
+		Name        string
+		ExpectedMsg []string
+		wantErr     bool
+		cli         string
+		wantStderr  string
+		setupMock   func(tc *gitlabtesting.TestClient)
 	}
-	keyResponse := `[{
-    "id": 1,
-    "title": "key title",
-    "created_at": "2025-01-01T00:00:00.000Z",
-    "expires_at": null,
-    "key": "ssh-ed25519 example",
-    "usage_type": "auth_and_signing"
-  }]`
 
-	tests := []struct {
-		name        string
-		httpMock    []httpMock
-		expectedOut string
-	}{
+	testKey := &gitlab.SSHKey{
+		ID:        123,
+		Key:       "ssh-ed25519 example",
+		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		UsageType: "auth_and_signing",
+		Title:     "mysshkey",
+	}
+
+	testCases := []testCase{
 		{
-			name: "when no ssh-keys are found shows an empty list",
-			httpMock: []httpMock{{
-				http.MethodGet,
-				"/api/v4/user/keys?page=1&per_page=30",
-				http.StatusOK,
-				"[]",
-			}},
-			expectedOut: "\n",
+			Name:        "List all ssh keys",
+			ExpectedMsg: []string{"Title\tKey\tUsage type\tCreated At\nmysshkey\tssh-ed25519 example\tauth_and_signing\t2025-01-01 00:00:00 +0000 UTC\n\n"},
+			cli:         "",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().ListSSHKeys(gomock.Any()).Return([]*gitlab.SSHKey{testKey}, nil, nil)
+			},
 		},
 		{
-			name: "when ssh-keys are found shows a list of keys",
-			httpMock: []httpMock{{
-				http.MethodGet,
-				"/api/v4/user/keys?page=1&per_page=30",
-				http.StatusOK,
-				keyResponse,
-			}},
-			expectedOut: "Title\tKey\tUsage type\tCreated At\nkey title\tssh-ed25519 example\tauth_and_signing\t2025-01-01 00:00:00 +0000 UTC\n\n",
+			Name:        "When --show-id is used shows a list of keys with IDs",
+			ExpectedMsg: []string{"ID\tTitle\tKey\tUsage type\tCreated At\n123\tmysshkey\tssh-ed25519 example\tauth_and_signing\t2025-01-01 00:00:00 +0000 UTC\n\n"},
+			cli:         "--show-id",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().ListSSHKeys(gomock.Any()).Return([]*gitlab.SSHKey{testKey}, nil, nil)
+			},
+		},
+		{
+			Name:        "When no keys are found returns an empty list",
+			ExpectedMsg: []string{"\n"},
+			cli:         "",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().ListSSHKeys(gomock.Any()).Return([]*gitlab.SSHKey{}, nil, nil)
+			},
 		},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			fakeHTTP := &httpmock.Mocker{
-				MatchURL: httpmock.PathAndQuerystring,
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			// GIVEN
+			testClient := gitlabtesting.NewTestClient(t)
+			tc.setupMock(testClient)
+			exec := cmdtest.SetupCmdForTest(
+				t,
+				NewCmdList,
+				false,
+				cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+			)
+
+			// WHEN
+			out, err := exec(tc.cli)
+
+			// THEN
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantStderr)
+				return
 			}
-			defer fakeHTTP.Verify(t)
-
-			for _, mock := range tc.httpMock {
-				fakeHTTP.RegisterResponder(mock.method, mock.path,
-					httpmock.NewStringResponse(mock.status, mock.body))
-			}
-
-			output, err := runCommand(t, fakeHTTP)
-
-			if assert.NoErrorf(t, err, "error running command `ssh-key list %s`: %v", err) {
-				out := output.String()
-
-				assert.Equal(t, tc.expectedOut, out)
-				assert.Empty(t, output.Stderr())
+			require.NoError(t, err)
+			for _, msg := range tc.ExpectedMsg {
+				assert.Equal(t, msg, out.OutBuf.String())
 			}
 		})
 	}

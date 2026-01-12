@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/charmbracelet/glamour"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/browser"
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
@@ -164,6 +167,12 @@ func PresentInIntSlice(hay []int, needle int) bool {
 	return slices.Contains(hay, needle)
 }
 
+// PresentInInt64Slice take a Hay (Slice of Int64s) and a Needle (int64)
+// and returns true based on whether or not the Needle is present in the hay.
+func PresentInInt64Slice(hay []int64, needle int64) bool {
+	return slices.Contains(hay, needle)
+}
+
 // CommonElementsInStringSlice takes 2 Slices of Strings and returns a Third Slice
 // that is the common elements between the first 2 Slices.
 func CommonElementsInStringSlice(s1 []string, s2 []string) []string {
@@ -230,4 +239,12 @@ func IsEnvVarEnabled(key string) (bool, bool) {
 // PrintDeprecationWarning prints a deprecation warning to use the `GLAB_` prefix with environment variables
 func PrintDeprecationWarning(key string) {
 	fmt.Fprintf(os.Stdout, "DEPRECATION WARNING: The environment variable %s has been deprecated and will be removed in future releases. Use GLAB_%s instead.\n", key, key)
+}
+
+// FormatDueDate returns an empty string if date is nil
+func FormatDueDate(date *gitlab.ISOTime) string {
+	if date == nil {
+		return ""
+	}
+	return date.String()
 }

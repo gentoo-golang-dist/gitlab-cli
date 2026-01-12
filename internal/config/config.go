@@ -8,8 +8,9 @@ import (
 	"sort"
 
 	"github.com/zalando/go-keyring"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gopkg.in/yaml.v3"
+
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
 )
 
 //go:generate go run gen.go
@@ -489,7 +490,7 @@ func (c *fileConfig) parseHosts(hostsEntry *yaml.Node) ([]*HostConfig, error) {
 	}
 
 	if len(hostConfigs) == 0 {
-		return nil, errors.New("could not find any host configurations")
+		return nil, &NotFoundError{errors.New("could not find any host configurations")}
 	}
 
 	return hostConfigs, nil

@@ -1,3 +1,5 @@
+//go:build !integration
+
 package get
 
 import (
@@ -5,16 +7,18 @@ import (
 	"os"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, args string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
@@ -484,6 +488,8 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			fakeHTTP := &httpmock.Mocker{
 				MatchURL: httpmock.PathAndQuerystring,
 			}
@@ -550,6 +556,7 @@ func TestCIGetJSON(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			fakeHTTP := &httpmock.Mocker{
 				MatchURL: httpmock.PathAndQuerystring,
 			}

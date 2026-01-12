@@ -1,3 +1,5 @@
+//go:build !integration
+
 package recovery_test
 
 import (
@@ -8,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/recovery"
 )
 

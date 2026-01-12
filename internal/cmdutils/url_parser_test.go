@@ -1,9 +1,12 @@
+//go:build !integration
+
 package cmdutils
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )

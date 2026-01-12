@@ -1,3 +1,5 @@
+//go:build !integration
+
 package main
 
 import (
@@ -5,9 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
-	"go.uber.org/mock/gomock"
 
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"

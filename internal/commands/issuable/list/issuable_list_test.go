@@ -1,3 +1,5 @@
+//go:build !integration
+
 package list
 
 import (
@@ -11,23 +13,24 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, command string, rt http.RoundTripper, isTTY bool, cli string, doHyperlinks string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(isTTY), iostreams.WithDisplayHyperLinks(doHyperlinks))
 	c := cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname)
 	factory := cmdtest.NewTestFactory(ios,
@@ -92,9 +95,10 @@ func TestIssueList_tty(t *testing.T) {
 	assert.Equal(t, heredoc.Doc(`
 		Showing 3 open issues in OWNER/REPO that match your search. (Page 1)
 
-		#6	OWNER/REPO/issues/6	Issue one	(foo, bar) 	about X years ago
-		#7	OWNER/REPO/issues/7	Issue two	(fooz, baz)	about X years ago
-		#8	OWNER/REPO/issues/8	Incident 	(foo, baz) 	about X years ago
+		ID	Title    	Labels     	Created at        
+		#6	Issue one	(foo, bar) 	about X years ago
+		#7	Issue two	(fooz, baz)	about X years ago
+		#8	Incident 	(foo, baz) 	about X years ago
 
 	`), out)
 	assert.Equal(t, ``, output.Stderr())
@@ -224,7 +228,8 @@ func TestIssueList_tty_withIssueType(t *testing.T) {
 	assert.Equal(t, heredoc.Doc(`
 		Showing 1 open incident in OWNER/REPO that match your search. (Page 1)
 
-		#8	OWNER/REPO/issues/8	Incident	(foo, baz)	about X years ago
+		ID	Title   	Labels    	Created at        
+		#8	Incident	(foo, baz)	about X years ago
 
 	`), out)
 	assert.Equal(t, ``, output.Stderr())
@@ -291,15 +296,15 @@ func TestIssueList_hyperlinks(t *testing.T) {
 	t.Setenv("NO_COLOR", "true")
 
 	noHyperlinkCells := [][]string{
-		{"#6", "OWNER/REPO/issues/6", "Issue one", "(foo, bar)", "about X years ago"},
-		{"#7", "OWNER/REPO/issues/7", "Issue two", "(fooz, baz)", "about X years ago"},
-		{"#8", "OWNER/REPO/issues/8", "Incident", "(foo, baz)", "about X years ago"},
+		{"#6", "Issue one", "(foo, bar)", "about X years ago"},
+		{"#7", "Issue two", "(fooz, baz)", "about X years ago"},
+		{"#8", "Incident", "(foo, baz)", "about X years ago"},
 	}
 
 	hyperlinkCells := [][]string{
-		{makeHyperlink("#6", "http://gitlab.com/OWNER/REPO/issues/6"), "OWNER/REPO/issues/6", "Issue one", "(foo, bar)", "about X years ago"},
-		{makeHyperlink("#7", "http://gitlab.com/OWNER/REPO/issues/7"), "OWNER/REPO/issues/7", "Issue two", "(fooz, baz)", "about X years ago"},
-		{makeHyperlink("#8", "http://gitlab.com/OWNER/REPO/issues/8"), "OWNER/REPO/issues/8", "Incident", "(foo, baz)", "about X years ago"},
+		{makeHyperlink("#6", "http://gitlab.com/OWNER/REPO/issues/6"), "Issue one", "(foo, bar)", "about X years ago"},
+		{makeHyperlink("#7", "http://gitlab.com/OWNER/REPO/issues/7"), "Issue two", "(fooz, baz)", "about X years ago"},
+		{makeHyperlink("#8", "http://gitlab.com/OWNER/REPO/issues/8"), "Incident", "(foo, baz)", "about X years ago"},
 	}
 
 	type hyperlinkTest struct {
@@ -355,7 +360,7 @@ func TestIssueList_hyperlinks(t *testing.T) {
 			lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 
 			// first two lines have the header and some separating whitespace, so skip those
-			for lineNum, line := range lines[2:] {
+			for lineNum, line := range lines[3:] {
 				gotCells := strings.Split(line, "\t")
 				expectedCells := test.expectedCells[lineNum]
 
@@ -582,7 +587,6 @@ func TestIssueList_epicIssues(t *testing.T) {
 }
 
 func TestIssueList_filterByLabel(t *testing.T) {
-	t.Parallel()
 	tests := map[string]struct {
 		reqURL     string
 		respStatus int

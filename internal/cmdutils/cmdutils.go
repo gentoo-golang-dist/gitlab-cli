@@ -11,20 +11,14 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/AlecAivazis/survey/v2"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-	"gitlab.com/gitlab-org/cli/internal/surveyext"
-
 	"gitlab.com/gitlab-org/cli/internal/config"
-
 	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 const (
@@ -86,6 +80,7 @@ func LoadGitLabTemplate(tmplType, tmplName string) (string, error) {
 	} else if err != nil {
 		return "", err
 	}
+	defer f.Close()
 
 	tmpl, err := io.ReadAll(f)
 	if err != nil {
@@ -135,7 +130,7 @@ func GetEditor(cf func() config.Config) (string, error) {
 	return editorCommand, nil
 }
 
-func EditorPrompt(response *string, question, templateContent, editorCommand string) error {
+func EditorPrompt(ctx context.Context, io *iostreams.IOStreams, response *string, question, templateContent, editorCommand string) error {
 	defaultBody := *response
 	if templateContent != "" {
 		if defaultBody != "" {
@@ -146,24 +141,7 @@ func EditorPrompt(response *string, question, templateContent, editorCommand str
 		defaultBody += templateContent
 	}
 
-	qs := []*survey.Question{
-		{
-			Name: question,
-			Prompt: &surveyext.GLabEditor{
-				BlankAllowed:  true,
-				EditorCommand: editorCommand,
-				Editor: &survey.Editor{
-					Message:       "Description",
-					FileName:      "*.md",
-					Default:       defaultBody,
-					HideDefault:   true,
-					AppendDefault: true,
-				},
-			},
-		},
-	}
-
-	err := prompt.Ask(qs, response)
+	err := io.Editor(ctx, response, question, "", defaultBody, editorCommand)
 	if err != nil {
 		return err
 	}
@@ -173,9 +151,9 @@ func EditorPrompt(response *string, question, templateContent, editorCommand str
 	return nil
 }
 
-type GetTextUsingEditor func(editor, tmpFileName, content string) (string, error)
+type GetTextUsingEditor func(ctx context.Context, editor, tmpFileName, content string) (string, error)
 
-func LabelsPrompt(response *[]string, apiClient *gitlab.Client, repoRemote *glrepo.Remote) error {
+func LabelsPrompt(ctx context.Context, ios *iostreams.IOStreams, response *[]string, apiClient *gitlab.Client, repoRemote *glrepo.Remote) error {
 	labelOpts := &gitlab.ListLabelsOptions{}
 	labelOpts.PerPage = 100
 	labels, err := listLabels(apiClient, repoRemote.FullName(), labelOpts)
@@ -191,7 +169,7 @@ func LabelsPrompt(response *[]string, apiClient *gitlab.Client, repoRemote *glre
 		}
 
 		var selectedLabels []string
-		err = prompt.MultiSelect(&selectedLabels, "labels", "Select labels", labelOptions)
+		err = ios.MultiSelect(ctx, &selectedLabels, "Select labels", labelOptions)
 		if err != nil {
 			return err
 		}
@@ -200,7 +178,7 @@ func LabelsPrompt(response *[]string, apiClient *gitlab.Client, repoRemote *glre
 	}
 
 	var responseString string
-	err = prompt.AskQuestionWithInput(&responseString, "labels", "Label(s) (comma-separated)", "", false)
+	err = ios.Input(ctx, &responseString, "Label(s) (comma-separated)", "", nil)
 	if err != nil {
 		return err
 	}
@@ -210,9 +188,9 @@ func LabelsPrompt(response *[]string, apiClient *gitlab.Client, repoRemote *glre
 	return nil
 }
 
-func MilestonesPrompt(response *int, apiClient *gitlab.Client, repoRemote *glrepo.Remote, ios *iostreams.IOStreams) error {
+func MilestonesPrompt(response *int64, apiClient *gitlab.Client, repoRemote *glrepo.Remote, ios *iostreams.IOStreams) error {
 	var milestoneOptions []string
-	milestoneMap := map[string]int{}
+	milestoneMap := map[string]int64{}
 
 	lOpts := &api.ListMilestonesOptions{
 		IncludeParentMilestones: gitlab.Ptr(true),
@@ -261,7 +239,7 @@ var GroupMemberLevel = map[int]string{
 // for the remote referenced by the `*glrepo.Remote`.
 //
 // `role` will appear on the prompt to keep the user informed of the reason of the selection.
-func UsersPrompt(response *[]string, apiClient *gitlab.Client, repoRemote *glrepo.Remote, io *iostreams.IOStreams, minimumAccessLevel int, role string) error {
+func UsersPrompt(ctx context.Context, response *[]string, apiClient *gitlab.Client, repoRemote *glrepo.Remote, io *iostreams.IOStreams, minimumAccessLevel int, role string) error {
 	var userOptions []string
 	userMap := map[string]string{}
 
@@ -287,7 +265,7 @@ func UsersPrompt(response *[]string, apiClient *gitlab.Client, repoRemote *glrep
 	}
 
 	var selectedUsers []string
-	err = prompt.MultiSelect(&selectedUsers, role, fmt.Sprintf("Select %s", role), userOptions)
+	err = io.MultiSelect(ctx, &selectedUsers, fmt.Sprintf("Select %s", role), userOptions)
 	if err != nil {
 		return err
 	}
@@ -349,7 +327,7 @@ const (
 	AddMilestoneAction
 )
 
-func PickMetadata() ([]Action, error) {
+func PickMetadata(ctx context.Context, io *iostreams.IOStreams) ([]Action, error) {
 	const (
 		labelsLabel    = "labels"
 		assigneeLabel  = "assignees"
@@ -363,7 +341,7 @@ func PickMetadata() ([]Action, error) {
 	}
 
 	var confirmAnswers []string
-	err := prompt.MultiSelect(&confirmAnswers, "metadata", "Which metadata types to add?", options)
+	err := io.MultiSelect(ctx, &confirmAnswers, "Which metadata types to add?", options)
 	if err != nil {
 		return nil, fmt.Errorf("could not prompt: %w", err)
 	}
@@ -380,21 +358,22 @@ func PickMetadata() ([]Action, error) {
 			pickedActions = append(pickedActions, AddMilestoneAction)
 		}
 	}
+
 	return pickedActions, nil
 }
 
 // IDsFromUsers collects all user IDs from a slice of users
-func IDsFromUsers(users []*gitlab.User) *[]int {
-	ids := make([]int, len(users))
+func IDsFromUsers(users []*gitlab.User) *[]int64 {
+	ids := make([]int64, len(users))
 	for i, user := range users {
 		ids[i] = user.ID
 	}
 	return &ids
 }
 
-func ParseMilestone(apiClient *gitlab.Client, repo glrepo.Interface, milestoneTitle string) (int, error) {
+func ParseMilestone(apiClient *gitlab.Client, repo glrepo.Interface, milestoneTitle string) (int64, error) {
 	if milestoneID, err := strconv.Atoi(milestoneTitle); err == nil {
-		return milestoneID, nil
+		return int64(milestoneID), nil
 	}
 
 	milestone, err := projectMilestoneByTitle(apiClient, repo.FullName(), milestoneTitle)
@@ -465,10 +444,10 @@ func (ua *UserAssignments) VerifyAssignees() error {
 // UsersFromReplaces converts all users from the `ToReplace` member of the struct into
 // an Slice of String representing the Users' IDs, it also takes a Slice of Strings and
 // writes a proper action message to it
-func (ua *UserAssignments) UsersFromReplaces(apiClient *gitlab.Client, actions []string) (*[]int, []string, error) {
+func (ua *UserAssignments) UsersFromReplaces(apiClient *gitlab.Client, actions []string) (*[]int64, []string, error) {
 	users, err := api.UsersByNames(apiClient, ua.ToReplace)
 	if err != nil {
-		return &[]int{}, actions, err
+		return &[]int64{}, actions, err
 	}
 	var usernames []string
 	for i := range users {
@@ -495,13 +474,13 @@ func (ua *UserAssignments) UsersFromAddRemove(
 	mergeRequestAssignees []*gitlab.BasicUser,
 	apiClient *gitlab.Client,
 	actions []string,
-) (*[]int, []string, error) {
-	var assignedIDs []int
+) (*[]int64, []string, error) {
+	var assignedIDs []int64
 	var usernames []string
 
 	// Only one of those is required
 	if mergeRequestAssignees != nil && issueAssignees != nil {
-		return &[]int{}, actions, fmt.Errorf("issueAssignees and mergeRequestAssignees can't both be set.")
+		return &[]int64{}, actions, fmt.Errorf("issueAssignees and mergeRequestAssignees can't both be set.")
 	}
 
 	// Path for Issues
@@ -541,7 +520,7 @@ func (ua *UserAssignments) UsersFromAddRemove(
 		// which causes a 500 Internal Error if duplicate `IDs` are used. Filter out any
 		// IDs that is already present
 		for i := range users {
-			if !utils.PresentInIntSlice(assignedIDs, users[i].ID) {
+			if !utils.PresentInInt64Slice(assignedIDs, users[i].ID) {
 				assignedIDs = append(assignedIDs, users[i].ID)
 			}
 		}
@@ -562,7 +541,7 @@ func (ua *UserAssignments) UsersFromAddRemove(
 	// That means that all assignees were removed but we can't pass an empty Slice of Ints so
 	// pass the documented value of 0
 	if len(assignedIDs) == 0 {
-		assignedIDs = []int{0}
+		assignedIDs = []int64{0}
 	}
 	return &assignedIDs, actions, nil
 }

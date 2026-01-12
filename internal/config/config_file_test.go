@@ -1,3 +1,5 @@
+//go:build !integration
+
 package config
 
 import (
@@ -7,10 +9,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/adrg/xdg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/gitlab-org/cli/test"
 	"gopkg.in/yaml.v3"
+
+	"gitlab.com/gitlab-org/cli/test"
 )
 
 func eq(t *testing.T, got any, expected any) {
@@ -18,6 +22,33 @@ func eq(t *testing.T, got any, expected any) {
 	if !reflect.DeepEqual(got, expected) {
 		t.Errorf("expected: %v, got: %v", expected, got)
 	}
+}
+
+// setupTestHome creates a temporary home directory and sets up environment
+// variables for cross-platform testing (HOME for Unix/macOS, USERPROFILE for Windows).
+// It also reloads the XDG paths to pick up the new environment.
+func setupTestHome(t *testing.T) string {
+	t.Helper()
+	test.ClearEnvironmentVariables(t)
+
+	homeDir := t.TempDir()
+	// Set both HOME (Unix/macOS) and USERPROFILE (Windows) for cross-platform compatibility
+	t.Setenv("HOME", homeDir)
+	t.Setenv("USERPROFILE", homeDir)
+
+	return homeDir
+}
+
+// setupXDGHome creates a temporary XDG config directory and sets XDG_CONFIG_HOME.
+// It reloads XDG paths after setting the environment variable.
+func setupXDGHome(t *testing.T) string {
+	t.Helper()
+
+	xdgConfigHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", xdgConfigHome)
+	xdg.Reload()
+
+	return xdgConfigHome
 }
 
 func Test_parseConfig(t *testing.T) {
@@ -292,4 +323,235 @@ host: https://gitlab.mycompany.org
 	val, err := config.Get("", "host")
 	eq(t, err, nil)
 	eq(t, val, "https://gitlab.mycompany.org")
+}
+
+func Test_SearchConfigFile_UserConfig(t *testing.T) {
+	_ = setupTestHome(t)
+
+	// Create a temporary user config directory
+	userConfigDir := t.TempDir()
+	userConfigFile := filepath.Join(userConfigDir, "glab-cli", "config.yml")
+
+	// Create config file
+	err := os.MkdirAll(filepath.Dir(userConfigFile), 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(userConfigFile, []byte("test: user"), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG_CONFIG_HOME to temp directory
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+	xdg.Reload()
+
+	// SearchConfigFile should find the user config
+	foundPath, err := SearchConfigFile()
+	require.NoError(t, err)
+	assert.Equal(t, userConfigFile, foundPath)
+}
+
+func Test_SearchConfigFile_SystemConfig(t *testing.T) {
+	_ = setupTestHome(t)
+
+	// Create temporary directories for system and user configs
+	userConfigDir := t.TempDir()
+	systemConfigDir := t.TempDir()
+	systemConfigFile := filepath.Join(systemConfigDir, "glab-cli", "config.yml")
+
+	// Create ONLY system config (no user config)
+	err := os.MkdirAll(filepath.Dir(systemConfigFile), 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(systemConfigFile, []byte("test: system"), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG environment variables
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+	t.Setenv("XDG_CONFIG_DIRS", systemConfigDir)
+	xdg.Reload()
+
+	// SearchConfigFile should find the system config
+	foundPath, err := SearchConfigFile()
+	require.NoError(t, err)
+	assert.Equal(t, systemConfigFile, foundPath)
+}
+
+func Test_SearchConfigFile_Precedence(t *testing.T) {
+	_ = setupTestHome(t)
+
+	// Create temporary directories
+	userConfigDir := t.TempDir()
+	systemConfigDir := t.TempDir()
+	userConfigFile := filepath.Join(userConfigDir, "glab-cli", "config.yml")
+	systemConfigFile := filepath.Join(systemConfigDir, "glab-cli", "config.yml")
+
+	// Create both user and system configs
+	err := os.MkdirAll(filepath.Dir(userConfigFile), 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(userConfigFile, []byte("test: user"), 0o600)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(filepath.Dir(systemConfigFile), 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(systemConfigFile, []byte("test: system"), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG environment variables
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+	t.Setenv("XDG_CONFIG_DIRS", systemConfigDir)
+	xdg.Reload()
+
+	// SearchConfigFile should prefer user config over system config
+	foundPath, err := SearchConfigFile()
+	require.NoError(t, err)
+	assert.Equal(t, userConfigFile, foundPath)
+}
+
+func Test_SearchConfigFile_NotFound(t *testing.T) {
+	_ = setupTestHome(t)
+
+	// Use empty temp directories (no config files)
+	userConfigDir := t.TempDir()
+	systemConfigDir := t.TempDir()
+
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+	t.Setenv("XDG_CONFIG_DIRS", systemConfigDir)
+	xdg.Reload()
+
+	// SearchConfigFile should return an error
+	_, err := SearchConfigFile()
+	require.Error(t, err)
+}
+
+func Test_SearchConfigFile_GLABConfigDirOverride(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Create temp directories
+	glabConfigDir := t.TempDir()
+	userConfigDir := t.TempDir()
+	glabConfigFile := filepath.Join(glabConfigDir, "config.yml")
+	userConfigFile := filepath.Join(userConfigDir, "glab-cli", "config.yml")
+
+	// Create both GLAB_CONFIG_DIR and user configs
+	err := os.WriteFile(glabConfigFile, []byte("test: glab"), 0o600)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(filepath.Dir(userConfigFile), 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(userConfigFile, []byte("test: user"), 0o600)
+	require.NoError(t, err)
+
+	// Set both environment variables
+	t.Setenv("GLAB_CONFIG_DIR", glabConfigDir)
+	t.Setenv("XDG_CONFIG_HOME", userConfigDir)
+
+	// GLAB_CONFIG_DIR should take precedence
+	foundPath, err := SearchConfigFile()
+	require.NoError(t, err)
+	assert.Equal(t, glabConfigFile, foundPath)
+}
+
+func Test_SearchConfigFile_GLABConfigDirNotFound(t *testing.T) {
+	test.ClearEnvironmentVariables(t)
+
+	// Use empty GLAB_CONFIG_DIR
+	glabConfigDir := t.TempDir()
+	t.Setenv("GLAB_CONFIG_DIR", glabConfigDir)
+
+	// Should return os.ErrNotExist, not search XDG paths
+	_, err := SearchConfigFile()
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func Test_ConfigFile_XDGCompliance(t *testing.T) {
+	_ = setupTestHome(t)
+
+	userConfigDir := setupXDGHome(t)
+
+	configFile := ConfigFile()
+	expectedPath := filepath.Join(userConfigDir, "glab-cli", "config.yml")
+
+	assert.Equal(t, expectedPath, configFile)
+}
+
+func Test_ConfigDir_XDGCompliance(t *testing.T) {
+	_ = setupTestHome(t)
+
+	userConfigDir := setupXDGHome(t)
+
+	configDir := ConfigDir()
+	expectedPath := filepath.Join(userConfigDir, "glab-cli")
+
+	assert.Equal(t, expectedPath, configDir)
+}
+
+func Test_ConfigFile_PureFunction(t *testing.T) {
+	_ = setupTestHome(t)
+	_ = setupXDGHome(t)
+
+	configFile := ConfigFile()
+
+	// Should always return a path without side effects
+	assert.NotEmpty(t, configFile)
+	assert.Contains(t, configFile, "glab-cli")
+	assert.Contains(t, configFile, "config.yml")
+	assert.True(t, filepath.IsAbs(configFile), "ConfigFile should return an absolute path")
+
+	// The directory should NOT be created (pure function)
+	configDir := filepath.Dir(configFile)
+	_, err := os.Stat(configDir)
+	assert.True(t, os.IsNotExist(err), "ConfigFile should not create directories")
+}
+
+func Test_ConfigDir_LegacyBackwardCompatibility(t *testing.T) {
+	homeDir := setupTestHome(t)
+
+	// Create legacy config directory and file
+	legacyDir := filepath.Join(homeDir, ".config", "glab-cli")
+	err := os.MkdirAll(legacyDir, 0o750)
+	require.NoError(t, err)
+
+	legacyConfigFile := filepath.Join(legacyDir, "config.yml")
+	err = os.WriteFile(legacyConfigFile, []byte("test: legacy"), 0o600)
+	require.NoError(t, err)
+
+	// Even though XDG_CONFIG_HOME might point elsewhere, if legacy config exists,
+	// ConfigDir should return the legacy location
+	_ = setupXDGHome(t)
+
+	configDir := ConfigDir()
+
+	// Should use legacy location since the config file exists there
+	assert.Equal(t, legacyDir, configDir)
+}
+
+func Test_ConfigDir_NewInstallation(t *testing.T) {
+	_ = setupTestHome(t)
+
+	// Set XDG_CONFIG_HOME to a new location (no legacy config exists)
+	xdgConfigHome := setupXDGHome(t)
+
+	configDir := ConfigDir()
+
+	// Should use XDG location since no legacy config exists
+	expectedDir := filepath.Join(xdgConfigHome, "glab-cli")
+	assert.Equal(t, expectedDir, configDir)
+}
+
+func Test_SearchConfigFile_LegacyLocation(t *testing.T) {
+	homeDir := setupTestHome(t)
+
+	// Create legacy config
+	legacyDir := filepath.Join(homeDir, ".config", "glab-cli")
+	err := os.MkdirAll(legacyDir, 0o750)
+	require.NoError(t, err)
+
+	legacyConfigFile := filepath.Join(legacyDir, "config.yml")
+	err = os.WriteFile(legacyConfigFile, []byte("test: legacy"), 0o600)
+	require.NoError(t, err)
+
+	// Set XDG_CONFIG_HOME to a different location
+	_ = setupXDGHome(t)
+
+	// SearchConfigFile should find the legacy config first
+	foundPath, err := SearchConfigFile()
+	require.NoError(t, err)
+	assert.Equal(t, legacyConfigFile, foundPath)
 }

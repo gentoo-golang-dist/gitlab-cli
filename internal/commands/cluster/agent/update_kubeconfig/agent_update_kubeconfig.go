@@ -7,17 +7,18 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const (
@@ -119,7 +120,7 @@ func (o *options) run() error {
 
 	// Retrieve agent information, most importantly its name to use it as context name.
 	repoFullName := repo.FullName()
-	agent, _, err := client.ClusterAgents.GetAgent(repoFullName, int(o.agentID)) // FIXME remove cast
+	agent, _, err := client.ClusterAgents.GetAgent(repoFullName, o.agentID)
 	if err != nil {
 		return err
 	}
@@ -206,7 +207,7 @@ func updateKubeconfig(params updateKubeconfigParams) (clientcmdapi.Config, strin
 		params.glabExecutable,
 		params.glHost,
 		params.glRepoFullName,
-		int64(params.agent.ID), // FIXME remove cast
+		params.agent.ID,
 		params.tokenExpiryDuration,
 		params.cacheMode,
 		params.checkRevoked,

@@ -1,3 +1,5 @@
+//go:build !integration
+
 package catalog
 
 import (
@@ -9,15 +11,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
-
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
+	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
@@ -143,7 +146,7 @@ func TestPublishCatalog(t *testing.T) {
 				assert.Equal(t, tc.errMsg, err.Error())
 			} else {
 				assert.NoError(t, err)
-				assert.Contains(t, output.Stderr(), tc.wantOutput)
+				assert.Contains(t, output.String(), tc.wantOutput)
 			}
 		})
 	}
@@ -179,7 +182,7 @@ func Test_extractComponentName(t *testing.T) {
 			expected: "component-1",
 		},
 		{
-			name:     "valid component path",
+			name:     "valid component path in sub directory",
 			path:     filepath.Join(wd, "templates/component-2", "template.yml"),
 			expected: "component-2",
 		},

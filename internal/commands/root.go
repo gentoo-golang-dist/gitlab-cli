@@ -6,6 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	aliasCmd "gitlab.com/gitlab-org/cli/internal/commands/alias"
 	apiCmd "gitlab.com/gitlab-org/cli/internal/commands/api"
@@ -17,6 +18,7 @@ import (
 	configCmd "gitlab.com/gitlab-org/cli/internal/commands/config"
 	deployKeyCmd "gitlab.com/gitlab-org/cli/internal/commands/deploy-key"
 	duoCmd "gitlab.com/gitlab-org/cli/internal/commands/duo"
+	gpgCmd "gitlab.com/gitlab-org/cli/internal/commands/gpg-key"
 	"gitlab.com/gitlab-org/cli/internal/commands/help"
 	incidentCmd "gitlab.com/gitlab-org/cli/internal/commands/incident"
 	issueCmd "gitlab.com/gitlab-org/cli/internal/commands/issue"
@@ -24,6 +26,7 @@ import (
 	jobCmd "gitlab.com/gitlab-org/cli/internal/commands/job"
 	labelCmd "gitlab.com/gitlab-org/cli/internal/commands/label"
 	mcpCmd "gitlab.com/gitlab-org/cli/internal/commands/mcp"
+	milestoneCmd "gitlab.com/gitlab-org/cli/internal/commands/milestone"
 	mrCmd "gitlab.com/gitlab-org/cli/internal/commands/mr"
 	opentofuCmd "gitlab.com/gitlab-org/cli/internal/commands/opentofu"
 	projectCmd "gitlab.com/gitlab-org/cli/internal/commands/project"
@@ -50,7 +53,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Annotations: map[string]string{
-			"help:environment": heredoc.Doc(`
+			"help:environment": heredoc.Docf(`
 			BROWSER: The web browser to use for opening links.
 			Can be set in the config with 'glab config set browser mybrowser'.
 
@@ -63,7 +66,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 			Defaults to the 'client-id' for GitLab.com.
 
 			GITLAB_HOST or GL_HOST: If GitLab Self-Managed or GitLab Dedicated, specify the URL of the GitLab server.
-			(Example: https://gitlab.example.com) Defaults to https://gitlab.com.
+			(Example: %[1]shttps://gitlab.example.com%[1]s) Defaults to %[1]shttps://gitlab.com%[1]s.
 
 			GITLAB_TOKEN: An authentication token for API requests. Set this variable to
 			avoid prompts to authenticate. Overrides any previously-stored credentials.
@@ -93,7 +96,19 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 
 			VISUAL, EDITOR (in order of precedence): The editor tool to use for authoring text.
 			Can be set in the config with 'glab config set editor vim'.
-		`),
+
+			GLAB_ENABLE_CI_AUTOLOGIN [EXPERIMENTAL]: Set to true to enable auto-login in GitLab CI.
+			CI auto-login detects if glab is running in a GitLab CI job by checking the
+			predefined CI/CD variable 'GITLAB_CI'. If detected, it uses other predefined CI/CD variables
+			like 'CI_SERVER_FQDN' and 'CI_JOB_TOKEN' to log in.
+			Predefined CI/CD variables have the lowest priority. Even with auto-login enabled,
+			configuration-mapped variables like 'GITLAB_TOKEN' or 'GITLAB_HOST' take precedence over
+			the corresponding predefined variables.
+			Only glab commands that support 'CI_JOB_TOKEN' are available.
+			For a list of supported commands, see: https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access.
+			This flag is experimental.
+			Use it with caution and leave feedback in https://gitlab.com/gitlab-org/cli/-/work_items/8071.
+		`, "`"),
 			"help:feedback": heredoc.Docf(`
 			Encountered a bug or want to suggest a feature?
 			Open an issue using '%s'
@@ -129,30 +144,32 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(updateCmd.NewCheckUpdateCmd(f))
 	rootCmd.AddCommand(authCmd.NewCmdAuth(f))
 
+	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))
 	rootCmd.AddCommand(changelogCmd.NewCmdChangelog(f))
 	rootCmd.AddCommand(clusterCmd.NewCmdCluster(f))
+	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
+	rootCmd.AddCommand(duoCmd.NewCmdDuo(f))
+	rootCmd.AddCommand(gpgCmd.NewCmdGPGKey(f))
+	rootCmd.AddCommand(incidentCmd.NewCmdIncident(f))
 	rootCmd.AddCommand(issueCmd.NewCmdIssue(f))
 	rootCmd.AddCommand(iterationCmd.NewCmdIteration(f))
-	rootCmd.AddCommand(incidentCmd.NewCmdIncident(f))
 	rootCmd.AddCommand(jobCmd.NewCmdJob(f))
 	rootCmd.AddCommand(labelCmd.NewCmdLabel(f))
+	rootCmd.AddCommand(mcpCmd.NewCmdMCP(f))
+	rootCmd.AddCommand(milestoneCmd.NewCmdMilestone(f))
 	rootCmd.AddCommand(mrCmd.NewCmdMR(f))
+	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
 	rootCmd.AddCommand(pipelineCmd.NewCmdCI(f))
 	rootCmd.AddCommand(projectCmd.NewCmdRepo(f))
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
-	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
-	rootCmd.AddCommand(userCmd.NewCmdUser(f))
-	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
-	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
-	rootCmd.AddCommand(duoCmd.NewCmdDuo(f))
-	rootCmd.AddCommand(mcpCmd.NewCmdMCP(f))
-	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
+	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
 	rootCmd.AddCommand(stackCmd.NewCmdStack(f))
-	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
-	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
+	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
+	rootCmd.AddCommand(userCmd.NewCmdUser(f))
+	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 
 	// TODO: This can probably be removed by GitLab 18.3
 	// See: https://gitlab.com/gitlab-org/cli/-/issues/7885

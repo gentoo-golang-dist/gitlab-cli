@@ -3,20 +3,27 @@ package list
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
-
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"strconv"
 
 	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
+
+type printLabel struct {
+	ID          string
+	Name        string
+	Description string
+	Color       string
+}
 
 type options struct {
 	io           *iostreams.IOStreams
@@ -65,8 +72,8 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 type listLabelsOptions struct {
 	withCounts *bool
-	perPage    int
-	page       int
+	perPage    int64
+	page       int64
 }
 
 func (opts *listLabelsOptions) listLabelsOptions() *gitlab.ListLabelsOptions {
@@ -87,6 +94,7 @@ func (opts *listLabelsOptions) listGroupLabelsOptions() *gitlab.ListGroupLabelsO
 
 func (o *options) run() error {
 	var err error
+	var pl []printLabel
 
 	// NOTE: this command can not only be used for projects,
 	// so we have to manually check for the base repo, it it doesn't exist,
@@ -105,15 +113,13 @@ func (o *options) run() error {
 	labelApiOpts.withCounts = gitlab.Ptr(true)
 
 	if o.page != 0 {
-		labelApiOpts.page = o.page
+		labelApiOpts.page = int64(o.page)
 	}
 	if o.perPage != 0 {
-		labelApiOpts.perPage = o.perPage
+		labelApiOpts.perPage = int64(o.perPage)
 	} else {
 		labelApiOpts.perPage = api.DefaultListLimit
 	}
-
-	var labelBuilder strings.Builder
 
 	if o.group != "" {
 		labels, _, err := client.GroupLabels.ListGroupLabels(o.group, labelApiOpts.listGroupLabelsOptions())
@@ -126,8 +132,9 @@ func (o *options) run() error {
 		} else {
 			fmt.Fprintf(o.io.StdOut, "Showing label %d of %d for group %s.\n\n", len(labels), len(labels), o.group)
 			for _, label := range labels {
-				labelBuilder.WriteString(formatLabelInfo(label.Description, label.Name, label.Color))
+				pl = append(pl, printLabel{ID: strconv.FormatInt(label.ID, 10), Name: label.Name, Description: label.Description, Color: label.Color})
 			}
+			printLabels(pl, o.io)
 		}
 	} else {
 		repo, err := o.baseRepo()
@@ -145,18 +152,26 @@ func (o *options) run() error {
 		} else {
 			fmt.Fprintf(o.io.StdOut, "Showing label %d of %d on %s.\n\n", len(labels), len(labels), repo.FullName())
 			for _, label := range labels {
-				labelBuilder.WriteString(formatLabelInfo(label.Description, label.Name, label.Color))
+				pl = append(pl, printLabel{ID: strconv.FormatInt(label.ID, 10), Name: label.Name, Description: label.Description, Color: label.Color})
 			}
+			printLabels(pl, o.io)
 		}
 
 	}
-	fmt.Fprintln(o.io.StdOut, utils.Indent(labelBuilder.String(), " "))
+
 	return nil
 }
 
-func formatLabelInfo(description string, name string, color string) string {
-	if description != "" {
-		description = fmt.Sprintf(" -> %s", description)
+func printLabels(label []printLabel, io *iostreams.IOStreams) {
+	table := tableprinter.NewTablePrinter()
+
+	if len(label) > 0 {
+		table.AddRow("ID", "Name", "Description", "Color")
 	}
-	return fmt.Sprintf("%s%s (%s)\n", name, description, color)
+
+	for _, l := range label {
+		table.AddRow(l.ID, l.Name, l.Description, l.Color)
+	}
+
+	io.LogInfo(table.String())
 }

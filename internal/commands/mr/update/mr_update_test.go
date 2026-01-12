@@ -1,3 +1,5 @@
+//go:build !integration
+
 package update
 
 import (
@@ -6,16 +8,16 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/google/shlex"
-
-	"gitlab.com/gitlab-org/cli/internal/config"
-
 	"github.com/acarl005/stripansi"
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -36,7 +38,7 @@ func TestUpdateMergeRequest(t *testing.T) {
 	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
 	toggle := false
 
-	api.UpdateMR = func(client *gitlab.Client, projectID any, mrID int, opts *gitlab.UpdateMergeRequestOptions) (*gitlab.MergeRequest, error) {
+	api.UpdateMR = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.UpdateMergeRequestOptions) (*gitlab.MergeRequest, error) {
 		if projectID == "" || projectID == "WRONG_REPO" || projectID == "expected_err" || mrID == 0 {
 			return nil, fmt.Errorf("error expected")
 		}
@@ -81,7 +83,7 @@ func TestUpdateMergeRequest(t *testing.T) {
 		return mr, nil
 	}
 
-	api.GetMR = func(client *gitlab.Client, projectID any, mrID int, opts *gitlab.GetMergeRequestsOptions) (*gitlab.MergeRequest, error) {
+	api.GetMR = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.GetMergeRequestsOptions) (*gitlab.MergeRequest, error) {
 		if projectID == "" || projectID == "WRONG_REPO" || projectID == "expected_err" {
 			return nil, fmt.Errorf("error expected")
 		}
@@ -89,7 +91,7 @@ func TestUpdateMergeRequest(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		title := map[int]string{
+		title := map[int64]string{
 			1: "mrTitle",
 			2: "Draft: mrTitle",
 			3: "Draft: wip: wip: draft: DrAfT: mrTitle",

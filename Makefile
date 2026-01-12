@@ -45,8 +45,8 @@ GOURL ?= gitlab.com/gitlab-org/cli
 BUILDLOC ?= ./bin/glab
 
 # Dependency versions
-GOTESTSUM_VERSION = 0.6.0
-GOLANGCI_LINT_VERSION = 2.4.0
+GOTESTSUM_VERSION = 1.13.0
+GOLANGCI_LINT_VERSION = 2.7.2
 
 # Add the ability to override some variables
 # Use with care
@@ -132,6 +132,16 @@ test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test-race: bin/gotestsum ## Run tests with race detection
 	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
 
+.PHONY: integration-test-race
+integration-test-race: TEST_FORMAT ?= short
+integration-test-race: SHELL = /bin/bash # set environment variables to ensure consistent test behavior
+integration-test-race: VISUAL=
+integration-test-race: EDITOR=
+integration-test-race: PAGER=
+integration-test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
+integration-test-race: bin/gotestsum ## Run tests with race detection
+	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race -tags=integration $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...) -count=1
+
 ifdef HASGOCILINT
 bin/golangci-lint:
 	@echo "Skip this"
@@ -170,6 +180,21 @@ list-todo: ## Detect FIXME, TODO and other comment keywords
 .PHONY: gen-config
 gen-config: ## Generate config stub from lockfile
 	cd internal/config && go generate
+
+.PHONY: bootstrap
+bootstrap: ## Install development tools for git hooks
+	@./scripts/bootstrap.sh
+
+.PHONY: lint-shell
+lint-shell: ## Lint all shell scripts
+	@if command -v shellcheck > /dev/null 2>&1; then \
+		echo "Linting shell scripts..."; \
+		find . -name "*.sh" -type f -not -path "*/node_modules/*" -exec shellcheck {} \;; \
+		echo "✓ Shell script linting complete"; \
+	else \
+		echo "⚠️  shellcheck not found. Run 'make bootstrap' to install tools."; \
+		exit 1; \
+	fi
 
 # Add custom targets here
 -include custom.mk

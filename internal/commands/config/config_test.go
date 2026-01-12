@@ -1,14 +1,16 @@
+//go:build !integration
+
 package config
 
 import (
 	"errors"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 type configStub map[string]string

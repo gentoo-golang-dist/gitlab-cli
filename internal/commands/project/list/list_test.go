@@ -1,18 +1,22 @@
+//go:build !integration
+
 package list
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
-	"github.com/stretchr/testify/assert"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, args string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 
 	factory := cmdtest.NewTestFactory(ios,
@@ -75,7 +79,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when starred is passed as an arg, filters by starred",
@@ -86,7 +90,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--starred",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when member is passed as an arg, filters by member",
@@ -97,7 +101,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--member",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when mine is passed explicitly as an arg, filters by ownership",
@@ -108,7 +112,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--mine",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when mine and starred are passed as args, filters by ownership and starred",
@@ -119,7 +123,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--mine --starred",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when starred and member are passed as args, filters by starred and membership",
@@ -130,7 +134,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--starred --member",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when mine and membership are passed as args, filters by ownership and membership",
@@ -141,7 +145,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--mine --member",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "when mine, membership and starred is passed explicitly as arguments, filters by ownership, membership and starred",
@@ -152,7 +156,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--mine --member --starred",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all projects, no filters",
@@ -163,7 +167,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--all",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all projects ordered by created_at date sorted descending",
@@ -174,7 +178,7 @@ func TestProjectList(t *testing.T) {
 				projectResponse,
 			}},
 			args:        "--order created_at --sort desc",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all projects in a specific group",
@@ -193,7 +197,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "--group me/group/subgroup",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all projects in a specific group including subgroups",
@@ -212,7 +216,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "--group me/group/subgroup --include-subgroups",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all not archived projects in a specific group",
@@ -231,7 +235,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "-a --group me/group/subgroup --archived=false",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all archived projects in a specific group",
@@ -250,7 +254,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "-a --group me/group/subgroup --archived=true",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all archived projects",
@@ -263,7 +267,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "-a --archived=true",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all not archived projects",
@@ -276,7 +280,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "-a --archived=false",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ngitlab-org/incubation-engineering/service-desk/meta\t\tThis is a test project\n\n",
 		},
 		{
 			name: "view all projects for a given user",
@@ -289,7 +293,7 @@ func TestProjectList(t *testing.T) {
 				},
 			},
 			args:        "-u testuser",
-			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\ntestuser/example\t\tThis is a test project\n\n",
+			expectedOut: "Showing 1 of 0 projects (Page 0 of 0).\n\nProject path\tGit URL\tDescription\ntestuser/example\t\tThis is a test project\n\n",
 		},
 	}
 

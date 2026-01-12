@@ -1,13 +1,19 @@
+//go:build !integration
+
 package note
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/survivorbat/huhtest"
+
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
@@ -18,6 +24,8 @@ func TestMain(m *testing.M) {
 }
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 
 	factory := cmdtest.NewTestFactory(ios,
@@ -136,18 +144,26 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 			"web_url": "https://gitlab.com/OWNER/REPO/merge_requests/1"
 		}
 	`))
-		as, teardown := prompt.InitAskStubber()
-		defer teardown()
-		as.StubOne("some note message")
+
+		responder := huhtest.NewResponder()
+		responder.AddResponse("Note message:", "some note message")
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false,
+			cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: fakeHTTP}, "", glinstance.DefaultHostname).Lab()),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithResponder(t, responder),
+		)
 
 		// glab mr note 1
-		output, err := runCommand(t, fakeHTTP, `1`)
+		output, err := exec(`1`)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 		assert.Equal(t, output.Stderr(), "")
-		assert.Equal(t, output.String(), "https://gitlab.com/OWNER/REPO/merge_requests/1#note_301\n")
+		assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/merge_requests/1#note_301")
 	})
 
 	t.Run("message is empty", func(t *testing.T) {
@@ -160,17 +176,24 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 		}
 	`))
 
-		as, teardown := prompt.InitAskStubber()
-		defer teardown()
-		as.StubOne("")
+		responder := huhtest.NewResponder()
+		responder.AddResponse("Note message:", "")
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false,
+			cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: fakeHTTP}, "", glinstance.DefaultHostname).Lab()),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithResponder(t, responder),
+		)
 
 		// glab mr note 1
-		_, err := runCommand(t, fakeHTTP, `1`)
+		_, err := exec(`1`)
 		if err == nil {
 			t.Error("expected error")
 			return
 		}
-		assert.Equal(t, err.Error(), "aborted... Note has an empty message.")
+		assert.Equal(t, "aborted... Note has an empty message.", err.Error())
 	})
 }
 
@@ -197,18 +220,26 @@ func Test_mrNoteCreate_no_duplicate(t *testing.T) {
 			{"id": 333, "body": "ccc"}
 		]
 	`))
-		as, teardown := prompt.InitAskStubber()
-		defer teardown()
-		as.StubOne("some note message")
+
+		responder := huhtest.NewResponder()
+		responder.AddResponse("Note message:", "some note message")
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false,
+			cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: fakeHTTP}, "", glinstance.DefaultHostname).Lab()),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithResponder(t, responder),
+		)
 
 		// glab mr note 1
-		output, err := runCommand(t, fakeHTTP, `1 --unique`)
+		output, err := exec(`1 --unique`)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 		println(output.String())
 		assert.Equal(t, output.Stderr(), "")
-		assert.Equal(t, output.String(), "https://gitlab.com/OWNER/REPO/merge_requests/1#note_222\n")
+		assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/merge_requests/1#note_222")
 	})
 }

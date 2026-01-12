@@ -1,9 +1,12 @@
+//go:build !integration
+
 package oauth2
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 )
 

@@ -1,3 +1,5 @@
+//go:build !integration
+
 package issues
 
 import (
@@ -6,14 +8,16 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", "gitlab.com").Lab()),
@@ -57,10 +61,11 @@ func TestMergeRequestClosesIssues_byID(t *testing.T) {
 	assert.Equal(t, heredoc.Doc(`
 		Showing 2 issues in OWNER/REPO that match your search. 
 
-		#11	new issue                		about X years ago
-		#15	this is another new issue		about X years ago
+		ID 	Title                    	Labels	Created at       
+		#11	new issue                	      	about X years ago
+		#15	this is another new issue	      	about X years ago
 
-	`), out)
+		`), out)
 	assert.Equal(t, ``, output.Stderr())
 }
 
@@ -108,9 +113,10 @@ func TestMergeRequestClosesIssues_currentBranch(t *testing.T) {
 	assert.Equal(t, heredoc.Doc(`
 		Showing 2 issues in OWNER/REPO that match your search. 
 
-		#11	new issue                		about X years ago
-		#15	this is another new issue		about X years ago
+		ID 	Title                    	Labels	Created at       
+		#11	new issue                	      	about X years ago
+		#15	this is another new issue	      	about X years ago
 
-	`), out)
+		`), out)
 	assert.Equal(t, ``, output.Stderr())
 }

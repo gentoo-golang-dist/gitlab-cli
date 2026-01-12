@@ -5,17 +5,15 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/git"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-	"gitlab.com/gitlab-org/cli/internal/text"
-	"gitlab.com/gitlab-org/cli/internal/utils"
-
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 var longString = `Create a new stacked diff. Adds metadata to your "./.git/stacked" directory.
@@ -41,7 +39,12 @@ func NewCmdCreateStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			if len(args) == 1 {
 				titleString = args[0]
 			} else if len(args) == 0 {
-				err := prompt.AskQuestionWithInput(&titleString, "title", "New stack title?", "", true)
+				err := f.IO().Input(cmd.Context(), &titleString, "New stack title?", "", func(s string) error {
+					if s == "" {
+						return fmt.Errorf("title is required")
+					}
+					return nil
+				})
 				if err != nil {
 					return fmt.Errorf("error prompting for title: %v", err)
 				}

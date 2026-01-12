@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
@@ -60,7 +60,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	repoListCmd.Flags().StringVarP(&opts.orderBy, "order", "o", "last_activity_at", "Return repositories ordered by id, created_at, or other fields.")
+	repoListCmd.Flags().StringVarP(&opts.orderBy, "order", "o", "last_activity_at", "Return repositories ordered by id, name, path, created_at, updated_at, similarity, star_count, last_activity_at.")
 	repoListCmd.Flags().StringVarP(&opts.sort, "sort", "s", "", "Return repositories sorted in asc or desc order.")
 	repoListCmd.Flags().StringVarP(&opts.group, "group", "g", "", "Return repositories in only the given group.")
 	repoListCmd.Flags().BoolVarP(&opts.includeSubgroups, "include-subgroups", "G", false, "Include projects in subgroups of this group. Default is false. Used with the '--group' flag.")
@@ -115,6 +115,10 @@ func (o *options) run() error {
 
 		// List
 		table := tableprinter.NewTablePrinter()
+		if len(projects) > 0 {
+			table.AddRow("Project path", "Git URL", "Description")
+		}
+
 		for _, prj := range projects {
 			table.AddCell(c.Blue(prj.PathWithNamespace))
 			table.AddCell(prj.SSHURLToRepo)
@@ -131,8 +135,8 @@ func (o *options) run() error {
 func listAllProjects(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
 	l := &gitlab.ListProjectsOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.perPage,
-			Page:    opts.page,
+			PerPage: int64(opts.perPage),
+			Page:    int64(opts.page),
 		},
 		OrderBy: gitlab.Ptr(opts.orderBy),
 	}
@@ -179,8 +183,8 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 
 	l := &gitlab.ListGroupProjectsOptions{
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.perPage,
-			Page:    opts.page,
+			PerPage: int64(opts.perPage),
+			Page:    int64(opts.page),
 		},
 		OrderBy: gitlab.Ptr(opts.orderBy),
 	}
@@ -199,10 +203,10 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 		if opts.filterStarred {
 			l.Starred = gitlab.Ptr(opts.filterStarred)
 		}
+	}
 
-		if opts.includeSubgroups {
-			l.IncludeSubGroups = gitlab.Ptr(true)
-		}
+	if opts.includeSubgroups {
+		l.IncludeSubGroups = gitlab.Ptr(true)
 	}
 
 	if opts.archivedSet {
@@ -220,8 +224,8 @@ func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.P
 	l := &gitlab.ListProjectsOptions{
 		OrderBy: gitlab.Ptr(opts.orderBy),
 		ListOptions: gitlab.ListOptions{
-			PerPage: opts.perPage,
-			Page:    opts.page,
+			PerPage: int64(opts.perPage),
+			Page:    int64(opts.page),
 		},
 	}
 

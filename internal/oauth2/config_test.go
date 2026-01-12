@@ -1,3 +1,5 @@
+//go:build !integration
+
 package oauth2
 
 import (
@@ -6,8 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/gitlab-org/cli/internal/config"
 	"golang.org/x/oauth2"
+
+	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
 type stubConfig struct {

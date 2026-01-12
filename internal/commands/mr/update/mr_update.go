@@ -1,21 +1,23 @@
 package update
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
 
-	"github.com/AlecAivazis/survey/v2"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
@@ -128,18 +130,17 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					}
 					fmt.Fprintf(f.IO().StdOut, "\n")
 
-					action, err := confirmUpdateSurvey()
+					action, err := confirmUpdateSurvey(cmd.Context(), f)
 					if err != nil {
-						// Handle interrupt or EOF gracefully
-						if strings.Contains(err.Error(), "interrupt") || strings.Contains(err.Error(), "EOF") {
-							fmt.Fprintf(f.IO().StdOut, "Operation cancelled.\n")
+						// iostreams.Run already prints "Cancelled." for user cancellation
+						if errors.Is(err, iostreams.ErrUserCancelled) {
 							return nil
 						}
-						return fmt.Errorf("failed to prompt for confirmation: %w", err)
+						return err
 					}
 
 					if action == cmdutils.CancelAction {
-						fmt.Fprintf(f.IO().StdOut, "Operation cancelled.\n")
+						fmt.Fprintf(f.IO().StdOut, "Cancelled.\n")
 						return nil
 					}
 				}
@@ -207,7 +208,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					}
 
 					l.Description = gitlab.Ptr("")
-					err = cmdutils.EditorPrompt(l.Description, "Body", mr.Description, editor)
+					err = cmdutils.EditorPrompt(cmd.Context(), f.IO(), l.Description, "Body", mr.Description, editor)
 					if err != nil {
 						return err
 					}
@@ -242,11 +243,11 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				} else {
 					// Unassign the Milestone
 					actions = append(actions, "unassigned milestone")
-					l.MilestoneID = gitlab.Ptr(0)
+					l.MilestoneID = gitlab.Ptr(int64(0))
 				}
 			}
 			if cmd.Flags().Changed("unassign") {
-				l.AssigneeIDs = &[]int{0} // 0 or an empty int[] is the documented way to unassign
+				l.AssigneeIDs = &[]int64{0} // 0 or an empty int[] is the documented way to unassign
 				actions = append(actions, "unassigned all users")
 			}
 			if ua != nil {
@@ -325,9 +326,9 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	mrUpdateCmd.Flags().StringSliceP("label", "l", []string{}, "Add labels.")
 	mrUpdateCmd.Flags().StringSliceP("unlabel", "u", []string{}, "Remove labels.")
 	mrUpdateCmd.Flags().
-		StringSliceP("assignee", "a", []string{}, "Assign users via username. Prefix with '!' or '-' to remove from existing assignees, '+' to add. Otherwise, replace existing assignees with given users.")
+		StringSliceP("assignee", "a", []string{}, "Assign users via username. Prefix with '!' or '-' to remove from existing assignees, '+' to add. Otherwise, replace existing assignees with given users. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	mrUpdateCmd.Flags().
-		StringSliceP("reviewer", "", []string{}, "Request review from users by their usernames. Prefix with '!' or '-' to remove from existing reviewers, '+' to add. Otherwise, replace existing reviewers with given users.")
+		StringSliceP("reviewer", "", []string{}, "Request review from users by their usernames. Prefix with '!' or '-' to remove from existing reviewers, '+' to add. Otherwise, replace existing reviewers with given users. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	mrUpdateCmd.Flags().Bool("unassign", false, "Unassign all users.")
 	mrUpdateCmd.Flags().
 		BoolP("squash-before-merge", "", false, "Toggles the option to squash commits into a single commit when merging.")
@@ -343,29 +344,22 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	return mrUpdateCmd
 }
 
-func confirmUpdateSurvey() (cmdutils.Action, error) {
-	const (
-		proceedLabel = "Proceed with changes"
-		cancelLabel  = "Cancel"
-	)
+func confirmUpdateSurvey(ctx context.Context, f cmdutils.Factory) (cmdutils.Action, error) {
+	shouldProceed := false // default value
 
-	options := []string{proceedLabel, cancelLabel}
+	confirm := huh.NewConfirm().
+		Title("What would you like to do?").
+		Affirmative("Proceed with changes").
+		Negative("Cancel").
+		Value(&shouldProceed)
 
-	var result string
-	confirm := &survey.Select{
-		Message: "What would you like to do?",
-		Options: options,
-	}
-
-	err := survey.AskOne(confirm, &result)
+	err := f.IO().Run(ctx, confirm)
 	if err != nil {
 		return cmdutils.CancelAction, fmt.Errorf("could not prompt: %w", err)
 	}
 
-	switch result {
-	case proceedLabel:
+	if shouldProceed {
 		return cmdutils.SubmitAction, nil
-	default:
-		return cmdutils.CancelAction, nil
 	}
+	return cmdutils.CancelAction, nil
 }

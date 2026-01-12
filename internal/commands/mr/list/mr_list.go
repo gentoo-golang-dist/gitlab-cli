@@ -4,21 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
+
+// defaultSortByOrder provides sensible default sort directions for each order option.
+// Time-based fields default to desc (newest first), while priority and title default to asc.
+var defaultSortByOrder = map[string]string{
+	"created_at":     "desc",
+	"updated_at":     "desc",
+	"merged_at":      "desc",
+	"title":          "asc",
+	"popularity":     "desc",
+	"milestone_due":  "asc",
+	"priority":       "asc",
+	"label_priority": "asc",
+}
 
 type options struct {
 	// metadata
@@ -104,8 +115,8 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	}
 
 	cmdutils.EnableRepoOverride(mrListCmd, f)
-	mrListCmd.Flags().StringSliceVarP(&opts.labels, "label", "l", []string{}, "Filter merge request by label <name>.")
-	mrListCmd.Flags().StringSliceVar(&opts.notLabels, "not-label", []string{}, "Filter merge requests by not having label <name>.")
+	mrListCmd.Flags().StringSliceVarP(&opts.labels, "label", "l", []string{}, "Filter merge request by label <name>. Multiple labels can be comma-separated or specified by repeating the flag.")
+	mrListCmd.Flags().StringSliceVar(&opts.notLabels, "not-label", []string{}, "Filter merge requests by not having label <name>. Multiple labels can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringVar(&opts.author, "author", "", "Filter merge request by author <username>.")
 	mrListCmd.Flags().StringVarP(&opts.milestone, "milestone", "m", "", "Filter merge request by milestone <id>.")
 	mrListCmd.Flags().StringVarP(&opts.sourceBranch, "source-branch", "s", "", "Filter by source branch <name>.")
@@ -119,10 +130,10 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	mrListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
 	mrListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	mrListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users.")
-	mrListCmd.Flags().StringSliceVarP(&opts.reviewer, "reviewer", "r", []string{}, "Get only merge requests with users as reviewer.")
+	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users. Multiple users can be comma-separated or specified by repeating the flag.")
+	mrListCmd.Flags().StringSliceVarP(&opts.reviewer, "reviewer", "r", []string{}, "Get only merge requests with users as reviewer. Multiple users can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringVarP(&opts.sort, "sort", "S", "", "Sort merge requests by <field>. Sort options: asc, desc.")
-	mrListCmd.Flags().StringVarP(&opts.orderBy, "order", "o", "", "Order merge requests by <field>. Order options: created_at, title, merged_at or updated_at.")
+	mrListCmd.Flags().StringVarP(&opts.orderBy, "order", "o", "", "Order merge requests by <field>. Order options: created_at, updated_at, merged_at, title, priority, label_priority, milestone_due, and popularity.")
 
 	mrListCmd.Flags().BoolP("opened", "O", false, "Get only open merge requests.")
 	_ = mrListCmd.Flags().MarkHidden("opened")
@@ -158,6 +169,14 @@ func (o *options) complete(cmd *cobra.Command) error {
 		return err
 	}
 	o.group = group
+
+	// Apply sensible default sort direction if user didn't explicitly set --sort
+	sortFlagChanged := cmd.Flags().Changed("sort")
+	if !sortFlagChanged && o.orderBy != "" {
+		if defaultSort, ok := defaultSortByOrder[o.orderBy]; ok {
+			o.sort = defaultSort
+		}
+	}
 
 	return nil
 }
@@ -224,10 +243,10 @@ func (o *options) run() error {
 		o.listType = "search"
 	}
 	if o.page != 0 {
-		l.Page = o.page
+		l.Page = int64(o.page)
 	}
 	if o.perPage != 0 {
-		l.PerPage = o.perPage
+		l.PerPage = int64(o.perPage)
 	}
 	if o.draft {
 		l.WIP = gitlab.Ptr("yes")
@@ -262,7 +281,7 @@ func (o *options) run() error {
 				return err
 			}
 			for _, user := range users {
-				assigneeIds = append(assigneeIds, user.ID)
+				assigneeIds = append(assigneeIds, int(user.ID))
 			}
 		}
 	}
@@ -277,7 +296,7 @@ func (o *options) run() error {
 				return err
 			}
 			for _, user := range users {
-				reviewerIds = append(reviewerIds, user.ID)
+				reviewerIds = append(reviewerIds, int(user.ID))
 			}
 		}
 	}
@@ -300,7 +319,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	title.Page = l.Page
+	title.Page = int(l.Page)
 	title.ListActionType = o.listType
 	title.CurrentPageTotal = len(mergeRequests)
 

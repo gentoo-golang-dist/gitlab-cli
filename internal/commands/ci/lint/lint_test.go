@@ -1,3 +1,5 @@
+//go:build !integration
+
 package lint
 
 import (
@@ -7,14 +9,14 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_lintRun(t *testing.T) {
@@ -94,6 +96,8 @@ func Test_lintRun(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			fakeHTTP := httpmock.New()
 			defer fakeHTTP.Verify(t)
 
@@ -117,6 +121,8 @@ func Test_lintRun(t *testing.T) {
 }
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string, showHaveBaseRepo bool) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),

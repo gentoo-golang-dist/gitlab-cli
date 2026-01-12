@@ -77,7 +77,7 @@ func (r *Mocker) RegisterReusableResponderWithBody(method, path, body string, re
 type Testing interface {
 	Errorf(string, ...any)
 	Helper()
-	Logf(string, ...interface{})
+	Logf(string, ...any)
 }
 
 func (r *Mocker) Verify(t Testing) {

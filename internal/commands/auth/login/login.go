@@ -11,21 +11,18 @@ import (
 	"slices"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/commands/auth/authutils"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/auth/authutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/oauth2"
 )
 
@@ -69,9 +66,14 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			You can pass in a token on standard input by using %[1]s--stdin%[1]s.
 			The minimum required scopes for the token are: %[1]sapi%[1]s, %[1]swrite_repository%[1]s.
 			Configuration and credentials are stored in the global configuration file (default %[1]s~/.config/glab-cli/config.yml%[1]s)
+
+			When running in interactive mode inside a Git repository, %[1]sglab%[1]s will automatically detect
+			GitLab instances from your Git remotes and present them as options, saving you from having to
+			manually type the hostname.
 		`, "`"),
 		Example: heredoc.Docf(`
 			# Start interactive setup
+			# (If in a Git repository, glab will detect and suggest GitLab instances from remotes)
 			$ glab auth login
 
 			# Authenticate against %[1]sgitlab.com%[1]s by reading the token from a file
@@ -246,46 +248,124 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	isSelfHosted := false
 
 	if hostname == "" {
-		var hostType int
-		options := []string{}
-		if hosts, err := cfg.Hosts(); err == nil {
-			options = append(options, hosts...)
-		}
-		if !slices.Contains(options, opts.defaultHostname) {
-			options = append(options, opts.defaultHostname)
-		}
-		options = append(options, "GitLab Self-Managed or GitLab Dedicated instance")
+		// Try to detect GitLab hosts from git remotes
+		detectedHosts, detectErr := detectGitLabHosts(cfg)
 
-		err := survey.AskOne(&survey.Select{
-			Message: "What GitLab instance do you want to sign in to?",
-			Options: options,
-		}, &hostType)
-		if err != nil {
-			return fmt.Errorf("could not prompt: %w", err)
-		}
+		if detectErr == nil && len(detectedHosts) > 0 {
+			// We have detected hosts, present them to the user
+			options := make([]string, 0, len(detectedHosts)+1)
+			for _, host := range detectedHosts {
+				options = append(options, host.String())
+			}
+			options = append(options, promptLoginDifferentHostname)
 
-		isSelfHosted = hostType == len(options)-1
-
-		if isSelfHosted {
-			hostname = opts.defaultHostname
-			apiHostname = hostname
-			err := survey.AskOne(&survey.Input{
-				Message: "GitLab hostname:",
-			}, &hostname, survey.WithValidator(hostnameValidator))
+			var selectedOption string
+			err := opts.IO.Select(ctx, &selectedOption, "Found GitLab instances in git remotes. Select one:", options)
 			if err != nil {
 				return fmt.Errorf("could not prompt: %w", err)
 			}
-			err = survey.AskOne(&survey.Input{
-				Message: "API hostname:",
-				Help:    "For instances with a different hostname for the API endpoint.",
-				Default: hostname,
-			}, &apiHostname, survey.WithValidator(hostnameValidator))
-			if err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
+
+			// Check if user selected "Enter a different hostname"
+			if selectedOption == promptLoginDifferentHostname {
+				// Fall back to manual entry
+				hostname = opts.defaultHostname
+				apiHostname = hostname
+
+				hostnameInput := huh.NewInput().
+					Title("GitLab hostname:").
+					Value(&hostname).
+					Placeholder(opts.defaultHostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err := opts.IO.Run(ctx, hostnameInput)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
+
+				// Set default for API hostname
+				if apiHostname == opts.defaultHostname {
+					apiHostname = hostname
+				}
+
+				apiHostnameInput := huh.NewInput().
+					Title("API hostname:").
+					Description("For instances with a different hostname for the API endpoint.").
+					Value(&apiHostname).
+					Placeholder(hostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err = opts.IO.Run(ctx, apiHostnameInput)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
+			} else {
+				// User selected a detected host - find it in the list
+				for _, host := range detectedHosts {
+					if host.String() == selectedOption {
+						hostname = host.hostname
+						apiHostname = hostname
+						break
+					}
+				}
 			}
 		} else {
-			hostname = options[hostType]
-			apiHostname = hostname
+			// No detected hosts or detection failed, fall back to original behavior
+			options := []string{}
+			if hosts, err := cfg.Hosts(); err == nil {
+				options = append(options, hosts...)
+			}
+			if !slices.Contains(options, opts.defaultHostname) {
+				options = append(options, opts.defaultHostname)
+			}
+			options = append(options, promptSelfManagedOrDedicatedInstance)
+
+			var selectedOption string
+			err := opts.IO.Select(ctx, &selectedOption, "What GitLab instance do you want to sign in to?", options)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			isSelfHosted = selectedOption == promptSelfManagedOrDedicatedInstance
+
+			if isSelfHosted {
+				hostname = opts.defaultHostname
+				apiHostname = hostname
+
+				hostnameInput := huh.NewInput().
+					Title("GitLab hostname:").
+					Value(&hostname).
+					Placeholder(opts.defaultHostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err := opts.IO.Run(ctx, hostnameInput)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
+
+				// Set default for API hostname
+				if apiHostname == opts.defaultHostname {
+					apiHostname = hostname
+				}
+
+				apiHostnameInput := huh.NewInput().
+					Title("API hostname:").
+					Description("For instances with a different hostname for the API endpoint.").
+					Value(&apiHostname).
+					Placeholder(hostname).
+					Validate(func(s string) error {
+						return hostnameValidator(s)
+					})
+				err = opts.IO.Run(ctx, apiHostnameInput)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
+			} else {
+				hostname = selectedOption
+				apiHostname = hostname
+			}
 		}
 	} else {
 		isSelfHosted = glinstance.IsSelfHosted(hostname)
@@ -307,14 +387,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		user, _, err := apiClient.Lab().Users.CurrentUser()
 		if err == nil {
 			username := user.Username
-			var keepGoing bool
-			err = survey.AskOne(&survey.Confirm{
-				Message: fmt.Sprintf(
+			keepGoing := false // default value
+			confirm := huh.NewConfirm().
+				Title(fmt.Sprintf(
 					"You're already logged into %s as %s. Do you want to re-authenticate?",
 					hostname,
-					username),
-				Default: false,
-			}, &keepGoing)
+					username)).
+				Value(&keepGoing)
+			err = opts.IO.Run(ctx, confirm)
 			if err != nil {
 				return fmt.Errorf("could not prompt: %w", err)
 			}
@@ -331,21 +411,18 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	)
 
 	if opts.Interactive {
-		err := survey.AskOne(&survey.Select{
-			Message: "How would you like to sign in?",
-			Options: []string{
-				"Token",
-				"Web",
-			},
-		}, &loginType)
+		loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb}
+		err := opts.IO.Select(ctx, &loginType, "How would you like to sign in?", loginTypeOptions)
 		if err != nil {
 			return fmt.Errorf("could not get sign-in type: %w", err)
 		}
 
-		err = survey.AskOne(&survey.Input{
-			Message: "What domains does this host use for the container registry and image dependency proxy?",
-			Default: defaultContainerRegistryDomainsString(hostname),
-		}, &containerRegistryDomains)
+		containerRegistryDomains = defaultContainerRegistryDomainsString(hostname)
+		containerRegistryInput := huh.NewInput().
+			Title("What domains does this host use for the container registry and image dependency proxy?").
+			Value(&containerRegistryDomains).
+			Placeholder(defaultContainerRegistryDomainsString(hostname))
+		err = opts.IO.Run(ctx, containerRegistryInput)
 		if err != nil {
 			return fmt.Errorf("could not get container registry domains: %w", err)
 		}
@@ -353,8 +430,8 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 
 	var token string
 	var err error
-	if strings.EqualFold(loginType, "token") {
-		token, err = showTokenPrompt(opts.IO, hostname)
+	if strings.EqualFold(loginType, promptLoginTypeToken) {
+		token, err = showTokenPrompt(ctx, opts.IO, hostname)
 		if err != nil {
 			return err
 		}
@@ -406,35 +483,24 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	credentialFlow := &authutils.GitCredentialFlow{Executable: glabExecutable}
 
 	if opts.Interactive {
-		err = survey.AskOne(&survey.Select{
-			Message: "Choose default Git protocol:",
-			Options: []string{
-				"SSH",
-				"HTTPS",
-				"HTTP",
-			},
-			Default: "HTTPS",
-		}, &gitProtocol)
+		gitProtocolOptions := []string{promptProtocolSSH, promptProtocolHTTPS, promptProtocolHTTP}
+		gitProtocol = promptProtocolHTTPS // Set default
+		err = opts.IO.Select(ctx, &gitProtocol, "Choose default Git protocol:", gitProtocolOptions)
 		if err != nil {
 			return fmt.Errorf("could not prompt: %w", err)
 		}
 
 		gitProtocol = strings.ToLower(gitProtocol)
 		if opts.Interactive && gitProtocol != "ssh" {
-			if err := credentialFlow.Prompt(hostname, gitProtocol); err != nil {
+			if err := credentialFlow.Prompt(ctx, opts.IO, hostname, gitProtocol); err != nil {
 				return err
 			}
 		}
 
 		if isSelfHosted {
-			err = survey.AskOne(&survey.Select{
-				Message: "Choose host API protocol:",
-				Options: []string{
-					"HTTPS",
-					"HTTP",
-				},
-				Default: "HTTPS",
-			}, &apiProtocol)
+			apiProtocolOptions := []string{promptProtocolHTTPS, promptProtocolHTTP}
+			apiProtocol = promptProtocolHTTPS // Set default
+			err = opts.IO.Select(ctx, &apiProtocol, "Choose host API protocol:", apiProtocolOptions)
 			if err != nil {
 				return fmt.Errorf("could not prompt: %w", err)
 			}
@@ -521,14 +587,22 @@ func getAccessTokenTip(hostname string) string {
 	The minimum required scopes are 'api' and 'write_repository'.`, hostname)
 }
 
-func showTokenPrompt(io *iostreams.IOStreams, hostname string) (string, error) {
+func showTokenPrompt(ctx context.Context, io *iostreams.IOStreams, hostname string) (string, error) {
 	fmt.Fprintln(io.StdErr)
 	fmt.Fprintln(io.StdErr, heredoc.Doc(getAccessTokenTip(hostname)))
 
 	var token string
-	err := survey.AskOne(&survey.Password{
-		Message: "Paste your authentication token:",
-	}, &token, survey.WithValidator(survey.Required))
+	tokenInput := huh.NewInput().
+		Title("Paste your authentication token:").
+		Value(&token).
+		EchoMode(huh.EchoModePassword).
+		Validate(func(s string) error {
+			if s == "" {
+				return fmt.Errorf("required")
+			}
+			return nil
+		})
+	err := io.Run(ctx, tokenInput)
 	if err != nil {
 		return "", fmt.Errorf("could not prompt: %w", err)
 	}

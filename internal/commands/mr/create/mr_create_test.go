@@ -1,3 +1,5 @@
+//go:build !integration
+
 package create
 
 import (
@@ -9,21 +11,26 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/survivorbat/huhtest"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, branch string, isTTY bool, cli string, letItFail bool) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(isTTY))
 	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
 
@@ -284,22 +291,6 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 		`),
 	)
 
-	ask, teardown := prompt.InitAskStubber()
-	defer teardown()
-
-	ask.Stub([]*prompt.QuestionStub{
-		{
-			Name:  "index",
-			Value: 0,
-		},
-	})
-	ask.Stub([]*prompt.QuestionStub{
-		{
-			Name:    "Description",
-			Default: true,
-		},
-	})
-
 	cs, csTeardown := test.InitCmdStubber()
 	defer csTeardown()
 
@@ -317,6 +308,11 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 	// git -c log.ShowSignature=false show -s --pretty=format:%b deadb00f
 	cs.Stub("commit body")
 
+	// Set up responder for prompts
+	responder := huhtest.NewResponder()
+	responder.AddSelect("Choose a template:", 0)                                              // Select first option: "Open a merge request with commit messages."
+	responder.AddResponse("Description", "- commit msg 1  \n\n- commit msg 2  \ncommit body") // Accept the pre-filled description
+
 	cliStr := []string{
 		"--source-branch", "feat-new-mr",
 		"--title", "mr-title",
@@ -327,7 +323,44 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 
 	t.Log(cli)
 
-	output, err := runCommand(t, fakeHTTP, "feat-new-mr", true, cli, false)
+	// Use SetupCmdForTest pattern for responder
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		// Set up factory with remotes stub
+		tf := f.(*cmdtest.Factory)
+		tf.RemotesStub = func() (glrepo.Remotes, error) {
+			return glrepo.Remotes{
+				{
+					Remote: &git.Remote{
+						Name:     "upstream",
+						Resolved: "head",
+						PushURL:  pu,
+					},
+					Repo: glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+				},
+				{
+					Remote: &git.Remote{
+						Name:     "origin",
+						Resolved: "head",
+						PushURL:  pu,
+					},
+					Repo: glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+				},
+			}, nil
+		}
+		tf.BranchStub = func() (string, error) {
+			return "feat-new-mr", nil
+		}
+
+		return NewCmdCreate(f)
+	}, true,
+		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: fakeHTTP}, "", glinstance.DefaultHostname).Lab()),
+		cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		cmdtest.WithResponder(t, responder),
+	)
+
+	output, err := exec(cli)
 	if err != nil {
 		if errors.Is(err, cmdutils.SilentError) {
 			t.Errorf("Unexpected error: %q", output.Stderr())

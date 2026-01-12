@@ -23,16 +23,24 @@ builds:
     id: macos
     goos: [darwin]
     goarch: [amd64, arm64]
+    hooks:
+      post:
+        - cmd: './scripts/sign-binary.sh macos "{{ .Path }}"'
+          output: true
 
   - <<: *build_defaults
     id: linux
     goos: [linux]
-    goarch: ["386", arm, amd64, arm64, ppc64le]
+    goarch: ["386", arm, amd64, arm64, ppc64le, s390x]
 
   - <<: *build_defaults
     id: windows
     goos: [windows]
     goarch: ["386", amd64]
+    hooks:
+      post:
+        - cmd: './scripts/sign-binary.sh windows "{{ .Path }}"'
+          output: true
 
   - <<: *build_defaults
     id: freebsd
@@ -140,54 +148,44 @@ changelog:
   # https://goreleaser.com/customization/changelog/
   use: gitlab
   sort: asc
+  abbrev: 8
   filters:
     exclude:
-      - >
-        ^docs(\(.*\))*:
-      - >
-        ^test(\(.*\))*:
       - "^Merge branch"
-      - "^chore"
       - "^Update README.md"
+  groups:
+    - title: ✨ Features
+      regexp: '^.*?feat(\([^)]+\))??!?:.+$'
+      order: 0
+    - title: 🐛 Bug Fixes
+      regexp: '^.*?fix(\([^)]+\))??!?:.+$'
+      order: 1
+    - title: 📝 Documentation
+      regexp: '^.*?docs(\([^)]+\))??!?:.+$'
+      order: 2
+    - title: 📦 Dependencies
+      regexp: '^.*?chore\((deps|dependencies)\)[^:]*:.+$'
+      order: 3
+    - title: 🔧 Maintenance
+      regexp: '^.*?(chore|ci|refactor)(\([^)]+\))??!?:.+$'
+      order: 4
+    - title: 🔀 Others
+      order: 999
 
-binary_signs:
-  - id: code-signer
-    cmd: sh
-    signature: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}.sha256'
-    args:
-      - -c
-      # This could be simplified if we built an image that had a combination of code-signer
-      # and goreleaser. Note that goreleaser Pro contains the conditional `if` block, but
-      # since the open source version does not we have to implement this logic in the script.
-      # We have to ensure we pass all the required secrets and configuration to code-signer.
-      - |
-        artifact="${artifact}"
-        if echo "$artifact" | grep -qE 'windows|\.exe$'; then
-          echo "Signing Windows binary: $artifact"
-          docker run \
-            --rm \
-            -e "GCLOUD_PROJECT={{ .Env.GCLOUD_PROJECT }}" \
-            -e "GOOGLE_APPLICATION_CREDENTIALS={{ .Env.GOOGLE_APPLICATION_CREDENTIALS }}" \
-            -v "{{ .Env.HOST_PWD }}/.gitlab-secrets:/var/run/secrets/gitlab" \
-            -v "{{ .Env.HOST_PWD }}:/work" \
-            registry.gitlab.com/gitlab-com/gl-infra/common-ci-tasks-images/code-signer:1.2.1 \
-            sign-windows-binaries --overwrite "/work/$artifact"
-        elif echo "$artifact" | grep -qE 'darwin|macos'; then
-          echo "Signing macOS binary: $artifact"
-          docker run \
-            --rm \
-            -e "APPSTORE_CONNECT_API_KEY_FILE={{ .Env.APPSTORE_CONNECT_API_KEY_FILE }}" \
-            -e "GCLOUD_PROJECT={{ .Env.GCLOUD_PROJECT }}" \
-            -e "GOOGLE_APPLICATION_CREDENTIALS={{ .Env.GOOGLE_APPLICATION_CREDENTIALS }}" \
-            -v "{{ .Env.HOST_PWD }}/.gitlab-secrets:/var/run/secrets/gitlab" \
-            -v "{{ .Env.HOST_PWD }}:/work" \
-            -v "{{ .Env.APPSTORE_CONNECT_API_KEY_FILE }}:{{ .Env.APPSTORE_CONNECT_API_KEY_FILE }}" \
-            registry.gitlab.com/gitlab-com/gl-infra/common-ci-tasks-images/code-signer:1.2.1 \
-            sign-macos-binaries --overwrite "/work/$artifact"
-        else
-          echo "Not a Windows or macOS binary, no need for code signing: $artifact"
-        fi
-        echo "Generating SHA-256 checksum for ${artifact} -> ${signature}"
-        sha256sum "${artifact}" > "${signature}"
-        ls -al "${artifact}" "${signature}"
-    output: true
+announce:
+  slack:
+    enabled: true
+    # Set SLACK_WEBHOOK environment variable in your CI/CD settings
+    # Format: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+    channel: '{{ .Env.SLACK_CHANNEL }}'
+    username: 'glab Release Bot'
+    icon_emoji: ':rocket:'
+    message_template: |
+      :rocket: *glab {{ .Tag }}* has been released!
+      {{ if .Prerelease }}
+      :warning: _This is a pre-release version_
+      {{ end }}
+
+      {{ .ReleaseNotes }}
+
+      <{{ .ReleaseURL }}|View Release on GitLab>

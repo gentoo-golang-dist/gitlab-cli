@@ -1,3 +1,5 @@
+//go:build !integration
+
 package get_token
 
 import (
@@ -8,10 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
+	"go.uber.org/mock/gomock"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"go.uber.org/mock/gomock"
 )
 
 func TestAgentGetToken(t *testing.T) {
@@ -51,6 +55,8 @@ func TestAgentGetToken(t *testing.T) {
 }
 
 func mustParse(t *testing.T, dt string) gitlab.ISOTime {
+	t.Helper()
+
 	x, err := time.Parse(time.DateOnly, dt)
 	require.NoError(t, err)
 	return gitlab.ISOTime(x)

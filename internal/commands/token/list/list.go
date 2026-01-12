@@ -6,18 +6,17 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/token/accesslevel"
-
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -184,7 +183,7 @@ func (o *options) run() error {
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
 				outputTokens = append(outputTokens, Token{
-					ID:          strconv.FormatInt(int64(token.ID), 10),
+					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
 					Description: formatDescription(token.Description),
 					AccessLevel: "-",
@@ -210,7 +209,7 @@ func (o *options) run() error {
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
 				outputTokens = append(outputTokens, Token{
-					ID:          strconv.FormatInt(int64(token.ID), 10),
+					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
 					Description: formatDescription(token.Description),
 					AccessLevel: formatAccessLevel(token.AccessLevel),
@@ -241,7 +240,7 @@ func (o *options) run() error {
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
 				outputTokens = append(outputTokens, Token{
-					ID:          strconv.FormatInt(int64(token.ID), 10),
+					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
 					Description: formatDescription(token.Description),
 					AccessLevel: formatAccessLevel(token.AccessLevel),

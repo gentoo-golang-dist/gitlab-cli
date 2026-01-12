@@ -1,3 +1,5 @@
+//go:build !integration
+
 package list
 
 import (
@@ -5,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
@@ -14,6 +16,8 @@ import (
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 	tc := cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname)
 	factory := cmdtest.NewTestFactory(ios,
@@ -59,12 +63,12 @@ func TestLabelList(t *testing.T) {
 
 	out := output.String()
 
-	assert.Equal(t, heredoc.Doc(`
-		Showing label 2 of 2 on OWNER/REPO.
-
-		 bug (#6699cc)
-		 ux -> User Experience (#3cb371)
- 
+	assert.Equal(t, heredoc.Doc(`Showing label 2 of 2 on OWNER/REPO.
+	
+	ID	Name	Description	Color
+	1	bug		#6699cc
+	2	ux	User Experience	#3cb371
+	
 	`), out)
 	assert.Empty(t, output.Stderr())
 }
@@ -153,12 +157,12 @@ func TestGroupLabelList(t *testing.T) {
 
 	out := output.String()
 
-	assert.Equal(t, heredoc.Doc(`
-		Showing label 2 of 2 for group foo.
-
-		 groupbug (#6699cc)
-		 groupux -> User Experience (#3cb371)
- 
+	assert.Equal(t, heredoc.Doc(`Showing label 2 of 2 for group foo.
+	
+	ID	Name	Description	Color
+	1	groupbug		#6699cc
+	2	groupux	User Experience	#3cb371
+	
 	`), out)
 	assert.Empty(t, output.Stderr())
 }

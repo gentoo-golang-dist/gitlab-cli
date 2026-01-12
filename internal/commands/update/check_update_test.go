@@ -1,3 +1,5 @@
+//go:build !integration
+
 package update
 
 import (
@@ -10,27 +12,34 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
-
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
+	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, version string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 
-	tc := cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname)
+	// Override clientCreator to use the mocked HTTP transport
+	oldCreator := clientCreator
+	clientCreator = func(userAgent string, options ...api.ClientOption) (*api.Client, error) {
+		opts := append([]api.ClientOption{api.WithHTTPClient(&http.Client{Transport: rt})}, options...)
+		return createUnauthenticatedClient(userAgent, opts...)
+	}
+	t.Cleanup(func() {
+		clientCreator = oldCreator
+	})
 
 	factory := cmdtest.NewTestFactory(
 		ios,
-		cmdtest.WithApiClient(tc),
-		cmdtest.WithGitLabClient(tc.Lab()),
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: version}),
 	)
 
@@ -201,6 +210,10 @@ func TestShouldSkipUpdate_NoRun(t *testing.T) {
 			name:            "when previous command is completion",
 			previousCommand: "completion",
 		},
+		{
+			name:            "when previous command is git-credential",
+			previousCommand: "git-credential",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -349,7 +362,7 @@ func Test_checkLastUpdate(t *testing.T) {
 				},
 			)
 
-			result, err := checkLastUpdate(f)
+			result, err := checkLastUpdate(f, false)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -405,9 +418,7 @@ func TestPrintUpdateError(t *testing.T) {
 				cmd:   cmd,
 				debug: false,
 			},
-			wantOut: `x error connecting to https://gitlab.com/api/v4
-• Check your internet connection and status.gitlab.com. If on GitLab Self-Managed, run 'sudo gitlab-ctl status' on your server.
-`,
+			wantOut: "x error connecting to https://gitlab.com/api/v4\n",
 		},
 		{
 			name: "DNS error with debug",
@@ -418,8 +429,7 @@ func TestPrintUpdateError(t *testing.T) {
 				cmd:   cmd,
 				debug: true,
 			},
-
-			wantOut: "x error connecting to https://gitlab.com/api/v4\nx lookup https://gitlab.com/api/v4: \n• Check your internet connection and status.gitlab.com. If on GitLab Self-Managed, run 'sudo gitlab-ctl status' on your server.\n",
+			wantOut: "x error connecting to https://gitlab.com/api/v4\nx lookup https://gitlab.com/api/v4: \n",
 		},
 		{
 			name: "Cobra flag error",
@@ -428,7 +438,7 @@ func TestPrintUpdateError(t *testing.T) {
 				cmd:   cmd,
 				debug: false,
 			},
-			wantOut: "ERROR: unknown flag --foo\nTry ' --help' for more information.",
+			wantOut: "ERROR: unknown flag --foo\n",
 		},
 		{
 			name: "unknown Cobra command error",
@@ -437,7 +447,7 @@ func TestPrintUpdateError(t *testing.T) {
 				cmd:   cmd,
 				debug: false,
 			},
-			wantOut: "ERROR: unknown command foo\nTry ' --help' for more information.",
+			wantOut: "ERROR: unknown command foo\n",
 		},
 	}
 

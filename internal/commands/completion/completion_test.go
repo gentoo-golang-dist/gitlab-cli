@@ -1,14 +1,15 @@
+//go:build !integration
+
 package completion
 
 import (
 	"strings"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
+	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 
-	"github.com/google/shlex"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestNewCmdCompletion(t *testing.T) {

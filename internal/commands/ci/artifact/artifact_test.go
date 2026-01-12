@@ -1,3 +1,5 @@
+//go:build !integration
+
 package artifact
 
 import (
@@ -9,18 +11,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
-
-	"github.com/google/shlex"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 )
 
@@ -30,6 +31,8 @@ func doesFileExist(fileName string) bool {
 }
 
 func createZipFile(t *testing.T, filename string) (string, string) {
+	t.Helper()
+
 	tempPath := t.TempDir()
 	archive, err := os.CreateTemp(tempPath, "test.*.zip")
 	require.NoError(t, err)
@@ -57,6 +60,8 @@ func createZipFile(t *testing.T, filename string) (string, string) {
 }
 
 func makeTestFactory(t *testing.T) (cmdutils.Factory, *httpmock.Mocker) {
+	t.Helper()
+
 	fakeHTTP := &httpmock.Mocker{
 		MatchURL: httpmock.PathAndQuerystring,
 	}
@@ -100,6 +105,8 @@ func makeTestFactory(t *testing.T) (cmdutils.Factory, *httpmock.Mocker) {
 }
 
 func createSymlinkZip(t *testing.T) (string, string) {
+	t.Helper()
+
 	tempPath := t.TempDir()
 
 	archive, err := os.CreateTemp(tempPath, "test.*.zip")

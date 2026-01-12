@@ -1,3 +1,5 @@
+//go:build !integration
+
 package delete
 
 import (
@@ -6,6 +8,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
@@ -13,6 +16,8 @@ import (
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 
 	factory := cmdtest.NewTestFactory(ios,
@@ -142,8 +147,8 @@ func TestReleaseDelete(t *testing.T) {
 			output, err := runCommand(t, fakeHTTP, tc.cli)
 
 			if assert.NoErrorf(t, err, "error running command `delete %s`: %v", tc.cli, err) {
-				assert.Equal(t, tc.expectedOut, output.Stderr())
-				assert.Empty(t, output.String())
+				assert.Equal(t, tc.expectedOut, output.String())
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}

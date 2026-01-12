@@ -1,3 +1,5 @@
+//go:build !integration
+
 package label
 
 import (
@@ -5,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/test"
 )

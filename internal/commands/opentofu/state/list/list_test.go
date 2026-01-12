@@ -1,3 +1,5 @@
+//go:build !integration
+
 package list
 
 import (
@@ -7,8 +9,10 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )

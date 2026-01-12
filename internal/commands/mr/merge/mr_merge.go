@@ -1,27 +1,25 @@
 package merge
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/avast/retry-go/v4"
+	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/dbg"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/surveyext"
-
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/avast/retry-go/v4"
-	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type MRMergeMethod int
@@ -146,7 +144,7 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 
 	if o.io.IsOutputTTY() && !o.skipPrompts {
 		if !o.squashBeforeMerge && !o.rebaseBeforeMerge && o.mergeCommitMessage == "" {
-			o.mergeMethod, err = mergeMethodSurvey()
+			o.mergeMethod, err = mergeMethodSurvey(o.io)
 			if err != nil {
 				return err
 			}
@@ -159,9 +157,13 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 		}
 
 		if o.mergeCommitMessage == "" && o.squashMessage == "" {
-			action, err := confirmSurvey(o.mergeMethod != MRMergeMethodRebase)
+			action, err := confirmSurvey(cmd.Context(), x, o.mergeMethod != MRMergeMethodRebase)
 			if err != nil {
-				return fmt.Errorf("unable to prompt: %w", err)
+				// iostreams.Run already prints "Cancelled." for user cancellation
+				if errors.Is(err, iostreams.ErrUserCancelled) {
+					return cmdutils.SilentError
+				}
+				return err
 			}
 
 			if action == cmdutils.EditCommitMessageAction {
@@ -171,7 +173,7 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 				if err != nil {
 					return err
 				}
-				mergeMessage, err = surveyext.Edit(editor, "*.md", mr.Title, o.io.In, o.io.StdOut, o.io.StdErr, nil)
+				err = o.io.Editor(cmd.Context(), &mergeMessage, "Merge commit message", "", mr.Title, editor)
 				if err != nil {
 					return err
 				}
@@ -182,9 +184,13 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 					o.mergeCommitMessage = mergeMessage
 				}
 
-				action, err = confirmSurvey(false)
+				action, err = confirmSurvey(cmd.Context(), x, false)
 				if err != nil {
-					return fmt.Errorf("unable to confirm: %w", err)
+					// iostreams.Run already prints "Cancelled." for user cancellation
+					if errors.Is(err, iostreams.ErrUserCancelled) {
+						return cmdutils.SilentError
+					}
+					return err
 				}
 			}
 			if action == cmdutils.CancelAction {
@@ -291,7 +297,7 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 	return nil
 }
 
-func mergeMethodSurvey() (MRMergeMethod, error) {
+func mergeMethodSurvey(io *iostreams.IOStreams) (MRMergeMethod, error) {
 	type mergeOption struct {
 		title  string
 		method MRMergeMethod
@@ -303,40 +309,67 @@ func mergeMethodSurvey() (MRMergeMethod, error) {
 		{title: "Squash and merge", method: MRMergeMethodSquash},
 	}
 
-	var surveyOpts []string
+	var options []string
 	for _, v := range mergeOpts {
-		surveyOpts = append(surveyOpts, v.title)
+		options = append(options, v.title)
 	}
 
-	mergeQuestion := &survey.Select{
-		Message: "What merge method do you want to use?",
-		Options: surveyOpts,
+	var selectedTitle string
+	err := io.Select(context.Background(), &selectedTitle, "What merge method do you want to use?", options)
+	if err != nil {
+		return MRMergeMethodMerge, err
 	}
 
-	var result int
-	err := prompt.AskOne(mergeQuestion, &result)
-	return mergeOpts[result].method, err
+	// Find the method corresponding to the selected title
+	for _, opt := range mergeOpts {
+		if opt.title == selectedTitle {
+			return opt.method, nil
+		}
+	}
+
+	return 0, fmt.Errorf("invalid merge method selected")
 }
 
-func confirmSurvey(allowEditMsg bool) (cmdutils.Action, error) {
+func confirmSurvey(ctx context.Context, f cmdutils.Factory, allowEditMsg bool) (cmdutils.Action, error) {
 	const (
 		submitLabel        = "Submit"
 		editCommitMsgLabel = "Edit commit message"
 		cancelLabel        = "Cancel"
 	)
 
-	options := []string{submitLabel}
-	if allowEditMsg {
-		options = append(options, editCommitMsgLabel)
-	}
-	options = append(options, cancelLabel)
+	// If only 2 options (Submit/Cancel), use huh.NewConfirm()
+	if !allowEditMsg {
+		shouldSubmit := false // default value
 
-	var result string
-	submit := &survey.Select{
-		Message: "What's next?",
-		Options: options,
+		confirm := huh.NewConfirm().
+			Title("What's next?").
+			Affirmative(submitLabel).
+			Negative(cancelLabel).
+			Value(&shouldSubmit)
+
+		err := f.IO().Run(ctx, confirm)
+		if err != nil {
+			return cmdutils.CancelAction, fmt.Errorf("could not prompt: %w", err)
+		}
+
+		if shouldSubmit {
+			return cmdutils.SubmitAction, nil
+		}
+		return cmdutils.CancelAction, nil
 	}
-	err := prompt.AskOne(submit, &result)
+
+	// If 3 options (Submit/Edit/Cancel), use huh.NewSelect()
+	var result string
+	selector := huh.NewSelect[string]().
+		Title("What's next?").
+		Options(
+			huh.NewOption(submitLabel, submitLabel),
+			huh.NewOption(editCommitMsgLabel, editCommitMsgLabel),
+			huh.NewOption(cancelLabel, cancelLabel),
+		).
+		Value(&result)
+
+	err := f.IO().Run(ctx, selector)
 	if err != nil {
 		return cmdutils.CancelAction, fmt.Errorf("could not prompt: %w", err)
 	}

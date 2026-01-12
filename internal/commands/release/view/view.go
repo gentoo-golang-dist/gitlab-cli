@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
@@ -113,7 +114,7 @@ func (o *options) run() error {
 		url := release.Links.Self
 
 		if o.io.IsOutputTTY() {
-			o.io.Logf("Opening %s in your browser.\n", url)
+			o.io.LogInfof("Opening %s in your browser.\n", url)
 		}
 
 		browser, _ := cfg.Get(repo.RepoHost(), "browser")

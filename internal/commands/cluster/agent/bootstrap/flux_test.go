@@ -1,3 +1,5 @@
+//go:build !integration
+
 package bootstrap
 
 import (
@@ -131,6 +133,8 @@ func TestFlux_reconcile_abort_retry_max(t *testing.T) {
 }
 
 func setupFlux(t *testing.T) (*MockCmd, FluxWrapper) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
 	mockCmd := NewMockCmd(ctrl)
 	f := NewLocalFluxWrapper(

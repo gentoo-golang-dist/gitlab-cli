@@ -1,3 +1,5 @@
+//go:build !integration
+
 package list
 
 import (
@@ -6,6 +8,7 @@ import (
 
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 

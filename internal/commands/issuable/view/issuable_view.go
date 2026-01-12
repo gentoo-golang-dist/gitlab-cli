@@ -5,25 +5,23 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
 
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
-	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
+	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
-var listIssueNotes = func(client *gitlab.Client, projectID any, issueID int, opts *gitlab.ListIssueNotesOptions) ([]*gitlab.Note, error) {
+var listIssueNotes = func(client *gitlab.Client, projectID any, issueID int64, opts *gitlab.ListIssueNotesOptions) ([]*gitlab.Note, error) {
 	if opts.PerPage == 0 {
 		opts.PerPage = api.DefaultListLimit
 	}
@@ -140,10 +138,10 @@ func (o *options) run(issueType issuable.IssueType, args []string) error {
 			Sort: gitlab.Ptr("asc"),
 		}
 		if o.commentPageNumber != 0 {
-			l.Page = o.commentPageNumber
+			l.Page = int64(o.commentPageNumber)
 		}
 		if o.commentLimit != 0 {
-			l.PerPage = o.commentLimit
+			l.PerPage = int64(o.commentLimit)
 		}
 		o.notes, err = listIssueNotes(client, baseRepo.FullName(), o.issue.IID, l)
 		if err != nil {
@@ -291,10 +289,10 @@ func rawIssuePreview(opts *options) string {
 
 // RawIssuableNotes returns a list of comments/notes in a raw format
 func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bool, issuableName string) string {
-	var out string
+	var out strings.Builder
 
 	if showComments {
-		out += "\n--\ncomments/notes:\n\n"
+		out.WriteString("\n--\ncomments/notes:\n\n")
 
 		if len(notes) > 0 {
 			for _, note := range notes {
@@ -303,17 +301,17 @@ func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bo
 				}
 
 				if note.System {
-					out += fmt.Sprintf("%s %s %s\n\n", note.Author.Username, note.Body, note.CreatedAt.String())
+					out.WriteString(fmt.Sprintf("%s %s %s\n\n", note.Author.Username, note.Body, note.CreatedAt.String()))
 				} else {
-					out += fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body)
+					out.WriteString(fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body))
 				}
 			}
 		} else {
-			out += fmt.Sprintf("There are no comments on this %s.\n", issuableName)
+			out.WriteString(fmt.Sprintf("There are no comments on this %s.\n", issuableName))
 		}
 	}
 
-	return out
+	return out.String()
 }
 
 func printJSONIssue(opts *options) {

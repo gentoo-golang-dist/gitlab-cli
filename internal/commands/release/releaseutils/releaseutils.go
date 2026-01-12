@@ -6,17 +6,14 @@ import (
 	"os"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils/upload"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
-
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 func DisplayAllReleases(io *iostreams.IOStreams, releases []*gitlab.Release, repoName string) string {
@@ -50,15 +47,15 @@ func DisplayRelease(io *iostreams.IOStreams, r *gitlab.Release, repo glrepo.Inte
 		description = r.Description
 	}
 
-	var assetsSources string
+	var assetsSources strings.Builder
 	for _, asset := range r.Assets.Sources {
-		assetsSources += asset.URL + "\n"
+		assetsSources.WriteString(asset.URL + "\n")
 	}
 
 	footer := fmt.Sprintf(c.Gray("View this release on GitLab at %s"), r.Links.Self)
 	return fmt.Sprintf("%s\n%s released this %s\n%s - %s\n%s\n%s\n%s\n%s\n%s\n\n%s", // whoops
 		c.Bold(r.Name), r.Author.Name, duration, r.Commit.ShortID, r.TagName, description, c.Bold("ASSETS"),
-		RenderReleaseAssertLinks(r.Assets.Links), c.Bold("SOURCES"), assetsSources, footer,
+		RenderReleaseAssertLinks(r.Assets.Links), c.Bold("SOURCES"), assetsSources.String(), footer,
 	)
 }
 
@@ -123,7 +120,7 @@ func CreateReleaseAssets(io *iostreams.IOStreams, client *gitlab.Client, assetFi
 	}
 
 	color := io.Color()
-	io.Logf("%s Uploading release assets %s=%s %s=%s\n",
+	io.LogInfof("%s Uploading release assets %s=%s %s=%s\n",
 		color.ProgressIcon(),
 		color.Blue("repo"), repoName,
 		color.Blue("tag"), tagName)

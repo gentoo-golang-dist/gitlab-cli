@@ -1,17 +1,18 @@
+//go:build !integration
+
 package ask
 
 import (
 	"net/http"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/survivorbat/huhtest"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )

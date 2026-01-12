@@ -2,6 +2,7 @@ package create
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,29 +12,24 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/charmbracelet/huh"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-	securejoin "github.com/cyphar/filepath-securejoin"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	catalog "gitlab.com/gitlab-org/cli/internal/commands/project/publish/catalog"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils/upload"
-
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/MakeNowJust/heredoc/v2"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-	"gitlab.com/gitlab-org/cli/internal/run"
-	"gitlab.com/gitlab-org/cli/internal/surveyext"
-	"gitlab.com/gitlab-org/cli/internal/utils"
-
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/run"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type noteOptions int
@@ -53,8 +49,7 @@ var noteOptionsNames = map[noteOptions]string{
 }
 
 type options struct {
-	// The following fields must be exported because of survey
-	// TODO: make survey independent of command options struct.
+	// The following fields must be exported for use with huh forms
 	Name               string
 	ReleaseNotesAction string
 
@@ -80,6 +75,7 @@ type options struct {
 	usePackageRegistry bool
 	packageName        string
 
+	ctx          context.Context
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
@@ -172,6 +168,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.ctx = cmd.Context()
 			if err := opts.complete(cmd.Flags(), args); err != nil {
 				return err
 			}
@@ -187,7 +184,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.notes, "notes", "N", "", "The release notes or description. Accepts Markdown.")
 	fl.StringVarP(&opts.notesFile, "notes-file", "F", "", "Read release notes 'file'. To read from stdin, use '-'.")
 	fl.StringVarP(&opts.releasedAt, "released-at", "D", "", "ISO 8601 datetime when the release was ready. Defaults to the current datetime.")
-	fl.StringSliceVarP(&opts.milestone, "milestone", "m", []string{}, "The title of each milestone the release is associated with.")
+	fl.StringSliceVarP(&opts.milestone, "milestone", "m", []string{}, "The title of each milestone the release is associated with. Multiple milestones can be comma-separated or specified by repeating the flag.")
 	fl.StringVarP(&opts.assetLinksAsJSON, "assets-links", "a", "", "JSON string representation of assets links. See documentation for example.")
 	fl.BoolVar(&opts.publishToCatalog, "publish-to-catalog", false, "(EXPERIMENTAL) Publish the release to the GitLab CI/CD catalog.")
 	fl.BoolVar(&opts.noUpdate, "no-update", false, "Prevent updating the existing release.")
@@ -285,12 +282,23 @@ func resolveNotesFileOrText(opts *options) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	filePath, err := securejoin.SecureJoin(baseDir, opts.experimentalNotesTextOrFile)
+	root, err := os.OpenRoot(baseDir)
 	if err != nil {
 		return "", err
 	}
 
-	b, err := os.ReadFile(filePath)
+	f, err := root.Open(opts.experimentalNotesTextOrFile)
+	if err != nil {
+		return opts.experimentalNotesTextOrFile, nil
+	}
+	defer func() {
+		cerr := f.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+
+	b, err := io.ReadAll(f)
 	if err != nil {
 		// Rule 3: fallback to using the value as text
 		return opts.experimentalNotesTextOrFile, nil
@@ -314,22 +322,29 @@ func createRun(opts *options) error {
 	var resp *gitlab.Response
 
 	if opts.ref == "" {
-		opts.io.Log(color.ProgressIcon(), "Validating tag", opts.tagName)
+		opts.io.LogInfo(color.ProgressIcon(), "Validating tag", opts.tagName)
 		tag, resp, err = client.Tags.GetTag(repo.FullName(), opts.tagName)
 		if err != nil && resp != nil && resp.StatusCode != http.StatusNotFound {
 			return cmdutils.WrapError(err, "could not fetch tag")
 		}
 		if tag == nil && resp != nil && resp.StatusCode == http.StatusNotFound {
-			opts.io.Log(color.DotWarnIcon(), "Tag does not exist.")
-			opts.io.Log(color.DotWarnIcon(), "No ref provided. Creating the tag from the latest state of the default branch.")
+			opts.io.LogInfo(color.DotWarnIcon(), "Tag does not exist.")
+			opts.io.LogInfo(color.DotWarnIcon(), "No ref provided. Creating the tag from the latest state of the default branch.")
 			project, err := repo.Project(client)
-			if err == nil {
-				opts.io.Logf("%s using default branch %q as ref\n", color.ProgressIcon(), project.DefaultBranch)
+			if err != nil {
+				// We are not able to retrieve the project from the API.
+				// This is most likely because we are running in CI with a CI Job Token
+				// which does not have access to the Projects API. Thus, let's check if we have access
+				// to the predefined CI/CD variable CI_DEFAULT_BRANCH and use it instead if available.
+				if defaultBranch, found := os.LookupEnv("CI_DEFAULT_BRANCH"); found {
+					opts.io.LogInfof("%s using default branch %q as ref from CI_DEFAULT_BRANCH\n", color.ProgressIcon(), defaultBranch)
+					opts.ref = defaultBranch
+				}
+			} else {
+				opts.io.LogInfof("%s using default branch %q as ref\n", color.ProgressIcon(), project.DefaultBranch)
 				opts.ref = project.DefaultBranch
 			}
 		}
-		// new line
-		opts.io.Log()
 	}
 
 	if opts.io.PromptEnabled() && !opts.noteProvided {
@@ -375,23 +390,22 @@ func createRun(opts *options) error {
 		}
 		editorOptions = append(editorOptions, noteOptionsNames[noteOptLeaveBlank])
 
-		qs := []*survey.Question{
-			{
-				Name: "name",
-				Prompt: &survey.Input{
-					Message: "Release title (optional)",
-					Default: opts.Name,
-				},
-			},
-			{
-				Name: "releaseNotesAction",
-				Prompt: &survey.Select{
-					Message: "Release notes",
-					Options: editorOptions,
-				},
-			},
-		}
-		err = prompt.Ask(qs, opts)
+		// Combine title and release notes selection into a single form
+		var fields []huh.Field
+
+		// Add title input field
+		fields = append(fields, huh.NewInput().
+			Title("Release title (optional)").
+			Value(&opts.Name))
+
+		// Add release notes selection field
+		fields = append(fields, huh.NewSelect[string]().
+			Title("Release notes").
+			Options(huh.NewOptions(editorOptions...)...).
+			Value(&opts.ReleaseNotesAction))
+
+		// Run the combined form
+		err = opts.io.RunForm(opts.ctx, fields...)
 		if err != nil {
 			return fmt.Errorf("could not prompt: %w", err)
 		}
@@ -415,16 +429,15 @@ func createRun(opts *options) error {
 		}
 
 		if openEditor {
-			txt, err := surveyext.Edit(editorCommand, "*.md", editorContents, opts.io.In, opts.io.StdOut, opts.io.StdErr, nil)
+			err = opts.io.Editor(opts.ctx, &opts.notes, "Release notes", "", editorContents, editorCommand)
 			if err != nil {
 				return err
 			}
-			opts.notes = txt
 		}
 	}
 	start := time.Now()
 
-	opts.io.Logf("%s Creating or updating release %s=%s %s=%s\n",
+	opts.io.LogInfof("%s Creating or updating release %s=%s %s=%s\n",
 		color.ProgressIcon(),
 		color.Blue("repo"), repo.FullName(),
 		color.Blue("tag"), opts.tagName)
@@ -479,7 +492,7 @@ func createRun(opts *options) error {
 		if err != nil {
 			return releaseFailedErr(err, start)
 		}
-		opts.io.Logf("%s Release created:\t%s=%s\n", color.GreenCheck(),
+		opts.io.LogInfof("%s Release created:\t%s=%s\n", color.GreenCheck(),
 			color.Blue("url"), release.Links.Self)
 	} else {
 		if opts.noUpdate {
@@ -506,7 +519,7 @@ func createRun(opts *options) error {
 			return releaseFailedErr(err, start)
 		}
 
-		opts.io.Logf("%s Release updated\t%s=%s\n", color.GreenCheck(),
+		opts.io.LogInfof("%s Release updated\t%s=%s\n", color.GreenCheck(),
 			color.Blue("url"), release.Links.Self)
 	}
 
@@ -517,7 +530,7 @@ func createRun(opts *options) error {
 	}
 
 	if opts.noCloseMilestone {
-		opts.io.Logf("%s Skipping closing milestones\n", color.GreenCheck())
+		opts.io.LogInfof("%s Skipping closing milestones\n", color.GreenCheck())
 	} else {
 		if len(opts.milestone) > 0 {
 			// close all associated milestones
@@ -526,14 +539,14 @@ func createRun(opts *options) error {
 				err := closeMilestone(opts, milestone)
 				opts.io.StopSpinner("")
 				if err != nil {
-					opts.io.Log(color.FailedIcon(), err.Error())
+					opts.io.LogError(color.FailedIcon(), err.Error())
 				} else {
-					opts.io.Logf("%s Closed milestone %q\n", color.GreenCheck(), milestone)
+					opts.io.LogInfof("%s Closed milestone %q\n", color.GreenCheck(), milestone)
 				}
 			}
 		}
 	}
-	opts.io.Logf(color.Bold("%s Release succeeded after %0.2f seconds.\n"), color.GreenCheck(), time.Since(start).Seconds())
+	opts.io.LogInfof(color.Bold("%s Release succeeded after %0.2f seconds.\n"), color.GreenCheck(), time.Since(start).Seconds())
 
 	if opts.publishToCatalog {
 		err = catalog.Publish(opts.io, client, repo.FullName(), release.TagName)

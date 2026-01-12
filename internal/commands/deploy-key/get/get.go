@@ -3,12 +3,13 @@ package get
 import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -18,7 +19,7 @@ type options struct {
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 
-	keyID int
+	keyID int64
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -51,7 +52,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 func (o *options) complete(args []string) {
 	if len(args) == 1 {
-		o.keyID = utils.StringToInt(args[0])
+		o.keyID = int64(utils.StringToInt(args[0]))
 	}
 }
 

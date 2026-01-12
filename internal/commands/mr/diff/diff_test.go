@@ -1,3 +1,5 @@
+//go:build !integration
+
 package diff
 
 import (
@@ -11,6 +13,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -101,6 +104,8 @@ func Test_NewCmdDiff(t *testing.T) {
 }
 
 func runCommand(t *testing.T, rt http.RoundTripper, isTTY bool, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(isTTY))
 
 	factory := cmdtest.NewTestFactory(ios,

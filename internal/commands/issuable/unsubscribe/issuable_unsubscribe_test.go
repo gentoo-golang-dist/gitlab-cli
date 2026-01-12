@@ -1,3 +1,5 @@
+//go:build !integration
+
 package unsubscribe
 
 import (
@@ -8,6 +10,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
@@ -15,6 +18,8 @@ import (
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, issuableID string, issueType issuable.IssueType) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 
 	factory := cmdtest.NewTestFactory(ios,

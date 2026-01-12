@@ -1,3 +1,5 @@
+//go:build !integration
+
 package serve
 
 import (
@@ -6,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 

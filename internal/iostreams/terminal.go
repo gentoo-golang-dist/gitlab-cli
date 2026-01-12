@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/mattn/go-isatty"
-	"gitlab.com/gitlab-org/cli/internal/execext"
 	"golang.org/x/term"
 )
 
@@ -45,7 +44,7 @@ func TerminalWidth(out io.Writer) int {
 	}
 
 	if isCygwinTerminal(out) {
-		tputExe, err := execext.LookPath("tput")
+		tputExe, err := exec.LookPath("tput")
 		if err != nil {
 			return defaultWidth
 		}

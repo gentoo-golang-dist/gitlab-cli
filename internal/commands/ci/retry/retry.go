@@ -3,13 +3,12 @@ package retry
 import (
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
@@ -51,7 +50,7 @@ func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
 			pipelineId, _ := cmd.Flags().GetInt("pipeline-id")
 			repoOverride, _ := cmd.Flags().GetString("repo")
 
-			jobID, err := ciutils.GetJobId(&ciutils.JobInputs{
+			jobID, err := ciutils.GetJobId(cmd.Context(), &ciutils.JobInputs{
 				JobName:         jobName,
 				Branch:          branch,
 				PipelineId:      pipelineId,
@@ -63,7 +62,9 @@ func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
 				Repo:   repo,
 			})
 			if err != nil {
-				fmt.Fprintln(f.IO().StdErr, "invalid job ID:", args[0])
+				if jobName != "" {
+					fmt.Fprintln(f.IO().StdErr, "invalid job ID:", jobName)
+				}
 				return err
 			}
 

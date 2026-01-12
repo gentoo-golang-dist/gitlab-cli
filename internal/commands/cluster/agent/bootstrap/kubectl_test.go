@@ -1,3 +1,5 @@
+//go:build !integration
+
 package bootstrap
 
 import (
@@ -89,6 +91,8 @@ func TestKubectl_createAgentSecretToken_SecretCreationFails(t *testing.T) {
 }
 
 func setupKubectl(t *testing.T) (*MockCmd, KubectlWrapper) {
+	t.Helper()
+
 	ctrl := gomock.NewController(t)
 	mockCmd := NewMockCmd(ctrl)
 	k := NewLocalKubectlWrapper(mockCmd, "kubectl", "gitlab-agent", "gitlab-agent-token")

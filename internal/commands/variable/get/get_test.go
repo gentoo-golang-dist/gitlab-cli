@@ -1,3 +1,5 @@
+//go:build !integration
+
 package get
 
 import (
@@ -7,6 +9,7 @@ import (
 
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -40,7 +43,7 @@ func Test_NewCmdGet(t *testing.T) {
 			wantsErr: true,
 		},
 		{
-			name: "good key",
+			name: "good key for group",
 			cli:  "-g group good_key",
 			wants: options{
 				key:   "good_key",
@@ -69,7 +72,7 @@ func Test_NewCmdGet(t *testing.T) {
 			wantsErr: false,
 		},
 		{
-			name: "bad key",
+			name: "bad key for group",
 			cli:  "-g group bad-key",
 			wants: options{
 				group: "group",

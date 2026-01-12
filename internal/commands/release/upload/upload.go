@@ -9,17 +9,18 @@ import (
 	"strconv"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils/upload"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -159,7 +160,7 @@ func (o *options) run() error {
 	color := o.io.Color()
 	var resp *gitlab.Response
 
-	o.io.Logf("%s Validating tag %s=%s %s=%s\n",
+	o.io.LogInfof("%s Validating tag %s=%s %s=%s\n",
 		color.ProgressIcon(),
 		color.Blue("repo"), repo.FullName(),
 		color.Blue("tag"), o.tagName)
@@ -178,6 +179,6 @@ func (o *options) run() error {
 		return cmdutils.WrapError(err, "creating release assets failed.")
 	}
 
-	o.io.Logf(color.Bold("%s Upload succeeded after %0.2fs.\n"), color.GreenCheck(), time.Since(start).Seconds())
+	o.io.LogInfof(color.Bold("%s Upload succeeded after %0.2fs.\n"), color.GreenCheck(), time.Since(start).Seconds())
 	return nil
 }

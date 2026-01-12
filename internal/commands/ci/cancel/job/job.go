@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"io"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const (
@@ -90,7 +90,7 @@ func runCancelation(
 			if err != nil {
 				return err
 			}
-			_, _, err = apiClient.Jobs.CancelJob(pid.ID, id)
+			_, _, err = apiClient.Jobs.CancelJob(pid.ID, int64(id))
 			if err != nil {
 				return err
 			}

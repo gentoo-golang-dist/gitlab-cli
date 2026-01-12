@@ -1,3 +1,5 @@
+//go:build !integration
+
 package view
 
 import (
@@ -5,21 +7,21 @@ import (
 	"os/exec"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
+	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, isTTY bool, cli string, stub bool, repoHost string) (*test.CmdOut, error, func()) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(isTTY))
 
 	factory := cmdtest.NewTestFactory(ios,
@@ -419,7 +421,7 @@ func TestProjectView(t *testing.T) {
 			expectedOutput: "Opening gitlab.company.org/OWNER/REPO in your browser.\n",
 		},
 		{
-			name: "view project when passing a https git URL on web",
+			name: "view project when passing a https git URL on web with branch",
 			cli:  "https://gitlab.company.org/OWNER/REPO.git --web --branch foobranch",
 			httpMocks: []httpMock{
 				{

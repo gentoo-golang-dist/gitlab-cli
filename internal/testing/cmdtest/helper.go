@@ -16,20 +16,22 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/git"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/google/shlex"
 	"github.com/otiai10/copy"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"github.com/survivorbat/huhtest"
+	"golang.org/x/oauth2"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
@@ -323,6 +325,13 @@ func WithBuildInfo(buildInfo api.BuildInfo) FactoryOption {
 	}
 }
 
+// WithStdin configures the Factory with specific stdin content
+func WithStdin(stdin string) FactoryOption {
+	return func(f *Factory) {
+		f.IOStub.In = io.NopCloser(bytes.NewBufferString(stdin))
+	}
+}
+
 // NewTestFactory creates a Factory configured for testing with the given options
 func NewTestFactory(ios *iostreams.IOStreams, opts ...FactoryOption) *Factory {
 	f := &Factory{
@@ -487,6 +496,26 @@ func NewTestApiClient(t *testing.T, httpClient *http.Client, token, host string,
 	opts = append(opts, options...)
 	testClient, err := api.NewClient(
 		func(*http.Client) (gitlab.AuthSource, error) { return gitlab.AccessTokenAuthSource{Token: token}, nil },
+		opts...,
+	)
+	require.NoError(t, err)
+	return testClient
+}
+
+func NewTestOAuth2ApiClient(t *testing.T, httpClient *http.Client, tokenSource oauth2.TokenSource, host string, options ...api.ClientOption) *api.Client {
+	t.Helper()
+
+	opts := []api.ClientOption{
+		api.WithUserAgent("glab test client"),
+		api.WithBaseURL(glinstance.APIEndpoint(host, glinstance.DefaultProtocol, "")),
+		api.WithInsecureSkipVerify(true),
+		api.WithHTTPClient(httpClient),
+	}
+	opts = append(opts, options...)
+	testClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.OAuthTokenSource{TokenSource: tokenSource}, nil
+		},
 		opts...,
 	)
 	require.NoError(t, err)

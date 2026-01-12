@@ -1,3 +1,5 @@
+//go:build !integration
+
 package git
 
 import (
@@ -10,9 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"gitlab.com/gitlab-org/cli/internal/config"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_StackRemoveRef(t *testing.T) {
@@ -130,11 +133,6 @@ func Test_AddStackBaseBranch(t *testing.T) {
 			name:   "successfully add branch",
 			title:  "test-stack",
 			branch: "main",
-		},
-		{
-			name:   "successfully add custom branch",
-			title:  "custom-stack",
-			branch: "feature/branch",
 		},
 		{
 			name:   "successfully add custom branch",

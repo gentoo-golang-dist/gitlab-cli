@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
@@ -48,16 +49,18 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			}
 
 			l := &gitlab.ListProjectSecureFilesOptions{
-				Page:    1,
-				PerPage: api.DefaultListLimit,
+				ListOptions: gitlab.ListOptions{
+					Page:    1,
+					PerPage: api.DefaultListLimit,
+				},
 			}
 
 			if p, _ := cmd.Flags().GetInt("page"); p != 0 {
-				l.Page = p
+				l.Page = int64(p)
 			}
 
 			if p, _ := cmd.Flags().GetInt("per-page"); p != 0 {
-				l.PerPage = p
+				l.PerPage = int64(p)
 			}
 
 			files, _, err := client.SecureFiles.ListProjectSecureFiles(repo.FullName(), l)

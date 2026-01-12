@@ -50,24 +50,30 @@ func MockStackUser() HttpMock {
 	}
 }
 
-func MockPostStackMR(source, target, project string) HttpMock {
+type MockMROptions struct {
+	Source, Target, Project, Title, Description string
+}
+
+func MockPostStackMR(options MockMROptions) HttpMock {
 	return HttpMock{
 		method: http.MethodPost,
 		path:   "/api/v4/projects/stack_guy%2Fstackproject/merge_requests",
 		status: http.StatusOK,
 		requestBody: `{
-				"title": "",
-				"source_branch":"` + source + `",
-				"target_branch":"` + target + `",
+				"title": "` + options.Title + `",
+				"description": "` + options.Description + `",
+				"source_branch":"` + options.Source + `",
+				"target_branch":"` + options.Target + `",
 				"assignee_id":0,
-				"target_project_id": ` + project + `,
+				"target_project_id": ` + options.Project + `,
 				"remove_source_branch":true
 			}`,
 		body: `{
-			"title": "Test MR",
+			"title": "` + options.Title + `",
+			"description": "` + options.Description + `",
 			"iid": ` + strconv.Itoa(rand.IntN(100)) + `,
-			"source_branch":"` + source + `",
-			"target_branch":"` + target + `"
+			"source_branch":"` + options.Source + `",
+			"target_branch":"` + options.Target + `"
 		}`,
 	}
 }

@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -8,25 +9,22 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"github.com/AlecAivazis/survey/v2"
-	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
-	"gitlab.com/gitlab-org/cli/internal/prompt"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/recovery"
-
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/recovery"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
@@ -39,7 +37,7 @@ type options struct {
 	Labels                []string `json:"labels,omitempty"`
 	Assignees             []string `json:"assignees,omitempty"`
 	Reviewers             []string `json:"reviewers,omitempty"`
-	Milestone             int      `json:"milestone,omitempty"`
+	Milestone             int64    `json:"milestone,omitempty"`
 	MilestoneFlag         string   `json:"milestone_flag,omitempty"`
 	MRCreateTargetProject string   `json:"mr_create_target_project,omitempty"`
 
@@ -146,9 +144,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().BoolVarP(&opts.ShouldPush, "push", "", false, "Push committed changes after creating merge request. Make sure you have committed changes.")
 	mrCreateCmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Supply a title for the merge request.")
 	mrCreateCmd.Flags().StringVarP(&opts.Description, "description", "d", "", "Supply a description for the merge request.")
-	mrCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels should be comma-separated.")
-	mrCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`.")
-	mrCreateCmd.Flags().StringSliceVarP(&opts.Reviewers, "reviewer", "", []string{}, "Request review from users by their `usernames`.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.Reviewers, "reviewer", "", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	mrCreateCmd.Flags().StringVarP(&opts.SourceBranch, "source-branch", "s", "", "Create a merge request from this branch. Default is the current branch.")
 	mrCreateCmd.Flags().StringVarP(&opts.TargetBranch, "target-branch", "b", "", "The target or base branch into which you want your code merged into.")
 	mrCreateCmd.Flags().BoolVarP(&opts.CreateSourceBranch, "create-source-branch", "", false, "Create a source branch if it does not exist.")
@@ -391,14 +389,11 @@ func (o *options) run() error {
 			var templateContents string
 			if o.Description == "" {
 				if o.noEditor {
-					err = prompt.AskMultiline(&o.Description, "description", "Description:", "")
+					err = o.io.Multiline(context.Background(), &o.Description, "Description:", "")
 					if err != nil {
 						return err
 					}
 				} else {
-					templateResponse := struct {
-						Index int
-					}{}
 					templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.MergeRequestTemplate)
 					if err != nil {
 						return fmt.Errorf("error getting templates: %w", err)
@@ -410,21 +405,9 @@ func (o *options) run() error {
 					templateNames = append(templateNames, mrWithCommitsTemplate)
 					templateNames = append(templateNames, mrEmptyTemplate)
 
-					selectQs := []*survey.Question{
-						{
-							Name: "index",
-							Prompt: &survey.Select{
-								Message: "Choose a template:",
-								Options: templateNames,
-							},
-						},
-					}
-
-					if err := prompt.Ask(selectQs, &templateResponse); err != nil {
+					if err := o.io.Select(context.Background(), &templateName, "Choose a template:", templateNames); err != nil {
 						return fmt.Errorf("could not prompt: %w", err)
 					}
-
-					templateName = templateNames[templateResponse.Index]
 					switch templateName {
 					case mrWithCommitsTemplate:
 						// templateContents should be filled from commit messages
@@ -441,7 +424,7 @@ func (o *options) run() error {
 							templateContents += "Signed-off-by: " + u.Name + "<" + u.Email + ">"
 						}
 					case mrEmptyTemplate:
-						// blank merge request was choosen, leave templateContents empty
+						// blank merge request was chosen, leave templateContents empty
 						if o.signoff {
 							u, _, _ := client.Users.CurrentUser()
 							templateContents += "Signed-off-by: " + u.Name + "<" + u.Email + ">"
@@ -455,27 +438,57 @@ func (o *options) run() error {
 				}
 			}
 
-			if o.Title == "" {
-				err = prompt.AskQuestionWithInput(&o.Title, "title", "Title:", "", true)
-				if err != nil {
-					return err
-				}
+			// Combine Title + Description into a single form
+			var fields []huh.Field
+			needsTitle := o.Title == ""
+			needsDescription := o.Description == ""
+
+			if needsTitle {
+				fields = append(fields, huh.NewInput().
+					Title("Title").
+					Value(&o.Title).
+					Validate(func(s string) error {
+						if s == "" {
+							return fmt.Errorf("title is required")
+						}
+						return nil
+					}))
 			}
-			if o.Description == "" {
+
+			if needsDescription {
 				if o.noEditor {
-					err = prompt.AskMultiline(&o.Description, "description", "Description:", "")
-					if err != nil {
-						return err
-					}
+					fields = append(fields, huh.NewText().
+						Title("Description").
+						Value(&o.Description))
 				} else {
 					editor, err := cmdutils.GetEditor(o.config)
 					if err != nil {
 						return err
 					}
-					err = cmdutils.EditorPrompt(&o.Description, "Description", templateContents, editor)
-					if err != nil {
-						return err
+
+					if templateContents != "" {
+						o.Description = templateContents
 					}
+
+					textField := huh.NewText().
+						Title("Description").
+						Value(&o.Description).
+						ExternalEditor(true).
+						EditorExtension(".md")
+
+					if editor != "" {
+						textField = textField.Editor(editor)
+					}
+
+					fields = append(fields, textField)
+				}
+			}
+
+			// Run the combined form
+			if len(fields) > 0 {
+				err = o.io.RunForm(context.Background(), fields...)
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -554,14 +567,14 @@ func (o *options) run() error {
 		}
 		var metadataActions []string
 
-		err := prompt.MultiSelect(&metadataActions, "metadata", "Which metadata types to add?", metadataOptions)
+		err := o.io.MultiSelect(context.Background(), &metadataActions, "Which metadata types to add?", metadataOptions)
 		if err != nil {
 			return fmt.Errorf("failed to pick the metadata to add: %w", err)
 		}
 
 		for _, x := range metadataActions {
 			if x == "labels" {
-				err = cmdutils.LabelsPrompt(&o.Labels, client, baseRepoRemote)
+				err = cmdutils.LabelsPrompt(context.Background(), o.io, &o.Labels, client, baseRepoRemote)
 				if err != nil {
 					return err
 				}
@@ -569,7 +582,7 @@ func (o *options) run() error {
 			if x == "assignees" {
 				// Use minimum permission level 30 (Maintainer) as it is the minimum level
 				// to accept a merge request
-				err = cmdutils.UsersPrompt(&o.Assignees, client, baseRepoRemote, o.io, 30, x)
+				err = cmdutils.UsersPrompt(context.Background(), &o.Assignees, client, baseRepoRemote, o.io, 30, x)
 				if err != nil {
 					return err
 				}
@@ -583,7 +596,7 @@ func (o *options) run() error {
 			if x == "reviewers" {
 				// Use minimum permission level 30 (Maintainer) as it is the minimum level
 				// to accept a merge request
-				err = cmdutils.UsersPrompt(&o.Reviewers, client, baseRepoRemote, o.io, 30, x)
+				err = cmdutils.UsersPrompt(context.Background(), &o.Reviewers, client, baseRepoRemote, o.io, 30, x)
 				if err != nil {
 					return err
 				}
@@ -779,8 +792,8 @@ func generateMRCompareURL(opts *options) (string, error) {
 	q.Add("merge_request[description]", description)
 	q.Add("merge_request[source_branch]", opts.SourceBranch)
 	q.Add("merge_request[target_branch]", opts.TargetBranch)
-	q.Add("merge_request[source_project_id]", strconv.Itoa(opts.SourceProject.ID))
-	q.Add("merge_request[target_project_id]", strconv.Itoa(opts.TargetProject.ID))
+	q.Add("merge_request[source_project_id]", strconv.FormatInt(opts.SourceProject.ID, 10))
+	q.Add("merge_request[target_project_id]", strconv.FormatInt(opts.TargetProject.ID, 10))
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil

@@ -3,6 +3,7 @@ package iostreams
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,8 +16,13 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/google/shlex"
 	"github.com/muesli/termenv"
+
+	"gitlab.com/gitlab-org/cli/internal/theme"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
+
+// ErrUserCancelled is returned when the user cancels a prompt (e.g., by pressing Ctrl+C)
+var ErrUserCancelled = errors.New("user cancelled")
 
 type IOStreams struct {
 	In     io.ReadCloser
@@ -331,6 +337,50 @@ func (s *IOStreams) Confirm(ctx context.Context, result *bool, title string) err
 			Value(result))
 }
 
+func (s *IOStreams) Input(ctx context.Context, result *string, title, placeholder string, validator func(string) error) error {
+	input := huh.NewInput().
+		Title(title).
+		Value(result)
+
+	if placeholder != "" {
+		input = input.Placeholder(placeholder)
+	}
+	if validator != nil {
+		input = input.Validate(validator)
+	}
+
+	return s.Run(ctx, input)
+}
+
+func (s *IOStreams) InputWithDescription(ctx context.Context, result *string, title, description, placeholder string, validator func(string) error) error {
+	input := huh.NewInput().
+		Title(title).
+		Description(description).
+		Value(result)
+
+	if placeholder != "" {
+		input = input.Placeholder(placeholder)
+	}
+	if validator != nil {
+		input = input.Validate(validator)
+	}
+
+	return s.Run(ctx, input)
+}
+
+func (s *IOStreams) Password(ctx context.Context, result *string, title string, validator func(string) error) error {
+	input := huh.NewInput().
+		Title(title).
+		EchoMode(huh.EchoModePassword).
+		Value(result)
+
+	if validator != nil {
+		input = input.Validate(validator)
+	}
+
+	return s.Run(ctx, input)
+}
+
 func (s *IOStreams) Select(ctx context.Context, result *string, title string, options []string) error {
 	return s.Run(ctx,
 		huh.NewSelect[string]().
@@ -339,11 +389,121 @@ func (s *IOStreams) Select(ctx context.Context, result *string, title string, op
 			Value(result))
 }
 
+func (s *IOStreams) MultiSelect(ctx context.Context, result *[]string, title string, options []string) error {
+	// Set a reasonable height limit for the multiselect to ensure it displays properly
+	limit := min(len(options), 10)
+
+	return s.Run(ctx,
+		huh.NewMultiSelect[string]().
+			Title(title).
+			Options(huh.NewOptions(options...)...).
+			Filterable(false).
+			Limit(limit).
+			Value(result))
+}
+
+func (s *IOStreams) Multiline(ctx context.Context, result *string, title, placeholder string) error {
+	text := huh.NewText().
+		Title(title).
+		Value(result)
+
+	if placeholder != "" {
+		text = text.Placeholder(placeholder)
+	}
+
+	return s.Run(ctx, text)
+}
+
+func (s *IOStreams) Editor(ctx context.Context, result *string, title, description, defaultContent, editorCmd string) error {
+	text := huh.NewText().
+		Title(title).
+		Value(result).
+		ExternalEditor(true).
+		EditorExtension(".md")
+
+	// Set the description (help text) if provided
+	if description != "" {
+		text = text.Description(description)
+	}
+
+	// Set the default content if provided
+	if defaultContent != "" {
+		*result = defaultContent
+	}
+
+	// Set the editor command if provided
+	if editorCmd != "" {
+		text = text.Editor(editorCmd)
+	}
+
+	return s.Run(ctx, text)
+}
+
 func (s *IOStreams) Run(ctx context.Context, field huh.Field) error {
 	group := huh.NewGroup(field)
+
+	// Show help for Text and MultiSelect fields since they have non-obvious keybindings
+	showHelp := false
+	if _, isText := field.(*huh.Text); isText {
+		showHelp = true
+	}
+	if _, isMultiSelect := field.(*huh.MultiSelect[string]); isMultiSelect {
+		showHelp = true
+	}
+
 	form := huh.NewForm(group).
 		WithInput(s.In).
 		WithOutput(s.StdOut).
-		WithShowHelp(false)
-	return form.RunWithContext(ctx)
+		WithShowHelp(showHelp).
+		WithTheme(theme.HuhTheme())
+
+	err := form.RunWithContext(ctx)
+
+	// Convert huh.ErrUserAborted to iostreams.ErrUserCancelled for consistent error handling
+	// This allows callers to handle cancellation without depending on the huh library
+	if errors.Is(err, huh.ErrUserAborted) {
+		fmt.Fprintln(s.StdErr, "Cancelled.")
+		return ErrUserCancelled
+	}
+
+	return err
+}
+
+// RunForm runs a multi-field form with all fields in a single group.
+// This allows users to navigate between fields and provides a better UX than running
+// individual prompts in sequence.
+func (s *IOStreams) RunForm(ctx context.Context, fields ...huh.Field) error {
+	if len(fields) == 0 {
+		return nil
+	}
+
+	group := huh.NewGroup(fields...)
+
+	// Show help if any field is a Text or MultiSelect field
+	showHelp := false
+	for _, field := range fields {
+		if _, isText := field.(*huh.Text); isText {
+			showHelp = true
+			break
+		}
+		if _, isMultiSelect := field.(*huh.MultiSelect[string]); isMultiSelect {
+			showHelp = true
+			break
+		}
+	}
+
+	form := huh.NewForm(group).
+		WithInput(s.In).
+		WithOutput(s.StdOut).
+		WithShowHelp(showHelp).
+		WithTheme(theme.HuhTheme())
+
+	err := form.RunWithContext(ctx)
+
+	if errors.Is(err, huh.ErrUserAborted) {
+		fmt.Fprintln(s.StdErr, "Cancelled.")
+		return ErrUserCancelled
+	}
+
+	return err
 }

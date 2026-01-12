@@ -6,7 +6,9 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -75,8 +77,8 @@ func (o *options) run(ctx context.Context) error {
 
 	_, err = client.ClusterAgents.RevokeAgentToken(
 		baseRepo.FullName(),
-		int(o.agentID),
-		int(o.tokenID),
+		o.agentID,
+		o.tokenID,
 		gitlab.WithContext(ctx),
 	)
 	if err != nil {

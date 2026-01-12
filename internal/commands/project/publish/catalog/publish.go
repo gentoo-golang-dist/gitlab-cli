@@ -8,15 +8,16 @@ import (
 	"path/filepath"
 	"sort"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gopkg.in/yaml.v3"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const (
@@ -114,7 +115,7 @@ func (o *options) run() error {
 func Publish(io *iostreams.IOStreams, client *gitlab.Client, repoFullName string, tagName string) error {
 	color := io.Color()
 
-	io.Logf("%s Publishing release %s=%s to the GitLab CI/CD catalog for %s=%s...\n",
+	io.LogInfof("%s Publishing release %s=%s to the GitLab CI/CD catalog for %s=%s...\n",
 		color.ProgressIcon(),
 		color.Blue("tag"), tagName,
 		color.Blue("repo"), repoFullName)
@@ -136,7 +137,7 @@ func Publish(io *iostreams.IOStreams, client *gitlab.Client, repoFullName string
 		return err
 	}
 
-	io.Logf("%s Release published: %s=%s\n", color.GreenCheck(),
+	io.LogInfof("%s Release published: %s=%s\n", color.GreenCheck(),
 		color.Blue("url"), response.CatalogUrl)
 
 	return nil

@@ -1,6 +1,6 @@
 # GLab
 
-![GLab](docs/assets/glab-logo.png)
+![GLab](docs/source/img/glab-logo.png)
 
 GLab is an open source GitLab CLI tool. It brings GitLab to your terminal, next to where you are already working with `git` and your code, without switching between windows and browser tabs. While it's powerful for issues and merge requests, `glab` does even more:
 
@@ -12,7 +12,7 @@ GLab is an open source GitLab CLI tool. It brings GitLab to your terminal, next 
 
 `glab` is available for repositories hosted on GitLab.com, GitLab Dedicated, and GitLab Self-Managed. It supports multiple authenticated GitLab instances, and automatically detects the authenticated hostname from the remotes available in your working Git directory.
 
-![command example](docs/assets/glabgettingstarted.gif)
+![command example](docs/source/img/glabgettingstarted.gif)
 
 ## Table of contents
 
@@ -73,34 +73,38 @@ You're ready!
 
 Run `glab --help` to view a list of core commands in your terminal.
 
-- [`glab alias`](docs/source/alias)
-- [`glab api`](docs/source/api)
-- [`glab auth`](docs/source/auth)
-- [`glab changelog`](docs/source/changelog)
-- [`glab check-update`](docs/source/check-update)
-- [`glab ci`](docs/source/ci)
-- [`glab cluster`](docs/source/cluster)
-- [`glab completion`](docs/source/completion)
-- [`glab config`](docs/source/config)
-- [`glab deploy-key`](docs/source/deploy-key)
-- [`glab duo`](docs/source/duo)
-- [`glab incident`](docs/source/incident)
-- [`glab issue`](docs/source/issue)
-- [`glab iteration`](docs/source/iteration)
-- [`glab job`](docs/source/job)
-- [`glab label`](docs/source/label)
-- [`glab mr`](docs/source/mr)
-- [`glab opentofu`](docs/source/opentofu)
-- [`glab release`](docs/source/release)
-- [`glab repo`](docs/source/repo)
-- [`glab schedule`](docs/source/schedule)
-- [`glab securefile`](docs/source/securefile)
-- [`glab snippet`](docs/source/snippet)
-- [`glab ssh-key`](docs/source/ssh-key)
-- [`glab stack`](docs/source/stack)
-- [`glab token`](docs/source/token)
-- [`glab user`](docs/source/user)
-- [`glab variable`](docs/source/variable)
+- [`glab alias`](docs/source/alias): Create, list, and delete aliases.
+- [`glab api`](docs/source/api): Make authenticated requests to the GitLab API.
+- [`glab auth`](docs/source/auth): Manage the authentication state of the CLI.
+- [`glab changelog`](docs/source/changelog): Interact with the changelog API.
+- [`glab check-update`](docs/source/check-update): Check for updates to the CLI.
+- [`glab ci`](docs/source/ci): Work with GitLab CI/CD pipelines and jobs.
+- [`glab cluster`](docs/source/cluster): Manage GitLab agents for Kubernetes and their clusters.
+- [`glab completion`](docs/source/completion): Generate shell completion scripts.
+- [`glab config`](docs/source/config): Set and get CLI settings.
+- [`glab deploy-key`](docs/source/deploy-key): Manage deploy keys.
+- [`glab duo`](docs/source/duo): Generate terminal commands from natural language.
+- [`glab gpg-key`](docs/source/gpg-key): Manage GPG keys registered with your GitLab account.
+- [`glab incident`](docs/source/incident): Work with GitLab incidents.
+- [`glab issue`](docs/source/issue): Work with GitLab issues.
+- [`glab iteration`](docs/source/iteration): Retrieve iteration information.
+- [`glab job`](docs/source/job): Work with GitLab CI/CD jobs.
+- [`glab label`](docs/source/label): Manage labels for your project.
+- [`glab mcp`](docs/source/mcp): Work with a Model Context Protocol (MCP) server. (EXPERIMENTAL)
+- [`glab milestone`](docs/source/milestone): Manage group or project milestones.
+- [`glab mr`](docs/source/mr): Create, view, and manage merge requests.
+- [`glab opentofu`](docs/source/opentofu): Work with the OpenTofu or Terraform integration.
+- [`glab release`](docs/source/release): Manage GitLab releases.
+- [`glab repo`](docs/source/repo): Work with GitLab repositories and projects.
+- [`glab schedule`](docs/source/schedule): Work with GitLab CI/CD schedules.
+- [`glab securefile`](docs/source/securefile): Manage secure files for a project.
+- [`glab snippet`](docs/source/snippet): Create, view and manage snippets.
+- [`glab ssh-key`](docs/source/ssh-key): Manage SSH keys registered with your GitLab account.
+- [`glab stack`](docs/source/stack): Create, manage, and work with stacked diffs.
+- [`glab token`](docs/source/token): Manage personal, project, or group tokens.
+- [`glab user`](docs/source/user): Interact with a GitLab user account.
+- [`glab variable`](docs/source/variable): Manage variables for a GitLab project or group.
+- [`glab version`](docs/source/version): Show version information for the CLI.
 
 Commands follow this pattern:
 
@@ -130,7 +134,7 @@ command you forgot, or provide suggestions on how to run commands to perform oth
 
 ## Documentation
 
-Read the [documentation](docs/source/index.md) for usage instructions or check out `glab help`.
+Read the [documentation](docs/source/_index.md) for usage instructions or check out `glab help`.
 
 ## Installation
 
@@ -156,11 +160,11 @@ If a supported binary for your OS is not found at the [releases page](https://gi
 #### Prerequisites for building from source
 
 - `make`
-- Go 1.22+
+- Go version as defined by [`main/go.mod`](https://gitlab.com/gitlab-org/cli/-/blob/main/go.mod?ref_type=heads#L3)
 
 To build from source:
 
-1. Run the command `go version` to verify that Go version 1.22 or later is installed.
+1. Run the command `go version` to verify that you have the minimum required Go version.
    If `go` is not installed, follow instructions on [the Go website](https://go.dev/doc/install).
 1. Run the `go install gitlab.com/gitlab-org/cli/cmd/glab@main` to install `glab` cmd in `$GOPATH/bin`.
 1. The sources of `glab` will be in `$GOPATH/src/gitlab.com/gitlab-org/cli`.
@@ -169,6 +173,10 @@ To build from source:
 1. Run `glab version` to confirm that it worked.
 
 ## Authentication
+
+When running `glab auth login` interactively inside a Git repository, `glab` automatically
+detects GitLab instances from your Git remotes and presents them as options. This saves you
+from having to manually type the hostname.
 
 ### OAuth (GitLab.com)
 
@@ -231,6 +239,23 @@ To authenticate your installation of `glab` with a personal access token:
 To authenticate your installation of `glab` with a CI job token, the `glab` command must be run in a GitLab CI job.
 The token is automatically provided by the GitLab Runner via the `CI_JOB_TOKEN` environment variable.
 
+Endpoints allowing the use of the CI job token are listed in the
+[GitLab documentation](https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access).
+
+#### Auto-Login [EXPERIMENTAL]
+
+There is an experimental CI auto-login feature that can be enabled by setting the `GLAB_ENABLE_CI_AUTOLOGIN` variable
+to `true`. This feature automatically detects if `glab` is running in GitLab CI and, if so, uses the predefined
+CI/CD variables to sign in.
+
+Example:
+
+```shell
+GLAB_ENABLE_CI_AUTLOGIN=true glab release list -R $CI_PROJECT_PATH
+```
+
+#### Manual login
+
 Example:
 
 ```shell
@@ -238,23 +263,51 @@ glab auth login --job-token $CI_JOB_TOKEN --hostname $CI_SERVER_HOST --api-proto
 GITLAB_HOST=$CI_SERVER_URL glab release list -R $CI_PROJECT_PATH
 ```
 
-Endpoints allowing the use of the CI job token are listed in the
-[GitLab documentation](https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access).
-
 ## Configuration
 
 By default, `glab` follows the
-[XDG Base Directory Spec](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html).
-Configure it globally, locally, or per host:
+[XDG Base Directory Spec](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html),
+which means it searches for configuration files in multiple locations with proper precedence.
 
-- **Globally**: run `glab config set --global editor vim`.
-  - The global configuration file is available at `~/.config/glab-cli/config.yml`.
+### Configuration Levels
+
+Configure `glab` at different levels: system-wide, globally (per-user), locally (per-repository), or per host:
+
+- **System-wide** (for all users): Place configuration at `/etc/xdg/glab-cli/config.yml` (or `$XDG_CONFIG_DIRS/glab-cli/config.yml`).
+  - Useful for Linux distributions and system administrators to provide default configurations.
+  - User configurations will override system-wide settings.
+- **Globally** (per-user): run `glab config set --global editor vim`.
+  - The global configuration file is available at `~/.config/glab-cli/config.yml` (or `$XDG_CONFIG_HOME/glab-cli/config.yml`).
   - To override this location, set the `GLAB_CONFIG_DIR` environment variable.
 - **The current repository**: run `glab config set editor vim` in any folder in a Git repository.
   - The local configuration file is available at `.git/glab-cli/config.yml` in the current working Git directory.
 - **Per host**: run `glab config set editor vim --host gitlab.example.org`, changing
   the `--host` parameter to meet your needs.
   - Per-host configuration info is always stored in the global configuration file, with or without the `global` flag.
+
+### Configuration Search Order
+
+When `glab` looks for configuration files, it searches in this order (highest priority first):
+
+1. `$GLAB_CONFIG_DIR/config.yml` (if `GLAB_CONFIG_DIR` is set)
+2. `~/.config/glab-cli/config.yml` (legacy location, for backward compatibility)
+3. `$XDG_CONFIG_HOME/glab-cli/config.yml` (platform-specific XDG location)
+4. `$XDG_CONFIG_DIRS/glab-cli/config.yml` (system-wide configs, default: `/etc/xdg/glab-cli/config.yml`)
+
+The first configuration file found is used.
+
+#### Configuration File Locations
+
+**For backward compatibility**, `glab` checks `~/.config/glab-cli/config.yml` first on all platforms.
+If no legacy config exists, `glab` uses platform-specific XDG Base Directory locations:
+
+- **Linux**: `~/.config/glab-cli/config.yml` (XDG_CONFIG_HOME)
+- **macOS**: `~/Library/Application Support/glab-cli/config.yml` (XDG_CONFIG_HOME)
+- **Windows**: `%APPDATA%\glab-cli\config.yml` (XDG_CONFIG_HOME)
+
+**Note**: If you have config files in both the legacy location (`~/.config/glab-cli/config.yml`)
+and the platform-specific XDG location, `glab` will use the legacy location and display a warning.
+Consider consolidating to one location to avoid confusion.
 
 ### Configure `glab` to use your GitLab Self-Managed or GitLab Dedicated instance
 
@@ -322,39 +375,39 @@ self-signed certificates, either:
 
 ### GitLab access variables
 
-| Token name         | In `config.yml`                  | Default value if [not set](#configuration) | Description |
-|--------------------|----------------------------------|--------------------------------------------|-------------|
-| `GITLAB_API_HOST`  | `hosts.<hostname>.api_host`, or `hosts.<hostname>` if empty | Hostname found in the Git URL              | Specify the host where the API endpoint is found. Useful when there are separate (sub)domains or hosts for Git and the API endpoint. |
-| `GITLAB_CLIENT_ID` | `hosts.<hostname>.client_id`                             | Client-ID for GitLab.com.                  | A custom Client-ID generated by the GitLab OAuth 2.0 application. |
-| `GITLAB_GROUP`     | -                              | -                                        | Default GitLab group used for listing merge requests, issues and variables. Only used if no `--group` option is given. |
-| `GITLAB_HOST`      | `host` (this is the default host `glab` will use when the current directory is not a `git` directory)                          | `https://gitlab.com`                       | Alias of `GITLAB_URI`. |
-| `GITLAB_REPO`      | -                              | -                                        | Default GitLab repository used for commands accepting the `--repo` option. Only used if no `--repo` option is given. |
-| `GITLAB_TOKEN`     | `hosts.<hostname>.token`                          | -                                        | an authentication token for API requests. Setting this avoids being prompted to authenticate and overrides any previously stored credentials. Can be set in the config with `glab config set token xxxxxx`. |
-| `GITLAB_URI`       | not applicable                       | not applicable                      | Alias of `GITLAB_HOST`. |
+| Token name         | In `config.yml`                                                                                       | Default value if [not set](#configuration) | Description                                                                                                                                                                                                 |
+|--------------------|-------------------------------------------------------------------------------------------------------|--------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GITLAB_API_HOST`  | `hosts.<hostname>.api_host`, or `hosts.<hostname>` if empty                                           | Hostname found in the Git URL              | Specify the host where the API endpoint is found. Useful when there are separate (sub)domains or hosts for Git and the API endpoint.                                                                        |
+| `GITLAB_CLIENT_ID` | `hosts.<hostname>.client_id`                                                                          | Client-ID for GitLab.com.                  | A custom Client-ID generated by the GitLab OAuth 2.0 application.                                                                                                                                           |
+| `GITLAB_GROUP`     | -                                                                                                     | -                                          | Default GitLab group used for listing merge requests, issues and variables. Only used if no `--group` option is given.                                                                                      |
+| `GITLAB_HOST`      | `host` (this is the default host `glab` will use when the current directory is not a `git` directory) | `https://gitlab.com`                       | Alias of `GITLAB_URI`.                                                                                                                                                                                      |
+| `GITLAB_REPO`      | -                                                                                                     | -                                          | Default GitLab repository used for commands accepting the `--repo` option. Only used if no `--repo` option is given.                                                                                        |
+| `GITLAB_TOKEN`     | `hosts.<hostname>.token`                                                                              | -                                          | an authentication token for API requests. Setting this avoids being prompted to authenticate and overrides any previously stored credentials. Can be set in the config with `glab config set token xxxxxx`. |
+| `GITLAB_URI`       | not applicable                                                                                        | not applicable                             | Alias of `GITLAB_HOST`.                                                                                                                                                                                     |
 
 ### `glab` configuration variables
 
-| Token name         | In `config.yml` | Default value if [not set](#configuration) | Description |
-|--------------------|-----------------|--------------------------------------------|-------------|
-| `BROWSER`          | `browser`       | system default                                        | The web browser to use for opening links. Can be set in the configuration with `glab config set browser mybrowser`. |
-| `FORCE_HYPERLINKS` | `display_hyperlinks`             | `false`                                        | Set to `true` to force hyperlinks to be output, even when not outputting to a TTY. |
-| `GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY` | - | - | When `true` or `1`, the `glab release create` command uploads release assets to the generic package registry of the project. Can be overridden with the `--use-package-registry` flag. |
-| `GLAB_CHECK_UPDATE` | -            | -            | Set to `true` to force an update check. |
-| `GLAB_CONFIG_DIR`  | -            | `~/.config/glab-cli/`                      | Directory where the `glab` global configuration file is located. Can be set in the config with `glab config set remote_alias origin`. |
-| `GLAB_DEBUG_HTTP`  | -             | `false`                                        | Set to true to output HTTP transport information (request / response). |
-| `GLAB_SEND_TELEMETRY` | `telemetry`             | `true`                                        | Set to `false` to prevent command usage data from being sent to your GitLab instance. |
-| `GLAMOUR_STYLE`    | `glamour_style` | `dark`                                       | Environment variable to set your desired Markdown renderer style. Available options are (`dark`, `light`, `notty`) or set a [custom style](https://github.com/charmbracelet/glamour#styles). |
-| `NO_COLOR`         | -            | `true`                                        | Set to any value to avoid printing ANSI escape sequences for color output. |
-| `NO_PROMPT`        | `no_prompt`            | `false`                                        | Set to `true` to disable prompts. |
-| `VISUAL`, `EDITOR` | `editor`        | `nano`                                        | (in order of precedence) The editor tool to use for authoring text. Can be set in the config with `glab config set editor vim`. |
+| Token name                                   | In `config.yml`      | Default value if [not set](#configuration) | Description                                                                                                                                                                                  |
+|----------------------------------------------|----------------------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `BROWSER`                                    | `browser`            | system default                             | The web browser to use for opening links. Can be set in the configuration with `glab config set browser mybrowser`.                                                                          |
+| `FORCE_HYPERLINKS`                           | `display_hyperlinks` | `false`                                    | Set to `true` to force hyperlinks to be output, even when not outputting to a TTY.                                                                                                           |
+| `GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY` | -                    | -                                          | When `true` or `1`, the `glab release create` command uploads release assets to the generic package registry of the project. Can be overridden with the `--use-package-registry` flag.       |
+| `GLAB_CHECK_UPDATE`                          | -                    | -                                          | Set to `true` to force an update check.                                                                                                                                                      |
+| `GLAB_CONFIG_DIR`                            | -                    | `~/.config/glab-cli/`                      | Directory where the `glab` global configuration file is located. Can be set in the config with `glab config set remote_alias origin`.                                                        |
+| `GLAB_DEBUG_HTTP`                            | -                    | `false`                                    | Set to true to output HTTP transport information (request / response).                                                                                                                       |
+| `GLAB_SEND_TELEMETRY`                        | `telemetry`          | `true`                                     | Set to `false` to prevent command usage data from being sent to your GitLab instance.                                                                                                        |
+| `GLAMOUR_STYLE`                              | `glamour_style`      | `dark`                                     | Environment variable to set your desired Markdown renderer style. Available options are (`dark`, `light`, `notty`) or set a [custom style](https://github.com/charmbracelet/glamour#styles). |
+| `NO_COLOR`                                   | -                    | `true`                                     | Set to any value to avoid printing ANSI escape sequences for color output.                                                                                                                   |
+| `NO_PROMPT`                                  | `no_prompt`          | `false`                                    | Set to `true` to disable prompts.                                                                                                                                                            |
+| `VISUAL`, `EDITOR`                           | `editor`             | `nano`                                     | (in order of precedence) The editor tool to use for authoring text. Can be set in the config with `glab config set editor vim`.                                                              |
 
 ### Other variables
 
-| Token name           | In `config.yml` | Default value if [not set](#configuration) | Description |
-|----------------------|-----------------|--------------------------------------------|-------------|
-| `DEBUG`              | `debug`            | `false`                                        | Set to `true` to output more information for each command, like Git commands, expanded aliases, and DNS error details. |
-| `GIT_REMOTE_URL_VAR` | not applicable         | not applicable                          | Alias of `REMOTE_ALIAS`. |
-| `REMOTE_ALIAS`       | `remote_alias`             | -                                        | `git remote` variable or alias that contains the GitLab URL. Alias: `GIT_REMOTE_URL_VAR` |
+| Token name           | In `config.yml` | Default value if [not set](#configuration) | Description                                                                                                            |
+|----------------------|-----------------|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| `DEBUG`              | `debug`         | `false`                                    | Set to `true` to output more information for each command, like Git commands, expanded aliases, and DNS error details. |
+| `GIT_REMOTE_URL_VAR` | not applicable  | not applicable                             | Alias of `REMOTE_ALIAS`.                                                                                               |
+| `REMOTE_ALIAS`       | `remote_alias`  | -                                          | `git remote` variable or alias that contains the GitLab URL. Alias: `GIT_REMOTE_URL_VAR`                               |
 
 #### Variable deprecation
 

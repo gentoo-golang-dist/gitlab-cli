@@ -1,3 +1,5 @@
+//go:build !integration
+
 package contributors
 
 import (
@@ -5,17 +7,17 @@ import (
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
-
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
-
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
+	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),

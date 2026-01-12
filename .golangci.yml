@@ -10,12 +10,15 @@ linters:
         - errcheck
         - govet
         - ineffassign
+        - modernize
         - nonamedreturns
         - staticcheck
         - unconvert
         - unparam
         - unused
         - usetesting
+        - thelper
+        - tparallel
     exclusions:
       presets:
           - comments
@@ -23,6 +26,14 @@ linters:
           - legacy
           - std-error-handling
     settings:
+      govet:
+        enable-all: true
+        disable:
+          - fieldalignment
+          - shadow
+      modernize:
+        disable:
+          - omitzero
       staticcheck:
         checks:
           - all
@@ -54,8 +65,24 @@ linters:
             deny:
               - pkg: "gitlab.com/gitlab-org/cli/internal/testing/**"
                 desc: "Testing utilities should only be used in test files"
+      usetesting:
+        context-background: true
+        context-todo: true
+        os-chdir: true
+        os-mkdir-temp: true
+        os-setenv: true
+        os-create-temp: true
+        os-temp-dir: true
 
 formatters:
     enable:
+        - gci
         - gofumpt
         - goimports
+    settings:
+      gci:
+        sections:
+          - standard
+          - default
+          - prefix(gitlab.com/gitlab-org/api)
+          - localmodule

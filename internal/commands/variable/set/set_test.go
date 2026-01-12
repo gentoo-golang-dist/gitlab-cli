@@ -1,3 +1,5 @@
+//go:build !integration
+
 package set
 
 import (
@@ -5,13 +7,13 @@ import (
 	"net/http"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 )
 
@@ -134,7 +136,7 @@ func Test_NewCmdSet(t *testing.T) {
 			},
 		},
 		{
-			name: "var with descripton",
+			name: "var with description",
 			cli:  `var_desc -v"var_desc" -d "cool var description"`,
 			wants: options{
 				key:         "var_desc",

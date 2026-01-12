@@ -1,16 +1,19 @@
+//go:build !integration
+
 package create
 
 import (
 	"fmt"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-
 	"github.com/acarl005/stripansi"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 

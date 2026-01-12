@@ -1,3 +1,5 @@
+//go:build !integration
+
 package config
 
 import (
@@ -231,4 +233,16 @@ hosts:
 	require.Nil(t, headers)
 	require.Contains(t, err.Error(), "failed to resolve header \"Cf-Access-Client-Secret\"")
 	require.Contains(t, err.Error(), "environment variable \"MISSING_SECRET\" for header \"Cf-Access-Client-Secret\" is not set or empty")
+}
+
+func TestConfig_parseHosts_NoHosts(t *testing.T) {
+	t.Parallel()
+
+	cfg := &fileConfig{}
+	// Create empty hosts node
+	emptyHostsNode := &yaml.Node{Kind: yaml.MappingNode}
+
+	_, err := cfg.parseHosts(emptyHostsNode)
+
+	assert.True(t, isNotFoundError(err))
 }

@@ -1,3 +1,5 @@
+//go:build !integration
+
 package save
 
 import (
@@ -12,6 +14,8 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
@@ -19,10 +23,11 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/test"
-	"go.uber.org/mock/gomock"
 )
 
 func setupTestFactory(t *testing.T, rt http.RoundTripper, isTTY bool) (*bytes.Buffer, *bytes.Buffer, cmdutils.Factory) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(isTTY))
 
 	factory := cmdtest.NewTestFactory(ios,
@@ -32,7 +37,9 @@ func setupTestFactory(t *testing.T, rt http.RoundTripper, isTTY bool) (*bytes.Bu
 	return stdout, stderr, factory
 }
 
-func runSaveCommand(rt http.RoundTripper, t *testing.T, getText cmdutils.GetTextUsingEditor, isTTY bool, args string) (*test.CmdOut, error) {
+func runSaveCommand(t *testing.T, rt http.RoundTripper, getText cmdutils.GetTextUsingEditor, isTTY bool, args string) (*test.CmdOut, error) {
+	t.Helper()
+
 	stdout, stderr, factory := setupTestFactory(t, rt, isTTY)
 
 	ctrl := gomock.NewController(t)
@@ -124,7 +131,7 @@ func TestSaveNewStack(t *testing.T) {
 			getText := getMockEditor(tc.editorMessage, &[]string{})
 			args := strings.Join(tc.args, " ")
 
-			output, err := runSaveCommand(nil, t, getText, isTTY, args)
+			output, err := runSaveCommand(t, nil, getText, isTTY, args)
 
 			if tc.wantErr {
 				require.Errorf(t, err, tc.expected)
@@ -348,6 +355,8 @@ func Test_createShaBranch(t *testing.T) {
 }
 
 func createTemporaryFiles(t *testing.T, dir string, files []string) {
+	t.Helper()
+
 	for _, file := range files {
 		file = path.Join(dir, file)
 		_, err := os.Create(file)

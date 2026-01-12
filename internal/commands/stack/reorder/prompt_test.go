@@ -1,10 +1,14 @@
+//go:build !integration
+
 package reorder
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -47,7 +51,7 @@ func Test_promptForReorder(t *testing.T) {
 			prompts := []string{}
 			getText := getMockEditor(tt.args.input, &prompts)
 
-			got, err := promptForOrder(factory, getText, tt.args.stack, "")
+			got, err := promptForOrder(t.Context(), factory, getText, tt.args.stack, "")
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -138,6 +142,8 @@ func Test_parseReorderFile(t *testing.T) {
 }
 
 func setupTestFactory(t *testing.T, rt http.RoundTripper, isTTY bool) cmdutils.Factory {
+	t.Helper()
+
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(isTTY))
 
 	f := cmdtest.NewTestFactory(ios,
@@ -149,7 +155,7 @@ func setupTestFactory(t *testing.T, rt http.RoundTripper, isTTY bool) cmdutils.F
 }
 
 func getMockEditor(input string, prompts *[]string) cmdutils.GetTextUsingEditor {
-	return func(editor, tmpFileName, content string) (string, error) {
+	return func(ctx context.Context, editor, tmpFileName, content string) (string, error) {
 		*prompts = append(*prompts, content)
 		return input, nil
 	}

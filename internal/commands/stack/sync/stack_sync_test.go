@@ -1,3 +1,5 @@
+//go:build !integration
+
 package sync
 
 import (
@@ -5,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
@@ -12,7 +16,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/stacks"
-	"go.uber.org/mock/gomock"
 )
 
 type SyncScenario struct {
@@ -28,6 +31,8 @@ type TestRef struct {
 }
 
 func setupTestFactory(t *testing.T, rt http.RoundTripper) (cmdutils.Factory, *options) {
+	t.Helper()
+
 	ios, _, _, _ := cmdtest.TestIOStreams()
 
 	f := cmdtest.NewTestFactory(ios,
@@ -75,7 +80,7 @@ func Test_stackSync(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "two branches, 1st branch has MR, 2nd branch behind",
+			name: "two branches, 1st branch has MR, 2nd branch behind, stacks are named",
 			args: args{
 				stack: SyncScenario{
 					title: "my cool stack",
@@ -83,12 +88,13 @@ func Test_stackSync(t *testing.T) {
 						"1": {
 							ref: git.StackRef{
 								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
-								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+								MR:          "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+								Description: "single line desc",
 							},
 							state: NothingToCommit,
 						},
 						"2": {
-							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: ""},
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: "", Description: "multi line desc\n\ndescription, bark!"},
 							state: BranchIsBehind,
 						},
 					},
@@ -99,7 +105,7 @@ func Test_stackSync(t *testing.T) {
 				stacks.MockStackUser(),
 				stacks.MockListStackMRsByBranch("Branch1", "25"),
 				stacks.MockGetStackMR("Branch1", "25"),
-				stacks.MockPostStackMR("Branch2", "Branch1", "3"),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch2", Target: "Branch1", Project: "3", Title: "multi line desc", Description: "description, bark!"}),
 			},
 		},
 
@@ -110,7 +116,7 @@ func Test_stackSync(t *testing.T) {
 					title: "my cool stack",
 					refs: map[string]TestRef{
 						"1": {
-							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: ""},
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: "", Description: "some description"},
 							state: NothingToCommit,
 						},
 						"2": {
@@ -123,8 +129,8 @@ func Test_stackSync(t *testing.T) {
 
 			httpMocks: []stacks.HttpMock{
 				stacks.MockStackUser(),
-				stacks.MockPostStackMR("Branch1", "main", "3"),
-				stacks.MockPostStackMR("Branch2", "Branch1", "3"),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch1", Target: "main", Project: "3", Title: "some description"}),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch2", Target: "Branch1", Project: "3"}),
 			},
 		},
 
@@ -170,11 +176,11 @@ func Test_stackSync(t *testing.T) {
 				stacks.MockStackUser(),
 				stacks.MockListStackMRsByBranch("Branch1", "25"),
 				stacks.MockGetStackMR("Branch1", "25"),
-				stacks.MockPostStackMR("Branch2", "Branch1", "3"),
-				stacks.MockPostStackMR("Branch3", "Branch2", "3"),
-				stacks.MockPostStackMR("Branch4", "Branch3", "3"),
-				stacks.MockPostStackMR("Branch5", "Branch4", "3"),
-				stacks.MockPostStackMR("Branch6", "Branch5", "3"),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch2", Target: "Branch1", Project: "3"}),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch3", Target: "Branch2", Project: "3"}),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch4", Target: "Branch3", Project: "3"}),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch5", Target: "Branch4", Project: "3"}),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch6", Target: "Branch5", Project: "3"}),
 			},
 		},
 		{
@@ -198,8 +204,8 @@ func Test_stackSync(t *testing.T) {
 
 			httpMocks: []stacks.HttpMock{
 				stacks.MockStackUser(),
-				stacks.MockPostStackMR("Branch1", "jawn", "3"),
-				stacks.MockPostStackMR("Branch2", "Branch1", "3"),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch1", Target: "jawn", Project: "3"}),
+				stacks.MockPostStackMR(stacks.MockMROptions{Source: "Branch2", Target: "Branch1", Project: "3"}),
 			},
 		},
 	}

@@ -1,3 +1,5 @@
+//go:build !integration
+
 package run
 
 import (
@@ -8,15 +10,15 @@ import (
 	"os/exec"
 	"testing"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-
-	"gitlab.com/gitlab-org/cli/internal/run"
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/survivorbat/huhtest"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/run"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
@@ -205,7 +207,7 @@ func TestCIRunMrPipeline(t *testing.T) {
 					},
 				)
 			}
-			api.ListMRs = func(client *gitlab.Client, projectID interface{}, opts *gitlab.ListProjectMergeRequestsOptions, listOpts ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
+			api.ListMRs = func(client *gitlab.Client, projectID any, opts *gitlab.ListProjectMergeRequestsOptions, listOpts ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
 				if *opts.SourceBranch == "custom-branch-123" {
 					return []*gitlab.BasicMergeRequest{
 						{

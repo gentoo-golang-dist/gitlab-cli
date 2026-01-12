@@ -1,9 +1,12 @@
+//go:build !integration
+
 package view
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 

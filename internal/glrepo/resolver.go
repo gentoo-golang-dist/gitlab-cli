@@ -7,12 +7,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
-	"github.com/hashicorp/go-multierror"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 // cap the number of git remotes looked up, since the user might have an
@@ -67,8 +68,8 @@ func (r *ResolvedRemotes) BaseRepo(ios *iostreams.IOStreams) (Interface, error) 
 	for _, remote := range r.remotes {
 		if remote.Resolved == "base" {
 			return remote, nil
-		} else if strings.HasPrefix(remote.Resolved, "base:") {
-			repo, err := FromFullName(strings.TrimPrefix(remote.Resolved, "base:"), r.defaultHostname)
+		} else if after, ok := strings.CutPrefix(remote.Resolved, "base:"); ok {
+			repo, err := FromFullName(after, r.defaultHostname)
 			if err != nil {
 				return nil, err
 			}
@@ -159,8 +160,8 @@ func (r *ResolvedRemotes) HeadRepo(ios *iostreams.IOStreams) (Interface, error) 
 	for _, remote := range r.remotes {
 		if remote.Resolved == "head" {
 			return remote, nil
-		} else if strings.HasPrefix(remote.Resolved, "head:") {
-			repo, err := FromFullName(strings.TrimPrefix(remote.Resolved, "head:"), r.defaultHostname)
+		} else if after, ok := strings.CutPrefix(remote.Resolved, "head:"); ok {
+			repo, err := FromFullName(after, r.defaultHostname)
 			if err != nil {
 				return nil, err
 			}

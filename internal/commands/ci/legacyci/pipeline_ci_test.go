@@ -1,3 +1,5 @@
+//go:build !integration
+
 // This package contains the old `glab pipeline ci` command which has been deprecated
 // in favour of the `glab ci` command.
 // This package is kept for backward compatibility but issues a deprecation warning
@@ -6,9 +8,9 @@ package legacyci
 import (
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestNewCmdCI(t *testing.T) {

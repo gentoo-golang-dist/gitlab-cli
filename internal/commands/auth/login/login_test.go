@@ -1,14 +1,16 @@
+//go:build !integration
+
 package login
 
 import (
 	"bytes"
 	"testing"
 
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/zalando/go-keyring"
+
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -46,17 +48,21 @@ func Test_NewCmdLogin(t *testing.T) {
 			stdinTTY: true,
 		},
 		{
-			name:     "nontty, hostname",
-			cli:      "--hostname salsa.debian.org",
-			wantsErr: true,
-			err:      "could not get sign-in type",
+			name: "nontty, hostname",
+			cli:  "--hostname salsa.debian.org --token dummy-token",
+			wants: LoginOptions{
+				Hostname: "salsa.debian.org",
+				Token:    "dummy-token",
+			},
 			stdinTTY: false,
 		},
 		{
-			name:     "nontty",
-			cli:      "",
-			wantsErr: true,
-			err:      "could not prompt",
+			name: "nontty",
+			cli:  "--token dummy-token",
+			wants: LoginOptions{
+				Hostname: "gitlab.com",
+				Token:    "dummy-token",
+			},
 			stdinTTY: false,
 		},
 		{
@@ -316,6 +322,8 @@ func Test_hostnameValidator(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := hostnameValidator(tC.hostname)
 			if tC.expected == "" {
 				assert.NoError(t, err)

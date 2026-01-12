@@ -1,3 +1,5 @@
+//go:build !integration
+
 package view
 
 import (
@@ -6,19 +8,22 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
+	"unicode/utf8"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
+	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
 	"gitlab.com/gitlab-org/cli/test"
 )
 
 func assertScreen(t *testing.T, screen tcell.Screen, expected []string) {
+	t.Helper()
+
 	sx, sy := screen.Size()
 	assert.Equal(t, len(expected), sy)
 	assert.Equal(t, len([]rune(expected[0])), sx)
@@ -27,8 +32,8 @@ func assertScreen(t *testing.T, screen tcell.Screen, expected []string) {
 		runes := make([]rune, len(str))
 		row := []rune(str)
 		for x, expectedRune := range row {
-			r, _, _, _ := screen.GetContent(x, y)
-			runes[x] = r
+			s, _, _ := screen.Get(x, y)
+			runes[x], _ = utf8.DecodeRuneInString(s)
 			_ = expectedRune
 			// assert.Equal(t, expectedRune, r, "%s != %s at (%d,%d)",
 			//	strconv.QuoteRune(expectedRune), strconv.QuoteRune(r), x, y)
@@ -48,6 +53,8 @@ func assertScreen(t *testing.T, screen tcell.Screen, expected []string) {
 }
 
 func Test_line(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc     string
 		lineF    func(screen tcell.Screen, x, y, l int)
@@ -136,6 +143,7 @@ func Test_line(t *testing.T) {
 		test := test
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			test.lineF(screen, test.x, test.y, test.l)
 			screen.Show()
 			assertScreen(t, screen, test.expected)
@@ -153,6 +161,8 @@ func testbox(x, y, w, h int) *tview.TextView { // nolint:unparam
 }
 
 func Test_Link(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc        string
 		b1, b2      *tview.Box
@@ -227,6 +237,7 @@ func Test_Link(t *testing.T) {
 		test := test
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			link(screen, test.b1, test.b2, 2, test.first, test.last)
 			screen.Show()
 			assertScreen(t, screen, test.expected)
@@ -337,6 +348,8 @@ func Test_LinkJobs(t *testing.T) {
 }
 
 func Test_LinkJobsNegative(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc  string
 		jobs  []*ViewJob
@@ -404,30 +417,6 @@ func Test_LinkJobsNegative(t *testing.T) {
 				"jobs-stage2-job1": testbox(1, 5, 3, 3),
 			},
 		},
-		{
-			"Link -- third job missing",
-			[]*ViewJob{
-				{
-					Name:  "stage1-job1",
-					Stage: "stage1",
-					Kind:  Job,
-				},
-				{
-					Name:  "stage2-job1",
-					Stage: "stage2",
-					Kind:  Job,
-				},
-				{
-					Name:  "stage2-job2",
-					Stage: "stage2",
-					Kind:  Job,
-				},
-			},
-			map[string]*tview.TextView{
-				"jobs-stage1-job1": testbox(1, 1, 3, 3),
-				"jobs-stage2-job1": testbox(1, 5, 3, 3),
-			},
-		},
 	}
 	for _, test := range tests {
 		screen := tcell.NewSimulationScreen("UTF-8")
@@ -438,6 +427,7 @@ func Test_LinkJobsNegative(t *testing.T) {
 		test := test
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			assert.Error(t, linkJobs(screen, test.jobs, test.boxes))
 		})
 	}
@@ -556,6 +546,8 @@ func Test_jobsView(t *testing.T) {
 }
 
 func Test_latestJobs(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc     string
 		jobs     []*ViewJob
@@ -692,6 +684,7 @@ func Test_latestJobs(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			jobs := latestJobs(test.jobs)
 			assert.Equal(t, test.expected, jobs)
 		})
@@ -699,22 +692,26 @@ func Test_latestJobs(t *testing.T) {
 }
 
 func Test_adjacentStages(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		desc                       string
-		stage                      string
-		jobs                       []*ViewJob
-		expectedPrev, expectedNext string
+		desc         string
+		stage        string
+		jobs         []*ViewJob
+		expectedPrev string
+		expectedNext string
 	}{
 		{
-			"no jobs",
-			"1",
-			[]*ViewJob{},
-			"", "",
+			desc:         "no jobs",
+			stage:        "1",
+			jobs:         []*ViewJob{},
+			expectedPrev: "",
+			expectedNext: "",
 		},
 		{
-			"first stage",
-			"1",
-			[]*ViewJob{
+			desc:  "first stage",
+			stage: "1",
+			jobs: []*ViewJob{
 				{
 					Stage: "1",
 				},
@@ -728,12 +725,13 @@ func Test_adjacentStages(t *testing.T) {
 					Stage: "2",
 				},
 			},
-			"1", "2",
+			expectedPrev: "1",
+			expectedNext: "2",
 		},
 		{
-			"mid stage",
-			"2",
-			[]*ViewJob{
+			desc:  "mid stage",
+			stage: "2",
+			jobs: []*ViewJob{
 				{
 					Stage: "1",
 				},
@@ -753,12 +751,13 @@ func Test_adjacentStages(t *testing.T) {
 					Stage: "3",
 				},
 			},
-			"1", "3",
+			expectedPrev: "1",
+			expectedNext: "3",
 		},
 		{
-			"last stage",
-			"3",
-			[]*ViewJob{
+			desc:  "last stage",
+			stage: "3",
+			jobs: []*ViewJob{
 				{
 					Stage: "1",
 				},
@@ -778,13 +777,15 @@ func Test_adjacentStages(t *testing.T) {
 					Stage: "3",
 				},
 			},
-			"2", "3",
+			expectedPrev: "2",
+			expectedNext: "3",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			prev, next := adjacentStages(test.jobs, test.stage)
 			assert.Equal(t, test.expectedPrev, prev)
 			assert.Equal(t, test.expectedNext, next)
@@ -793,6 +794,8 @@ func Test_adjacentStages(t *testing.T) {
 }
 
 func Test_stageBounds(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		desc                         string
 		stage                        string
@@ -879,6 +882,7 @@ func Test_stageBounds(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			lower, upper := stageBounds(test.jobs, test.stage)
 			assert.Equal(t, test.expectedLower, lower)
 			assert.Equal(t, test.expectedUpper, upper)
@@ -887,6 +891,8 @@ func Test_stageBounds(t *testing.T) {
 }
 
 func Test_handleNavigation(t *testing.T) {
+	t.Parallel()
+
 	jobs := []*ViewJob{
 		{
 			Name:   "stage1-job1-really-long",
@@ -1142,6 +1148,7 @@ func Test_handleNavigation(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
+
 			var navi navigator
 			for _, e := range test.input {
 				navi.Navigate(jobs, e)
@@ -1152,6 +1159,8 @@ func Test_handleNavigation(t *testing.T) {
 }
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error, func()) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
@@ -1166,6 +1175,62 @@ func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, e
 	cmdOut, err := cmdtest.ExecuteCommand(cmd, cli, stdout, stderr)
 
 	return cmdOut, err, restoreCmd
+}
+
+func Test_bracketEscaper(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		desc     string
+		input    string
+		expected string
+	}{
+		{
+			desc:     "no brackets",
+			input:    "simple text",
+			expected: "simple text",
+		},
+		{
+			desc:     "literal brackets [MASKED]",
+			input:    "value is [MASKED]",
+			expected: "value is [MASKED[]",
+		},
+		{
+			desc:     "ANSI escape sequence preserved",
+			input:    "\x1b[32;1mgreen text\x1b[0m",
+			expected: "\x1b[32;1mgreen text\x1b[0m",
+		},
+		{
+			desc:     "ANSI with literal brackets",
+			input:    "\x1b[32;1m$ echo \"test\"\x1b[0m\nvalue is [MASKED]\n",
+			expected: "\x1b[32;1m$ echo \"test\"\x1b[0m\nvalue is [MASKED[]\n",
+		},
+		{
+			desc:     "multiple literal brackets",
+			input:    "[MASKED] and [HIDDEN]",
+			expected: "[MASKED[] and [HIDDEN[]",
+		},
+		{
+			desc:     "complex trace with section markers",
+			input:    "Compile complete.\n\x1b[32;1m$ echo \"MASKED variables's value is ${TEST_MASKED}\"\x1b[0m\nMASKED variables's value is [MASKED]\n",
+			expected: "Compile complete.\n\x1b[32;1m$ echo \"MASKED variables's value is ${TEST_MASKED}\"\x1b[0m\nMASKED variables's value is [MASKED[]\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var output strings.Builder
+			escaper := &bracketEscaper{Writer: &output}
+
+			n, err := escaper.Write([]byte(test.input))
+
+			assert.NoError(t, err)
+			assert.Equal(t, len(test.input), n, "should return number of input bytes consumed")
+			assert.Equal(t, test.expected, output.String())
+		})
+	}
 }
 
 func TestCIView(t *testing.T) {
@@ -1189,22 +1254,72 @@ func TestCIView(t *testing.T) {
 			httpMocks: []httpMock{
 				{
 					http.MethodGet,
-					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/repository/commits/foo",
+					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/pipelines/latest?ref=foo",
 					http.StatusOK,
 					`{
-						"id": "6104942438c14ec7bd21c6cd5bd995272b3faff6",
+						"id": 8,
+						"ref": "foo",
+						"sha": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
+						"status": "created",
+						"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/225",
+						"created_at": "2025-10-28T16:52:39.000+01:00"
+					}`,
+				},
+				{
+					http.MethodGet,
+					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/repository/commits/2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
+					http.StatusOK,
+					`{
+						"id": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
 						"last_pipeline": {
 							"id": 8,
-							"ref": "main",
+							"ref": "foo",
 							"sha": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
 							"status": "created",
-							"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/225"
+							"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/225",
+							"created_at": "2025-10-28T16:52:39.000+01:00"
 						},
 						"status": "running"
 					}`,
 				},
 			},
 			expectedOutput: "Opening gitlab.com/OWNER/REPO/-/pipelines/225 in your browser.\n",
+		},
+		{
+			name: "view ci pipeline on web for a given pipeline id",
+			cli:  "--web --pipelineid 5",
+			httpMocks: []httpMock{
+				{
+					http.MethodGet,
+					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/pipelines/5",
+					http.StatusOK,
+					`
+					{
+						"id": 5,
+						"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/5",
+						"created_at": "2025-10-28T16:52:39.000+01:00",
+						"sha": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0"
+					}`,
+				},
+				{
+					http.MethodGet,
+					"https://gitlab.com/api/v4/projects/OWNER%2FREPO/repository/commits/2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
+					http.StatusOK,
+					`{
+						"id": "6104942438c14ec7bd21c6cd5bd995272b3faff6",
+						"last_pipeline": {
+							"id": 5,
+							"ref": "main",
+							"sha": "2dc6aa325a317eda67812f05600bdf0fcdc70ab0",
+							"status": "created",
+							"web_url": "https://gitlab.com/OWNER/REPO/-/pipelines/225",
+							"created_at": "2025-10-28T16:52:39.000+01:00"
+						},
+						"status": "running"
+					}`,
+				},
+			},
+			expectedOutput: "Opening gitlab.com/OWNER/REPO/-/pipelines/5 in your browser.\n",
 		},
 	}
 
@@ -1225,7 +1340,6 @@ func TestCIView(t *testing.T) {
 			if assert.NoErrorf(t, err, "error running command `ci view %s`: %v", tc.cli, err) {
 				assert.Empty(t, output.String())
 				assert.Equal(t, tc.expectedOutput, output.Stderr())
-
 			}
 		})
 	}

@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/spf13/cobra"
 
-	"gitlab.com/gitlab-org/cli/internal/git"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/git"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
-
-	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/spf13/cobra"
-	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
 
 func NewCmdFor(f cmdutils.Factory) *cobra.Command {
@@ -52,7 +51,7 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 			}
 
 			issueID := utils.StringToInt(args[0])
-			issue, err := api.GetIssue(client, repo.FullName(), issueID)
+			issue, err := api.GetIssue(client, repo.FullName(), int64(issueID))
 			if err != nil {
 				return err
 			}
@@ -117,7 +116,7 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 			l.SourceBranch = gitlab.Ptr(sourceBranch)
 			l.TargetBranch = gitlab.Ptr(targetBranch)
 			if milestone, _ := cmd.Flags().GetInt("milestone"); milestone != -1 {
-				l.MilestoneID = gitlab.Ptr(milestone)
+				l.MilestoneID = gitlab.Ptr(int64(milestone))
 			}
 			if allowCol, _ := cmd.Flags().GetBool("allow-collaboration"); allowCol {
 				l.AllowCollaboration = gitlab.Ptr(true)
@@ -131,11 +130,11 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 
 			if a, _ := cmd.Flags().GetString("assignee"); a != "" {
 				arrIds := strings.Split(strings.Trim(a, "[] "), ",")
-				var t2 []int
+				var t2 []int64
 
 				for _, i := range arrIds {
 					j := utils.StringToInt(i)
-					t2 = append(t2, j)
+					t2 = append(t2, int64(j))
 				}
 				l.AssigneeIDs = &t2
 			}

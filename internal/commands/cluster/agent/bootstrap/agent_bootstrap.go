@@ -7,13 +7,13 @@ import (
 	"os"
 	"os/exec"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 //go:generate go run go.uber.org/mock/mockgen@v0.6.0 -typed -destination=./mocks_for_test.go -package=bootstrap gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/bootstrap API,FluxWrapper,KubectlWrapper,Cmd
@@ -24,8 +24,8 @@ type API interface {
 	GetAgentByName(name string) (*gitlab.Agent, error)
 	RegisterAgent(name string) (*gitlab.Agent, error)
 	ConfigureAgent(agent *gitlab.Agent, branch string) error
-	ConfigureEnvironment(agentID int, name string, kubernetesNamespace string, fluxResourcePath string) error
-	CreateAgentToken(agentID int) (*gitlab.AgentToken, error)
+	ConfigureEnvironment(agentID int64, name string, kubernetesNamespace string, fluxResourcePath string) error
+	CreateAgentToken(agentID int64) (*gitlab.AgentToken, error)
 	SyncFile(f file, branch string) error
 	GetKASAddress() (string, error)
 }
@@ -37,7 +37,7 @@ type FluxWrapper interface {
 }
 
 type KubectlWrapper interface {
-	createAgentTokenSecret(tokenID int, token string) error
+	createAgentTokenSecret(tokenID int64, token string) error
 }
 
 type (
@@ -287,8 +287,8 @@ This command consists of multiple idempotent steps:
 	fl.StringVar(&opts.helmReleaseNamespace, "helm-release-namespace", "flux-system", "Namespace of the Flux HelmRelease manifest.")
 	fl.StringVar(&opts.helmReleaseFilepath, "helm-release-filepath", "gitlab-agent-helm-release.yaml", "File path within the GitLab Agent project to commit the Flux HelmRelease to.")
 	fl.StringVar(&opts.helmReleaseTargetNamespace, "helm-release-target-namespace", "gitlab-agent", "Namespace of the GitLab Agent deployment.")
-	fl.StringSliceVar(&opts.helmReleaseValues, "helm-release-values", nil, "Local path to values.yaml files")
-	fl.StringSliceVar(&opts.helmReleaseValuesFrom, "helm-release-values-from", nil, "Kubernetes object reference that contains the values.yaml data key in the format '<kind>/<name>', where 'kind' must be one of: (Secret, ConfigMap)")
+	fl.StringSliceVar(&opts.helmReleaseValues, "helm-release-values", nil, "Local path to values.yaml files. Multiple files can be comma-separated or specified by repeating the flag.")
+	fl.StringSliceVar(&opts.helmReleaseValuesFrom, "helm-release-values-from", nil, "Kubernetes object reference that contains the values.yaml data key in the format '<kind>/<name>', where 'kind' must be one of: (Secret, ConfigMap). Multiple references can be comma-separated or specified by repeating the flag.")
 
 	fl.StringVar(&opts.gitlabAgentTokenSecretName, "gitlab-agent-token-secret-name", "gitlab-agent-token", "Name of the Secret where the token for the GitLab Agent is stored. The helm-release-target-namespace is implied for the namespace of the Secret.")
 

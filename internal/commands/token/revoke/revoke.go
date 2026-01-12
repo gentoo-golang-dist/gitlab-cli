@@ -5,29 +5,29 @@ import (
 	"fmt"
 	"strconv"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
-	"gitlab.com/gitlab-org/cli/internal/commands/token/filter"
-
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/token/filter"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
+	tokenID int64
+	name    string
+
 	apiClient func(repoHost string) (*api.Client, error)
 	io        *iostreams.IOStreams
 	baseRepo  func() (glrepo.Interface, error)
 
 	user         string
 	group        string
-	name         string
-	tokenID      int
 	outputFormat string
 }
 
@@ -91,7 +91,7 @@ func NewCmdRevoke(f cmdutils.Factory) *cobra.Command {
 }
 
 func (o *options) complete(cmd *cobra.Command, args []string) error {
-	if tokenID, err := strconv.Atoi(args[0]); err != nil {
+	if tokenID, err := strconv.ParseInt(args[0], 10, 64); err != nil {
 		o.name = args[0]
 	} else {
 		o.tokenID = tokenID
@@ -150,7 +150,7 @@ func (o *options) run() error {
 		default:
 			return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v'. Use the ID instead.", o.name)}
 		}
-		if _, err = client.PersonalAccessTokens.RevokePersonalAccessToken(token.ID); err != nil {
+		if _, err = client.PersonalAccessTokens.RevokePersonalAccessTokenByID(token.ID); err != nil {
 			return err
 		}
 		token.Revoked = true

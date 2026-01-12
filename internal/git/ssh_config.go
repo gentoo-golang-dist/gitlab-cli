@@ -83,7 +83,7 @@ func (p *sshParser) read(fileName string) error {
 			p.hosts = strings.Fields(arguments)
 		case "hostname":
 			for _, host := range p.hosts {
-				for _, name := range strings.Fields(arguments) {
+				for name := range strings.FieldsSeq(arguments) {
 					if p.aliasMap == nil {
 						p.aliasMap = make(SSHAliasMap)
 					}
@@ -91,7 +91,7 @@ func (p *sshParser) read(fileName string) error {
 				}
 			}
 		case "include":
-			for _, arg := range strings.Fields(arguments) {
+			for arg := range strings.FieldsSeq(arguments) {
 				path := p.absolutePath(fileName, arg)
 
 				var fileNames []string
@@ -125,8 +125,8 @@ func (p *sshParser) absolutePath(parentFile, path string) string {
 		return path
 	}
 
-	if strings.HasPrefix(path, "~") {
-		return filepath.Join(p.homeDir, strings.TrimPrefix(path, "~"))
+	if after, ok := strings.CutPrefix(path, "~"); ok {
+		return filepath.Join(p.homeDir, after)
 	}
 
 	if strings.HasPrefix(filepath.ToSlash(parentFile), "/etc/ssh") {

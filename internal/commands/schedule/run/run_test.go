@@ -1,3 +1,5 @@
+//go:build !integration
+
 package run
 
 import (
@@ -9,7 +11,9 @@ import (
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -25,7 +29,7 @@ func Test_ScheduleRun(t *testing.T) {
 		    token: OTOKEN
 	`))))
 
-	runSchedule = func(*gitlab.Client, string, int, ...gitlab.RequestOptionFunc) error {
+	runSchedule = func(*gitlab.Client, string, int64, ...gitlab.RequestOptionFunc) error {
 		_, err := f.BaseRepo()
 		if err != nil {
 			return err

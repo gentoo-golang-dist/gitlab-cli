@@ -1,3 +1,5 @@
+//go:build !integration
+
 package upload
 
 import (
@@ -6,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 	"gitlab.com/gitlab-org/cli/internal/testing/httpmock"
@@ -13,6 +16,8 @@ import (
 )
 
 func runCommand(t *testing.T, rt http.RoundTripper, cli string) (*test.CmdOut, error) {
+	t.Helper()
+
 	ios, _, stdout, stderr := cmdtest.TestIOStreams()
 	factory := cmdtest.NewTestFactory(ios,
 		cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, &http.Client{Transport: rt}, "", glinstance.DefaultHostname).Lab()),
@@ -104,11 +109,11 @@ func TestReleaseUpload(t *testing.T) {
 			output, err := runCommand(t, fakeHTTP, tc.cli)
 
 			if assert.NoErrorf(t, err, "error running command `release upload %s`: %v", tc.cli, err) {
-				assert.Contains(t, output.Stderr(), `• Validating tag repo=OWNER/REPO tag=0.0.1
+				assert.Contains(t, output.String(), `• Validating tag repo=OWNER/REPO tag=0.0.1
 • Uploading release assets repo=OWNER/REPO tag=0.0.1
 • Uploading to release	file=testdata/test_file.txt name=test_file.txt
 ✓ Upload succeeded after`)
-				assert.Empty(t, output.String())
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}
@@ -181,8 +186,8 @@ func TestReleaseUpload_WithAssetsLinksJSON(t *testing.T) {
 			output, err := runCommand(t, fakeHTTP, tt.cli)
 
 			if assert.NoErrorf(t, err, "error running command `release upload %s`: %v", tt.cli, err) {
-				assert.Contains(t, output.Stderr(), tt.expectedOutput)
-				assert.Empty(t, output.String())
+				assert.Contains(t, output.String(), tt.expectedOutput)
+				assert.Empty(t, output.Stderr())
 			}
 		})
 	}

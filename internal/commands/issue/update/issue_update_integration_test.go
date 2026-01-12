@@ -1,3 +1,5 @@
+//go:build integration
+
 package update
 
 import (
@@ -6,18 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/test"
-
-	"github.com/google/shlex"
-
 	"github.com/acarl005/stripansi"
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
+	"gitlab.com/gitlab-org/cli/test"
 )
 
 func TestNewCmdUpdate_Integration(t *testing.T) {
@@ -39,7 +41,7 @@ func TestNewCmdUpdate_Integration(t *testing.T) {
 		},
 		CreatedAt: &timer,
 	}
-	api.UpdateIssue = func(client *gitlab.Client, projectID any, issueID int, opts *gitlab.UpdateIssueOptions) (*gitlab.Issue, error) {
+	api.UpdateIssue = func(client *gitlab.Client, projectID any, issueID int64, opts *gitlab.UpdateIssueOptions) (*gitlab.Issue, error) {
 		if projectID == "" || projectID == "WRONG_REPO" || projectID == "expected_err" || issueID != testIssue.ID {
 			return nil, fmt.Errorf("error expected")
 		}

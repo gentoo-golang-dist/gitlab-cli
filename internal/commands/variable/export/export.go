@@ -8,15 +8,16 @@ import (
 	"regexp"
 	"strings"
 
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -58,6 +59,9 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 			$ glab variable export --per-page 1000 --page 1
 			$ glab variable export --group gitlab-org
 			$ glab variable export --group gitlab-org --per-page 1000 --page 1
+			$ glab variable export --output json
+			$ glab variable export --output env
+			$ glab variable export --output export
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -77,10 +81,16 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 
 	cmdutils.EnableRepoOverride(cmd, f)
 	cmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repository argument is set.")
-	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 100, "Number of items to list per page.")
-	cmd.Flags().StringVarP(&opts.outputFormat, "format", "F", "json", "Format of output: json, export, env.")
-	cmd.Flags().StringVarP(&opts.scope, "scope", "s", "*", "The environment_scope of the variables. Values: '*' (default), or specific environments.")
+
+	fl := cmd.Flags()
+	fl.IntVarP(&opts.page, "page", "p", 1, "Page number.")
+	fl.IntVarP(&opts.perPage, "per-page", "P", 100, "Number of items to list per page.")
+	fl.StringVarP(&opts.outputFormat, "output", "F", "json", "Format output as: json, export, env.")
+	fl.StringVarP(&opts.scope, "scope", "s", "*", "The environment_scope of the variables. Values: '*' (default), or specific environments.")
+
+	// Deprecated: --format flag, use --output instead
+	fl.StringVar(&opts.outputFormat, "format", "json", "Format of output: json, export, env.")
+	_ = fl.MarkDeprecated("format", "use --output instead.")
 
 	return cmd
 }
@@ -115,13 +125,17 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	if o.group != "" {
-		createVarOpts := &gitlab.ListGroupVariablesOptions{Page: o.page, PerPage: o.perPage}
+		o.io.LogErrorf("Exporting variables from the %s group:\n", o.group)
+		createVarOpts := &gitlab.ListGroupVariablesOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    int64(o.page),
+				PerPage: int64(o.perPage),
+			},
+		}
 		groupVariables, _, err := client.GroupVariables.ListVariables(o.group, createVarOpts)
 		if err != nil {
 			return err
 		}
-
-		o.io.Logf("Exporting variables from the %s group:\n", o.group)
 
 		if len(groupVariables) == 0 {
 			return nil
@@ -134,13 +148,17 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		listOpts := &gitlab.ListProjectVariablesOptions{Page: o.page, PerPage: o.perPage}
+		o.io.LogErrorf("Exporting variables from the %s project:\n", repo.FullName())
+		listOpts := &gitlab.ListProjectVariablesOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    int64(o.page),
+				PerPage: int64(o.perPage),
+			},
+		}
 		projectVariables, _, err := client.ProjectVariables.ListVariables(repo.FullName(), listOpts)
 		if err != nil {
 			return err
 		}
-
-		o.io.Logf("Exporting variables from the %s project:\n", repo.FullName())
 
 		if len(projectVariables) == 0 {
 			return nil

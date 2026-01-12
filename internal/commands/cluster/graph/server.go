@@ -14,7 +14,6 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/pkg/browser"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"oss.terrastruct.com/d2/d2format"
 	"oss.terrastruct.com/d2/d2graph"
 	"oss.terrastruct.com/d2/d2layouts/d2dagrelayout"
@@ -22,6 +21,8 @@ import (
 	"oss.terrastruct.com/d2/d2renderers/d2svg"
 	"oss.terrastruct.com/d2/lib/log"
 	"oss.terrastruct.com/d2/lib/textmeasure"
+
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
 
 const (
@@ -49,7 +50,7 @@ func (s *server) Run(ctx context.Context) error {
 	}
 	err = browser.OpenURL(fmt.Sprintf("http://%s", l.Addr()))
 	if err != nil {
-		s.io.Log("Failed to open browser:", err)
+		s.io.LogError("Failed to open browser:", err)
 	}
 	err = srv.Serve(l)
 	if err == http.ErrServerClosed {
@@ -246,15 +247,15 @@ func (s *server) renderAndWrite(ctx context.Context, w http.ResponseWriter, srcC
 func (s *server) logWarnings(w []jsonWatchGraphWarning) {
 	for _, warning := range w {
 		if len(warning.Attributes) > 0 {
-			s.io.Logf("Warning: %s: %s (%v)\n", warning.Type, warning.Message, warning.Attributes)
+			s.io.LogInfof("Warning: %s: %s (%v)\n", warning.Type, warning.Message, warning.Attributes)
 		} else {
-			s.io.Logf("Warning: %s: %s\n", warning.Type, warning.Message)
+			s.io.LogInfof("Warning: %s: %s\n", warning.Type, warning.Message)
 		}
 	}
 }
 
 func (s *server) reportError(w http.ResponseWriter, err error, dataWritten bool) {
-	s.io.Log(err.Error())
+	s.io.LogError(err.Error())
 	if dataWritten {
 		// we've written something already, the only way to let the caller know there was an issue is to
 		// drop the connection.

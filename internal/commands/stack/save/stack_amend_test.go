@@ -1,3 +1,5 @@
+//go:build !integration
+
 package save
 
 import (
@@ -5,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -75,7 +78,7 @@ func Test_stackAmendCmd(t *testing.T) {
 			saveArgs = append(saveArgs, tc.args...)
 
 			getText := getMockEditor(tc.editorMessage, &[]string{})
-			_, err = runSaveCommand(nil, t, getText, true, strings.Join(saveArgs, " "))
+			_, err = runSaveCommand(t, nil, getText, true, strings.Join(saveArgs, " "))
 			require.Nil(t, err)
 
 			createTemporaryFiles(t, dir, tc.amendedFiles)
@@ -86,7 +89,7 @@ func Test_stackAmendCmd(t *testing.T) {
 				require.Nil(t, err)
 			}
 
-			output, err := amendFunc(f, tc.args, getText, tc.description)
+			output, err := amendFunc(t.Context(), f, tc.args, getText, tc.description)
 
 			if tc.wantErr {
 				require.ErrorContains(t, err, tc.expected)
