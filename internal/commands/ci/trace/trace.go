@@ -42,11 +42,12 @@ func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 			}
 			branch, _ := cmd.Flags().GetString("branch")
 			pipelineId, _ := cmd.Flags().GetInt("pipeline-id")
-
+			repoOverride, _ := cmd.Flags().GetString("repo")
 			return ciutils.TraceJob(cmd.Context(), &ciutils.JobInputs{
-				JobName:    jobName,
-				Branch:     branch,
-				PipelineId: pipelineId,
+				JobName:      jobName,
+				Branch:       branch,
+				PipelineId:   pipelineId,
+				RepoOverride: repoOverride,
 			}, &ciutils.JobOptions{
 				Client: client,
 				IO:     f.IO(),

@@ -18,29 +18,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
-	"gitlab.com/gitlab-org/cli/internal/utils"
-)
-
-func makeHyperlink(s *iostreams.IOStreams, pipeline *gitlab.PipelineInfo) string {
-	return s.Hyperlink(fmt.Sprintf("%d", pipeline.ID), pipeline.WebURL)
-}
-
-// GetPipelineWithFallback gets the latest pipeline for a branch, falling back to MR head pipeline
-// for merged results pipelines where the direct branch lookup may fail or returns a pipeline with no jobs.
-func GetPipelineWithFallback(client *gitlab.Client, repoName, branch string, ios *iostreams.IOStreams) (*gitlab.Pipeline, error) {
-	// First try: Get pipeline by branch name
-	pipeline, _, err := client.Pipelines.GetLatestPipeline(repoName, &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr(branch)})
-	if err == nil {
-		// Check if the pipeline has jobs - some pipelines (e.g., external pipelines) may have no jobs
-		jobs, _, jobsErr := client.Jobs.ListPipelineJobs(repoName, pipeline.ID, &gitlab.ListJobsOptions{
-			ListOptions: gitlab.ListOptions{PerPage: 1},
-		})
-		if jobsErr == nil && len(jobs) > 0 {
-			// Pipeline has jobs, return it
-			return pipeline, nil
-		}
-		// Pipeline has no jobs, try MR fallback below
-	}
 
 	// Fallback: Look for MR pipeline (for merged results pipelines or when branch pipeline has no jobs)
 	mr, mrErr := getMRForBranch(client, repoName, branch, ios)
@@ -60,11 +37,7 @@ func GetPipelineWithFallback(client *gitlab.Client, repoName, branch string, ios
 		return nil, fmt.Errorf("no pipeline found. It might not exist yet. Check your pipeline configuration")
 	}
 
-	// Get the full pipeline details using the MR's head pipeline ID
-	mrPipeline, _, pipelineErr := client.Pipelines.GetPipeline(repoName, mr.HeadPipeline.ID)
-	if pipelineErr != nil {
-		// If we had a pipeline from the branch lookup, return it as fallback
-		if pipeline != nil {
+	func getJobIdInteractive(ctx context.Context, inputs *JobInputs, opts *JobOptions) (int64, error) {
 			return pipeline, nil
 		}
 		return nil, pipelineErr
@@ -292,7 +265,9 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int64, error) {
 		return int64(inputs.PipelineId), nil
 	}
 
-	branch := GetBranch(inputs.Branch, nil, opts.Repo, opts.Client)
+	// Reset branch context to "" when switching repositories to ensure we use the target
+	// repo's default branch instead of the local branch name, which might not exist in the target repo
+	branch := GetBranchWithRepoOverride(inputs.Branch, "", nil, opts.Repo, opts.Client)
 	if branch == "" {
 		return 0, fmt.Errorf("unable to determine branch")
 	}
@@ -321,6 +296,7 @@ func GetDefaultBranch(repo glrepo.Interface, client *gitlab.Client) string {
 }
 
 // GetBranch returns the specified branch, current git branch, or the default branch from API
+// It properly handles repo overrides by checking if a different repository is being targeted
 func GetBranch(branch string, currentBranch func() (string, error), repo glrepo.Interface, client *gitlab.Client) string {
 	if branch != "" {
 		return branch
@@ -333,7 +309,32 @@ func GetBranch(branch string, currentBranch func() (string, error), repo glrepo.
 	return GetDefaultBranch(repo, client)
 }
 
+<<<<<<< HEAD
+// GetBranchWithRepoOverride returns the specified branch, current git branch (if no repo override),
+// or the default branch from API. It checks for repo overrides and handles them appropriately.
+func GetBranchWithRepoOverride(branch string, repoOverride string, currentBranch func() (string, error), repo glrepo.Interface, client *gitlab.Client) string {
+	if branch != "" {
+		return branch
+	}
+
+	// If using repo override (-R flag), don't use local git branch
+	if repoOverride != "" {
+		return GetDefaultBranch(repo, client)
+	}
+
+	// No repo override, safe to use local git branch
+	if currentBranch != nil {
+		if gitBranch, _ := currentBranch(); gitBranch != "" {
+			return gitBranch
+		}
+	}
+	return GetDefaultBranch(repo, client)
+}
+
+func getJobIdInteractive(inputs *JobInputs, opts *JobOptions) (int, error) {
+=======
 func getJobIdInteractive(ctx context.Context, inputs *JobInputs, opts *JobOptions) (int64, error) {
+>>>>>>> 4b972ed8e2a24bf271f203396fc60fa5376c9732
 	pipelineId, err := getPipelineId(inputs, opts)
 	if err != nil {
 		return 0, err
@@ -417,6 +418,7 @@ type JobInputs struct {
 	JobName            string
 	Branch             string
 	PipelineId         int
+	RepoOverride       string // Set when using -R flag to indicate repo override
 	SelectionPrompt    string
 	SelectionPredicate func(s *gitlab.Job) bool
 }
@@ -457,4 +459,26 @@ func IDsFromArgs(args []string) ([]int, error) {
 		parsedValues = append(parsedValues, id)
 	}
 	return parsedValues, nil
+}
+
+// ResolveBranchForCI resolves the branch to use for CI operations
+// Handles --branch flag, --repo override logic, and local branch fallback
+func ResolveBranchForCI(branchFlag string, repoOverride string, f func() (string, error), repo glrepo.Interface, client *gitlab.Client, stdout io.Writer) (string, error) {
+	if branchFlag != "" {
+		return branchFlag, nil
+	}
+
+	if repoOverride != "" {
+		// Using -R flag, ignore local branch and use target repo's default
+		return GetDefaultBranch(repo, client), nil
+	}
+
+	if currentBranch, err := f(); err == nil {
+		return currentBranch, nil
+	}
+
+	if stdout != nil {
+		fmt.Fprintln(stdout, "not in a Git repository. Using repository argument.")
+	}
+	return GetDefaultBranch(repo, client), nil
 }

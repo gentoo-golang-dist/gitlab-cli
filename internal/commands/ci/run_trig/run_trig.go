@@ -97,15 +97,16 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if branch != "" {
-				c.Ref = gitlab.Ptr(branch)
-			} else if currentBranch, err := f.Branch(); err == nil {
-				c.Ref = gitlab.Ptr(currentBranch)
-			} else {
-				// `ci run-trig` is running out of a git repo
-				fmt.Fprintln(f.IO().StdOut, "not in a Git repository. Using repository argument.")
-				c.Ref = gitlab.Ptr(ciutils.GetDefaultBranch(repo, client))
+
+			// Check if we're using repo override
+			repoOverride, _ := cmd.Flags().GetString("repo")
+
+			// Use consolidated branch resolution logic
+			resolvedBranch, err := ciutils.ResolveBranchForCI(branch, repoOverride, f.Branch, repo, client, f.IO().StdOut)
+			if err != nil {
+				return err
 			}
+			c.Ref = gitlab.Ptr(resolvedBranch)
 
 			token, err := cmd.Flags().GetString("token")
 			if err != nil {
