@@ -12,6 +12,8 @@ import (
 	"github.com/zalando/go-keyring"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
 )
 
 const keyringService = "glab"
@@ -52,6 +54,11 @@ func (k *keyringStorage) set(id string, data []byte) error {
 			return errUnsupportedPlatform
 		}
 		return err
+	}
+	// Update inventory to track this token
+	if err := agentutils.AddToKeyringInventory(id); err != nil {
+		// Log warning but don't fail - token is still cached
+		fmt.Fprintf(os.Stderr, "Warning: failed to update keyring inventory: %v\n", err)
 	}
 	return nil
 }
