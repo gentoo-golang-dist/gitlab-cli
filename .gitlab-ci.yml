@@ -431,6 +431,7 @@ windows_installer:
     - *use_signed_if_available
   script:
     - mv scripts/setup_windows.iss .
+    - mv scripts/PathMgr.dll .
     - iscc "setup_windows.iss" -DVersion=${CI_COMMIT_TAG//v}
   artifacts:
     paths:
