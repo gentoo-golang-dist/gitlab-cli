@@ -75,7 +75,7 @@ func ParseLinkAnnotation(annotation string) map[string]string {
 		return linkMap
 	}
 
-	for _, line := range strings.Split(strings.TrimSpace(annotation), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(annotation), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
