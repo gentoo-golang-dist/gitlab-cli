@@ -387,6 +387,12 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 		fmt.Fprintf(buf, "```plaintext\n%s\n```\n\n", cmd.UseLine())
 	}
 
+	// Parse link annotations if present
+	var linkMap map[string]string
+	if linksAnnotation, ok := cmd.Annotations["help:links"]; ok {
+		linkMap = urlwrapper.ParseLinkAnnotation(linksAnnotation)
+	}
+
 	// Generate environment variables section from annotations with table formatting
 	if envHelp, ok := cmd.Annotations["help:environment"]; ok {
 		buf.WriteString("## Environment Variables\n\n")
@@ -414,7 +420,8 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 						}
 
 						// Wrap any bare URLs in the description with markdown link syntax
-						description = urlwrapper.MDWrap(description)
+						// Use semantic link text if available from link annotations
+						description = urlwrapper.MDWrapWithLinks(description, linkMap)
 
 						buf.WriteString(fmt.Sprintf("| `%s` | %s |\n", varName, description))
 					}

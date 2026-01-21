@@ -2,6 +2,7 @@ package urlwrapper
 
 import (
 	"fmt"
+	"strings"
 
 	"mvdan.cc/xurls/v2"
 )
@@ -9,7 +10,15 @@ import (
 // MDWrap wraps bare URLs in markdown link syntax while preserving markdown context.
 // It avoids double-wrapping URLs that are already in markdown format.
 // URLs inside backticks are left as-is since they typically represent literal values.
+// If linkMap is provided, URLs matching keys in the map will use the associated link text.
 func MDWrap(text string) string {
+	return MDWrapWithLinks(text, nil)
+}
+
+// MDWrapWithLinks wraps bare URLs in markdown link syntax with optional semantic link text.
+// linkMap should be a map of URL -> link text. If a URL is in the map, it will use that text.
+// Otherwise, the URL itself becomes the link text.
+func MDWrapWithLinks(text string, linkMap map[string]string) string {
 	xurlsStrict := xurls.Strict()
 
 	// Build backtick map once at the start
@@ -29,7 +38,15 @@ func MDWrap(text string) string {
 		url := result[startIdx:endIdx]
 
 		if shouldWrapURL(result, startIdx, insideBackticks) {
-			wrapped := fmt.Sprintf("[%s](%s)", url, url)
+			// Check if we have semantic link text for this URL
+			linkText := url
+			if linkMap != nil {
+				if text, ok := linkMap[url]; ok {
+					linkText = text
+				}
+			}
+
+			wrapped := fmt.Sprintf("[%s](%s)", linkText, url)
 			lenDiff := len(wrapped) - len(url)
 
 			// Replace the URL with wrapped version
@@ -47,6 +64,34 @@ func MDWrap(text string) string {
 	}
 
 	return result
+}
+
+// ParseLinkAnnotation parses a link annotation string in the format:
+// "url1|link text 1\nurl2|link text 2"
+// Returns a map of URL -> link text
+func ParseLinkAnnotation(annotation string) map[string]string {
+	linkMap := make(map[string]string)
+	if annotation == "" {
+		return linkMap
+	}
+
+	for _, line := range strings.Split(strings.TrimSpace(annotation), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) == 2 {
+			url := strings.TrimSpace(parts[0])
+			linkText := strings.TrimSpace(parts[1])
+			if url != "" && linkText != "" {
+				linkMap[url] = linkText
+			}
+		}
+	}
+
+	return linkMap
 }
 
 // shiftBacktickMap adjusts the backtick map positions after text insertion.

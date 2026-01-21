@@ -109,6 +109,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 			This flag is experimental. Use with caution and leave feedback in issue 8071:
 			https://gitlab.com/gitlab-org/cli/-/work_items/8071.
 		`, "`"),
+			"help:links": "https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access|Job token access\nhttps://docs.gitlab.com/administration/settings/usage_statistics/|Usage statistics\nhttps://github.com/charmbracelet/glamour#styles|Glamour styles",
 			"help:feedback": heredoc.Docf(`
 			Encountered a bug or want to suggest a feature?
 			Open an issue using '%s'
