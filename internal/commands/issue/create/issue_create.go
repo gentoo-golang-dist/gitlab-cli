@@ -61,6 +61,8 @@ type options struct {
 	web           bool
 	recover       bool
 
+	Template string
+
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
@@ -106,12 +108,13 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			}
 			hasTitle := cmd.Flags().Changed("title")
 			hasDescription := cmd.Flags().Changed("description")
+			hasTemplate := cmd.Flags().Changed("template")
 
 			// disable interactive mode if title and description are explicitly defined
-			opts.isInteractive = !(hasTitle && hasDescription)
+			opts.isInteractive = !(hasTitle && (hasDescription || hasTemplate))
 
 			if opts.isInteractive && !opts.io.PromptEnabled() {
-				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' required for non-interactive mode.")}
+				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' (or '--template') required for non-interactive mode.")}
 			}
 
 			// Remove this once --yes does more than just skip the prompts that --web happen to skip
@@ -163,6 +166,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)")
 	issueCreateCmd.Flags().Int64VarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
+	issueCreateCmd.Flags().StringVarP(&opts.Template, "template", "", "", "Template name to use for the issue description.")
 
 	return issueCreateCmd
 }
@@ -215,9 +219,25 @@ var createRun = func(ctx context.Context, opts *options) error {
 		}
 	}
 
+	if opts.Template != "" {
+		if opts.Description != "" && opts.Description != "-" {
+			return errors.New("cannot specify both --template and --description")
+		}
+		var err error
+		templateName = opts.Template
+		templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, templateName)
+		if err != nil {
+			return fmt.Errorf("failed to get template contents: %w", err)
+		}
+
+		if templateContents == "" {
+			return fmt.Errorf("template %q not found or empty", templateName)
+		}
+	}
+
 	if opts.isInteractive {
-		// Step 1: Template selection (if not using --no-editor and description is empty)
-		if opts.Description == "" && !opts.noEditor {
+		// Step 1: Template selection (if not using --no-editor and description is empty, and no template flag provided)
+		if opts.Description == "" && !opts.noEditor && opts.Template == "" {
 			templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.IssueTemplate)
 			if err != nil {
 				return fmt.Errorf("error getting templates: %w", err)
@@ -303,6 +323,10 @@ var createRun = func(ctx context.Context, opts *options) error {
 		}
 	} else if opts.Title == "" {
 		return fmt.Errorf("title can't be blank")
+	}
+
+	if opts.Description == "" && templateContents != "" {
+		opts.Description = templateContents
 	}
 
 	var action cmdutils.Action
