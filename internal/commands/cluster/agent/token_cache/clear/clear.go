@@ -159,14 +159,16 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 
 		var pat gitlab.PersonalAccessToken
 		if err := json.Unmarshal([]byte(data), &pat); err != nil {
-			// Skip corrupted tokens
+			// Skip corrupted tokens and remove from inventory to keep it clean
+			_ = agentutils.RemoveFromKeyringInventory(id)
 			continue
 		}
 
 		// Parse cache ID to extract GitLab URL and agent ID
 		gitlabURL, agentID, err := agentutils.ParseCacheID(id)
 		if err != nil {
-			// Skip tokens with invalid cache IDs
+			// Skip tokens with invalid cache IDs and remove from inventory
+			_ = agentutils.RemoveFromKeyringInventory(id)
 			continue
 		}
 
