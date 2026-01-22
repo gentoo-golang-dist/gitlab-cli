@@ -3,8 +3,7 @@ package agentutils
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"os"
+	"slices"
 
 	"github.com/zalando/go-keyring"
 )
@@ -15,24 +14,20 @@ const (
 )
 
 // GetKeyringInventory returns the list of cached token IDs from the keyring inventory.
-// Returns an empty slice if no inventory exists or keyring is unsupported.
+// Returns nil slice with no error if no inventory exists.
+// Returns nil slice with error if keyring is unsupported or inventory is corrupted.
 func GetKeyringInventory() ([]string, error) {
 	data, err := keyring.Get(keyringService, inventoryKeyringKey)
 	if err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
-			return []string{}, nil
+			return nil, nil
 		}
-		if errors.Is(err, keyring.ErrUnsupportedPlatform) {
-			return []string{}, err
-		}
-		return []string{}, err
+		return nil, err
 	}
 
 	var inventory []string
 	if err := json.Unmarshal([]byte(data), &inventory); err != nil {
-		// Log corruption warning to help with debugging
-		fmt.Fprintf(os.Stderr, "Warning: keyring inventory is corrupted, will be rebuilt: %v\n", err)
-		return []string{}, nil
+		return nil, errors.New("keyring inventory is corrupted: " + err.Error())
 	}
 
 	return inventory, nil
@@ -47,14 +42,12 @@ func AddToKeyringInventory(id string) error {
 			return err
 		}
 		// Start fresh if we can't read the inventory
-		inventory = []string{}
+		inventory = nil
 	}
 
 	// Check if ID already exists
-	for _, existingID := range inventory {
-		if existingID == id {
-			return nil // Already in inventory
-		}
+	if slices.Contains(inventory, id) {
+		return nil // Already in inventory
 	}
 
 	// Add new ID
@@ -79,16 +72,13 @@ func RemoveFromKeyringInventory(id string) error {
 		return nil // Nothing to remove if we can't read
 	}
 
-	// Find and remove the ID
-	var updated []string
-	for _, existingID := range inventory {
-		if existingID != id {
-			updated = append(updated, existingID)
-		}
-	}
+	originalLen := len(inventory)
+	updated := slices.DeleteFunc(inventory, func(existingID string) bool {
+		return existingID == id
+	})
 
 	// If nothing was removed, we're done
-	if len(updated) == len(inventory) {
+	if len(updated) == originalLen {
 		return nil
 	}
 
