@@ -248,6 +248,21 @@ func TestKeyringStorage_set(t *testing.T) {
 	assert.Equal(t, "any-data", setData)
 }
 
+func TestKeyringStorage_set_UnsupportedPlatform(t *testing.T) {
+	// GIVEN
+	keyring.MockInitWithError(keyring.ErrUnsupportedPlatform)
+
+	s := keyringStorage{}
+
+	// WHEN
+	err := s.set("test-id", []byte("any-data"))
+
+	// THEN
+	// Should succeed because token is stored in keyring (which fails)
+	// but that's caught by the keyring.Set call, not the inventory
+	require.ErrorIs(t, err, errUnsupportedPlatform)
+}
+
 func TestFileStorage_get(t *testing.T) {
 	// GIVEN
 	d := testDir(t)
