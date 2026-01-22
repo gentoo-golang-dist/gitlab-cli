@@ -3,6 +3,8 @@ package agentutils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/zalando/go-keyring"
 )
@@ -21,14 +23,15 @@ func GetKeyringInventory() ([]string, error) {
 			return []string{}, nil
 		}
 		if errors.Is(err, keyring.ErrUnsupportedPlatform) {
-			return nil, err
+			return []string{}, err
 		}
-		return nil, err
+		return []string{}, err
 	}
 
 	var inventory []string
 	if err := json.Unmarshal([]byte(data), &inventory); err != nil {
-		// If the inventory is corrupted, return empty and let it be rebuilt
+		// Log corruption warning to help with debugging
+		fmt.Fprintf(os.Stderr, "Warning: keyring inventory is corrupted, will be rebuilt: %v\n", err)
 		return []string{}, nil
 	}
 
