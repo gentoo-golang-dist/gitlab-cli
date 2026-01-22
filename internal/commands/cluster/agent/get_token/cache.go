@@ -14,6 +14,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
 
 const keyringService = "glab"
@@ -133,6 +134,7 @@ type cache struct {
 	createFunc     func() (*gitlab.PersonalAccessToken, error)
 	isTokenRevoked func(t *gitlab.PersonalAccessToken) (bool, error)
 	storage        storage
+	io             *iostreams.IOStreams
 }
 
 func (c *cache) isTokenExpired(token *gitlab.PersonalAccessToken) bool {
@@ -169,18 +171,18 @@ func (c *cache) getCachedToken() (*gitlab.PersonalAccessToken, error) {
 	}
 
 	if token.Revoked {
-		fmt.Fprintln(os.Stderr, "Cached token has been revoked, creating new one")
+		fmt.Fprintln(c.io.StdErr, "Cached token has been revoked, creating new one")
 		return nil, errTokenRevoked
 	}
 
 	isRevoked, err := c.isTokenRevoked(&token)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Failed to check if token is revoked: %v. Using cached token anyway.\n", err)
+		fmt.Fprintf(c.io.StdErr, "Warning: Failed to check if token is revoked: %v. Using cached token anyway.\n", err)
 		return &token, nil
 	}
 
 	if isRevoked {
-		fmt.Fprintln(os.Stderr, "Cached token has been revoked, creating new one")
+		fmt.Fprintln(c.io.StdErr, "Cached token has been revoked, creating new one")
 		return nil, errTokenRevoked
 	}
 
