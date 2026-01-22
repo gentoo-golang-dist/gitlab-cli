@@ -57,9 +57,7 @@ func (k *keyringStorage) set(id string, data []byte) error {
 	}
 	// Update inventory to track this token
 	if err := agentutils.AddToKeyringInventory(id); err != nil {
-		// Log warning but don't fail - token is still cached
-		// TODO: Refactor to pass io.Writer from factory's iostreams instead of using os.Stderr directly
-		fmt.Fprintf(os.Stderr, "Warning: failed to update keyring inventory: %v\n", err)
+		return fmt.Errorf("failed to update keyring inventory: %w", err)
 	}
 	return nil
 }
