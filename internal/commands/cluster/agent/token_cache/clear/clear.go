@@ -160,7 +160,10 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 		var pat gitlab.PersonalAccessToken
 		if err := json.Unmarshal([]byte(data), &pat); err != nil {
 			// Skip corrupted tokens and remove from inventory to keep it clean
-			_ = agentutils.RemoveFromKeyringInventory(id)
+			fmt.Fprintf(o.io.StdErr, "Warning: Corrupted token in keyring, removing from inventory: %v\n", err)
+			if rmErr := agentutils.RemoveFromKeyringInventory(id); rmErr != nil {
+				fmt.Fprintf(o.io.StdErr, "Warning: Failed to remove corrupted token from inventory: %v\n", rmErr)
+			}
 			continue
 		}
 
@@ -168,7 +171,10 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 		gitlabURL, agentID, err := agentutils.ParseCacheID(id)
 		if err != nil {
 			// Skip tokens with invalid cache IDs and remove from inventory
-			_ = agentutils.RemoveFromKeyringInventory(id)
+			fmt.Fprintf(o.io.StdErr, "Warning: Invalid cache ID in inventory, removing: %v\n", err)
+			if rmErr := agentutils.RemoveFromKeyringInventory(id); rmErr != nil {
+				fmt.Fprintf(o.io.StdErr, "Warning: Failed to remove invalid token from inventory: %v\n", rmErr)
+			}
 			continue
 		}
 
