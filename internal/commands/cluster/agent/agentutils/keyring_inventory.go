@@ -3,7 +3,6 @@ package agentutils
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"slices"
 
 	"github.com/zalando/go-keyring"
@@ -28,9 +27,7 @@ func GetKeyringInventory() ([]string, error) {
 
 	var inventory []string
 	if err := json.Unmarshal([]byte(data), &inventory); err != nil {
-		errMsg := "keyring inventory is corrupted: " + err.Error()
-		log.Println("Warning:", errMsg)
-		return nil, errors.New(errMsg)
+		return nil, errors.New("keyring inventory is corrupted: " + err.Error())
 	}
 
 	return inventory, nil
