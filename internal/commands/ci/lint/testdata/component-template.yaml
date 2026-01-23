@@ -1,0 +1,13 @@
+spec:
+  component: [name, version, sha, reference]
+  inputs:
+    image_tag:
+      default: latest
+---
+
+build-image:
+  image: registry.example.com/$[[ component.name ]]:$[[ component.version ]]
+  script:
+    - echo "Building with component version $[[ component.version ]]"
+    - echo "Component SHA: $[[ component.sha ]]"
+    - echo "Component reference: $[[ component.reference ]]"
