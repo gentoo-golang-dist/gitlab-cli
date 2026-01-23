@@ -24,14 +24,21 @@ $ glab ci lint
 $ glab ci lint .gitlab-ci.yml
 $ glab ci lint path/to/.gitlab-ci.yml
 
+# Lint a CI/CD component template with component context values
+$ glab ci lint templates/my-component.yml --component-name=my-component --component-version=1.0.0
+
 ```
 
 ## Options
 
 ```plaintext
-      --dry-run        Run pipeline creation simulation.
-      --include-jobs   Response includes the list of jobs that would exist in a static check or pipeline simulation.
-      --ref string     When 'dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.
+      --component-name string        Component name to use for $[[ component.name ]] interpolation.
+      --component-reference string   Component reference to use for $[[ component.reference ]] interpolation.
+      --component-sha string         Component SHA to use for $[[ component.sha ]] interpolation.
+      --component-version string     Component version to use for $[[ component.version ]] interpolation.
+      --dry-run                      Run pipeline creation simulation.
+      --include-jobs                 Response includes the list of jobs that would exist in a static check or pipeline simulation.
+      --ref string                   When 'dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.
 ```
 
 ## Options inherited from parent commands
