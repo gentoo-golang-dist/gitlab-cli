@@ -86,6 +86,14 @@ func (o *options) complete(args []string) {
 	}
 }
 
+// Pre-compile regex patterns for component context expressions
+var componentContextPatterns = map[string]*regexp.Regexp{
+	"name":      regexp.MustCompile(`\$\[\[\s*component\.name\s*\]\]`),
+	"version":   regexp.MustCompile(`\$\[\[\s*component\.version\s*\]\]`),
+	"sha":       regexp.MustCompile(`\$\[\[\s*component\.sha\s*\]\]`),
+	"reference": regexp.MustCompile(`\$\[\[\s*component\.reference\s*\]\]`),
+}
+
 // replaceComponentContext replaces $[[ component.* ]] expressions with the provided values.
 // This allows linting CI/CD component templates that use component context metadata.
 func (o *options) replaceComponentContext(content string) string {
@@ -100,9 +108,7 @@ func (o *options) replaceComponentContext(content string) string {
 	// Replace each component context expression if a value was provided
 	for field, value := range replacements {
 		if value != "" {
-			// Match $[[ component.field ]] with optional whitespace
-			pattern := regexp.MustCompile(`\$\[\[\s*component\.` + regexp.QuoteMeta(field) + `\s*\]\]`)
-			content = pattern.ReplaceAllString(content, value)
+			content = componentContextPatterns[field].ReplaceAllString(content, value)
 		}
 	}
 
