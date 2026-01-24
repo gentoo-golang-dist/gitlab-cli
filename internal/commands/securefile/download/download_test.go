@@ -3,6 +3,7 @@
 package download
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,7 +94,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			ExpectedMsg: []string{"Downloaded secure file 'new.txt' (ID: 1)\n"},
 			cli:         "1 --path=../../newdir/new.txt",
 			wantErr:     true,
-			wantStderr:  "error creating directory: mkdirat ../../newdir: path escapes from parent",
+			wantStderr:  fmt.Sprintf("error creating directory: mkdirat %s: path escapes from parent", filepath.Join("..", "..", "newdir")),
 			setupMocks:  func(testClient *gitlabtesting.TestClient) {},
 		},
 		{
@@ -543,7 +544,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 			},
 			cli:        "--all --output-dir=../../secure_files",
 			wantErr:    true,
-			wantStderr: "error downloading secure file '/etc/passwd' (ID: 1): error creating directory: mkdirat ../../secure_files/etc: path escapes from parent",
+			wantStderr: fmt.Sprintf("error downloading secure file '/etc/passwd' (ID: 1): error creating directory: mkdirat %s: path escapes from parent", filepath.Join("..", "..", "secure_files", "etc")),
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					ListProjectSecureFiles(repoName, &gitlab.ListProjectSecureFilesOptions{

@@ -274,7 +274,8 @@ func saveFile(apiClient *gitlab.Client, stdOut io.Writer, repoName string, fileI
 		tempFile, err = createTempAbsolute(fileID, path)
 	} else {
 		// For relative paths, use os.Root for sandboxing
-		root, err := os.OpenRoot(".")
+		var root *os.Root
+		root, err = os.OpenRoot(".")
 		if err != nil {
 			return fmt.Errorf("unable to open root directory: %w", err)
 		}
