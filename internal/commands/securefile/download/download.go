@@ -170,8 +170,15 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 
 func downloadSecureFileByName(client *gitlab.Client, stdOut io.Writer, root *os.Root, fileName string, repoName, path string, verifyChecksum, forceDownload bool) error {
 	path = filepath.Clean(path)
-	if err := ensureDirectoryExists(root, path); err != nil {
-		return err
+	isAbsolute := filepath.IsAbs(path)
+	if !isAbsolute {
+		if err := ensureDirectoryExists(root, path); err != nil {
+			return err
+		}
+	} else {
+		if err := ensureDirectoryExistsAbsolute(path); err != nil {
+			return err
+		}
 	}
 
 	// Get the fileID for the given Name
@@ -200,7 +207,7 @@ func downloadSecureFileByName(client *gitlab.Client, stdOut io.Writer, root *os.
 		return fmt.Errorf("couldn't locate secure file with name %s", fileName)
 	}
 
-	err := saveFile(client, stdOut, repoName, fileID, path, verifyChecksum, forceDownload)
+	err := saveFile(client, stdOut, repoName, fileID, path, verifyChecksum, forceDownload, isAbsolute)
 	if err != nil {
 		return err
 	}
@@ -211,11 +218,18 @@ func downloadSecureFileByName(client *gitlab.Client, stdOut io.Writer, root *os.
 
 func downloadSecureFile(client *gitlab.Client, stdOut io.Writer, root *os.Root, fileID int64, repoName, path string, verifyChecksum, forceDownload bool) error {
 	path = filepath.Clean(path)
-	if err := ensureDirectoryExists(root, path); err != nil {
-		return err
+	isAbsolute := filepath.IsAbs(path)
+	if !isAbsolute {
+		if err := ensureDirectoryExists(root, path); err != nil {
+			return err
+		}
+	} else {
+		if err := ensureDirectoryExistsAbsolute(path); err != nil {
+			return err
+		}
 	}
 
-	err := saveFile(client, stdOut, repoName, fileID, path, verifyChecksum, forceDownload)
+	err := saveFile(client, stdOut, repoName, fileID, path, verifyChecksum, forceDownload, isAbsolute)
 	if err != nil {
 		return err
 	}
@@ -248,19 +262,26 @@ func downloadAllSecureFiles(client *gitlab.Client, stdOut io.Writer, root *os.Ro
 	return nil
 }
 
-func saveFile(apiClient *gitlab.Client, stdOut io.Writer, repoName string, fileID int64, path string, verifyChecksum, forceDownload bool) (err error) {
+func saveFile(apiClient *gitlab.Client, stdOut io.Writer, repoName string, fileID int64, path string, verifyChecksum, forceDownload bool, isAbsolute bool) (err error) {
 	contents, _, err := apiClient.SecureFiles.DownloadSecureFile(repoName, fileID)
 	if err != nil {
 		return fmt.Errorf("error downloading secure file: %w", err)
 	}
 
-	root, err := os.OpenRoot(".")
-	if err != nil {
-		return fmt.Errorf("unable to open root directory: %w", err)
-	}
-	defer root.Close()
+	var tempFile *os.File
+	if isAbsolute {
+		// For absolute paths, use standard os operations without os.Root restrictions
+		tempFile, err = createTempAbsolute(fileID, path)
+	} else {
+		// For relative paths, use os.Root for sandboxing
+		root, err := os.OpenRoot(".")
+		if err != nil {
+			return fmt.Errorf("unable to open root directory: %w", err)
+		}
+		defer root.Close()
 
-	tempFile, err := createTemp(root, fileID, path)
+		tempFile, err = createTemp(root, fileID, path)
+	}
 	if err != nil {
 		return fmt.Errorf("unable to create temporary file for downloaded secure file: %w", err)
 	}
@@ -270,8 +291,8 @@ func saveFile(apiClient *gitlab.Client, stdOut io.Writer, repoName string, fileI
 			closeErr = fmt.Errorf("error closing temporary file: %w", closeErr)
 			err = errors.Join(err, closeErr)
 		}
-		if _, statErr := root.Stat(tempFile.Name()); statErr == nil { // Cleanup the temp file if it hasn't been renamed
-			if removeErr := root.Remove(tempFile.Name()); removeErr != nil {
+		if _, statErr := os.Stat(tempFile.Name()); statErr == nil { // Cleanup the temp file if it hasn't been renamed
+			if removeErr := os.Remove(tempFile.Name()); removeErr != nil {
 				removeErr = fmt.Errorf("error removing temporary file: %w", removeErr)
 				err = errors.Join(err, removeErr)
 			}
@@ -305,8 +326,20 @@ func saveFile(apiClient *gitlab.Client, stdOut io.Writer, repoName string, fileI
 		}
 	}
 
-	if err := root.Rename(tempFile.Name(), path); err != nil {
-		return fmt.Errorf("unable to persist downloaded file contents: %w", err)
+	if isAbsolute {
+		if err := os.Rename(tempFile.Name(), path); err != nil {
+			return fmt.Errorf("unable to persist downloaded file contents: %w", err)
+		}
+	} else {
+		root, err := os.OpenRoot(".")
+		if err != nil {
+			return fmt.Errorf("unable to open root directory: %w", err)
+		}
+		defer root.Close()
+
+		if err := root.Rename(tempFile.Name(), path); err != nil {
+			return fmt.Errorf("unable to persist downloaded file contents: %w", err)
+		}
 	}
 
 	return err
@@ -316,6 +349,18 @@ func ensureDirectoryExists(root *os.Root, path string) error {
 	dir := filepath.Dir(path)
 	if dir != "." {
 		if err := root.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("error creating directory: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// ensureDirectoryExistsAbsolute creates directories for absolute paths without os.Root restrictions.
+func ensureDirectoryExistsAbsolute(path string) error {
+	dir := filepath.Dir(path)
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("error creating directory: %w", err)
 		}
 	}
@@ -335,6 +380,26 @@ func createTemp(root *os.Root, fileID int64, path string) (*os.File, error) {
 	for {
 		name = name + strconv.Itoa(rand.Intn(10))
 		f, err := root.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+		if os.IsExist(err) {
+			if try++; try < 10000 {
+				continue
+			}
+			return nil, fmt.Errorf("failed to create tempfile after 10000 tries: %w", err)
+		}
+		return f, err
+	}
+}
+
+// createTempAbsolute creates a temporary file for absolute paths without os.Root restrictions.
+func createTempAbsolute(fileID int64, path string) (*os.File, error) {
+	dir := filepath.Dir(path)
+	name := filepath.Join(dir, strconv.FormatInt(fileID, 10))
+
+	// This retry logic is to handle tempfile name collisions with an existing tempfile.
+	try := 0
+	for {
+		name = name + strconv.Itoa(rand.Intn(10))
+		f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 		if os.IsExist(err) {
 			if try++; try < 10000 {
 				continue
