@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/charmbracelet/huh"
@@ -300,9 +301,23 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				l.Squash = gitlab.Ptr(!mr.Squash)
 			}
 
+			// Parse merge_after if provided
+			var mergeAfter *time.Time
+			if cmd.Flags().Changed("merge-after") {
+				mergeAfterStr, _ := cmd.Flags().GetString("merge-after")
+				if mergeAfterStr != "" {
+					parsedTime, err := time.Parse(time.RFC3339, mergeAfterStr)
+					if err != nil {
+						return fmt.Errorf("invalid --merge-after format. Expected ISO 8601 format (e.g., 2024-12-31T23:59:59Z): %w", err)
+					}
+					mergeAfter = &parsedTime
+					actions = append(actions, fmt.Sprintf("set merge after to %q", mergeAfterStr))
+				}
+			}
+
 			fmt.Fprintf(f.IO().StdOut, "- Updating merge request !%d\n", mr.IID)
 
-			mr, err = api.UpdateMR(client, repo.FullName(), mr.IID, l)
+			mr, err = api.UpdateMRWithMergeAfter(client, repo.FullName(), mr.IID, l, mergeAfter)
 			if err != nil {
 				return err
 			}
@@ -340,6 +355,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	mrUpdateCmd.Flags().BoolP("fill", "f", false, "Do not prompt for title or body, and just use commit info.")
 	mrUpdateCmd.Flags().Bool("fill-commit-body", false, "Fill body with each commit body when multiple commits. Can only be used with --fill.")
 	mrUpdateCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt.")
+	mrUpdateCmd.Flags().String("merge-after", "", "Set a date/time after which the merge request can be merged. Expected in ISO 8601 format (2024-12-31T23:59:59Z).")
 
 	return mrUpdateCmd
 }
