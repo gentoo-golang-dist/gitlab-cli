@@ -43,6 +43,7 @@ $ glab mr update 23 --fill --fill-commit-body --yes
       --fill-commit-body       Fill body with each commit body when multiple commits. Can only be used with --fill.
   -l, --label strings          Add labels.
       --lock-discussion        Lock discussion on merge request.
+      --merge-after string     Set a date/time after which the merge request can be merged. Expected in ISO 8601 format (2024-12-31T23:59:59Z).
   -m, --milestone string       Title of the milestone to assign. Set to "" or 0 to unassign.
   -r, --ready                  Mark merge request as ready to be reviewed and merged.
       --remove-source-branch   Toggles the removal of the source branch on merge.
