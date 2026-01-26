@@ -93,6 +93,13 @@ func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText c
 		return "", fmt.Errorf("error amending commit with Git: %v", err)
 	}
 
+	// update stack reference file with new description
+	ref.Description = description
+	err = git.UpdateStackRefFile(title, ref)
+	if err != nil {
+		return "", fmt.Errorf("error updating stack reference file: %v", err)
+	}
+
 	var output string
 	if f.IO().IsOutputTTY() {
 		output = fmt.Sprintf("Amended stack item with description: %q.\n", description)
