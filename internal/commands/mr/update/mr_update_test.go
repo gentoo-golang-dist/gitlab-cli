@@ -255,3 +255,132 @@ func TestUpdateMergeRequest(t *testing.T) {
 
 	api.UpdateMR = oldUpdateMr
 }
+
+func TestUpdateMergeRequestWithMergeAfter(t *testing.T) {
+	io, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
+	f := cmdtest.NewTestFactory(io, cmdtest.WithConfig(config.NewFromString(heredoc.Doc(`
+		hosts:
+		  gitlab.com:
+		    username: monalisa
+		    token: OTOKEN
+	`))))
+	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
+
+	oldGetMR := api.GetMR
+	oldUpdateMRWithMergeAfter := api.UpdateMRWithMergeAfter
+
+	api.GetMR = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.GetMergeRequestsOptions) (*gitlab.MergeRequest, error) {
+		repo, err := f.BaseRepo()
+		if err != nil {
+			return nil, err
+		}
+		return &gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:           mrID,
+				IID:          mrID,
+				Title:        "Test MR",
+				Labels:       gitlab.Labels{"test"},
+				State:        "opened",
+				Description:  "Test description",
+				SourceBranch: "feature/test",
+				TargetBranch: "main",
+				Author: &gitlab.BasicUser{
+					ID:       mrID,
+					Name:     "Test User",
+					Username: "testuser",
+				},
+				WebURL: fmt.Sprintf("https://%s/%s/-/merge_requests/%d", repo.RepoHost(), repo.FullName(), mrID),
+			},
+		}, nil
+	}
+
+	var capturedMergeAfter *time.Time
+	api.UpdateMRWithMergeAfter = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.UpdateMergeRequestOptions, mergeAfter *time.Time) (*gitlab.MergeRequest, error) {
+		capturedMergeAfter = mergeAfter
+		repo, err := f.BaseRepo()
+		if err != nil {
+			return nil, err
+		}
+		return &gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:          mrID,
+				IID:         mrID,
+				Title:       "Test MR",
+				Labels:      gitlab.Labels{"test"},
+				State:       "opened",
+				Description: "Test description",
+				Author: &gitlab.BasicUser{
+					ID:       mrID,
+					Name:     "Test User",
+					Username: "testuser",
+				},
+				WebURL:    fmt.Sprintf("https://%s/%s/-/merge_requests/%d", repo.RepoHost(), repo.FullName(), mrID),
+				CreatedAt: &timer,
+			},
+		}, nil
+	}
+
+	api.ListMRs = func(client *gitlab.Client, projectID any, opts *gitlab.ListProjectMergeRequestsOptions, listOpts ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
+		return []*gitlab.BasicMergeRequest{}, nil
+	}
+
+	testCases := []struct {
+		Name               string
+		Args               string
+		ExpectedMsg        []string
+		wantErr            bool
+		expectedMergeAfter string
+	}{
+		{
+			Name:               "Update with merge-after",
+			Args:               "1 --merge-after 2024-12-31T23:59:59Z",
+			ExpectedMsg:        []string{"- Updating merge request !1", `set merge after to "2024-12-31T23:59:59Z"`},
+			expectedMergeAfter: "2024-12-31T23:59:59Z",
+		},
+		{
+			Name:        "Update with invalid merge-after format",
+			Args:        "1 --merge-after invalid-date",
+			ExpectedMsg: []string{"invalid --merge-after format"},
+			wantErr:     true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			capturedMergeAfter = nil
+			stdout.Reset()
+			stderr.Reset()
+
+			cmd := NewCmdUpdate(f)
+			cmdutils.EnableRepoOverride(cmd, f)
+			argv, err := shlex.Split(tc.Args)
+			require.NoError(t, err)
+			cmd.SetArgs(argv)
+
+			_, err = cmd.ExecuteC()
+			if tc.wantErr {
+				require.Error(t, err)
+				for _, msg := range tc.ExpectedMsg {
+					assert.Contains(t, err.Error(), msg)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			out := stripansi.Strip(stdout.String())
+			for _, msg := range tc.ExpectedMsg {
+				assert.Contains(t, out, msg)
+			}
+			assert.Equal(t, "", stderr.String())
+
+			if tc.expectedMergeAfter != "" {
+				assert.NotNil(t, capturedMergeAfter)
+				expectedTime, _ := time.Parse(time.RFC3339, tc.expectedMergeAfter)
+				assert.Equal(t, expectedTime, *capturedMergeAfter)
+			}
+		})
+	}
+
+	api.GetMR = oldGetMR
+	api.UpdateMRWithMergeAfter = oldUpdateMRWithMergeAfter
+}
