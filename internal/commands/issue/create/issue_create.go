@@ -91,6 +91,8 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			$ glab issue create -m release-2.0.0 -t "we need this feature" --label important
 			$ glab issue new -t "Fix CVE-YYYY-XXXX" -l security --linked-mr 123
 			$ glab issue create -m release-1.0.1 -t "security fix" --label security --web --recover
+			$ glab issue create -t "Bug Report" --template bug
+			$ glab issue create -t "Feature Request" --template feature.md
 		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -166,7 +168,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)")
 	issueCreateCmd.Flags().Int64VarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
-	issueCreateCmd.Flags().StringVarP(&opts.Template, "template", "", "", "Template name to use for the issue description.")
+	issueCreateCmd.Flags().StringVarP(&opts.Template, "template", "", "", "Name of the issue template to use from your local .gitlab/issue_templates/ directory. The .md extension is optional.")
 
 	return issueCreateCmd
 }
