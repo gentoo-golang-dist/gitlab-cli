@@ -119,6 +119,7 @@ test: SHELL = /bin/bash # set environment variables to ensure consistent test be
 test: VISUAL=
 test: EDITOR=
 test: PAGER=
+test: GITLAB_TOKEN=
 test: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test: bin/gotestsum ## Run tests
 	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
@@ -129,6 +130,7 @@ test-race: SHELL = /bin/bash # set environment variables to ensure consistent te
 test-race: VISUAL=
 test-race: EDITOR=
 test-race: PAGER=
+test-race: GITLAB_TOKEN=
 test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test-race: bin/gotestsum ## Run tests with race detection
 	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)

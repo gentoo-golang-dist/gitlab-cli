@@ -66,6 +66,10 @@ func (c *Client) AuthSource() gitlab.AuthSource {
 	return c.authSource
 }
 
+func (c *Client) BaseURL() string {
+	return c.baseURL
+}
+
 // Lab returns the initialized GitLab client.
 func (c *Client) Lab() *gitlab.Client {
 	return c.gitlabClient
@@ -333,9 +337,14 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
 			return gitlab.JobTokenAuthSource{Token: jobToken}, nil
 		}
-	default:
+	case token != "":
 		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
 			return gitlab.AccessTokenAuthSource{Token: token}, nil
+		}
+	default:
+		// NOTE: use an unauthenticated client.
+		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
+			return UnauthenticatedAuthSource{}, nil
 		}
 	}
 

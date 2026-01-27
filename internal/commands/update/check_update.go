@@ -150,8 +150,9 @@ func ShouldSkipUpdate(previousCommand string) bool {
 	isCheckUpdate := previousCommand == commandUse || utils.PresentInStringSlice(commandAliases, previousCommand)
 	isCompletion := previousCommand == "completion"
 	isGitCredential := previousCommand == "git-credential"
+	isCredentialHelper := previousCommand == "credential-helper"
 
-	return isCheckUpdate || isCompletion || isGitCredential
+	return isCheckUpdate || isCompletion || isGitCredential || isCredentialHelper
 }
 
 func isOlderVersion(latestVersion, appVersion string) bool {
