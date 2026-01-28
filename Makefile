@@ -48,6 +48,7 @@ BUILDLOC ?= ./bin/glab
 # Dependency versions
 GOTESTSUM_VERSION = 1.13.0
 GOLANGCI_LINT_VERSION = 2.7.2
+GOCOVMERGE_VERSION = 0.0.2
 
 # Add the ability to override some variables
 # Use with care
@@ -122,7 +123,7 @@ test: PAGER=
 test: GITLAB_TOKEN=
 test: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test: bin/gotestsum ## Run tests
-	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage-unit.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
 
 .PHONY: test-race
 test-race: TEST_FORMAT ?= short
@@ -133,7 +134,7 @@ test-race: PAGER=
 test-race: GITLAB_TOKEN=
 test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test-race: bin/gotestsum ## Run tests with race detection
-	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+	$(GOTEST) --no-summary=skipped --junitfile ./coverage-unit.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage-unit.txt -covermode=atomic -race $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
 
 .PHONY: integration-test-race
 integration-test-race: TEST_FORMAT ?= short
@@ -143,7 +144,7 @@ integration-test-race: EDITOR=
 integration-test-race: PAGER=
 integration-test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 integration-test-race: bin/gotestsum ## Run tests with race detection
-	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race -tags=integration $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...) -count=1
+	$(GOTEST) --no-summary=skipped --junitfile ./coverage-integration.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage-integration.txt -covermode=atomic -race -tags=integration $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...) -count=1
 
 ifdef HASGOCILINT
 bin/golangci-lint:
@@ -157,6 +158,31 @@ bin/golangci-lint-${GOLANGCI_LINT_VERSION}:
 	@mkdir -p bin
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | bash -s -- -b ./bin v${GOLANGCI_LINT_VERSION}
 	@mv bin/golangci-lint $@
+
+HASGOCOVMERGE := $(shell which gocovmerge 2> /dev/null)
+
+ifdef HASGOCOVMERGE
+    GOCOVMERGE=gocovmerge
+else
+    GOCOVMERGE=bin/gocovmerge
+endif
+
+ifdef HASGOCOVMERGE
+bin/gocovmerge:
+	@echo "Skip this"
+else
+bin/gocovmerge: bin/gocovmerge-${GOCOVMERGE_VERSION}
+	@ln -sf gocovmerge-${GOCOVMERGE_VERSION} bin/gocovmerge
+endif
+
+bin/gocovmerge-${GOCOVMERGE_VERSION}:
+	@mkdir -p bin
+	GOBIN=$(abspath bin) go install github.com/wadey/gocovmerge@v${GOCOVMERGE_VERSION}
+	@mv bin/gocovmerge $@
+
+.PHONY: coverage-merge
+coverage-merge: bin/gocovmerge ## Merge coverage profiles from unit and integration tests
+	$(GOCOVMERGE) coverage-unit.txt coverage-integration.txt > coverage.txt
 
 .PHONY: coverage
 coverage: ## Run coverage report
