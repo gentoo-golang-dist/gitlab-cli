@@ -164,7 +164,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 							if baseURL := client.BaseURL(); baseURL != nil {
 								webBase := *baseURL
 								webBase.Path = ""
-								pipelineURL = webBase.JoinPath(repo.FullName(), "-", "pipelines", strconv.Itoa(bridge.DownstreamPipeline.ID)).String()
+								pipelineURL = webBase.JoinPath(repo.FullName(), "-", "pipelines", strconv.FormatInt(bridge.DownstreamPipeline.ID, 10)).String()
 							}
 							if pipelineURL != "" {
 								return fmt.Errorf(

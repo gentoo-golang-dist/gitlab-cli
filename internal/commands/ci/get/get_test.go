@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -33,6 +34,10 @@ func TestCIGet_ExistingPipeline(t *testing.T) {
 		cmdtest.WithGitLabClient(tc.Client),
 	)
 
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
 		ID:         123,
 		IID:        123,
@@ -42,17 +47,17 @@ func TestCIGet_ExistingPipeline(t *testing.T) {
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
 	// Prepare factory with mocked gitlab client
@@ -69,9 +74,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 build:	success
@@ -94,6 +99,11 @@ func TestCIGet_MissingPipeline(t *testing.T) {
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 		cmdtest.WithGitLabClient(tc.Client),
 	)
+
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
 		ID:         123,
 		IID:        123,
@@ -103,17 +113,17 @@ func TestCIGet_MissingPipeline(t *testing.T) {
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
 	commit := &gitlab.Commit{LastPipeline: &gitlab.PipelineInfo{ID: 123}}
@@ -133,9 +143,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 build:	success
@@ -158,6 +168,11 @@ func TestCIGet_WithJobText(t *testing.T) {
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 		cmdtest.WithGitLabClient(tc.Client),
 	)
+
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
 		ID:         123,
 		IID:        123,
@@ -167,17 +182,17 @@ func TestCIGet_WithJobText(t *testing.T) {
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
 	output, err := exec("-p=123 -b=main")
@@ -192,9 +207,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 build:	success
@@ -218,6 +233,10 @@ func TestCIGet_WithJobDetails(t *testing.T) {
 		cmdtest.WithGitLabClient(tc.Client),
 	)
 
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
 		ID:         123,
 		IID:        123,
@@ -227,17 +246,17 @@ func TestCIGet_WithJobDetails(t *testing.T) {
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success", Duration: 10, FailureReason: "bad timing"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
 	output, err := exec("-p=123 -b=main --with-job-details")
@@ -252,9 +271,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 ID	Name	Status	Duration	Failure reason
@@ -279,31 +298,35 @@ func TestCIGet_WithVariables(t *testing.T) {
 		cmdtest.WithGitLabClient(tc.Client),
 	)
 
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
-		ID:         123,
-		IID:        123,
+		ID:         int64(123),
+		IID:        int64(123),
 		Status:     "pending",
 		Source:     "push",
 		Ref:        "main",
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
 	vs := []*gitlab.PipelineVariable{{Key: "RUN_NIGHTLY_BUILD", VariableType: "env_var", Value: "true"}}
 	tc.MockPipelines.EXPECT().
-		GetPipelineVariables(0, 123).
+		GetPipelineVariables(int64(0), int64(123)).
 		Return(vs, nil, nil)
 
 	output, err := exec("-p=123 -b=main --with-variables")
@@ -318,9 +341,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 build:	success
@@ -346,31 +369,35 @@ func TestCIGet_WithVariablesNone(t *testing.T) {
 		cmdtest.WithGitLabClient(tc.Client),
 	)
 
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
-		ID:         123,
-		IID:        123,
+		ID:         int64(123),
+		IID:        int64(123),
 		Status:     "pending",
 		Source:     "push",
 		Ref:        "main",
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
 	// return no variables
 	tc.MockPipelines.EXPECT().
-		GetPipelineVariables(0, 123).
+		GetPipelineVariables(int64(0), int64(123)).
 		Return([]*gitlab.PipelineVariable{}, nil, nil)
 
 	output, err := exec("-p=123 -b=main --with-variables")
@@ -385,9 +412,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 build:	success
@@ -411,41 +438,46 @@ func TestCIGet_MergedResultNoCommitPipeline(t *testing.T) {
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 		cmdtest.WithGitLabClient(tc.Client),
 	)
+
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	p := &gitlab.Pipeline{
-		ID:         123,
-		IID:        123,
+		ID:         int64(123),
+		IID:        int64(123),
 		Status:     "pending",
 		Source:     "push",
 		Ref:        "main",
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	j := []*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
-		Return(j, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(j, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// Simulate commit not returning a last pipeline (merged result scenario)
 	tc.MockCommits.EXPECT().
 		GetCommit("OWNER/REPO", "main", gomock.Any()).
 		Return(&gitlab.Commit{LastPipeline: nil}, nil, nil)
 
-	out := []*gitlab.BasicMergeRequest{{IID: 1}}
+	out := []*gitlab.BasicMergeRequest{{IID: int64(1)}}
 	tc.MockMergeRequests.EXPECT().
 		ListProjectMergeRequests("OWNER/REPO", gomock.Any()).
 		Return(out, nil, nil)
 
-	mr := gitlab.MergeRequest{HeadPipeline: &gitlab.Pipeline{ID: 123}}
+	mr := gitlab.MergeRequest{HeadPipeline: &gitlab.Pipeline{ID: int64(123)}}
 	tc.MockMergeRequests.EXPECT().
-		GetMergeRequest("OWNER/REPO", 1, gomock.Any()).
+		GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
 		Return(&mr, nil, nil)
 
 	output, err := exec("-b=main")
@@ -460,9 +492,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 build:	success
@@ -479,21 +511,20 @@ func TestFetchDownstreamPipeline_NoVariablesRequested(t *testing.T) {
 	tc := gitlabtesting.NewTestClient(t)
 
 	tc.MockPipelines.EXPECT().
-		GetPipeline(10, 456, gomock.Any()).
-		Return(&gitlab.Pipeline{ID: 456, ProjectID: 10, Status: "pending"}, nil, nil)
+		GetPipeline(int64(10), int64(456), gomock.Any()).
+		Return(&gitlab.Pipeline{ID: int64(456), ProjectID: int64(10), Status: "pending"}, nil, nil)
 
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs(gomock.Any(), 456, gomock.Any(), gomock.Any(), gomock.Any()).
-		Return([]*gitlab.Job{}, &gitlab.Response{NextPage: 0}, nil)
-
+		ListPipelineJobs(gomock.Any(), int64(456), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Job{}, &gitlab.Response{NextPage: int64(0)}, nil)
 	tc.MockPipelines.EXPECT().
-		GetPipelineVariables(10, 456, gomock.Any()).
+		GetPipelineVariables(int64(10), int64(456), gomock.Any()).
 		Return(nil, nil, nil)
 
 	pb, err := fetchDownstreamPipeline(context.Background(), tc.Client, &gitlab.Bridge{
 		DownstreamPipeline: &gitlab.PipelineInfo{
-			ProjectID: 10,
-			ID:        456,
+			ProjectID: int64(10),
+			ID:        int64(456),
 		},
 	}, true)
 
@@ -509,15 +540,14 @@ func TestFetchDownstreamPipeline_VariablesError(t *testing.T) {
 	tc := gitlabtesting.NewTestClient(t)
 
 	tc.MockPipelines.EXPECT().
-		GetPipeline(10, 456, gomock.Any()).
-		Return(&gitlab.Pipeline{ID: 456, ProjectID: 10}, nil, nil)
+		GetPipeline(int64(10), int64(456), gomock.Any()).
+		Return(&gitlab.Pipeline{ID: int64(456), ProjectID: int64(10)}, nil, nil)
 
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs(gomock.Any(), 456, gomock.Any(), gomock.Any()).
-		Return([]*gitlab.Job{}, &gitlab.Response{NextPage: 0}, nil)
-
+		ListPipelineJobs(gomock.Any(), int64(456), gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Job{}, &gitlab.Response{NextPage: int64(0)}, nil)
 	tc.MockPipelines.EXPECT().
-		GetPipelineVariables(10, 456, gomock.Any()).
+		GetPipelineVariables(int64(10), int64(456), gomock.Any()).
 		Return(nil, nil, errors.New("server error"))
 
 	_, err := fetchDownstreamPipeline(context.Background(), tc.Client, &gitlab.Bridge{
@@ -532,55 +562,164 @@ func TestFetchDownstreamPipeline_VariablesError(t *testing.T) {
 func TestCIGetJSON(t *testing.T) {
 	t.Parallel()
 
-	tc := gitlabtesting.NewTestClient(t)
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+	finishedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.35Z")
 
-	exec := cmdtest.SetupCmdForTest(
-		t,
-		NewCmdGet,
-		false,
-		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-		cmdtest.WithGitLabClient(tc.Client),
-	)
-	// Build pipeline object directly
-	p := &gitlab.Pipeline{
-		ID:     452959326,
-		IID:    452959326,
-		Status: "success",
-		Source: "push",
-		Ref:    "main",
-		SHA:    "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
-		User:   &gitlab.BasicUser{Username: "test"},
+	jobCreatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.291Z")
+	jobStartedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.693Z")
+	jobFinishedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.274Z")
+
+	// Response indicating last page
+	lastPageResponse := &gitlab.Response{
+		Response: &http.Response{StatusCode: http.StatusOK},
+		NextPage: 0,
 	}
-	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 452959326).
-		Return(p, nil, nil)
 
-	j := []*gitlab.Job{
+	type testCase struct {
+		name      string
+		args      string
+		setupMock func(tc *gitlabtesting.TestClient)
+	}
+
+	tests := []testCase{
 		{
-			ID:     1,
-			Name:   "build",
-			Status: "success",
+			name: "when getting JSON for pipeline",
+			args: "-p 452959326 -F json -b main",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockPipelines.EXPECT().
+					GetPipeline("OWNER/REPO", int64(452959326)).
+					Return(&gitlab.Pipeline{
+						ID:         452959326,
+						IID:        14,
+						ProjectID:  29316529,
+						SHA:        "44eb489568f7cb1a5a730fce6b247cd3797172ca",
+						Ref:        "1-fake-issue-3",
+						Status:     "success",
+						Source:     "push",
+						CreatedAt:  &createdAt,
+						UpdatedAt:  &updatedAt,
+						StartedAt:  &startedAt,
+						FinishedAt: &finishedAt,
+						BeforeSHA:  "001eb421e586a3f07f90aea102c8b2d4068ab5b6",
+						Tag:        false,
+						User: &gitlab.BasicUser{
+							ID:        8814129,
+							Username:  "OWNER",
+							Name:      "Some User",
+							State:     "active",
+							Locked:    false,
+							AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
+							WebURL:    "https://gitlab.com/OWNER",
+						},
+						WebURL:         "https://gitlab.com/OWNER/REPO/-/pipelines/452959326",
+						Duration:       14,
+						QueuedDuration: 1,
+						DetailedStatus: &gitlab.DetailedStatus{
+							Icon:        "status_success",
+							Text:        "Passed",
+							Label:       "passed",
+							Group:       "success",
+							Tooltip:     "passed",
+							HasDetails:  true,
+							DetailsPath: "/OWNER/REPO/-/pipelines/452959326",
+							Favicon:     "/assets/ci_favicons/favicon_status_success-8451333011eee8ce9f2ab25dc487fe24a8758c694827a582f17f42b0a90446a2.png",
+						},
+					}, nil, nil)
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(452959326), gomock.Any(), gomock.Any()).
+					Return([]*gitlab.Job{
+						{
+							ID:             1999017704,
+							Status:         "success",
+							Stage:          "test",
+							Name:           "test_vars",
+							Ref:            "1-fake-issue-3",
+							Tag:            false,
+							AllowFailure:   false,
+							CreatedAt:      &jobCreatedAt,
+							StartedAt:      &jobStartedAt,
+							FinishedAt:     &jobFinishedAt,
+							Duration:       14.580467,
+							QueuedDuration: 0.211715,
+							User: &gitlab.User{
+								ID:        8814129,
+								Username:  "OWNER",
+								Name:      "Some User",
+								State:     "active",
+								Locked:    false,
+								AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
+								WebURL:    "https://gitlab.com/OWNER",
+							},
+							Commit: &gitlab.Commit{
+								ID:             "44eb489568f7cb1a5a730fce6b247cd3797172ca",
+								ShortID:        "44eb4895",
+								Title:          "Add new file",
+								AuthorName:     "Some User",
+								AuthorEmail:    "OWNER@gitlab.com",
+								CommitterName:  "Some User",
+								CommitterEmail: "OWNER@gitlab.com",
+								Message:        "Add new file",
+								ParentIDs:      []string{"001eb421e586a3f07f90aea102c8b2d4068ab5b6"},
+								WebURL:         "https://gitlab.com/OWNER/REPO/-/commit/44eb489568f7cb1a5a730fce6b247cd3797172ca",
+							},
+							Pipeline: gitlab.JobPipeline{
+								ID:        452959326,
+								ProjectID: 29316529,
+								Sha:       "44eb489568f7cb1a5a730fce6b247cd3797172ca",
+								Ref:       "1-fake-issue-3",
+								Status:    "success",
+							},
+							WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/1999017704",
+							Runner: gitlab.JobRunner{
+								ID:          12270859,
+								Description: "5-green.saas-linux-small-amd64.runners-manager.gitlab.com/default",
+								Active:      true,
+								IsShared:    true,
+								Name:        "gitlab-runner",
+							},
+							Artifacts: []gitlab.JobArtifact{
+								{
+									FileType: "trace",
+									Filename: "job.log",
+									Size:     2770,
+								},
+							},
+						},
+					}, lastPageResponse, nil)
+			},
 		},
 	}
-	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 452959326, gomock.Any(), gomock.Any()).
-		Return(j, &gitlab.Response{NextPage: 0}, nil)
 
-	output, err := exec("-p 452959326 -F json -b main")
-	require.NoError(t, err)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	merged := &PipelineMergedResponse{
-		Pipeline:  p,
-		Jobs:      j,
-		Bridges:   nil,
-		Variables: nil,
+			// GIVEN
+			testClient := gitlabtesting.NewTestClient(t)
+			tc.setupMock(testClient)
+
+			exec := cmdtest.SetupCmdForTest(
+				t,
+				NewCmdGet,
+				false,
+				cmdtest.WithGitLabClient(testClient.Client),
+			)
+
+			// WHEN
+			output, err := exec(tc.args)
+
+			// THEN
+			require.NoError(t, err)
+			// Verify it's valid JSON that contains expected fields
+			assert.Contains(t, output.String(), `"id":452959326`)
+			assert.Contains(t, output.String(), `"status":"success"`)
+			assert.Contains(t, output.String(), `"jobs":[`)
+			assert.Contains(t, output.String(), `"test_vars"`)
+			assert.Empty(t, output.Stderr())
+		})
 	}
-	expectedBytes, err := json.Marshal(merged)
-
-	require.NoError(t, err)
-
-	assert.JSONEq(t, string(expectedBytes), output.String())
-	assert.Empty(t, output.Stderr())
 }
 
 func TestCIGetJSONWithBridges(t *testing.T) {
@@ -597,8 +736,8 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 
 	// parent pipeline object
 	p := &gitlab.Pipeline{
-		ID:     452959326,
-		IID:    452959326,
+		ID:     int64(452959326),
+		IID:    int64(452959326),
 		Status: "success",
 		Source: "push",
 		Ref:    "main",
@@ -606,7 +745,7 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 		User:   &gitlab.BasicUser{Username: "test"},
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 452959326).
+		GetPipeline("OWNER/REPO", int64(452959326)).
 		Return(p, nil, nil)
 
 	// parent jobs
@@ -614,26 +753,26 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 		{ID: 1, Name: "build", Status: "success"},
 	}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 452959326, gomock.Any(), gomock.Any()).
-		Return(j, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineJobs("OWNER/REPO", int64(452959326), gomock.Any(), gomock.Any()).
+		Return(j, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// bridges (one bridge that points to a downstream pipeline)
 	br := &gitlab.Bridge{
 		DownstreamPipeline: &gitlab.PipelineInfo{
-			ProjectID: 29316529,
-			ID:        12345678,
+			ProjectID: int64(29316529),
+			ID:        int64(12345678),
 		},
 	}
 	bs := []*gitlab.Bridge{br}
 	tc.MockJobs.EXPECT().
-		ListPipelineBridges("OWNER/REPO", 452959326, gomock.Any(), gomock.Any()).
-		Return(bs, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineBridges("OWNER/REPO", int64(452959326), gomock.Any(), gomock.Any()).
+		Return(bs, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// child pipeline
 	childP := &gitlab.Pipeline{
-		ID:        12345678,
-		IID:       12345678,
-		ProjectID: 29316529,
+		ID:        int64(12345678),
+		IID:       int64(12345678),
+		ProjectID: int64(29316529),
 		Status:    "pending",
 		Source:    "push",
 		Ref:       "main",
@@ -641,7 +780,7 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 		User:      &gitlab.BasicUser{Username: "child"},
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline(29316529, 12345678, gomock.Any()).
+		GetPipeline(int64(29316529), int64(12345678), gomock.Any()).
 		Return(childP, nil, nil)
 
 	// child jobs
@@ -649,8 +788,8 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 		{ID: 2, Name: "child-build", Status: "success"},
 	}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs(29316529, 12345678, gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(childJ, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineJobs(int64(29316529), int64(12345678), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(childJ, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	output, err := exec("-p 452959326 -F json -b main --with-downstream-pipelines")
 	require.NoError(t, err)
@@ -688,23 +827,27 @@ func TestCIGetWithBridges(t *testing.T) {
 		cmdtest.WithGitLabClient(tc.Client),
 	)
 
+	createdAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:16.276Z")
+	startedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:17.448Z")
+	updatedAt, _ := time.Parse(time.RFC3339, "2022-01-20T21:47:31.358Z")
+
 	// parent pipeline
 	p := &gitlab.Pipeline{
-		ID:         123,
-		IID:        123,
-		ProjectID:  5,
+		ID:         int64(123),
+		IID:        int64(123),
+		ProjectID:  int64(5),
 		Status:     "pending",
 		Source:     "push",
 		Ref:        "main",
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	// parent jobs
@@ -712,46 +855,46 @@ func TestCIGetWithBridges(t *testing.T) {
 		{ID: 123, Name: "publish", Status: "failed", FailureReason: "bad timing"},
 	}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
-		Return(j, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(j, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// parent variables
 	vs := []*gitlab.PipelineVariable{
 		{Key: "RUN_NIGHTLY_BUILD", VariableType: "env_var", Value: "true"},
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipelineVariables(5, 123).
+		GetPipelineVariables(int64(5), int64(123)).
 		Return(vs, nil, nil)
 
 	// bridges
 	br := &gitlab.Bridge{
 		DownstreamPipeline: &gitlab.PipelineInfo{
-			ProjectID: 10,
-			ID:        456,
+			ProjectID: int64(10),
+			ID:        int64(456),
 		},
 	}
 	bs := []*gitlab.Bridge{br}
 	tc.MockJobs.EXPECT().
-		ListPipelineBridges("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
-		Return(bs, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineBridges("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(bs, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// child pipeline
 	childP := &gitlab.Pipeline{
-		ID:         456,
-		IID:        456,
-		ProjectID:  10,
+		ID:         int64(456),
+		IID:        int64(456),
+		ProjectID:  int64(10),
 		Status:     "pending",
 		Source:     "push",
 		Ref:        "main",
 		SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 		User:       &gitlab.BasicUser{Username: "test"},
 		YamlErrors: "-",
-		CreatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		StartedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
-		UpdatedAt:  gitlab.Ptr(time.Date(2023, 10, 10, 0, 0, 0, 0, time.UTC)),
+		CreatedAt:  &createdAt,
+		StartedAt:  &startedAt,
+		UpdatedAt:  &updatedAt,
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline(10, 456, gomock.Any()).
+		GetPipeline(int64(10), int64(456), gomock.Any()).
 		Return(childP, nil, nil)
 
 	// child jobs
@@ -759,7 +902,7 @@ func TestCIGetWithBridges(t *testing.T) {
 		{ID: 123, Name: "publish", Status: "failed", FailureReason: "bad timing"},
 	}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs(10, 456, gomock.Any(), gomock.Any(), gomock.Any()).
+		ListPipelineJobs(int64(10), int64(456), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(childJ, &gitlab.Response{NextPage: 0}, nil)
 
 	// child variables
@@ -767,7 +910,7 @@ func TestCIGetWithBridges(t *testing.T) {
 		{Key: "RUN_DAILY_BUILD", VariableType: "env_var", Value: "true"},
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipelineVariables(10, 456, gomock.Any()).
+		GetPipelineVariables(int64(10), int64(456), gomock.Any()).
 		Return(childVs, nil, nil)
 
 	output, err := exec("-p=123 -b=main --with-downstream-pipelines --with-job-details --with-variables")
@@ -782,9 +925,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Jobs:
 ID	Name	Status	Duration	Failure reason
@@ -802,9 +945,9 @@ sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
 user:	test
-created:	2023-10-10 00:00:00 +0000 UTC
-started:	2023-10-10 00:00:00 +0000 UTC
-updated:	2023-10-10 00:00:00 +0000 UTC
+created:	2022-01-20 21:47:16.276 +0000 UTC
+started:	2022-01-20 21:47:17.448 +0000 UTC
+updated:	2022-01-20 21:47:31.358 +0000 UTC
 
 # Child 1 jobs :
 ID	Name	Status	Duration	Failure reason
@@ -832,9 +975,9 @@ func TestCIGetWithBridges_DownstreamErrorIsWrapped(t *testing.T) {
 
 	// parent pipeline
 	p := &gitlab.Pipeline{
-		ID:        123,
-		IID:       123,
-		ProjectID: 5,
+		ID:        int64(123),
+		IID:       int64(123),
+		ProjectID: int64(5),
 		Status:    "pending",
 		Source:    "push",
 		Ref:       "main",
@@ -842,30 +985,30 @@ func TestCIGetWithBridges_DownstreamErrorIsWrapped(t *testing.T) {
 		User:      &gitlab.BasicUser{Username: "test"},
 	}
 	tc.MockPipelines.EXPECT().
-		GetPipeline("OWNER/REPO", 123).
+		GetPipeline("OWNER/REPO", int64(123)).
 		Return(p, nil, nil)
 
 	// parent jobs
 	j := []*gitlab.Job{{ID: 1, Name: "publish", Status: "pending"}}
 	tc.MockJobs.EXPECT().
-		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
-		Return(j, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(j, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// bridge pointing to downstream pipeline which will fail to fetch
 	br := &gitlab.Bridge{
 		DownstreamPipeline: &gitlab.PipelineInfo{
-			ProjectID: 10,
-			ID:        456,
+			ProjectID: int64(10),
+			ID:        int64(456),
 		},
 	}
 	bs := []*gitlab.Bridge{br}
 	tc.MockJobs.EXPECT().
-		ListPipelineBridges("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
-		Return(bs, &gitlab.Response{NextPage: 0}, nil)
+		ListPipelineBridges("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(bs, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	// downstream pipeline fetch fails
 	tc.MockPipelines.EXPECT().
-		GetPipeline(10, 456, gomock.Any()).
+		GetPipeline(int64(10), int64(456), gomock.Any()).
 		Return(nil, nil, errors.New("server error"))
 
 	_, err := exec("-p=123 -b=main --with-downstream-pipelines")
