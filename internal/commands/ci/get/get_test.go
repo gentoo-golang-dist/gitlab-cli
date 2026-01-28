@@ -998,6 +998,7 @@ func TestCIGetWithBridges_DownstreamErrorIsWrapped(t *testing.T) {
 		DownstreamPipeline: &gitlab.PipelineInfo{
 			ProjectID: int64(10),
 			ID:        int64(456),
+			WebURL:    "https://gitlab.com/OWNER/REPO/-/pipelines/456",
 		},
 	}
 	bs := []*gitlab.Bridge{br}

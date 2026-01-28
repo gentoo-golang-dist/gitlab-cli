@@ -160,29 +160,15 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 						pb, err := fetchDownstreamPipeline(ctx, client, bridge, showVariables)
 						if err != nil {
 							// Provide context about which downstream pipeline failed, including a link when possible.
-							var pipelineURL string
-							if baseURL := client.BaseURL(); baseURL != nil {
-								webBase := *baseURL
-								webBase.Path = ""
-								pipelineURL = webBase.JoinPath(repo.FullName(), "-", "pipelines", strconv.FormatInt(bridge.DownstreamPipeline.ID, 10)).String()
-							}
-							if pipelineURL != "" {
-								return fmt.Errorf(
-									"failed to fetch downstream pipeline for parent_pipeline_id=%d downstream_project_id=%d downstream_pipeline_id=%d (%s): %w",
-									pipelineId,
-									bridge.DownstreamPipeline.ProjectID,
-									bridge.DownstreamPipeline.ID,
-									pipelineURL,
-									err,
-								)
-							}
-							return fmt.Errorf(
-								"failed to fetch downstream pipeline for parent_pipeline_id=%d downstream_project_id=%d downstream_pipeline_id=%d: %w",
+							dp := bridge.DownstreamPipeline
+							baseMsg := fmt.Sprintf(
+								"failed to fetch downstream pipeline for parent_pipeline_id=%d downstream_project_id=%d downstream_pipeline_id=%d web_url=%s",
 								pipelineId,
-								bridge.DownstreamPipeline.ProjectID,
-								bridge.DownstreamPipeline.ID,
-								err,
+								dp.ProjectID,
+								dp.ID,
+								dp.WebURL,
 							)
+							return fmt.Errorf("%s: %w", baseMsg, err)
 						}
 						results[i] = pb
 						return nil
