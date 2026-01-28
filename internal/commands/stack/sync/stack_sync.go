@@ -32,6 +32,7 @@ type options struct {
 	baseRepo  func() (glrepo.Interface, error)
 	remotes   func() (glrepo.Remotes, error)
 	user      gitlab.User
+	labels    []string
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -78,6 +79,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			return opts.run(cmd.Context(), f, gr)
 		},
 	}
+
+	stackSaveCmd.Flags().StringSliceVarP(&opts.labels, "label", "l", []string{}, "Add label by `name`. Multiple labels can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -322,6 +325,11 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		AssigneeID:         gitlab.Ptr(opts.user.ID),
 		RemoveSourceBranch: gitlab.Ptr(true),
 		TargetProjectID:    gitlab.Ptr(targetProject.ID),
+	}
+
+	// Add labels if provided via flag
+	if len(opts.labels) > 0 {
+		l.Labels = (*gitlab.LabelOptions)(&opts.labels)
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)
