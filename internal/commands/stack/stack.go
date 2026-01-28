@@ -46,6 +46,7 @@ func NewCmdStack(f cmdutils.Factory) *cobra.Command {
 	stackCmd.AddCommand(stackCreateCmd.NewCmdCreateStack(f, gr))
 	stackCmd.AddCommand(stackSaveCmd.NewCmdSaveStack(f, gr, getTextFromEditor))
 	stackCmd.AddCommand(stackSaveCmd.NewCmdAmendStack(f, gr, getTextFromEditor))
+	stackCmd.AddCommand(stackSaveCmd.NewCmdLayerStack(f, gr, getTextFromEditor))
 	stackCmd.AddCommand(stackSyncCmd.NewCmdSyncStack(f, gr))
 	stackCmd.AddCommand(stackMoveCmd.NewCmdStackPrev(f, gr))
 	stackCmd.AddCommand(stackMoveCmd.NewCmdStackNext(f, gr))
