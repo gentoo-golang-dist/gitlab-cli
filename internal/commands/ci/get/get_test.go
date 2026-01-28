@@ -586,7 +586,7 @@ func TestCIGetJSON(t *testing.T) {
 func TestCIGetJSONWithBridges(t *testing.T) {
 	t.Parallel()
 
-	tc := gitlabtesting.NewTestClient(t)
+	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://gitlab.com/api/v4"))
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmdGet,
@@ -679,7 +679,7 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 func TestCIGetWithBridges(t *testing.T) {
 	t.Parallel()
 
-	tc := gitlabtesting.NewTestClient(t)
+	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://gitlab.com/api/v4"))
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmdGet,
@@ -816,4 +816,60 @@ RUN_DAILY_BUILD:	true
 `
 	assert.Equal(t, expectedOut, output.String())
 	assert.Empty(t, output.Stderr())
+}
+
+func TestCIGetWithBridges_DownstreamErrorIsWrapped(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://gitlab.com/api/v4"))
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdGet,
+		false,
+		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		cmdtest.WithGitLabClient(tc.Client),
+	)
+
+	// parent pipeline
+	p := &gitlab.Pipeline{
+		ID:        123,
+		IID:       123,
+		ProjectID: 5,
+		Status:    "pending",
+		Source:    "push",
+		Ref:       "main",
+		SHA:       "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+		User:      &gitlab.BasicUser{Username: "test"},
+	}
+	tc.MockPipelines.EXPECT().
+		GetPipeline("OWNER/REPO", 123).
+		Return(p, nil, nil)
+
+	// parent jobs
+	j := []*gitlab.Job{{ID: 1, Name: "publish", Status: "pending"}}
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		Return(j, &gitlab.Response{NextPage: 0}, nil)
+
+	// bridge pointing to downstream pipeline which will fail to fetch
+	br := &gitlab.Bridge{
+		DownstreamPipeline: &gitlab.PipelineInfo{
+			ProjectID: 10,
+			ID:        456,
+		},
+	}
+	bs := []*gitlab.Bridge{br}
+	tc.MockJobs.EXPECT().
+		ListPipelineBridges("OWNER/REPO", 123, gomock.Any(), gomock.Any()).
+		Return(bs, &gitlab.Response{NextPage: 0}, nil)
+
+	// downstream pipeline fetch fails
+	tc.MockPipelines.EXPECT().
+		GetPipeline(10, 456, gomock.Any()).
+		Return(nil, nil, errors.New("server error"))
+
+	_, err := exec("-p=123 -b=main --with-downstream-pipelines")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to fetch downstream pipeline for parent_pipeline_id=123 downstream_project_id=10 downstream_pipeline_id=456")
+	assert.ErrorContains(t, err, "https://gitlab.com/OWNER/REPO/-/pipelines/456")
 }

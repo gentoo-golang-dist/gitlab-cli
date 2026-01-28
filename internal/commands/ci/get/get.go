@@ -148,8 +148,6 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
 
 				for i, bridge := range filteredBridges {
-					i, br := i, bridge
-
 					if err := sem.Acquire(ctx, 1); err != nil {
 						// If context is cancelled or acquire fails, stop and return error.
 						return err
@@ -159,9 +157,32 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 						// Ensure the token is released when the worker finishes.
 						defer sem.Release(1)
 
-						pb, err := fetchDownstreamPipeline(ctx, client, br, showVariables)
+						pb, err := fetchDownstreamPipeline(ctx, client, bridge, showVariables)
 						if err != nil {
-							return err
+							// Provide context about which downstream pipeline failed, including a link when possible.
+							var pipelineURL string
+							if baseURL := client.BaseURL(); baseURL != nil {
+								webBase := *baseURL
+								webBase.Path = ""
+								pipelineURL = webBase.JoinPath(repo.FullName(), "-", "pipelines", strconv.Itoa(bridge.DownstreamPipeline.ID)).String()
+							}
+							if pipelineURL != "" {
+								return fmt.Errorf(
+									"failed to fetch downstream pipeline for parent_pipeline_id=%d downstream_project_id=%d downstream_pipeline_id=%d (%s): %w",
+									pipelineId,
+									bridge.DownstreamPipeline.ProjectID,
+									bridge.DownstreamPipeline.ID,
+									pipelineURL,
+									err,
+								)
+							}
+							return fmt.Errorf(
+								"failed to fetch downstream pipeline for parent_pipeline_id=%d downstream_project_id=%d downstream_pipeline_id=%d: %w",
+								pipelineId,
+								bridge.DownstreamPipeline.ProjectID,
+								bridge.DownstreamPipeline.ID,
+								err,
+							)
 						}
 						results[i] = pb
 						return nil
@@ -173,8 +194,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 					return err
 				}
 
-				// Append results in order.
-				pipelineBridges = append(pipelineBridges, results...)
+				// Assign collected downstream pipelines
+				pipelineBridges = results
 			}
 
 			var variables []*gitlab.PipelineVariable
