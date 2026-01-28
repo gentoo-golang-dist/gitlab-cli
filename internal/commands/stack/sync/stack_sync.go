@@ -11,6 +11,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/auth"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/create"
@@ -32,6 +33,7 @@ type options struct {
 	baseRepo  func() (glrepo.Interface, error)
 	remotes   func() (glrepo.Remotes, error)
 	user      gitlab.User
+	assignees []string
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -78,6 +80,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			return opts.run(cmd.Context(), f, gr)
 		},
 	}
+
+	stackSaveCmd.Flags().StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -319,9 +323,19 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		Description:        gitlab.Ptr(description),
 		SourceBranch:       gitlab.Ptr(ref.Branch),
 		TargetBranch:       gitlab.Ptr(previousBranch),
-		AssigneeID:         gitlab.Ptr(opts.user.ID),
 		RemoveSourceBranch: gitlab.Ptr(true),
 		TargetProjectID:    gitlab.Ptr(targetProject.ID),
+	}
+
+	// Set assignees: if provided via flag, use those; otherwise, assign to the current user
+	if len(opts.assignees) > 0 {
+		users, err := api.UsersByNames(client, opts.assignees)
+		if err != nil {
+			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving assignee usernames: %v", err)
+		}
+		l.AssigneeIDs = cmdutils.IDsFromUsers(users)
+	} else {
+		l.AssigneeID = gitlab.Ptr(opts.user.ID)
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)
