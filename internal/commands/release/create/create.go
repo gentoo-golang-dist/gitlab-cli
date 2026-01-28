@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -390,22 +389,12 @@ func createRun(opts *options) error {
 		}
 		editorOptions = append(editorOptions, noteOptionsNames[noteOptLeaveBlank])
 
-		// Combine title and release notes selection into a single form
-		var fields []huh.Field
-
-		// Add title input field
-		fields = append(fields, huh.NewInput().
-			Title("Release title (optional)").
-			Value(&opts.Name))
-
-		// Add release notes selection field
-		fields = append(fields, huh.NewSelect[string]().
-			Title("Release notes").
-			Options(huh.NewOptions(editorOptions...)...).
-			Value(&opts.ReleaseNotesAction))
-
-		// Run the combined form
-		err = opts.io.RunForm(opts.ctx, fields...)
+		// Use the FormBuilder API instead of directly using huh fields
+		// This abstracts away huh implementation details
+		err = opts.io.NewForm().
+			AddInput(&opts.Name, "Release title (optional)", "", "").
+			AddSelect(&opts.ReleaseNotesAction, "Release notes", "", editorOptions).
+			Run(opts.ctx)
 		if err != nil {
 			return fmt.Errorf("could not prompt: %w", err)
 		}
