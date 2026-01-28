@@ -3,21 +3,20 @@
 package get
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
 	"time"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
-
-	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestCIGet_ExistingPipeline(t *testing.T) {
@@ -521,7 +520,7 @@ func TestFetchDownstreamPipeline_NoVariablesRequested(t *testing.T) {
 		GetPipelineVariables(int64(10), int64(456), gomock.Any()).
 		Return(nil, nil, nil)
 
-	pb, err := fetchDownstreamPipeline(context.Background(), tc.Client, &gitlab.Bridge{
+	pb, err := fetchDownstreamPipeline(t.Context(), tc.Client, &gitlab.Bridge{
 		DownstreamPipeline: &gitlab.PipelineInfo{
 			ProjectID: int64(10),
 			ID:        int64(456),
@@ -550,7 +549,7 @@ func TestFetchDownstreamPipeline_VariablesError(t *testing.T) {
 		GetPipelineVariables(int64(10), int64(456), gomock.Any()).
 		Return(nil, nil, errors.New("server error"))
 
-	_, err := fetchDownstreamPipeline(context.Background(), tc.Client, &gitlab.Bridge{
+	_, err := fetchDownstreamPipeline(t.Context(), tc.Client, &gitlab.Bridge{
 		DownstreamPipeline: &gitlab.PipelineInfo{
 			ProjectID: 10,
 			ID:        456,

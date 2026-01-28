@@ -9,6 +9,8 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -17,8 +19,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
-	"golang.org/x/sync/errgroup"
-	"golang.org/x/sync/semaphore"
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
@@ -305,7 +305,6 @@ func printJobText(p []*gitlab.Job, dest io.Writer, isChild ...int) {
 	}
 	jobTable := tableprinter.NewTablePrinter()
 	for _, j := range p {
-		j := j
 		jobTable.AddRow(j.Name+":", j.Status)
 	}
 	fmt.Fprintln(dest, jobTable.String())
