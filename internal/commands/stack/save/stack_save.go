@@ -167,19 +167,23 @@ func checkForChanges() error {
 }
 
 // addFiles adds files to git (git add args...)
+// If no arguments are provided, uses "git add -u" to only stage modified/deleted
+// tracked files, avoiding untracked files being added.
 func addFiles(args []string) error {
+	var cmdargs []string
 	if len(args) == 0 {
-		args = []string{"."}
-	}
-
-	for _, file := range args {
-		_, err := os.Stat(file)
-		if err != nil {
-			return err
+		// Use -u to only stage modified/deleted tracked files, not untracked files
+		cmdargs = []string{"add", "-u"}
+	} else {
+		for _, file := range args {
+			_, err := os.Stat(file)
+			if err != nil {
+				return err
+			}
 		}
+		cmdargs = append([]string{"add"}, args...)
 	}
 
-	cmdargs := append([]string{"add"}, args...)
 	gitCmd := git.GitCommand(cmdargs...)
 
 	_, err := run.PrepareCmd(gitCmd).Output()

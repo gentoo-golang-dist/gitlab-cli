@@ -142,23 +142,35 @@ func TestSaveNewStack(t *testing.T) {
 
 func Test_addFiles(t *testing.T) {
 	tests := []struct {
-		desc     string
-		args     []string
-		expected []string
+		desc           string
+		args           []string
+		createdFiles   []string
+		trackedFiles   []string // Files to track (commit) before the test
+		modifiedFiles  []string // Files to modify after tracking
+		expectedStaged []string
+		expectedStatus string // Expected output of git status --short
 	}{
 		{
-			desc:     "adding regular files",
-			args:     []string{"file1", "file2"},
-			expected: []string{"file1", "file2"},
+			desc:           "adding regular files",
+			args:           []string{"file1", "file2"},
+			createdFiles:   []string{"file1", "file2"},
+			expectedStaged: []string{"file1", "file2"},
+			expectedStatus: "A  file1A  file2",
 		},
 		{
-			desc:     "adding files with a dot argument",
-			args:     []string{"."},
-			expected: []string{"file1", "file2"},
+			desc:           "adding files with a dot argument",
+			args:           []string{"."},
+			createdFiles:   []string{"file1", "file2"},
+			expectedStaged: []string{"file1", "file2"},
+			expectedStatus: "A  file1A  file2",
 		},
 		{
-			desc:     "adding files with no argument",
-			expected: []string{"file1", "file2"},
+			desc:           "adding files with no argument should only stage tracked modified files",
+			args:           []string{},
+			trackedFiles:   []string{"tracked1", "tracked2"},
+			modifiedFiles:  []string{"tracked1"},
+			createdFiles:   []string{"untracked"},
+			expectedStatus: "M  tracked1?? untracked",
 		},
 	}
 
@@ -168,7 +180,26 @@ func Test_addFiles(t *testing.T) {
 			err := git.SetLocalConfig("glab.currentstack", "cool-test-feature")
 			require.Nil(t, err)
 
-			createTemporaryFiles(t, dir, tc.expected)
+			// First create and commit tracked files if any
+			if len(tc.trackedFiles) > 0 {
+				createTemporaryFiles(t, dir, tc.trackedFiles)
+				gitAdd := git.GitCommand("add", ".")
+				_, err := run.PrepareCmd(gitAdd).Output()
+				require.Nil(t, err)
+				gitCommit := git.GitCommand("commit", "-m", "add tracked files")
+				_, err = run.PrepareCmd(gitCommit).Output()
+				require.Nil(t, err)
+			}
+
+			// Modify tracked files if any
+			for _, file := range tc.modifiedFiles {
+				filePath := path.Join(dir, file)
+				err := os.WriteFile(filePath, []byte("modified content"), 0644)
+				require.Nil(t, err)
+			}
+
+			// Create untracked files
+			createTemporaryFiles(t, dir, tc.createdFiles)
 
 			err = addFiles(tc.args)
 			require.Nil(t, err)
@@ -177,15 +208,8 @@ func Test_addFiles(t *testing.T) {
 			output, err := run.PrepareCmd(gitCmd).Output()
 			require.Nil(t, err)
 
-			normalizedFiles := []string{}
-			for _, file := range tc.expected {
-				file = "A  " + file
-
-				normalizedFiles = append(normalizedFiles, file)
-			}
-
 			formattedOutput := strings.Replace(string(output), "\n", "", -1)
-			require.Equal(t, formattedOutput, strings.Join(normalizedFiles, ""))
+			require.Equal(t, tc.expectedStatus, formattedOutput)
 		})
 	}
 }
