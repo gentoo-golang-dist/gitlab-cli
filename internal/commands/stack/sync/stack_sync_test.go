@@ -85,7 +85,8 @@ func setupTestFactory(t *testing.T, testClient *gitlabtesting.TestClient) (cmdut
 
 func Test_stackSync(t *testing.T) {
 	type args struct {
-		stack SyncScenario
+		stack    SyncScenario
+		pullOnly bool
 	}
 
 	tests := []struct {
@@ -379,6 +380,34 @@ func Test_stackSync(t *testing.T) {
 					})
 			},
 		},
+		{
+			name: "with --pull flag, branches without MRs are skipped",
+			args: args{
+				pullOnly: true,
+				stack: SyncScenario{
+					title: "my cool stack",
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: "", Description: "some description"},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: ""},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				// MockStackUser
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				// Note: No CreateMergeRequest calls should happen when --no-mr is set
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -392,6 +421,7 @@ func Test_stackSync(t *testing.T) {
 			mockCmd := git_testing.NewMockGitRunner(ctrl)
 
 			f, opts := setupTestFactory(t, testClient)
+			opts.pullOnly = tc.args.pullOnly
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)
@@ -419,7 +449,7 @@ func Test_stackSync(t *testing.T) {
 				case NothingToCommit:
 				}
 
-				if ref.MR == "" {
+				if ref.MR == "" && !tc.args.pullOnly {
 					if ref.IsFirst() == true {
 						if tc.args.stack.baseBranch != "" {
 							err := git.AddStackBaseBranch(tc.args.stack.title, tc.args.stack.baseBranch)
