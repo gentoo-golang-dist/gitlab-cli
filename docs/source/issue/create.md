@@ -36,7 +36,7 @@ $ glab issue create -m release-1.0.1 -t "security fix" --label security --web --
 ## Options
 
 ```plaintext
-  -a, --assignee usernames     Assign issue to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+  -a, --assignee strings       Assign issue to people by their <usernames>. Multiple usernames can be comma-separated or specified by repeating the flag.
   -c, --confidential           Set an issue to be confidential. (default false)
   -d, --description string     Issue description. Set to "-" to open an editor.
       --due-date string        A date in 'YYYY-MM-DD' format.
@@ -59,6 +59,6 @@ $ glab issue create -m release-1.0.1 -t "security fix" --label security --web --
 ## Options inherited from parent commands
 
 ```plaintext
-  -h, --help              Show help for this command.
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+  -h, --help          Show help for this command.
+  -R, --repo string   Select another repository. Can use either <OWNER/REPO> or <GROUP/NAMESPACE/REPO> format. Also accepts full URL or Git URL.
 ```

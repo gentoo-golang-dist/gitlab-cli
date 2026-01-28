@@ -24,7 +24,7 @@ $ glab mr note -m "needs to do X before it can be merged" branch-foo
 ## Options
 
 ```plaintext
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+  -R, --repo string   Select another repository. Can use either <OWNER/REPO> or <GROUP/NAMESPACE/REPO> format. Also accepts full URL or Git URL.
 ```
 
 ## Options inherited from parent commands

@@ -37,14 +37,14 @@ $ glab mr create --fill --fill-commit-body --yes
 
 ```plaintext
       --allow-collaboration    Allow commits from other members.
-  -a, --assignee usernames     Assign merge request to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+  -a, --assignee strings       Assign merge request to people by their <usernames>. Multiple usernames can be comma-separated or specified by repeating the flag.
       --copy-issue-labels      Copy labels from issue to the merge request. Used with --related-issue.
       --create-source-branch   Create a source branch if it does not exist.
   -d, --description string     Supply a description for the merge request. Set to "-" to open an editor.
       --draft                  Mark merge request as a draft.
   -f, --fill push              Do not prompt for title or description, and just use commit info. Sets push to `true`, and pushes the branch.
       --fill-commit-body       Fill description with each commit body when multiple commits. Can only be used with --fill.
-  -H, --head OWNER/REPO        Select another head repository using the OWNER/REPO or `GROUP/NAMESPACE/REPO` format, the project ID, or the full URL.
+  -H, --head string            Select another head repository using the <OWNER/REPO> or <GROUP/NAMESPACE/REPO> format, the project ID, or the full URL.
   -l, --label strings          Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.
   -m, --milestone string       The global ID or title of a milestone to assign.
       --no-editor              Don't open editor to enter a description. If true, uses prompt. Defaults to false.
@@ -52,7 +52,7 @@ $ glab mr create --fill --fill-commit-body --yes
       --recover                Save the options to a file if the merge request creation fails. If the file exists, the options are loaded from the recovery file. (EXPERIMENTAL)
   -i, --related-issue string   Create a merge request for an issue. If --title is not provided, uses the issue title.
       --remove-source-branch   Remove source branch on merge.
-      --reviewer usernames     Request review from users by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+      --reviewer strings       Request review from users by their <usernames>. Multiple usernames can be comma-separated or specified by repeating the flag.
       --signoff                Append a DCO signoff to the merge request description.
   -s, --source-branch string   Create a merge request from this branch. Default is the current branch.
       --squash-before-merge    Squash commits into a single commit when merging.
@@ -66,6 +66,6 @@ $ glab mr create --fill --fill-commit-body --yes
 ## Options inherited from parent commands
 
 ```plaintext
-  -h, --help              Show help for this command.
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+  -h, --help          Show help for this command.
+  -R, --repo string   Select another repository. Can use either <OWNER/REPO> or <GROUP/NAMESPACE/REPO> format. Also accepts full URL or Git URL.
 ```
