@@ -140,6 +140,137 @@ func TestSaveNewStack(t *testing.T) {
 	}
 }
 
+func TestSaveNewStackWithStagedFlag(t *testing.T) {
+	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
+	t.Setenv("NO_COLOR", "true")
+
+	tests := []struct {
+		desc       string
+		args       string
+		files      []string
+		stageFiles bool
+		message    string
+		expected   string
+		wantErr    bool
+	}{
+		{
+			desc:       "using --staged with pre-staged files",
+			args:       "--staged",
+			files:      []string{"testfile", "randomfile"},
+			stageFiles: true,
+			message:    "this is a commit message",
+			expected:   "• cool-test-feature: Saved with message: \"this is a commit message\".\n",
+		},
+		{
+			desc:       "using --staged without staged files",
+			args:       "--staged",
+			files:      []string{"testfile"},
+			stageFiles: false,
+			message:    "this is a commit message",
+			expected:   "no staged changes to save",
+			wantErr:    true,
+		},
+		{
+			desc:       "using --staged with file arguments",
+			args:       "--staged testfile",
+			files:      []string{"testfile"},
+			stageFiles: true,
+			message:    "this is a commit message",
+			expected:   "cannot use --staged with file arguments",
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			args := tc.args
+			if tc.message != "" {
+				args = args + " -m \"" + tc.message + "\""
+			}
+
+			dir := git.InitGitRepoWithCommit(t)
+			err := git.SetLocalConfig("glab.currentstack", "cool-test-feature")
+			require.Nil(t, err)
+
+			createTemporaryFiles(t, dir, tc.files)
+
+			if tc.stageFiles {
+				stageFiles(t, tc.files)
+			}
+
+			getText := getMockEditor("", &[]string{})
+
+			ctrl := gomock.NewController(t)
+			mockCmd := git_testing.NewMockGitRunner(ctrl)
+
+			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+				return NewCmdSaveStack(f, mockCmd, getText)
+			}, true,
+				cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, nil, "", "gitlab.com").Lab()),
+			)
+
+			output, err := exec(args)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expected)
+			} else {
+				require.Nil(t, err)
+				require.Equal(t, tc.expected, output.String())
+			}
+		})
+	}
+}
+
+func Test_checkForStagedChanges(t *testing.T) {
+	tests := []struct {
+		desc       string
+		files      []string
+		stageFiles bool
+		wantErr    bool
+	}{
+		{
+			desc:       "check for staged changes with staged files",
+			files:      []string{"file1", "file2"},
+			stageFiles: true,
+			wantErr:    false,
+		},
+		{
+			desc:       "check for staged changes with unstaged files",
+			files:      []string{"file1", "file2"},
+			stageFiles: false,
+			wantErr:    true,
+		},
+		{
+			desc:       "check for staged changes without any files",
+			files:      []string{},
+			stageFiles: false,
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			dir := git.InitGitRepoWithCommit(t)
+			err := git.SetLocalConfig("glab.currentstack", "cool-test-feature")
+			require.Nil(t, err)
+
+			createTemporaryFiles(t, dir, tc.files)
+
+			if tc.stageFiles && len(tc.files) > 0 {
+				stageFiles(t, tc.files)
+			}
+
+			err = checkForStagedChanges()
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.Nil(t, err)
+			}
+		})
+	}
+}
+
 func Test_addFiles(t *testing.T) {
 	tests := []struct {
 		desc     string
@@ -358,6 +489,16 @@ func createTemporaryFiles(t *testing.T, dir string, files []string) {
 		file = path.Join(dir, file)
 		_, err := os.Create(file)
 
+		require.Nil(t, err)
+	}
+}
+
+func stageFiles(t *testing.T, files []string) {
+	t.Helper()
+
+	for _, file := range files {
+		gitCmd := git.GitCommand("add", file)
+		_, err := run.PrepareCmd(gitCmd).Output()
 		require.Nil(t, err)
 	}
 }

@@ -21,6 +21,7 @@ import (
 )
 
 var description string
+var staged bool
 
 func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetTextUsingEditor) *cobra.Command {
 	stackSaveCmd := &cobra.Command{
@@ -31,7 +32,8 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 		Example: heredoc.Doc(`
 			$ glab stack save added_file
 			$ glab stack save . -m "added a function"
-			$ glab stack save -m "added a function"`),
+			$ glab stack save -m "added a function"
+			$ glab stack save --staged -m "save already staged files"`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -40,8 +42,17 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 				return &cmdutils.FlagError{Err: errors.New("specify either of --message or --description.")}
 			}
 
+			if staged && len(args) > 0 {
+				return &cmdutils.FlagError{Err: errors.New("cannot use --staged with file arguments.")}
+			}
+
 			// check if there are even any changes before we start
-			err := checkForChanges()
+			var err error
+			if staged {
+				err = checkForStagedChanges()
+			} else {
+				err = checkForChanges()
+			}
 			if err != nil {
 				return fmt.Errorf("could not save: %v", err)
 			}
@@ -56,10 +67,12 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 
 			s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
-			// git add files
-			err = addFiles(args[0:])
-			if err != nil {
-				return fmt.Errorf("error adding files: %v", err)
+			// git add files (skip if --staged is used since files are already staged)
+			if !staged {
+				err = addFiles(args[0:])
+				if err != nil {
+					return fmt.Errorf("error adding files: %v", err)
+				}
 			}
 
 			// get stack title
@@ -148,6 +161,7 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 	}
 	stackSaveCmd.Flags().StringVarP(&description, "description", "d", "", "Description of the change.")
 	stackSaveCmd.Flags().StringVarP(&description, "message", "m", "", "Alias for the description flag.")
+	stackSaveCmd.Flags().BoolVarP(&staged, "staged", "s", false, "Only save files that have already been staged with git add.")
 
 	return stackSaveCmd
 }
@@ -161,6 +175,20 @@ func checkForChanges() error {
 
 	if string(output) == "" {
 		return fmt.Errorf("no changes to save.")
+	}
+
+	return nil
+}
+
+func checkForStagedChanges() error {
+	gitCmd := git.GitCommand("diff", "--cached", "--name-only")
+	output, err := run.PrepareCmd(gitCmd).Output()
+	if err != nil {
+		return fmt.Errorf("error running Git diff: %v", err)
+	}
+
+	if string(output) == "" {
+		return fmt.Errorf("no staged changes to save.")
 	}
 
 	return nil
