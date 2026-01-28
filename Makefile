@@ -48,7 +48,6 @@ BUILDLOC ?= ./bin/glab
 # Dependency versions
 GOTESTSUM_VERSION = 1.13.0
 GOLANGCI_LINT_VERSION = 2.7.2
-GOCOVMERGE_VERSION = 0.0.2
 
 # Add the ability to override some variables
 # Use with care
@@ -167,18 +166,11 @@ else
     GOCOVMERGE=bin/gocovmerge
 endif
 
-ifdef HASGOCOVMERGE
+ifndef HASGOCOVMERGE
 bin/gocovmerge:
-	@echo "Skip this"
-else
-bin/gocovmerge: bin/gocovmerge-${GOCOVMERGE_VERSION}
-	@ln -sf gocovmerge-${GOCOVMERGE_VERSION} bin/gocovmerge
-endif
-
-bin/gocovmerge-${GOCOVMERGE_VERSION}:
 	@mkdir -p bin
-	GOBIN=$(abspath bin) go install github.com/wadey/gocovmerge@v${GOCOVMERGE_VERSION}
-	@mv bin/gocovmerge $@
+	GOBIN=$(abspath bin) go install github.com/wadey/gocovmerge@latest
+endif
 
 .PHONY: coverage-merge
 coverage-merge: bin/gocovmerge ## Merge coverage profiles from unit and integration tests
