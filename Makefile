@@ -176,9 +176,12 @@ endif
 coverage-merge: bin/gocovmerge ## Merge coverage profiles from unit and integration tests
 	$(GOCOVMERGE) coverage-unit.txt coverage-integration.txt > coverage.txt
 
-.PHONY: coverage
-coverage: ## Run coverage report
+.PHONY: coverage-report
+coverage-report: ## Run coverage report
 	go tool cover -func coverage.txt
+
+.PHONY: coverage
+coverage: coverage-report ## Alias for coverage-report
 
 .PHONY: lint
 lint: bin/golangci-lint ## Run linter

@@ -278,7 +278,6 @@ tests:unit:
     when: always
     paths:
       - coverage-unit.txt
-      - coverage-unit.xml
     access: "developer"
     expire_in: 7 days
 
@@ -304,7 +303,6 @@ tests:integration:
     when: always
     paths:
       - coverage-integration.txt
-      - coverage-integration.xml
     access: "developer"
     expire_in: 7 days
 
@@ -324,17 +322,13 @@ tests:coverage:
     - make coverage-merge
   after_script:
     - echo -e "\e[0Ksection_start:`date +%s`:coverage[collapsed=true]\r\e[0KRunning coverage report"
-    - make coverage
+    - make coverage-report
     - echo -e "\e[0Ksection_end:`date +%s`:coverage\r\e[0K"
   coverage: /^total:\t+\(statements\)\t+\d+\.\d+%$/
   artifacts:
     when: always
     paths:
       - coverage.txt
-    reports:
-      junit:
-        - coverage-unit.xml
-        - coverage-integration.xml
     access: "developer"
     expire_in: 7 days
 
