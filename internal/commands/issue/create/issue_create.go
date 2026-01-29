@@ -148,7 +148,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Issue title.")
 	issueCreateCmd.Flags().StringVarP(&opts.Description, "description", "d", "", "Issue description. Set to \"-\" to open an editor.")
 	issueCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.")
-	issueCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign issue to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
+	issueCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign issue to people by their <usernames>. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	issueCreateCmd.Flags().StringVarP(&opts.MilestoneFlag, "milestone", "m", "", "The global ID or title of a milestone to assign.")
 	issueCreateCmd.Flags().BoolVarP(&opts.IsConfidential, "confidential", "c", false, "Set an issue to be confidential. (default false)")
 	issueCreateCmd.Flags().Int64VarP(&opts.LinkedMR, "linked-mr", "", 0, "The IID of a merge request in which to resolve all issues.")
