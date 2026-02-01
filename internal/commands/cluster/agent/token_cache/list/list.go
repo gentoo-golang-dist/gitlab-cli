@@ -105,7 +105,6 @@ func (o *options) run() error {
 }
 
 func (o *options) getKeyringTokens() ([]cachedToken, error) {
-	// Get list of cached token IDs from inventory
 	tokenIDs, err := agentutils.GetKeyringInventory()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read keyring inventory: %w", err)
@@ -115,8 +114,6 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 	for _, id := range tokenIDs {
 		token, err := o.readKeyringToken(id)
 		if err != nil {
-			// Token may have been removed externally or corrupted, skip it
-			// Remove from inventory to keep it clean
 			_ = agentutils.RemoveFromKeyringInventory(id)
 			continue
 		}
@@ -139,7 +136,6 @@ func (o *options) readKeyringToken(id string) (*cachedToken, error) {
 		return nil, err
 	}
 
-	// Parse cache ID to extract GitLab URL and agent ID
 	gitlabURL, agentID, err := agentutils.ParseCacheID(id)
 	if err != nil {
 		return nil, err

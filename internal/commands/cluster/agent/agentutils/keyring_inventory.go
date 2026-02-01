@@ -45,15 +45,12 @@ func AddToKeyringInventory(id string) error {
 		inventory = nil
 	}
 
-	// Check if ID already exists
 	if slices.Contains(inventory, id) {
-		return nil // Already in inventory
+		return nil
 	}
 
-	// Add new ID
 	inventory = append(inventory, id)
 
-	// Save updated inventory
 	data, err := json.Marshal(inventory)
 	if err != nil {
 		return err
@@ -77,14 +74,11 @@ func RemoveFromKeyringInventory(id string) error {
 		return existingID == id
 	})
 
-	// If nothing was removed, we're done
 	if len(updated) == originalLen {
 		return nil
 	}
 
-	// Save updated inventory
 	if len(updated) == 0 {
-		// Remove the inventory key entirely if empty
 		err := keyring.Delete(keyringService, inventoryKeyringKey)
 		if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			return err

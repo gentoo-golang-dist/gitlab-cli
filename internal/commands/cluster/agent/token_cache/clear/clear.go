@@ -140,7 +140,6 @@ func (o *options) validate() error {
 }
 
 func (o *options) getKeyringTokens() ([]cachedToken, error) {
-	// Get list of cached token IDs from inventory
 	tokenIDs, err := agentutils.GetKeyringInventory()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read keyring inventory: %w", err)
@@ -151,7 +150,6 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 		data, err := keyring.Get(keyringService, id)
 		if err != nil {
 			if errors.Is(err, keyring.ErrNotFound) {
-				// Token may have been removed externally, skip it
 				continue
 			}
 			return nil, fmt.Errorf("failed to get token from keyring: %w", err)
@@ -159,7 +157,6 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 
 		var pat gitlab.PersonalAccessToken
 		if err := json.Unmarshal([]byte(data), &pat); err != nil {
-			// Skip corrupted tokens and remove from inventory to keep it clean
 			fmt.Fprintf(o.io.StdErr, "Warning: Corrupted token in keyring, removing from inventory: %v\n", err)
 			if rmErr := agentutils.RemoveFromKeyringInventory(id); rmErr != nil {
 				fmt.Fprintf(o.io.StdErr, "Warning: Failed to remove corrupted token from inventory: %v\n", rmErr)
@@ -167,10 +164,8 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 			continue
 		}
 
-		// Parse cache ID to extract GitLab URL and agent ID
 		gitlabURL, agentID, err := agentutils.ParseCacheID(id)
 		if err != nil {
-			// Skip tokens with invalid cache IDs and remove from inventory
 			fmt.Fprintf(o.io.StdErr, "Warning: Invalid cache ID in inventory, removing: %v\n", err)
 			if rmErr := agentutils.RemoveFromKeyringInventory(id); rmErr != nil {
 				fmt.Fprintf(o.io.StdErr, "Warning: Failed to remove invalid token from inventory: %v\n", rmErr)
