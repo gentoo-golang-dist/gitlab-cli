@@ -177,10 +177,11 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
+		filteredTokens := make([]*gitlab.PersonalAccessToken, 0, len(tokens))
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
+				filteredTokens = append(filteredTokens, token)
 				outputTokens = append(outputTokens, Token{
 					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
@@ -195,6 +196,7 @@ func (o *options) run() error {
 				})
 			}
 		}
+		apiTokens = filteredTokens
 	case o.group != "":
 		options := &gitlab.ListGroupAccessTokensOptions{}
 		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.GroupAccessToken, *gitlab.Response, error) {
@@ -203,10 +205,11 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
+		filteredTokens := make([]*gitlab.GroupAccessToken, 0, len(tokens))
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
+				filteredTokens = append(filteredTokens, token)
 				outputTokens = append(outputTokens, Token{
 					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
@@ -221,6 +224,7 @@ func (o *options) run() error {
 				})
 			}
 		}
+		apiTokens = filteredTokens
 	default:
 		repo, err := o.baseRepo()
 		if err != nil {
@@ -234,10 +238,11 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
+		filteredTokens := make([]*gitlab.ProjectAccessToken, 0, len(tokens))
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
+				filteredTokens = append(filteredTokens, token)
 				outputTokens = append(outputTokens, Token{
 					ID:          strconv.FormatInt(token.ID, 10),
 					Name:        token.Name,
@@ -252,6 +257,7 @@ func (o *options) run() error {
 				})
 			}
 		}
+		apiTokens = filteredTokens
 	}
 
 	if o.outputFormat == "json" {
