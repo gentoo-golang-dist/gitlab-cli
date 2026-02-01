@@ -101,6 +101,21 @@ func (o *options) complete(cmd *cobra.Command) error {
 }
 
 type Token struct {
+	ID          int64
+	Name        string
+	Description string
+	AccessLevel gitlab.AccessLevelValue
+	Active      bool
+	Revoked     bool
+	CreatedAt   *time.Time
+	ExpiresAt   *gitlab.ISOTime
+	LastUsedAt  *time.Time
+	Scopes      []string
+}
+
+type Tokens []Token
+
+type FormattedToken struct {
 	ID          string
 	Name        string
 	Description string
@@ -113,7 +128,25 @@ type Token struct {
 	Scopes      string
 }
 
-type Tokens []Token
+func formatToken(token Token) FormattedToken {
+	createdAtStr := ""
+	if token.CreatedAt != nil {
+		createdAtStr = token.CreatedAt.Format(time.RFC3339)
+	}
+
+	return FormattedToken{
+		ID:          strconv.FormatInt(token.ID, 10),
+		Name:        token.Name,
+		Description: formatDescription(token.Description),
+		AccessLevel: formatAccessLevel(token.AccessLevel),
+		Active:      strconv.FormatBool(token.Active),
+		Revoked:     strconv.FormatBool(token.Revoked),
+		CreatedAt:   createdAtStr,
+		ExpiresAt:   formatExpiresAt(token.ExpiresAt),
+		LastUsedAt:  formatLastUsedAt(token.LastUsedAt),
+		Scopes:      strings.Join(token.Scopes, ","),
+	}
+}
 
 func formatLastUsedAt(lastUsedAt *time.Time) string {
 	if lastUsedAt == nil {
@@ -162,7 +195,8 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	var apiTokens any
-	var outputTokens Tokens
+	var tokens Tokens
+
 	switch {
 	case o.user != "":
 		user, err := api.UserByName(client, o.user)
@@ -172,60 +206,15 @@ func (o *options) run() error {
 		options := &gitlab.ListPersonalAccessTokensOptions{
 			UserID: &user.ID,
 		}
-		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.PersonalAccessToken, *gitlab.Response, error) {
-			return client.PersonalAccessTokens.ListPersonalAccessTokens(options, p)
-		})
+		apiTokens, tokens, err = o.filterPersonalAccessTokens(client, options)
 		if err != nil {
 			return err
 		}
-		filteredTokens := make([]*gitlab.PersonalAccessToken, 0, len(tokens))
-		outputTokens = make([]Token, 0, len(tokens))
-		for _, token := range tokens {
-			if !o.listActive || token.Active {
-				filteredTokens = append(filteredTokens, token)
-				outputTokens = append(outputTokens, Token{
-					ID:          strconv.FormatInt(token.ID, 10),
-					Name:        token.Name,
-					Description: formatDescription(token.Description),
-					AccessLevel: "-",
-					Active:      strconv.FormatBool(token.Active),
-					Revoked:     strconv.FormatBool(token.Revoked),
-					CreatedAt:   token.CreatedAt.Format(time.RFC3339),
-					ExpiresAt:   formatExpiresAt(token.ExpiresAt),
-					LastUsedAt:  formatLastUsedAt(token.LastUsedAt),
-					Scopes:      strings.Join(token.Scopes, ","),
-				})
-			}
-		}
-		apiTokens = filteredTokens
 	case o.group != "":
-		options := &gitlab.ListGroupAccessTokensOptions{}
-		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.GroupAccessToken, *gitlab.Response, error) {
-			return client.GroupAccessTokens.ListGroupAccessTokens(o.group, options, p)
-		})
+		tokens, apiTokens, err = o.filterGroupAccessTokens(client)
 		if err != nil {
 			return err
 		}
-		filteredTokens := make([]*gitlab.GroupAccessToken, 0, len(tokens))
-		outputTokens = make([]Token, 0, len(tokens))
-		for _, token := range tokens {
-			if !o.listActive || token.Active {
-				filteredTokens = append(filteredTokens, token)
-				outputTokens = append(outputTokens, Token{
-					ID:          strconv.FormatInt(token.ID, 10),
-					Name:        token.Name,
-					Description: formatDescription(token.Description),
-					AccessLevel: formatAccessLevel(token.AccessLevel),
-					Active:      strconv.FormatBool(token.Active),
-					Revoked:     strconv.FormatBool(token.Revoked),
-					CreatedAt:   token.CreatedAt.Format(time.RFC3339),
-					ExpiresAt:   formatExpiresAt(token.ExpiresAt),
-					LastUsedAt:  formatLastUsedAt(token.LastUsedAt),
-					Scopes:      strings.Join(token.Scopes, ","),
-				})
-			}
-		}
-		apiTokens = filteredTokens
 	default:
 		repo, err := o.baseRepo()
 		if err != nil {
@@ -233,32 +222,10 @@ func (o *options) run() error {
 		}
 
 		opts := &gitlab.ListProjectAccessTokensOptions{}
-		tokens, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.ProjectAccessToken, *gitlab.Response, error) {
-			return client.ProjectAccessTokens.ListProjectAccessTokens(repo.FullName(), opts, p)
-		})
+		tokens, apiTokens, err = o.filterProjectAccessTokens(client, repo.FullName(), opts)
 		if err != nil {
 			return err
 		}
-		filteredTokens := make([]*gitlab.ProjectAccessToken, 0, len(tokens))
-		outputTokens = make([]Token, 0, len(tokens))
-		for _, token := range tokens {
-			if !o.listActive || token.Active {
-				filteredTokens = append(filteredTokens, token)
-				outputTokens = append(outputTokens, Token{
-					ID:          strconv.FormatInt(token.ID, 10),
-					Name:        token.Name,
-					Description: formatDescription(token.Description),
-					AccessLevel: formatAccessLevel(token.AccessLevel),
-					Active:      strconv.FormatBool(token.Active),
-					Revoked:     strconv.FormatBool(token.Revoked),
-					CreatedAt:   token.CreatedAt.Format(time.RFC3339),
-					ExpiresAt:   formatExpiresAt(token.ExpiresAt),
-					LastUsedAt:  formatLastUsedAt(token.LastUsedAt),
-					Scopes:      strings.Join(token.Scopes, ","),
-				})
-			}
-		}
-		apiTokens = filteredTokens
 	}
 
 	if o.outputFormat == "json" {
@@ -267,8 +234,109 @@ func (o *options) run() error {
 			return err
 		}
 	} else {
-		table := createTablePrinter(outputTokens)
+		formattedTokens := make([]FormattedToken, 0, len(tokens))
+		for _, token := range tokens {
+			formattedTokens = append(formattedTokens, formatToken(token))
+		}
+		table := createTablePrinter(formattedTokens)
 		o.io.LogInfof("%s", table.String())
 	}
 	return nil
+}
+
+func (o *options) filterPersonalAccessTokens(client *gitlab.Client, options *gitlab.ListPersonalAccessTokensOptions) (any, Tokens, error) {
+	apiTokensList, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.PersonalAccessToken, *gitlab.Response, error) {
+		return client.PersonalAccessTokens.ListPersonalAccessTokens(options, p)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filteredTokens := make([]*gitlab.PersonalAccessToken, 0, len(apiTokensList))
+	tokens := make(Tokens, 0, len(apiTokensList))
+
+	for _, apiToken := range apiTokensList {
+		if !o.listActive || apiToken.Active {
+			filteredTokens = append(filteredTokens, apiToken)
+			tokens = append(tokens, Token{
+				ID:          apiToken.ID,
+				Name:        apiToken.Name,
+				Description: apiToken.Description,
+				AccessLevel: 0, // PersonalAccessTokens don't have AccessLevel
+				Active:      apiToken.Active,
+				Revoked:     apiToken.Revoked,
+				CreatedAt:   apiToken.CreatedAt,
+				ExpiresAt:   apiToken.ExpiresAt,
+				LastUsedAt:  apiToken.LastUsedAt,
+				Scopes:      apiToken.Scopes,
+			})
+		}
+	}
+
+	return filteredTokens, tokens, nil
+}
+
+func (o *options) filterGroupAccessTokens(client *gitlab.Client) (Tokens, any, error) {
+	options := &gitlab.ListGroupAccessTokensOptions{}
+	apiTokensList, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.GroupAccessToken, *gitlab.Response, error) {
+		return client.GroupAccessTokens.ListGroupAccessTokens(o.group, options, p)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filteredTokens := make([]*gitlab.GroupAccessToken, 0, len(apiTokensList))
+	tokens := make(Tokens, 0, len(apiTokensList))
+
+	for _, apiToken := range apiTokensList {
+		if !o.listActive || apiToken.Active {
+			filteredTokens = append(filteredTokens, apiToken)
+			tokens = append(tokens, Token{
+				ID:          apiToken.ID,
+				Name:        apiToken.Name,
+				Description: apiToken.Description,
+				AccessLevel: apiToken.AccessLevel,
+				Active:      apiToken.Active,
+				Revoked:     apiToken.Revoked,
+				CreatedAt:   apiToken.CreatedAt,
+				ExpiresAt:   apiToken.ExpiresAt,
+				LastUsedAt:  apiToken.LastUsedAt,
+				Scopes:      apiToken.Scopes,
+			})
+		}
+	}
+
+	return tokens, filteredTokens, nil
+}
+
+func (o *options) filterProjectAccessTokens(client *gitlab.Client, projectName string, opts *gitlab.ListProjectAccessTokensOptions) (Tokens, any, error) {
+	apiTokensList, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.ProjectAccessToken, *gitlab.Response, error) {
+		return client.ProjectAccessTokens.ListProjectAccessTokens(projectName, opts, p)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filteredTokens := make([]*gitlab.ProjectAccessToken, 0, len(apiTokensList))
+	tokens := make(Tokens, 0, len(apiTokensList))
+
+	for _, apiToken := range apiTokensList {
+		if !o.listActive || apiToken.Active {
+			filteredTokens = append(filteredTokens, apiToken)
+			tokens = append(tokens, Token{
+				ID:          apiToken.ID,
+				Name:        apiToken.Name,
+				Description: apiToken.Description,
+				AccessLevel: apiToken.AccessLevel,
+				Active:      apiToken.Active,
+				Revoked:     apiToken.Revoked,
+				CreatedAt:   apiToken.CreatedAt,
+				ExpiresAt:   apiToken.ExpiresAt,
+				LastUsedAt:  apiToken.LastUsedAt,
+				Scopes:      apiToken.Scopes,
+			})
+		}
+	}
+
+	return tokens, filteredTokens, nil
 }

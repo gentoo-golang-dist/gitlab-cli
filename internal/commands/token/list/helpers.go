@@ -10,11 +10,11 @@ import (
 )
 
 // createTablePrinter creates a table printer for all given tokens with column headers and values aligned.
-func createTablePrinter(tokens Tokens) *tableprinter.TablePrinter {
+func createTablePrinter(tokens []FormattedToken) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter()
 	table.NonTTYSeparator = " "
 	table.TTYSeparator = " "
-	val := reflect.ValueOf(Token{})
+	val := reflect.ValueOf(FormattedToken{})
 
 	columnNames := make([]any, 0, val.Type().NumField())
 	maxColumnWidths := make([]int, val.Type().NumField())
