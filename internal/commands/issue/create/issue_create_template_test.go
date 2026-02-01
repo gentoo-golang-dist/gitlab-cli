@@ -116,14 +116,6 @@ func TestIssueCreate_TemplateNotFound(t *testing.T) {
 func TestIssueCreate_TemplateAndDescriptionError(t *testing.T) {
 	testClient := gitlabtesting.NewTestClient(t)
 
-	testClient.MockProjects.EXPECT().
-		GetProject("OWNER/REPO", gomock.Any()).
-		Return(&gitlab.Project{
-			ID:                1,
-			PathWithNamespace: "OWNER/REPO",
-			IssuesEnabled:     true,
-		}, nil, nil)
-
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmdCreate,
@@ -134,5 +126,6 @@ func TestIssueCreate_TemplateAndDescriptionError(t *testing.T) {
 	_, err := exec(`--title "My Issue" --template "bug" --description "Manual Description"`)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cannot specify both --template and --description")
+	// Cobra enforces mutually exclusive flags, so error message comes from Cobra
+	assert.Contains(t, err.Error(), "none of the others can be")
 }

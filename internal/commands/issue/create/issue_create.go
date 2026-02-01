@@ -170,6 +170,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
 	issueCreateCmd.Flags().StringVarP(&opts.Template, "template", "", "", "Name of the issue template to use from your local .gitlab/issue_templates/ directory. The .md extension is optional.")
 
+	// Mark description and template flags as mutually exclusive
+	issueCreateCmd.MarkFlagsMutuallyExclusive("description", "template")
+
 	return issueCreateCmd
 }
 
@@ -184,7 +187,6 @@ var createRun = func(ctx context.Context, opts *options) error {
 		return err
 	}
 
-	var templateName string
 	var templateContents string
 
 	issueCreateOpts := &gitlab.CreateIssueOptions{}
@@ -222,18 +224,13 @@ var createRun = func(ctx context.Context, opts *options) error {
 	}
 
 	if opts.Template != "" {
-		if opts.Description != "" && opts.Description != "-" {
-			return errors.New("cannot specify both --template and --description")
-		}
-		var err error
-		templateName = opts.Template
-		templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, templateName)
+		templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, opts.Template)
 		if err != nil {
 			return fmt.Errorf("failed to get template contents: %w", err)
 		}
 
 		if templateContents == "" {
-			return fmt.Errorf("template %q not found or empty", templateName)
+			return fmt.Errorf("template %q not found or empty", opts.Template)
 		}
 	}
 
@@ -254,8 +251,7 @@ var createRun = func(ctx context.Context, opts *options) error {
 			}
 
 			if selectedTemplate != blankIssueOption {
-				templateName = selectedTemplate
-				templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, templateName)
+				templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, selectedTemplate)
 				if err != nil {
 					return fmt.Errorf("failed to get template contents: %w", err)
 				}
