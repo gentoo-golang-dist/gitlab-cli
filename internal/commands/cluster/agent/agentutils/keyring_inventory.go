@@ -69,12 +69,11 @@ func RemoveFromKeyringInventory(id string) error {
 		return nil // Nothing to remove if we can't read
 	}
 
-	originalLen := len(inventory)
 	updated := slices.DeleteFunc(inventory, func(existingID string) bool {
 		return existingID == id
 	})
 
-	if len(updated) == originalLen {
+	if len(updated) == len(inventory) {
 		return nil
 	}
 
