@@ -73,11 +73,10 @@ func RemoveFromKeyringInventory(id string) error {
 		return existingID == id
 	})
 
-	if len(updated) == len(inventory) {
+	switch len(updated) {
+	case len(inventory):
 		return nil
-	}
-
-	if len(updated) == 0 {
+	case 0:
 		err := keyring.Delete(keyringService, inventoryKeyringKey)
 		if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			return err
