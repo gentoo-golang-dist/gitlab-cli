@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	keyringService      = "glab"
+	KeyringService      = "glab"
 	inventoryKeyringKey = "agent-token-inventory"
 )
 
@@ -17,7 +17,7 @@ const (
 // Returns nil slice with no error if no inventory exists.
 // Returns nil slice with error if keyring is unsupported or inventory is corrupted.
 func GetKeyringInventory() ([]string, error) {
-	data, err := keyring.Get(keyringService, inventoryKeyringKey)
+	data, err := keyring.Get(KeyringService, inventoryKeyringKey)
 	if err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
 			return nil, nil
@@ -56,7 +56,7 @@ func AddToKeyringInventory(id string) error {
 		return err
 	}
 
-	return keyring.Set(keyringService, inventoryKeyringKey, string(data))
+	return keyring.Set(KeyringService, inventoryKeyringKey, string(data))
 }
 
 // RemoveFromKeyringInventory removes a token ID from the keyring inventory.
@@ -77,7 +77,7 @@ func RemoveFromKeyringInventory(id string) error {
 	case len(inventory):
 		return nil
 	case 0:
-		err := keyring.Delete(keyringService, inventoryKeyringKey)
+		err := keyring.Delete(KeyringService, inventoryKeyringKey)
 		if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			return err
 		}
@@ -89,5 +89,5 @@ func RemoveFromKeyringInventory(id string) error {
 		return err
 	}
 
-	return keyring.Set(keyringService, inventoryKeyringKey, string(data))
+	return keyring.Set(KeyringService, inventoryKeyringKey, string(data))
 }

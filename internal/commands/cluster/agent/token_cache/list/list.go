@@ -122,11 +122,9 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 	return tokens, nil
 }
 
-const keyringService = "glab"
-
 // readKeyringToken reads a single token from the keyring by its cache ID
 func (o *options) readKeyringToken(id string) (*cachedToken, error) {
-	data, err := keyring.Get(keyringService, id)
+	data, err := keyring.Get(agentutils.KeyringService, id)
 	if err != nil {
 		return nil, err
 	}

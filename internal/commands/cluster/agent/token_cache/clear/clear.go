@@ -22,8 +22,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
-const keyringService = "glab"
-
 type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
@@ -147,7 +145,7 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 
 	var tokens []cachedToken
 	for _, id := range tokenIDs {
-		data, err := keyring.Get(keyringService, id)
+		data, err := keyring.Get(agentutils.KeyringService, id)
 		if err != nil {
 			if errors.Is(err, keyring.ErrNotFound) {
 				continue
@@ -368,7 +366,7 @@ func (o *options) clearTokens(tokens []cachedToken) []error {
 		if token.Source != "keyring" {
 			continue
 		}
-		err := keyring.Delete(keyringService, token.ID)
+		err := keyring.Delete(agentutils.KeyringService, token.ID)
 		if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			errs = append(errs, fmt.Errorf("failed to delete token from keyring for agent %d: %w", token.AgentID, err))
 			continue

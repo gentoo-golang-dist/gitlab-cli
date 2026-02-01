@@ -28,7 +28,7 @@ func TestGetKeyringInventory_Corrupted(t *testing.T) {
 	keyring.MockInit()
 
 	// Set corrupted JSON data
-	err := keyring.Set(keyringService, inventoryKeyringKey, "not valid json")
+	err := keyring.Set(KeyringService, inventoryKeyringKey, "not valid json")
 	require.NoError(t, err)
 
 	ids, err := GetKeyringInventory()
@@ -41,7 +41,7 @@ func TestGetKeyringInventory_Valid(t *testing.T) {
 	keyring.MockInit()
 
 	// Set valid inventory
-	err := keyring.Set(keyringService, inventoryKeyringKey, `["id1","id2","id3"]`)
+	err := keyring.Set(KeyringService, inventoryKeyringKey, `["id1","id2","id3"]`)
 	require.NoError(t, err)
 
 	ids, err := GetKeyringInventory()
@@ -103,7 +103,7 @@ func TestRemoveFromKeyringInventory_ExistingEntry(t *testing.T) {
 	keyring.MockInit()
 
 	// Set up inventory with entries
-	err := keyring.Set(keyringService, inventoryKeyringKey, `["id1","id2","id3"]`)
+	err := keyring.Set(KeyringService, inventoryKeyringKey, `["id1","id2","id3"]`)
 	require.NoError(t, err)
 
 	// Remove middle entry
@@ -119,7 +119,7 @@ func TestRemoveFromKeyringInventory_NonExistentEntry(t *testing.T) {
 	keyring.MockInit()
 
 	// Set up inventory
-	err := keyring.Set(keyringService, inventoryKeyringKey, `["id1","id2"]`)
+	err := keyring.Set(KeyringService, inventoryKeyringKey, `["id1","id2"]`)
 	require.NoError(t, err)
 
 	// Try to remove non-existent entry
@@ -136,7 +136,7 @@ func TestRemoveFromKeyringInventory_LastEntry(t *testing.T) {
 	keyring.MockInit()
 
 	// Set up inventory with single entry
-	err := keyring.Set(keyringService, inventoryKeyringKey, `["id1"]`)
+	err := keyring.Set(KeyringService, inventoryKeyringKey, `["id1"]`)
 	require.NoError(t, err)
 
 	// Remove the last entry

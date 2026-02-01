@@ -17,8 +17,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
 
-const keyringService = "glab"
-
 var (
 	errNotFound            = errors.New("not found")
 	errTokenExpired        = errors.New("token expired")
@@ -36,7 +34,7 @@ type storage interface {
 type keyringStorage struct{}
 
 func (k *keyringStorage) get(id string) ([]byte, error) {
-	data, err := keyring.Get(keyringService, id)
+	data, err := keyring.Get(agentutils.KeyringService, id)
 	switch err {
 	case nil:
 		return []byte(data), nil
@@ -50,7 +48,7 @@ func (k *keyringStorage) get(id string) ([]byte, error) {
 }
 
 func (k *keyringStorage) set(id string, data []byte) error {
-	if err := keyring.Set(keyringService, id, string(data)); err != nil {
+	if err := keyring.Set(agentutils.KeyringService, id, string(data)); err != nil {
 		if errors.Is(err, keyring.ErrUnsupportedPlatform) {
 			return errUnsupportedPlatform
 		}
