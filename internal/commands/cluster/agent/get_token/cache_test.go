@@ -16,6 +16,7 @@ import (
 	"github.com/zalando/go-keyring"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
 )
 
