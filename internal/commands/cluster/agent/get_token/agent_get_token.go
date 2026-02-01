@@ -158,16 +158,16 @@ func (o *options) cachedPAT(ctx context.Context) (*gitlab.PersonalAccessToken, e
 		}
 		switch o.cacheMode {
 		case agentutils.ForcedKeyringCacheMode:
-			return fromKeyringCache(id, createFunc, isTokenRevoked, o.io)
+			return fromKeyringCache(o.io, id, createFunc, isTokenRevoked)
 		case agentutils.ForcedFilesystemCacheMode:
-			return fromFilesystemCache(id, createFunc, isTokenRevoked, o.io)
+			return fromFilesystemCache(o.io, id, createFunc, isTokenRevoked)
 		case agentutils.KeyringFilesystemFallback:
-			pat, err := fromKeyringCache(id, createFunc, isTokenRevoked, o.io)
+			pat, err := fromKeyringCache(o.io, id, createFunc, isTokenRevoked)
 			if err != nil {
 				if !errors.Is(err, keyring.ErrUnsupportedPlatform) {
 					return nil, err
 				}
-				return fromFilesystemCache(id, createFunc, isTokenRevoked, o.io)
+				return fromFilesystemCache(o.io, id, createFunc, isTokenRevoked)
 			}
 			return pat, nil
 		default:
@@ -186,7 +186,7 @@ func (o *options) cachedPAT(ctx context.Context) (*gitlab.PersonalAccessToken, e
 	return pat, nil
 }
 
-func fromKeyringCache(id string, createFunc func() (*gitlab.PersonalAccessToken, error), isTokenRevoked func(t *gitlab.PersonalAccessToken) (bool, error), io *iostreams.IOStreams) (*gitlab.PersonalAccessToken, error) {
+func fromKeyringCache(io *iostreams.IOStreams, id string, createFunc func() (*gitlab.PersonalAccessToken, error), isTokenRevoked func(t *gitlab.PersonalAccessToken) (bool, error)) (*gitlab.PersonalAccessToken, error) {
 	c := cache{
 		storage:        &keyringStorage{},
 		id:             id,
@@ -198,7 +198,7 @@ func fromKeyringCache(id string, createFunc func() (*gitlab.PersonalAccessToken,
 	return c.get()
 }
 
-func fromFilesystemCache(id string, createFunc func() (*gitlab.PersonalAccessToken, error), isTokenRevoked func(t *gitlab.PersonalAccessToken) (bool, error), io *iostreams.IOStreams) (*gitlab.PersonalAccessToken, error) {
+func fromFilesystemCache(io *iostreams.IOStreams, id string, createFunc func() (*gitlab.PersonalAccessToken, error), isTokenRevoked func(t *gitlab.PersonalAccessToken) (bool, error)) (*gitlab.PersonalAccessToken, error) {
 	fs, err := newFileStorage()
 	if err != nil {
 		return nil, err
