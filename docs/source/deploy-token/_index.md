@@ -15,7 +15,6 @@ Manage deploy tokens.
 ## Synopsis
 
 Manage deploy tokens for projects and groups.
-
 ## Options
 
 ```plaintext
