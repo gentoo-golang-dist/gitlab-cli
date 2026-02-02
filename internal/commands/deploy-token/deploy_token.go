@@ -14,7 +14,7 @@ func NewCmdDeployToken(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy-token <command>",
 		Short: "Manage deploy tokens.",
-		Long:  "Manage deploy tokens for projects and groups.",
+		Long:  "Manage deploy tokens for projects and groups.\n",
 	}
 
 	cmdutils.EnableRepoOverride(cmd, f)
