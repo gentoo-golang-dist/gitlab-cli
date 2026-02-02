@@ -114,7 +114,7 @@ func (o *options) getKeyringTokens() ([]cachedToken, error) {
 	for _, id := range tokenIDs {
 		token, err := o.readKeyringToken(id)
 		if err != nil {
-			_ = agentutils.RemoveFromKeyringInventory(id)
+			agentutils.RemoveFromKeyringInventory(id)
 			continue
 		}
 		tokens = append(tokens, *token)
