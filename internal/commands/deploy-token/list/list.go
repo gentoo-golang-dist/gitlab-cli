@@ -1,8 +1,6 @@
 package list
 
 import (
-	"time"
-
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
@@ -110,7 +108,7 @@ func (o *options) run() error {
 			expiresAt := ""
 			if token.ExpiresAt != nil {
 				if isTTy {
-					expiresAt = utils.TimeToPrettyTimeAgo(time.Time(*token.ExpiresAt))
+					expiresAt = utils.TimeToPrettyTimeAgo(*token.ExpiresAt)
 				} else {
 					expiresAt = token.ExpiresAt.String()
 				}
@@ -147,7 +145,7 @@ func (o *options) run() error {
 			expiresAt := ""
 			if token.ExpiresAt != nil {
 				if isTTy {
-					expiresAt = utils.TimeToPrettyTimeAgo(time.Time(*token.ExpiresAt))
+					expiresAt = utils.TimeToPrettyTimeAgo(*token.ExpiresAt)
 				} else {
 					expiresAt = token.ExpiresAt.String()
 				}

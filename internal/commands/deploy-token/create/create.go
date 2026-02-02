@@ -3,6 +3,7 @@ package create
 import (
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -101,7 +102,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *options) complete(cmd *cobra.Command, args []string) error {
+func (o *options) complete(_ *cobra.Command, args []string) error {
 	o.name = args[0]
 	return nil
 }
@@ -113,14 +114,7 @@ func (o *options) validate() error {
 
 	// Validate scopes
 	for _, scope := range o.scopes {
-		valid := false
-		for _, validScope := range validScopes {
-			if scope == validScope {
-				valid = true
-				break
-			}
-		}
-		if !valid {
+		if !slices.Contains(validScopes, scope) {
 			return &cmdutils.FlagError{Err: errors.New("invalid scope: " + scope + ". Valid scopes are: read_repository, read_registry, write_registry, read_package_registry, write_package_registry, read_virtual_registry, write_virtual_registry")}
 		}
 	}

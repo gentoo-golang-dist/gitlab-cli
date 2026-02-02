@@ -60,7 +60,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *options) complete(cmd *cobra.Command, args []string) error {
+func (o *options) complete(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		tokenID, err := strconv.Atoi(args[0])
 		if err != nil {
