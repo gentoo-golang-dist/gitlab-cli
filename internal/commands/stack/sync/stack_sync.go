@@ -32,6 +32,7 @@ type options struct {
 	baseRepo  func() (glrepo.Interface, error)
 	remotes   func() (glrepo.Remotes, error)
 	user      gitlab.User
+	pullOnly  bool
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -65,6 +66,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 ` + text.ExperimentalString),
 		Example: heredoc.Doc(`
 			$ glab stack sync
+			$ glab stack sync --pull
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -78,6 +80,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			return opts.run(cmd.Context(), f, gr)
 		},
 	}
+
+	stackSaveCmd.Flags().BoolVar(&opts.pullOnly, "pull", false, "Only pull and rebase changes, without creating new merge requests")
 
 	return stackSaveCmd
 }
@@ -155,9 +159,16 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 		}
 
 		if ref.MR == "" {
-			err := populateMR(o.io, &ref, o, client, gr)
-			if err != nil {
-				return err
+			if o.pullOnly {
+				fmt.Println(warningString(o.io,
+					ref.Branch+" has no merge request.",
+					"Run 'glab stack sync' without --pull to create one.",
+				))
+			} else {
+				err := populateMR(o.io, &ref, o, client, gr)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			// we found an MR. let's get the status:
@@ -356,6 +367,19 @@ func errorString(io *iostreams.IOStreams, lines ...string) string {
 	body := strings.Join(lines[1:], "\n  ")
 
 	return fmt.Sprintf("\n%s %s \n  %s", redCheck, title, body)
+}
+
+func warningString(io *iostreams.IOStreams, lines ...string) string {
+	yellowWarning := io.Color().Yellow("⚠")
+	title := lines[0]
+
+	var body string
+
+	if len(lines) > 1 {
+		body = strings.Join(lines[1:], "\n  ")
+		return fmt.Sprintf("\n%s %s \n  %s", yellowWarning, title, body)
+	}
+	return fmt.Sprintf("\n%s %s\n", yellowWarning, title)
 }
 
 func progressString(io *iostreams.IOStreams, lines ...string) string {

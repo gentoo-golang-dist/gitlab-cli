@@ -27,6 +27,8 @@ func wrappedEdit(f cmdutils.Factory) cmdutils.GetTextUsingEditor {
 }
 
 func NewCmdStack(f cmdutils.Factory) *cobra.Command {
+	var pullOnly bool
+
 	stackCmd := &cobra.Command{
 		Use:   "stack <command> [flags]",
 		Short: `Create, manage, and work with stacked diffs. (EXPERIMENTAL)`,
@@ -34,9 +36,26 @@ func NewCmdStack(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ glab stack create cool-new-feature
 			$ glab stack sync
+			$ glab stack --pull
 		`),
 		Aliases: []string{"stacks"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if pullOnly {
+				// Run "glab stack sync --pull" as a shortcut
+				syncCmd, _, err := cmd.Find([]string{"sync"})
+				if err != nil {
+					return err
+				}
+				if err := syncCmd.Flags().Set("pull", "true"); err != nil {
+					return err
+				}
+				return syncCmd.RunE(syncCmd, args)
+			}
+			return cmd.Help()
+		},
 	}
+
+	stackCmd.Flags().BoolVar(&pullOnly, "pull", false, "Only pull and rebase changes, without creating new merge requests (shortcut for 'glab stack sync --pull')")
 
 	var gr git.StandardGitCommand
 
