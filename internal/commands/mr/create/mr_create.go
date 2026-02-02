@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/charmbracelet/huh"
@@ -40,6 +41,7 @@ type options struct {
 	Milestone             int64    `json:"milestone,omitempty"`
 	MilestoneFlag         string   `json:"milestone_flag,omitempty"`
 	MRCreateTargetProject string   `json:"mr_create_target_project,omitempty"`
+	MergeAfterFlag        string   `json:"merge_after_flag,omitempty"`
 
 	RelatedIssue    string `json:"related_issue,omitempty"`
 	CopyIssueLabels bool   `json:"copy_issue_labels,omitempty"`
@@ -163,6 +165,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().StringVarP(&opts.RelatedIssue, "related-issue", "i", "", "Create a merge request for an issue. If --title is not provided, uses the issue title.")
 	mrCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the merge request creation fails. If the file exists, the options are loaded from the recovery file. (EXPERIMENTAL)")
 	mrCreateCmd.Flags().BoolVar(&opts.signoff, "signoff", false, "Append a DCO signoff to the merge request description.")
+	mrCreateCmd.Flags().StringVarP(&opts.MergeAfterFlag, "merge-after", "", "", "Set a date/time after which the merge request can be merged. Expected in ISO 8601 format (2024-12-31T23:59:59Z).")
 
 	mrCreateCmd.Flags().StringVarP(&opts.MRCreateTargetProject, "target-project", "", "", "Add target project by id, OWNER/REPO, or GROUP/NAMESPACE/REPO.")
 	_ = mrCreateCmd.Flags().MarkHidden("target-project")
@@ -674,9 +677,19 @@ func (o *options) run(ctx context.Context) error {
 
 		fmt.Fprintf(o.io.StdErr, message, c.Cyan(o.SourceBranch), c.Cyan(o.TargetBranch), baseRepo.FullName())
 
+		// Parse merge_after if provided
+		var mergeAfter *time.Time
+		if o.MergeAfterFlag != "" {
+			parsedTime, err := time.Parse(time.RFC3339, o.MergeAfterFlag)
+			if err != nil {
+				return fmt.Errorf("invalid --merge-after format. Expected ISO 8601 format (e.g., 2024-12-31T23:59:59Z): %w", err)
+			}
+			mergeAfter = &parsedTime
+		}
+
 		// It is intentional that we create against the head repo, it is necessary
 		// for cross-repository merge requests
-		mr, _, err := client.MergeRequests.CreateMergeRequest(headRepo.FullName(), mrCreateOpts)
+		mr, err := api.CreateMR(client, headRepo.FullName(), mrCreateOpts, mergeAfter)
 		if err != nil {
 			return err
 		}

@@ -46,6 +46,7 @@ $ glab mr create --fill --fill-commit-body --yes
       --fill-commit-body       Fill description with each commit body when multiple commits. Can only be used with --fill.
   -H, --head OWNER/REPO        Select another head repository using the OWNER/REPO or `GROUP/NAMESPACE/REPO` format, the project ID, or the full URL.
   -l, --label strings          Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.
+      --merge-after string     Set a date/time after which the merge request can be merged. Expected in ISO 8601 format (2024-12-31T23:59:59Z).
   -m, --milestone string       The global ID or title of a milestone to assign.
       --no-editor              Don't open editor to enter a description. If true, uses prompt. Defaults to false.
       --push                   Push committed changes after creating merge request. Make sure you have committed changes.

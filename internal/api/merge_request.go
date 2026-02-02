@@ -1,7 +1,10 @@
 package api
 
 import (
+	"fmt"
+	"net/http"
 	"sort"
+	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 )
@@ -232,4 +235,79 @@ func composeCliListMROptions(optionSetters ...CliListMROption) *cliListMROptions
 		setter(opts)
 	}
 	return opts
+}
+
+// CreateMergeRequestOptions extends gitlab.CreateMergeRequestOptions with merge_after support.
+// This field is not yet available in the GitLab Go client library.
+type CreateMergeRequestOptions struct {
+	*gitlab.CreateMergeRequestOptions
+	MergeAfter *time.Time `url:"merge_after,omitempty" json:"merge_after,omitempty"`
+}
+
+// CreateMR creates a new merge request with support for the merge_after field.
+// If mergeAfter is nil, it behaves like the standard CreateMergeRequest.
+// Attention: this is a global variable and may be overridden in tests.
+var CreateMR = func(client *gitlab.Client, projectID any, opts *gitlab.CreateMergeRequestOptions, mergeAfter *time.Time) (*gitlab.MergeRequest, error) {
+	if mergeAfter == nil {
+		// No merge_after, use standard client method
+		mr, _, err := client.MergeRequests.CreateMergeRequest(projectID, opts)
+		return mr, err
+	}
+
+	// Create custom options with merge_after
+	customOpts := &CreateMergeRequestOptions{
+		CreateMergeRequestOptions: opts,
+		MergeAfter:                mergeAfter,
+	}
+
+	path := fmt.Sprintf("projects/%s/merge_requests", gitlab.PathEscape(fmt.Sprintf("%v", projectID)))
+	req, err := client.NewRequest(http.MethodPost, path, customOpts, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var mr gitlab.MergeRequest
+	_, err = client.Do(req, &mr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mr, nil
+}
+
+// UpdateMergeRequestOptions extends gitlab.UpdateMergeRequestOptions with merge_after support.
+// This field is not yet available in the GitLab Go client library.
+type UpdateMergeRequestOptions struct {
+	*gitlab.UpdateMergeRequestOptions
+	MergeAfter *time.Time `url:"merge_after,omitempty" json:"merge_after,omitempty"`
+}
+
+// UpdateMRWithMergeAfter updates an MR with support for the merge_after field.
+// If mergeAfter is nil, it behaves like the standard UpdateMR.
+// Attention: this is a global variable and may be overridden in tests.
+var UpdateMRWithMergeAfter = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.UpdateMergeRequestOptions, mergeAfter *time.Time) (*gitlab.MergeRequest, error) {
+	if mergeAfter == nil {
+		// No merge_after, use standard client method
+		return UpdateMR(client, projectID, mrID, opts)
+	}
+
+	// Create custom options with merge_after
+	customOpts := &UpdateMergeRequestOptions{
+		UpdateMergeRequestOptions: opts,
+		MergeAfter:                mergeAfter,
+	}
+
+	path := fmt.Sprintf("projects/%s/merge_requests/%d", gitlab.PathEscape(fmt.Sprintf("%v", projectID)), mrID)
+	req, err := client.NewRequest(http.MethodPut, path, customOpts, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var mr gitlab.MergeRequest
+	_, err = client.Do(req, &mr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mr, nil
 }
