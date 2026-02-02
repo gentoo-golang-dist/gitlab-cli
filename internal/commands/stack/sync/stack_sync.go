@@ -11,6 +11,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/auth"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/create"
@@ -32,6 +33,7 @@ type options struct {
 	baseRepo  func() (glrepo.Interface, error)
 	remotes   func() (glrepo.Remotes, error)
 	user      gitlab.User
+	reviewers []string
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -78,6 +80,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			return opts.run(cmd.Context(), f, gr)
 		},
 	}
+
+	stackSaveCmd.Flags().StringSliceVarP(&opts.reviewers, "reviewer", "r", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -322,6 +326,15 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		AssigneeID:         gitlab.Ptr(opts.user.ID),
 		RemoveSourceBranch: gitlab.Ptr(true),
 		TargetProjectID:    gitlab.Ptr(targetProject.ID),
+	}
+
+	// Add reviewers if provided via flag
+	if len(opts.reviewers) > 0 {
+		users, err := api.UsersByNames(client, opts.reviewers)
+		if err != nil {
+			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving reviewer usernames: %v", err)
+		}
+		l.ReviewerIDs = cmdutils.IDsFromUsers(users)
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)
