@@ -26,6 +26,7 @@ type SyncScenario struct {
 	title      string
 	baseBranch string
 	pushNeeded bool
+	labels     []string
 }
 
 type TestRef struct {
@@ -378,8 +379,48 @@ func Test_stackSync(t *testing.T) {
 						}, nil, nil
 					})
 			},
-		},
-	}
+		}, {
+			name: "single branch with custom labels",
+			args: args{
+				stack: SyncScenario{
+					title:  "label stack",
+					labels: []string{"bug", "priority::high"},
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "", Branch: "Branch1", MR: "", Description: "test MR with labels"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				// MockStackUser
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy", ID: 100}, nil, nil)
+
+				// MockPostStackMR with custom labels
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						assert.Equal(t, "main", *opts.TargetBranch)
+						assert.Equal(t, "test MR with labels", *opts.Title)
+						// Verify that Labels is set
+						assert.NotNil(t, opts.Labels)
+						assert.ElementsMatch(t, []string{"bug", "priority::high"}, *opts.Labels)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          47,
+								SourceBranch: "Branch1",
+								TargetBranch: "main",
+								Title:        "test MR with labels",
+							},
+						}, nil, nil
+					})
+			},
+		}}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -392,6 +433,9 @@ func Test_stackSync(t *testing.T) {
 			mockCmd := git_testing.NewMockGitRunner(ctrl)
 
 			f, opts := setupTestFactory(t, testClient)
+
+			// Set labels if provided in the test scenario
+			opts.labels = tc.args.stack.labels
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)
