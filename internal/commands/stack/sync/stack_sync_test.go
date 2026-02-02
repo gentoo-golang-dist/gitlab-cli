@@ -26,6 +26,7 @@ type SyncScenario struct {
 	title      string
 	baseBranch string
 	pushNeeded bool
+	assignees  []string
 }
 
 type TestRef struct {
@@ -379,6 +380,63 @@ func Test_stackSync(t *testing.T) {
 					})
 			},
 		},
+		{
+			name: "single branch with custom assignees",
+			args: args{
+				stack: SyncScenario{
+					title:     "assignee stack",
+					assignees: []string{"reviewer1", "reviewer2"},
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "", Branch: "Branch1", MR: "", Description: "test MR"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				// MockStackUser
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy", ID: 100}, nil, nil)
+
+				// Mock api.UsersByNames to return users with IDs
+				originalUsersByNames := api.UsersByNames
+				api.UsersByNames = func(client *gitlab.Client, names []string) ([]*gitlab.User, error) {
+					assert.ElementsMatch(t, []string{"reviewer1", "reviewer2"}, names)
+					return []*gitlab.User{
+						{ID: 201, Username: "reviewer1"},
+						{ID: 202, Username: "reviewer2"},
+					}, nil
+				}
+				t.Cleanup(func() {
+					api.UsersByNames = originalUsersByNames
+				})
+
+				// MockPostStackMR with custom assignees
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						assert.Equal(t, "main", *opts.TargetBranch)
+						assert.Equal(t, "test MR", *opts.Title)
+						// Verify that AssigneeIDs is set (not AssigneeID)
+						assert.NotNil(t, opts.AssigneeIDs)
+						assert.ElementsMatch(t, []int64{201, 202}, *opts.AssigneeIDs)
+						// AssigneeID should be nil when AssigneeIDs is used
+						assert.Nil(t, opts.AssigneeID)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          47,
+								SourceBranch: "Branch1",
+								TargetBranch: "main",
+								Title:        "test MR",
+							},
+						}, nil, nil
+					})
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -392,6 +450,9 @@ func Test_stackSync(t *testing.T) {
 			mockCmd := git_testing.NewMockGitRunner(ctrl)
 
 			f, opts := setupTestFactory(t, testClient)
+
+			// Set assignees if provided in the test scenario
+			opts.assignees = tc.args.stack.assignees
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)
