@@ -34,6 +34,7 @@ import (
 	releaseCmd "gitlab.com/gitlab-org/cli/internal/commands/release"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
 	securefileCmd "gitlab.com/gitlab-org/cli/internal/commands/securefile"
+	skillCmd "gitlab.com/gitlab-org/cli/internal/commands/skill"
 	snippetCmd "gitlab.com/gitlab-org/cli/internal/commands/snippet"
 	sshCmd "gitlab.com/gitlab-org/cli/internal/commands/ssh-key"
 	stackCmd "gitlab.com/gitlab-org/cli/internal/commands/stack"
@@ -165,6 +166,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
+	rootCmd.AddCommand(skillCmd.NewCmdSkill(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
 	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
 	rootCmd.AddCommand(stackCmd.NewCmdStack(f))
