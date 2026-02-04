@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -62,6 +63,7 @@ func createMockCommandWithFlags() *cobra.Command {
 	cmd.Flags().Int("count", 10, "Number of items")
 	cmd.Flags().StringSlice("labels", []string{}, "List of labels")
 	cmd.Flags().Uint("port", 8080, "Port number")
+	cmd.Flags().IntSlice("ids", []int{}, "List of IDs")
 
 	return cmd
 }
@@ -199,8 +201,9 @@ func TestBuildFlagSchema(t *testing.T) {
 	cmd := createMockCommandWithFlags()
 
 	tests := []struct {
-		flagName     string
-		expectedType string
+		flagName      string
+		expectedType  string
+		expectedItems map[string]any
 	}{
 		{
 			flagName:     "verbose",
@@ -215,8 +218,14 @@ func TestBuildFlagSchema(t *testing.T) {
 			expectedType: "number",
 		},
 		{
-			flagName:     "labels",
-			expectedType: "array",
+			flagName:      "labels",
+			expectedType:  "array",
+			expectedItems: map[string]any{"type": "string"},
+		},
+		{
+			flagName:      "ids",
+			expectedType:  "array",
+			expectedItems: map[string]any{"type": "number"},
 		},
 		{
 			flagName:     "port",
@@ -234,12 +243,47 @@ func TestBuildFlagSchema(t *testing.T) {
 
 			assert.Equal(t, tt.expectedType, schema["type"])
 
-			// Minimal schema only contains type
+			// Check items property for array types
+			if tt.expectedItems != nil {
+				items, ok := schema["items"].(map[string]any)
+				require.True(t, ok, "Array type must have items property for flag %s", tt.flagName)
+				assert.Equal(t, tt.expectedItems, items, "Items mismatch for flag %s", tt.flagName)
+			}
+
+			// Minimal schema only contains type and items (for arrays)
 			assert.NotContains(t, schema, "default")
 			assert.NotContains(t, schema, "description")
 			assert.NotContains(t, schema, "minimum")
 		})
 	}
+}
+
+// TestBuildFlagSchema_AllArraysHaveItems validates that all array-type flags have the required items property
+
+func TestBuildFlagSchema_AllArraysHaveItems(t *testing.T) {
+	server := &mcpServer{}
+	cmd := createMockCommandWithFlags()
+
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		schema := server.buildFlagSchema(flag)
+
+		// If type is array, items MUST exist
+		if schema["type"] == "array" {
+			items, ok := schema["items"].(map[string]any)
+			require.True(t, ok,
+				"Array type flag '%s' (type: %s) must have items property",
+				flag.Name, flag.Value.Type())
+
+			itemType, ok := items["type"].(string)
+			require.True(t, ok,
+				"Items for flag '%s' must have a type", flag.Name)
+
+			// Validate item type is one of the valid JSON schema types
+			validTypes := []string{"string", "number", "boolean", "object", "array"}
+			require.Contains(t, validTypes, itemType,
+				"Items type for flag '%s' must be a valid JSON schema type", flag.Name)
+		}
+	})
 }
 
 // Tests for isDestructiveCommand

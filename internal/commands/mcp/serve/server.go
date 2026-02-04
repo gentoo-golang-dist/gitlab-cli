@@ -235,10 +235,34 @@ func (s *mcpServer) buildFlagSchema(flag *pflag.Flag) map[string]any {
 	switch flagType {
 	case "bool":
 		schema["type"] = "boolean"
-	case "stringSlice", "stringArray", "intSlice":
+
+	// String array types
+	case "stringSlice", "stringArray":
 		schema["type"] = "array"
-	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "float32", "float64":
+		schema["items"] = map[string]any{"type": "string"}
+
+	// Numeric array types
+	case "intSlice", "int32Slice", "int64Slice",
+		"uintSlice", "uint32Slice", "uint64Slice",
+		"float32Slice", "float64Slice":
+		schema["type"] = "array"
+		schema["items"] = map[string]any{"type": "number"}
+
+	// Boolean array type
+	case "boolSlice":
+		schema["type"] = "array"
+		schema["items"] = map[string]any{"type": "boolean"}
+
+	// Special types that serialize as strings
+	case "durationSlice", "ipSlice", "ipNetSlice":
+		schema["type"] = "array"
+		schema["items"] = map[string]any{"type": "string"}
+
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float32", "float64":
 		schema["type"] = "number"
+
 	default:
 		schema["type"] = "string"
 	}
