@@ -36,7 +36,14 @@ glab stack sync [flags]
 
 ```console
 $ glab stack sync
+$ glab stack sync --no-verify
 
+```
+
+## Options
+
+```plaintext
+      --no-verify   Bypass the pre-push hook. (See githooks(5) for more information.)
 ```
 
 ## Options inherited from parent commands

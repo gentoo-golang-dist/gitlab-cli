@@ -32,6 +32,7 @@ type options struct {
 	baseRepo  func() (glrepo.Interface, error)
 	remotes   func() (glrepo.Remotes, error)
 	user      gitlab.User
+	noVerify  bool
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -65,6 +66,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 ` + text.ExperimentalString),
 		Example: heredoc.Doc(`
 			$ glab stack sync
+			$ glab stack sync --no-verify
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -78,6 +80,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			return opts.run(cmd.Context(), f, gr)
 		},
 	}
+
+	stackSaveCmd.Flags().BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
 
 	return stackSaveCmd
 }
@@ -177,7 +181,7 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	}
 
 	if pushAfterSync {
-		err := forcePushAllWithLease(o.io, &stack, gr)
+		err := forcePushAllWithLease(o, &stack, gr)
 		if err != nil {
 			return fmt.Errorf("error pushing branches to remote: %v", err)
 		}
@@ -255,22 +259,25 @@ func rebaseWithUpdateRefs(ref *git.StackRef, stack *git.Stack, gr git.GitRunner)
 	return nil
 }
 
-func forcePushAllWithLease(io *iostreams.IOStreams, stack *git.Stack, gr git.GitRunner) error {
+func forcePushAllWithLease(opts *options, stack *git.Stack, gr git.GitRunner) error {
 	fmt.Print(progressString(
-		io,
+		opts.io,
 		"Updating branches:",
 		strings.Join(stack.Branches(), ", "),
 	))
 
-	output, err := gr.Git(append(
-		[]string{"push", git.DefaultRemote, "--force-with-lease"},
-		stack.Branches()...,
-	)...)
+	pushArgs := []string{"push", git.DefaultRemote, "--force-with-lease"}
+	if opts.noVerify {
+		pushArgs = append(pushArgs, "--no-verify")
+	}
+	pushArgs = append(pushArgs, stack.Branches()...)
+
+	output, err := gr.Git(pushArgs...)
 	if err != nil {
 		return err
 	}
 
-	fmt.Print(progressString(io, "Push succeeded: "+output))
+	fmt.Print(progressString(opts.io, "Push succeeded: "+output))
 	return nil
 }
 
@@ -280,7 +287,13 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		return &gitlab.MergeRequest{}, fmt.Errorf("error getting target project: %v", err)
 	}
 
-	_, err = gr.Git("push", "--set-upstream", git.DefaultRemote, ref.Branch)
+	pushArgs := []string{"push", "--set-upstream", git.DefaultRemote}
+	if opts.noVerify {
+		pushArgs = append(pushArgs, "--no-verify")
+	}
+	pushArgs = append(pushArgs, ref.Branch)
+
+	_, err = gr.Git(pushArgs...)
 	if err != nil {
 		return &gitlab.MergeRequest{}, fmt.Errorf("error pushing branch: %v", err)
 	}

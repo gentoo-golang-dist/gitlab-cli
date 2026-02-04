@@ -26,6 +26,7 @@ type SyncScenario struct {
 	title      string
 	baseBranch string
 	pushNeeded bool
+	noVerify   bool
 }
 
 type TestRef struct {
@@ -81,6 +82,20 @@ func setupTestFactory(t *testing.T, testClient *gitlabtesting.TestClient) (cmdut
 		labClient: client,
 		baseRepo:  f.BaseRepo,
 	}
+}
+
+func TestNewCmdSyncStack_Flags(t *testing.T) {
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	f := cmdtest.NewTestFactory(ios)
+	var gr git.StandardGitCommand
+
+	cmd := NewCmdSyncStack(f, gr)
+
+	// Test --no-verify flag exists
+	noVerifyFlag := cmd.Flag("no-verify")
+	require.NotNil(t, noVerifyFlag)
+	assert.Equal(t, "false", noVerifyFlag.DefValue)
+	assert.Contains(t, noVerifyFlag.Usage, "pre-push hook")
 }
 
 func Test_stackSync(t *testing.T) {
@@ -379,6 +394,150 @@ func Test_stackSync(t *testing.T) {
 					})
 			},
 		},
+
+		{
+			name: "no-verify flag is passed to git push",
+			args: args{
+				stack: SyncScenario{
+					title:    "my cool stack",
+					noVerify: true,
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: "", Description: "first branch"},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: "", Description: "second branch"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				// MockStackUser
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				// MockPostStackMR(Source: "Branch1", Target: "main", Title: "first branch")
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						assert.Equal(t, "main", *opts.TargetBranch)
+						assert.Equal(t, "first branch", *opts.Title)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          47,
+								SourceBranch: "Branch1",
+								TargetBranch: "main",
+								Title:        "first branch",
+							},
+						}, nil, nil
+					})
+
+				// MockPostStackMR(Source: "Branch2", Target: "Branch1", Title: "second branch")
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch2", *opts.SourceBranch)
+						assert.Equal(t, "Branch1", *opts.TargetBranch)
+						assert.Equal(t, "second branch", *opts.Title)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          48,
+								SourceBranch: "Branch2",
+								TargetBranch: "Branch1",
+								Title:        "second branch",
+							},
+						}, nil, nil
+					})
+			},
+		},
+
+		{
+			name: "no-verify flag with force push",
+			args: args{
+				stack: SyncScenario{
+					title:      "my cool stack",
+					noVerify:   true,
+					pushNeeded: true,
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+							},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: ""},
+							state: BranchHasDiverged,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				// MockStackUser
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				// MockListStackMRsByBranch("Branch1", "25")
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						return []*gitlab.BasicMergeRequest{
+							{
+								ID:           25,
+								IID:          25,
+								ProjectID:    3,
+								Title:        "test mr title",
+								TargetBranch: "main",
+								SourceBranch: "Branch1",
+								State:        "opened",
+								Description:  "test mr description25",
+								Author:       &gitlab.BasicUser{ID: 1, Username: "admin"},
+							},
+						}, nil, nil
+					})
+
+				// MockGetStackMR("Branch1", "25")
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(25), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							ID:           25,
+							IID:          25,
+							ProjectID:    3,
+							Title:        "test mr title",
+							TargetBranch: "main",
+							SourceBranch: "Branch1",
+							State:        "opened",
+							Description:  "test mr description25",
+							Author:       &gitlab.BasicUser{ID: 1, Username: "admin"},
+						},
+					}, nil, nil)
+
+				// MockPostStackMR(Source: "Branch2", Target: "Branch1")
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch2", *opts.SourceBranch)
+						assert.Equal(t, "Branch1", *opts.TargetBranch)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          49,
+								SourceBranch: "Branch2",
+								TargetBranch: "Branch1",
+							},
+						}, nil, nil
+					})
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -392,6 +551,9 @@ func Test_stackSync(t *testing.T) {
 			mockCmd := git_testing.NewMockGitRunner(ctrl)
 
 			f, opts := setupTestFactory(t, testClient)
+
+			// Set noVerify option from test case
+			opts.noVerify = tc.args.stack.noVerify
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)
@@ -432,13 +594,23 @@ func Test_stackSync(t *testing.T) {
 						}
 					}
 
-					mockCmd.EXPECT().Git([]string{"push", "--set-upstream", "origin", ref.Branch}).Return("a", nil)
+					// Build push command with --no-verify if noVerify is set
+					pushCmd := []string{"push", "--set-upstream", "origin"}
+					if tc.args.stack.noVerify {
+						pushCmd = append(pushCmd, "--no-verify")
+					}
+					pushCmd = append(pushCmd, ref.Branch)
+					mockCmd.EXPECT().Git(pushCmd).Return("a", nil)
 
 				}
 			}
 
 			if tc.args.stack.pushNeeded {
-				command := append([]string{"push", "origin", "--force-with-lease"}, stack.Branches()...)
+				command := []string{"push", "origin", "--force-with-lease"}
+				if tc.args.stack.noVerify {
+					command = append(command, "--no-verify")
+				}
+				command = append(command, stack.Branches()...)
 				mockCmd.EXPECT().Git(command)
 			}
 
