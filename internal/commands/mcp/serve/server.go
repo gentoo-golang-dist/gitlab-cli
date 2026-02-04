@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"iter"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
@@ -70,9 +72,50 @@ General Usage:
 	return glabServer
 }
 
-// Run starts the MCP server with stdio transport
-func (s *mcpServer) Run(ctx context.Context) error {
+// Run starts the MCP server with the specified transport
+func (s *mcpServer) Run(ctx context.Context, opts *options) error {
+	if opts.transport == "streamable-http" {
+		return s.runHTTPServer(ctx, opts)
+	}
 	return s.server.Run(ctx, &mcp.StdioTransport{})
+}
+
+// runHTTPServer starts the MCP server with HTTP transport
+func (s *mcpServer) runHTTPServer(ctx context.Context, opts *options) error {
+	// Create the streamable HTTP handler
+	handler := mcp.NewStreamableHTTPHandler(
+		func(req *http.Request) *mcp.Server {
+			return s.server
+		},
+		&mcp.StreamableHTTPOptions{},
+	)
+
+	// Create HTTP server
+	addr := fmt.Sprintf("%s:%s", opts.address, opts.port)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+
+	// Start server in a goroutine
+	errChan := make(chan error, 1)
+	go func() {
+		fmt.Fprintf(opts.io.StdErr, "Starting MCP server on http://%s\n", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- err
+		}
+	}()
+
+	// Wait for context cancellation or server error
+	select {
+	case <-ctx.Done():
+		// Gracefully shutdown the server
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
+	case err := <-errChan:
+		return fmt.Errorf("HTTP server error: %w", err)
+	}
 }
 
 // registerToolsFromCommands automatically registers all glab commands as MCP tools

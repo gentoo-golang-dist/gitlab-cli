@@ -865,3 +865,164 @@ func TestCallToolResultErrorStructure(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "error message here", textContent.Text)
 }
+
+// Tests for transport options validation
+
+func TestOptionsValidate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		transport string
+		port      string
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "valid stdio transport",
+			transport: "stdio",
+			port:      "8080",
+			wantError: false,
+		},
+		{
+			name:      "valid streamable-http transport",
+			transport: "streamable-http",
+			port:      "8080",
+			wantError: false,
+		},
+		{
+			name:      "invalid transport",
+			transport: "invalid",
+			port:      "8080",
+			wantError: true,
+			errorMsg:  "invalid transport: invalid (must be 'stdio' or 'streamable-http')",
+		},
+		{
+			name:      "empty transport",
+			transport: "",
+			port:      "8080",
+			wantError: true,
+			errorMsg:  "invalid transport:  (must be 'stdio' or 'streamable-http')",
+		},
+		{
+			name:      "http instead of streamable-http",
+			transport: "http",
+			port:      "8080",
+			wantError: true,
+			errorMsg:  "invalid transport: http (must be 'stdio' or 'streamable-http')",
+		},
+		{
+			name:      "invalid port - not a number",
+			transport: "streamable-http",
+			port:      "abc",
+			wantError: true,
+			errorMsg:  "invalid port: abc (must be a number between 1 and 65535)",
+		},
+		{
+			name:      "invalid port - too low",
+			transport: "streamable-http",
+			port:      "0",
+			wantError: true,
+			errorMsg:  "invalid port: 0 (must be a number between 1 and 65535)",
+		},
+		{
+			name:      "invalid port - too high",
+			transport: "streamable-http",
+			port:      "65536",
+			wantError: true,
+			errorMsg:  "invalid port: 65536 (must be a number between 1 and 65535)",
+		},
+		{
+			name:      "valid port - boundary low",
+			transport: "streamable-http",
+			port:      "1",
+			wantError: false,
+		},
+		{
+			name:      "valid port - boundary high",
+			transport: "streamable-http",
+			port:      "65535",
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := &options{
+				transport: tt.transport,
+				port:      tt.port,
+				address:   "localhost",
+			}
+
+			err := opts.validate()
+
+			if tt.wantError {
+				require.Error(t, err)
+				assert.Equal(t, tt.errorMsg, err.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Tests for transport configuration
+
+func TestTransportConfiguration(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		opts      *options
+		expectUse string
+	}{
+		{
+			name: "stdio transport with defaults",
+			opts: &options{
+				transport: "stdio",
+				port:      "8080",
+				address:   "localhost",
+			},
+			expectUse: "stdio",
+		},
+		{
+			name: "streamable-http transport with custom port",
+			opts: &options{
+				transport: "streamable-http",
+				port:      "9090",
+				address:   "localhost",
+			},
+			expectUse: "streamable-http",
+		},
+		{
+			name: "streamable-http transport with custom address",
+			opts: &options{
+				transport: "streamable-http",
+				port:      "8080",
+				address:   "127.0.0.1",
+			},
+			expectUse: "streamable-http",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Validate options
+			err := tt.opts.validate()
+			assert.NoError(t, err)
+
+			// Verify transport type
+			assert.Equal(t, tt.expectUse, tt.opts.transport)
+
+			// For HTTP transport, verify port and address are set
+			if tt.opts.transport == "streamable-http" {
+				assert.NotEmpty(t, tt.opts.port)
+				assert.NotEmpty(t, tt.opts.address)
+			}
+		})
+	}
+}
