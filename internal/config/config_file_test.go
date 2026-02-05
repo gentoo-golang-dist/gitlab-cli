@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -554,4 +555,92 @@ func Test_SearchConfigFile_LegacyLocation(t *testing.T) {
 	foundPath, err := SearchConfigFile()
 	require.NoError(t, err)
 	assert.Equal(t, legacyConfigFile, foundPath)
+}
+
+// captureStderr runs fn and returns any output written to stderr.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+
+	fn()
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	output, err := io.ReadAll(r)
+	require.NoError(t, err)
+	return string(output)
+}
+
+func Test_checkForDuplicateConfigs_SymlinkSameFile(t *testing.T) {
+	// This test simulates Fedora Silverblue where /home is a symlink to /var/home.
+	// Both paths point to the same file, so no duplicate warning should be printed.
+	test.ClearEnvironmentVariables(t)
+
+	// Create a base directory structure: baseDir/var/home/testuser
+	baseDir := t.TempDir()
+	realHome := filepath.Join(baseDir, "var", "home", "testuser")
+	err := os.MkdirAll(realHome, 0o750)
+	require.NoError(t, err)
+
+	// Create a symlink: baseDir/home -> baseDir/var/home
+	symlinkHome := filepath.Join(baseDir, "home")
+	err = os.Symlink(filepath.Join(baseDir, "var", "home"), symlinkHome)
+	require.NoError(t, err)
+
+	// Create config file via the real path
+	realConfigDir := filepath.Join(realHome, ".config", "glab-cli")
+	err = os.MkdirAll(realConfigDir, 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(realConfigDir, "config.yml"), []byte("test: value"), 0o600)
+	require.NoError(t, err)
+
+	// Set HOME to the real path (simulating what os.UserHomeDir returns on Silverblue)
+	t.Setenv("HOME", realHome)
+	t.Setenv("USERPROFILE", realHome)
+
+	// Set XDG_CONFIG_HOME to the symlinked path (simulating XDG resolution)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(symlinkHome, "testuser", ".config"))
+	xdg.Reload()
+
+	// Both paths resolve to the same file, just accessed via different paths
+	output := captureStderr(t, checkForDuplicateConfigs)
+
+	assert.NotContains(t, output, "Multiple config files found",
+		"Should not warn about duplicates when paths are symlinks to the same file")
+}
+
+func Test_checkForDuplicateConfigs_RealDuplicates(t *testing.T) {
+	// This test verifies that we still warn when there are genuinely different config files
+	test.ClearEnvironmentVariables(t)
+
+	homeDir := t.TempDir()
+	xdgDir := t.TempDir()
+
+	// Create legacy config
+	legacyConfigDir := filepath.Join(homeDir, ".config", "glab-cli")
+	err := os.MkdirAll(legacyConfigDir, 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(legacyConfigDir, "config.yml"), []byte("test: legacy"), 0o600)
+	require.NoError(t, err)
+
+	// Create XDG config (different file)
+	xdgConfigDir := filepath.Join(xdgDir, "glab-cli")
+	err = os.MkdirAll(xdgConfigDir, 0o750)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(xdgConfigDir, "config.yml"), []byte("test: xdg"), 0o600)
+	require.NoError(t, err)
+
+	t.Setenv("HOME", homeDir)
+	t.Setenv("USERPROFILE", homeDir)
+	t.Setenv("XDG_CONFIG_HOME", xdgDir)
+	xdg.Reload()
+
+	output := captureStderr(t, checkForDuplicateConfigs)
+
+	assert.Contains(t, output, "Multiple config files found",
+		"Should warn about duplicates when config files are genuinely different")
 }

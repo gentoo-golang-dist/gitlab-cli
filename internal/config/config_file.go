@@ -105,49 +105,49 @@ func checkForDuplicateConfigs() {
 		return
 	}
 
-	var existingConfigs []string
-	seenPaths := make(map[string]bool)
+	type configEntry struct {
+		path string
+		info os.FileInfo
+	}
+	var existingConfigs []configEntry
 
-	// Check legacy location
-	legacyDir := legacyConfigDir()
-	if legacyDir != "" {
-		legacyConfigPath := filepath.Join(legacyDir, "config.yml")
-		if _, err := os.Stat(legacyConfigPath); err == nil {
-			existingConfigs = append(existingConfigs, legacyConfigPath)
-			seenPaths[legacyConfigPath] = true
+	// addIfUnique adds a config path if it points to a distinct file.
+	// Uses os.SameFile to handle symlinks (e.g., /home -> /var/home on Silverblue).
+	addIfUnique := func(configPath string) {
+		info, err := os.Stat(configPath)
+		if err != nil {
+			return
 		}
+		for _, entry := range existingConfigs {
+			if os.SameFile(entry.info, info) {
+				return // Same file, skip
+			}
+		}
+		existingConfigs = append(existingConfigs, configEntry{configPath, info})
 	}
 
-	// Check XDG user config (if not already seen)
-	xdgConfigPath := filepath.Join(xdg.ConfigHome, "glab-cli", "config.yml")
-	if !seenPaths[xdgConfigPath] {
-		if _, err := os.Stat(xdgConfigPath); err == nil {
-			existingConfigs = append(existingConfigs, xdgConfigPath)
-			seenPaths[xdgConfigPath] = true
-		}
+	// Check legacy location first
+	if legacyDir := legacyConfigDir(); legacyDir != "" {
+		addIfUnique(filepath.Join(legacyDir, "config.yml"))
 	}
 
-	// Check system-wide XDG configs (skip if already seen)
+	// Check XDG user config
+	addIfUnique(filepath.Join(xdg.ConfigHome, "glab-cli", "config.yml"))
+
+	// Check system-wide XDG configs
 	for _, dir := range xdg.ConfigDirs {
-		// Skip if it's the same as ConfigHome (already checked above)
 		if dir == xdg.ConfigHome {
 			continue
 		}
-		configPath := filepath.Join(dir, "glab-cli", "config.yml")
-		if !seenPaths[configPath] {
-			if _, err := os.Stat(configPath); err == nil {
-				existingConfigs = append(existingConfigs, configPath)
-				seenPaths[configPath] = true
-			}
-		}
+		addIfUnique(filepath.Join(dir, "glab-cli", "config.yml"))
 	}
 
 	// Warn if multiple configs exist
 	if len(existingConfigs) > 1 {
 		fmt.Fprintf(os.Stderr, "Warning: Multiple config files found. Only the first one will be used.\n")
-		fmt.Fprintf(os.Stderr, "  Using: %s\n", existingConfigs[0])
-		for _, path := range existingConfigs[1:] {
-			fmt.Fprintf(os.Stderr, "  Ignoring: %s\n", path)
+		fmt.Fprintf(os.Stderr, "  Using: %s\n", existingConfigs[0].path)
+		for _, entry := range existingConfigs[1:] {
+			fmt.Fprintf(os.Stderr, "  Ignoring: %s\n", entry.path)
 		}
 		fmt.Fprintf(os.Stderr, "Consider consolidating to one location to avoid confusion.\n")
 	}
