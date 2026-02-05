@@ -19,7 +19,7 @@ Prerequisites:
 - A user with access to `staging.gitlab.com`.
 - A personal access token (PAT) with the `api` scope.
 - Optional. An SSH key configured for `staging.gitlab.com`.
-- For Duo features: see the [Test GitLab Duo features with `glab`](#test-gitlab-duo-features-with-glab) section
+- For GitLab Duo features: see the [Test GitLab Duo features with `glab`](#test-gitlab-duo-features-with-glab) section
 
 To configure `glab` for staging, use either the interactive login method, or the manual configuration method:
 
@@ -100,4 +100,4 @@ If you receive an error about feature availability, verify:
 
 - Your group membership status.
 - Your seat assignment matches test requirements.
-- The group has Duo features enabled in staging.
+- The group has GitLab Duo features enabled in staging.

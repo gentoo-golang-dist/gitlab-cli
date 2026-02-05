@@ -22,7 +22,7 @@ GLab is an open source GitLab CLI tool. It brings GitLab to your terminal, next 
 - View, manage, and retry CI/CD pipelines directly from your CLI.
 - Create changelogs.
 - Create and manage releases.
-- Ask GitLab Duo Chat questions about Git.
+- Ask GitLab Duo Chat (Classic) questions about Git.
 - Manage GitLab agents for Kubernetes.
 
 `glab` is available for repositories hosted on GitLab.com, GitLab Dedicated, and GitLab Self-Managed. It supports multiple authenticated GitLab instances, and automatically detects the authenticated hostname from the remotes available in your working Git directory.

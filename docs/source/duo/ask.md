@@ -16,7 +16,7 @@ Generate Git commands from natural language.
 
 Generate Git commands from natural language using AI assistance.
 
-Describe what you want to do in plain language, and GitLab Duo suggests the
+Describe what you want to do in plain language, and GitLab Duo (Classic) suggests the
 appropriate Git commands. The AI provides both the commands and an explanation.
 
 After you receive the suggested commands, you can execute them directly from
