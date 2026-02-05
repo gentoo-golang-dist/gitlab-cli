@@ -12,6 +12,9 @@ import (
 )
 
 func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
+	var includeCommands []string
+	var excludeCommands []string
+
 	serveCmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Start a MCP server with stdio transport. (EXPERIMENTAL)",
@@ -27,6 +30,11 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			- Manage projects (list, get details)
 			- Manage CI/CD pipelines and jobs
 
+			You can filter which commands are exposed as tools using the
+			--include or --exclude flags. These flags operate on top-level
+			commands (e.g., 'ci' matches all ci_* tools). The flags are
+			mutually exclusive.
+
 			To configure this server in Claude Code, add this code to your
 			MCP settings:
 
@@ -41,9 +49,33 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			  }
 			}
 			%[1]s
+
+			To limit the available tools, add --include or --exclude flags:
+
+			%[1]sjson
+			{
+			  "mcpServers": {
+			    "glab": {
+			      "type": "stdio",
+			      "command": "glab",
+			      "args": ["mcp", "serve", "--include=ci,mr,issue"]
+			    }
+			  }
+			}
+			%[1]s
 		`, "```") + text.ExperimentalString,
 		Example: heredoc.Doc(`
+			# Start server with all tools
 			$ glab mcp serve
+
+			# Only expose CI, MR, and issue tools
+			$ glab mcp serve --include=ci,mr,issue
+
+			# Expose all tools except OpenTofu and API
+			$ glab mcp serve --exclude=opentofu,api
+
+			# Using repeated flags
+			$ glab mcp serve --include=ci --include=mr --include=issue
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -56,7 +88,7 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			}
 
 			// Initialize the MCP server
-			server := newMCPServer(rootCmd)
+			server := newMCPServer(rootCmd, includeCommands, excludeCommands)
 
 			// Run the server (signal handling is done internally by server.ServeStdio)
 			if err := server.Run(); err != nil {
@@ -66,6 +98,12 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			return nil
 		},
 	}
+
+	serveCmd.Flags().StringSliceVar(&includeCommands, "include", []string{},
+		"Include only specified top-level commands (comma-separated: ci,mr,issue)")
+	serveCmd.Flags().StringSliceVar(&excludeCommands, "exclude", []string{},
+		"Exclude specified top-level commands (comma-separated: opentofu,api)")
+	serveCmd.MarkFlagsMutuallyExclusive("include", "exclude")
 
 	return serveCmd
 }

@@ -421,6 +421,116 @@ func TestConvertParamsToArgs(t *testing.T) {
 	}
 }
 
+// Tests for registerToolsFromCommands
+
+func TestRegisterToolsFromCommands(t *testing.T) {
+	// Parent commands use nil RunE (like real CLI groups), only leaf commands have RunE
+	createParentCommand := func(name, short string) *cobra.Command {
+		return &cobra.Command{Use: name, Short: short}
+	}
+
+	buildCommandHierarchy := func() *cobra.Command {
+		root := createParentCommand("glab", "Root")
+
+		ci := createParentCommand("ci", "CI command")
+		ciView := createMockCommand("view", "View CI", "", "")
+		ciArtifact := createParentCommand("artifact", "CI artifact")
+		ciArtifactDownload := createMockCommand("download", "Download artifact", "", "")
+
+		mr := createParentCommand("mr", "MR command")
+		mrList := createMockCommand("list", "List MRs", "", "")
+
+		// Interactive command: should always be excluded from MCP registration
+		mrView := createMockCommandWithAnnotations("view", "View MR interactively", map[string]string{
+			mcpannotations.Interactive: "true",
+		})
+		mrView.RunE = func(cmd *cobra.Command, args []string) error { return nil }
+
+		issue := createParentCommand("issue", "Issue command")
+		issueList := createMockCommand("list", "List issues", "", "")
+
+		root.AddCommand(ci)
+		ci.AddCommand(ciView)
+		ci.AddCommand(ciArtifact)
+		ciArtifact.AddCommand(ciArtifactDownload)
+		root.AddCommand(mr)
+		mr.AddCommand(mrList)
+		mr.AddCommand(mrView)
+		root.AddCommand(issue)
+		issue.AddCommand(issueList)
+
+		return root
+	}
+
+	registeredToolNames := func(srv *mcpServer) []string {
+		var names []string
+		for name := range srv.server.ListTools() {
+			names = append(names, name)
+		}
+		return names
+	}
+
+	tests := []struct {
+		name           string
+		includeFilters []string
+		excludeFilters []string
+		expectedTools  []string
+	}{
+		{
+			name:           "no filters registers all non-interactive leaf commands",
+			includeFilters: []string{},
+			excludeFilters: []string{},
+			expectedTools:  []string{"glab_ci_view", "glab_ci_artifact_download", "glab_mr_list", "glab_issue_list"},
+		},
+		{
+			name:           "interactive commands are never registered",
+			includeFilters: []string{"mr"},
+			excludeFilters: []string{},
+			expectedTools:  []string{"glab_mr_list"},
+		},
+		{
+			name:           "include filter restricts to matching top-level commands",
+			includeFilters: []string{"ci"},
+			excludeFilters: []string{},
+			expectedTools:  []string{"glab_ci_view", "glab_ci_artifact_download"},
+		},
+		{
+			name:           "include filter with multiple top-level commands",
+			includeFilters: []string{"ci", "mr"},
+			excludeFilters: []string{},
+			expectedTools:  []string{"glab_ci_view", "glab_ci_artifact_download", "glab_mr_list"},
+		},
+		{
+			name:           "exclude filter removes matching top-level commands",
+			includeFilters: []string{},
+			excludeFilters: []string{"issue"},
+			expectedTools:  []string{"glab_ci_view", "glab_ci_artifact_download", "glab_mr_list"},
+		},
+		{
+			name:           "exclude filter with multiple top-level commands",
+			includeFilters: []string{},
+			excludeFilters: []string{"issue", "ci"},
+			expectedTools:  []string{"glab_mr_list"},
+		},
+		{
+			name:           "include filter for non-existent command registers nothing",
+			includeFilters: []string{"nonexistent"},
+			excludeFilters: []string{},
+			expectedTools:  []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := buildCommandHierarchy()
+			srv := newMCPServer(root, tt.includeFilters, tt.excludeFilters)
+
+			toolNames := registeredToolNames(srv)
+			assert.ElementsMatch(t, tt.expectedTools, toolNames)
+		})
+	}
+}
+
 // Tests for processOutput
 
 func TestProcessOutput(t *testing.T) {

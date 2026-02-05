@@ -6,6 +6,7 @@ import (
 	"iter"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -29,12 +30,14 @@ const (
 
 // mcpServer wraps the MCP server with GitLab client access
 type mcpServer struct {
-	server  *server.MCPServer
-	rootCmd *cobra.Command
+	server         *server.MCPServer
+	rootCmd        *cobra.Command
+	includeFilters []string
+	excludeFilters []string
 }
 
 // newMCPServer creates a new MCP server instance using mark3labs/mcp-go
-func newMCPServer(rootCmd *cobra.Command) *mcpServer {
+func newMCPServer(rootCmd *cobra.Command, includeFilters, excludeFilters []string) *mcpServer {
 	// Create MCP server with usage instructions
 	instructions := `GitLab CLI MCP Server - Provides access to GitLab functionality through glab commands.
 
@@ -52,8 +55,10 @@ General Usage:
 	)
 
 	glabServer := &mcpServer{
-		server:  mcpSrv,
-		rootCmd: rootCmd,
+		server:         mcpSrv,
+		rootCmd:        rootCmd,
+		includeFilters: includeFilters,
+		excludeFilters: excludeFilters,
 	}
 
 	// Register all GitLab tools dynamically
@@ -67,19 +72,64 @@ func (s *mcpServer) Run() error {
 	return server.ServeStdio(s.server)
 }
 
+// shouldIncludeCommand determines if a command should be registered as an MCP tool.
+func (s *mcpServer) shouldIncludeCommand(cmd *cobra.Command, path []string) bool {
+	if s.isInteractiveCommand(cmd) {
+		return false
+	}
+
+	if !s.matchesCommandFilters(path) {
+		return false
+	}
+
+	return true
+}
+
+// isInteractiveCommand checks whether a command requires a TTY (e.g. TUI commands)
+func (s *mcpServer) isInteractiveCommand(cmd *cobra.Command) bool {
+	if cmd.Annotations == nil {
+		return false
+	}
+
+	value, exists := cmd.Annotations[mcpannotations.Interactive]
+	return exists && value == "true"
+}
+
+// matchesCommandFilters checks whether a command path passes the include/exclude filters.
+func (s *mcpServer) matchesCommandFilters(path []string) bool {
+	if len(path) == 0 {
+		return false
+	}
+
+	topLevelCmd := path[0]
+
+	// Check exclude list
+	if len(s.excludeFilters) > 0 {
+		if slices.Contains(s.excludeFilters, topLevelCmd) {
+			return false
+		}
+	}
+
+	// Check include list
+	if len(s.includeFilters) > 0 {
+		return slices.Contains(s.includeFilters, topLevelCmd)
+	}
+
+	return true
+}
+
 // registerToolsFromCommands automatically registers all glab commands as MCP tools
 func (s *mcpServer) registerToolsFromCommands() {
+	registeredCount := 0
+
 	for cmd, path := range s.iterCommands(s.rootCmd, []string{}) {
 		// Only register leaf commands that have RunE and are not the root command
 		if cmd.RunE == nil || cmd == s.rootCmd {
 			continue
 		}
 
-		// Skip interactive commands (TUI commands that require a TTY)
-		if cmd.Annotations != nil {
-			if val, exists := cmd.Annotations[mcpannotations.Interactive]; exists && val == "true" {
-				continue
-			}
+		if !s.shouldIncludeCommand(cmd, path) {
+			continue
 		}
 
 		toolName := "glab_" + strings.Join(path, "_")
@@ -96,6 +146,12 @@ func (s *mcpServer) registerToolsFromCommands() {
 
 		// Register the tool
 		s.server.AddTool(tool, handler)
+		registeredCount++
+	}
+
+	// Warn if no tools registered
+	if registeredCount == 0 {
+		fmt.Fprintf(os.Stderr, "Warning: No tools registered. Check your include/exclude filters.\n")
 	}
 }
 
