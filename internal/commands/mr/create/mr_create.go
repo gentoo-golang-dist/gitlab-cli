@@ -44,10 +44,10 @@ type options struct {
 	RelatedIssue    string `json:"related_issue,omitempty"`
 	CopyIssueLabels bool   `json:"copy_issue_labels,omitempty"`
 
-	CreateSourceBranch bool `json:"create_source_branch,omitempty"`
-	RemoveSourceBranch bool `json:"remove_source_branch,omitempty"`
-	AllowCollaboration bool `json:"allow_collaboration,omitempty"`
-	SquashBeforeMerge  bool `json:"squash_before_merge,omitempty"`
+	CreateSourceBranch bool  `json:"create_source_branch,omitempty"`
+	RemoveSourceBranch *bool `json:"remove_source_branch,omitempty"`
+	AllowCollaboration *bool `json:"allow_collaboration,omitempty"`
+	SquashBeforeMerge  *bool `json:"squash_before_merge,omitempty"`
 
 	Autofill       bool `json:"autofill,omitempty"`
 	FillCommitBody bool `json:"fill_commit_body,omitempty"`
@@ -152,9 +152,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().StringVarP(&opts.TargetBranch, "target-branch", "b", "", "The target or base branch into which you want your code merged into.")
 	mrCreateCmd.Flags().BoolVarP(&opts.CreateSourceBranch, "create-source-branch", "", false, "Create a source branch if it does not exist.")
 	mrCreateCmd.Flags().StringVarP(&opts.MilestoneFlag, "milestone", "m", "", "The global ID or title of a milestone to assign.")
-	mrCreateCmd.Flags().BoolVarP(&opts.AllowCollaboration, "allow-collaboration", "", false, "Allow commits from other members.")
-	mrCreateCmd.Flags().BoolVarP(&opts.RemoveSourceBranch, "remove-source-branch", "", false, "Remove source branch on merge.")
-	mrCreateCmd.Flags().BoolVarP(&opts.SquashBeforeMerge, "squash-before-merge", "", false, "Squash commits into a single commit when merging.")
+	mrCreateCmd.Flags().Bool("allow-collaboration", false, "Allow commits from other members. Set to true/false to override project defaults, or omit to use project settings.")
+	mrCreateCmd.Flags().Bool("remove-source-branch", false, "Remove source branch on merge. Set to true/false to override project defaults, or omit to use project settings.")
+	mrCreateCmd.Flags().Bool("squash-before-merge", false, "Squash commits into a single commit when merging. Set to true/false to override project defaults, or omit to use project settings.")
 	mrCreateCmd.Flags().BoolVarP(&opts.noEditor, "no-editor", "", false, "Don't open editor to enter a description. If true, uses prompt. Defaults to false.")
 	mrCreateCmd.Flags().StringP("head", "H", "", "Select another head repository using the `OWNER/REPO` or `GROUP/NAMESPACE/REPO` format, the project ID, or the full URL.")
 	mrCreateCmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "Skip submission confirmation prompt. Use --fill to skip all optional prompts.")
@@ -177,6 +177,23 @@ func (o *options) complete(cmd *cobra.Command) {
 
 	// disable interactive mode if title and description are explicitly defined
 	o.isInteractive = !(hasTitle && hasDescription)
+
+	// Handle boolean flags: only set if explicitly provided by user
+	// This allows users to override project defaults or use them when omitted
+	if cmd.Flags().Changed("allow-collaboration") {
+		allowCollab, _ := cmd.Flags().GetBool("allow-collaboration")
+		o.AllowCollaboration = &allowCollab
+	}
+
+	if cmd.Flags().Changed("remove-source-branch") {
+		removeSource, _ := cmd.Flags().GetBool("remove-source-branch")
+		o.RemoveSourceBranch = &removeSource
+	}
+
+	if cmd.Flags().Changed("squash-before-merge") {
+		squash, _ := cmd.Flags().GetBool("squash-before-merge")
+		o.SquashBeforeMerge = &squash
+	}
 }
 
 func (o *options) validate(cmd *cobra.Command) error {
@@ -525,17 +542,11 @@ func (o *options) run(ctx context.Context) error {
 	mrCreateOpts.SourceBranch = &o.SourceBranch
 	mrCreateOpts.TargetBranch = &o.TargetBranch
 
-	if o.AllowCollaboration {
-		mrCreateOpts.AllowCollaboration = gitlab.Ptr(true)
-	}
-
-	if o.RemoveSourceBranch {
-		mrCreateOpts.RemoveSourceBranch = gitlab.Ptr(true)
-	}
-
-	if o.SquashBeforeMerge {
-		mrCreateOpts.Squash = gitlab.Ptr(true)
-	}
+	// Assign boolean flags directly. If nil, GitLab uses the project's default settings.
+	// If set to true or false, the user's choice overrides project defaults.
+	mrCreateOpts.AllowCollaboration = o.AllowCollaboration
+	mrCreateOpts.RemoveSourceBranch = o.RemoveSourceBranch
+	mrCreateOpts.Squash = o.SquashBeforeMerge
 
 	if o.TargetProject != nil {
 		mrCreateOpts.TargetProjectID = &o.TargetProject.ID

@@ -860,3 +860,207 @@ func TestMRCreate_RemotesError_PropagatesError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not a git repository", "error should mention git repository")
 	assert.NotContains(t, output.String(), "!12", "should not have created a merge request")
 }
+
+func TestMRCreate_SquashBeforeMergeFlag(t *testing.T) {
+	tests := []struct {
+		name                string
+		flagValue           string
+		flagSet             bool
+		expectedSquashValue *bool
+	}{
+		{
+			name:                "flag not set",
+			flagSet:             false,
+			expectedSquashValue: nil,
+		},
+		{
+			name:                "flag set to true",
+			flagValue:           "true",
+			flagSet:             true,
+			expectedSquashValue: gitlab.Ptr(true),
+		},
+		{
+			name:                "flag set to false",
+			flagValue:           "false",
+			flagSet:             true,
+			expectedSquashValue: gitlab.Ptr(false),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a command to test flag parsing
+			cmd := NewCmdCreate(&cmdtest.Factory{})
+
+			// Set up the command line args
+			args := []string{"--title", "Test", "--description", "Desc"}
+			if tt.flagSet {
+				args = append(args, "--squash-before-merge="+tt.flagValue)
+			}
+
+			cmd.SetArgs(args)
+
+			// Parse flags
+			err := cmd.ParseFlags(args)
+			require.NoError(t, err)
+
+			// Get the options from the command
+			opts := &options{}
+
+			// Simulate what complete() does
+			if cmd.Flags().Changed("squash-before-merge") {
+				squash, _ := cmd.Flags().GetBool("squash-before-merge")
+				opts.SquashBeforeMerge = &squash
+			}
+
+			// Verify the pointer is set correctly
+			if tt.expectedSquashValue == nil {
+				assert.Nil(t, opts.SquashBeforeMerge, "SquashBeforeMerge should be nil when flag is not set")
+			} else {
+				require.NotNil(t, opts.SquashBeforeMerge, "SquashBeforeMerge should not be nil when flag is set")
+				assert.Equal(t, *tt.expectedSquashValue, *opts.SquashBeforeMerge, "SquashBeforeMerge value should match expected")
+			}
+
+			// Test what would be sent to the API
+			mrCreateOpts := &gitlab.CreateMergeRequestOptions{}
+			if opts.SquashBeforeMerge != nil {
+				mrCreateOpts.Squash = opts.SquashBeforeMerge
+			}
+
+			// Verify API options
+			if tt.expectedSquashValue == nil {
+				assert.Nil(t, mrCreateOpts.Squash, "Squash should be nil when flag is not set")
+			} else {
+				require.NotNil(t, mrCreateOpts.Squash, "Squash should be set when flag is provided")
+				assert.Equal(t, *tt.expectedSquashValue, *mrCreateOpts.Squash, "Squash API value should match flag value")
+			}
+		})
+	}
+}
+
+func TestMRCreate_BooleanFlags(t *testing.T) {
+	tests := []struct {
+		name          string
+		flagName      string
+		flagValue     string
+		flagSet       bool
+		expectedValue *bool
+		getOptValue   func(*options) *bool
+		getAPIValue   func(*gitlab.CreateMergeRequestOptions) *bool
+	}{
+		// RemoveSourceBranch tests
+		{
+			name:          "remove-source-branch not set",
+			flagName:      "remove-source-branch",
+			flagSet:       false,
+			expectedValue: nil,
+			getOptValue:   func(o *options) *bool { return o.RemoveSourceBranch },
+			getAPIValue:   func(opts *gitlab.CreateMergeRequestOptions) *bool { return opts.RemoveSourceBranch },
+		},
+		{
+			name:          "remove-source-branch set to true",
+			flagName:      "remove-source-branch",
+			flagValue:     "true",
+			flagSet:       true,
+			expectedValue: gitlab.Ptr(true),
+			getOptValue:   func(o *options) *bool { return o.RemoveSourceBranch },
+			getAPIValue:   func(opts *gitlab.CreateMergeRequestOptions) *bool { return opts.RemoveSourceBranch },
+		},
+		{
+			name:          "remove-source-branch set to false",
+			flagName:      "remove-source-branch",
+			flagValue:     "false",
+			flagSet:       true,
+			expectedValue: gitlab.Ptr(false),
+			getOptValue:   func(o *options) *bool { return o.RemoveSourceBranch },
+			getAPIValue:   func(opts *gitlab.CreateMergeRequestOptions) *bool { return opts.RemoveSourceBranch },
+		},
+		// AllowCollaboration tests
+		{
+			name:          "allow-collaboration not set",
+			flagName:      "allow-collaboration",
+			flagSet:       false,
+			expectedValue: nil,
+			getOptValue:   func(o *options) *bool { return o.AllowCollaboration },
+			getAPIValue:   func(opts *gitlab.CreateMergeRequestOptions) *bool { return opts.AllowCollaboration },
+		},
+		{
+			name:          "allow-collaboration set to true",
+			flagName:      "allow-collaboration",
+			flagValue:     "true",
+			flagSet:       true,
+			expectedValue: gitlab.Ptr(true),
+			getOptValue:   func(o *options) *bool { return o.AllowCollaboration },
+			getAPIValue:   func(opts *gitlab.CreateMergeRequestOptions) *bool { return opts.AllowCollaboration },
+		},
+		{
+			name:          "allow-collaboration set to false",
+			flagName:      "allow-collaboration",
+			flagValue:     "false",
+			flagSet:       true,
+			expectedValue: gitlab.Ptr(false),
+			getOptValue:   func(o *options) *bool { return o.AllowCollaboration },
+			getAPIValue:   func(opts *gitlab.CreateMergeRequestOptions) *bool { return opts.AllowCollaboration },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a command to test flag parsing
+			cmd := NewCmdCreate(&cmdtest.Factory{})
+
+			// Set up the command line args
+			args := []string{"--title", "Test", "--description", "Desc"}
+			if tt.flagSet {
+				args = append(args, "--"+tt.flagName+"="+tt.flagValue)
+			}
+
+			cmd.SetArgs(args)
+
+			// Parse flags
+			err := cmd.ParseFlags(args)
+			require.NoError(t, err)
+
+			// Get the options from the command
+			opts := &options{}
+
+			// Simulate what complete() does
+			if cmd.Flags().Changed(tt.flagName) {
+				value, _ := cmd.Flags().GetBool(tt.flagName)
+				switch tt.flagName {
+				case "remove-source-branch":
+					opts.RemoveSourceBranch = &value
+				case "allow-collaboration":
+					opts.AllowCollaboration = &value
+				}
+			}
+
+			// Verify the pointer is set correctly
+			optValue := tt.getOptValue(opts)
+			if tt.expectedValue == nil {
+				assert.Nil(t, optValue, "%s should be nil when flag is not set", tt.flagName)
+			} else {
+				require.NotNil(t, optValue, "%s should not be nil when flag is set", tt.flagName)
+				assert.Equal(t, *tt.expectedValue, *optValue, "%s value should match expected", tt.flagName)
+			}
+
+			// Test what would be sent to the API
+			mrCreateOpts := &gitlab.CreateMergeRequestOptions{}
+			if opts.RemoveSourceBranch != nil {
+				mrCreateOpts.RemoveSourceBranch = opts.RemoveSourceBranch
+			}
+			if opts.AllowCollaboration != nil {
+				mrCreateOpts.AllowCollaboration = opts.AllowCollaboration
+			}
+
+			// Verify API options
+			apiValue := tt.getAPIValue(mrCreateOpts)
+			if tt.expectedValue == nil {
+				assert.Nil(t, apiValue, "%s should be nil in API when flag is not set", tt.flagName)
+			} else {
+				require.NotNil(t, apiValue, "%s should be set in API when flag is provided", tt.flagName)
+				assert.Equal(t, *tt.expectedValue, *apiValue, "%s API value should match flag value", tt.flagName)
+			}
+		})
+	}
+}

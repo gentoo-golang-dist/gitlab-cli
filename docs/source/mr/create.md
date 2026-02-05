@@ -36,7 +36,7 @@ $ glab mr create --fill --fill-commit-body --yes
 ## Options
 
 ```plaintext
-      --allow-collaboration    Allow commits from other members.
+      --allow-collaboration    Allow commits from other members. Set to true/false to override project defaults, or omit to use project settings.
   -a, --assignee usernames     Assign merge request to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
       --copy-issue-labels      Copy labels from issue to the merge request. Used with --related-issue.
       --create-source-branch   Create a source branch if it does not exist.
@@ -51,11 +51,11 @@ $ glab mr create --fill --fill-commit-body --yes
       --push                   Push committed changes after creating merge request. Make sure you have committed changes.
       --recover                Save the options to a file if the merge request creation fails. If the file exists, the options are loaded from the recovery file. (EXPERIMENTAL)
   -i, --related-issue string   Create a merge request for an issue. If --title is not provided, uses the issue title.
-      --remove-source-branch   Remove source branch on merge.
+      --remove-source-branch   Remove source branch on merge. Set to true/false to override project defaults, or omit to use project settings.
       --reviewer usernames     Request review from users by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
       --signoff                Append a DCO signoff to the merge request description.
   -s, --source-branch string   Create a merge request from this branch. Default is the current branch.
-      --squash-before-merge    Squash commits into a single commit when merging.
+      --squash-before-merge    Squash commits into a single commit when merging. Set to true/false to override project defaults, or omit to use project settings.
   -b, --target-branch string   The target or base branch into which you want your code merged into.
   -t, --title string           Supply a title for the merge request.
   -w, --web                    Continue merge request creation in a browser.
