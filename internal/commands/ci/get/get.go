@@ -12,7 +12,6 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
@@ -69,28 +68,14 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 					return f.Branch()
 				}, repo, client)
 
-				commit, _, err := client.Commits.GetCommit(repo.FullName(), branch, nil)
+				// Use GetPipelineWithFallback for robust pipeline lookup with MR fallback
+				pipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repo.FullName(), branch, f.IO())
 				if err != nil {
+					redCheck := c.Red("✘")
+					fmt.Fprintf(f.IO().StdOut, "%s %v\n", redCheck, err)
 					return err
 				}
-
-				// The latest commit on the branch won't work with a merged
-				// result pipeline
-				if commit.LastPipeline == nil {
-					mr, _, err := mrutils.MRFromArgs(cmd.Context(), f, args, "any")
-					if err != nil {
-						return err
-					}
-
-					if mr.HeadPipeline == nil {
-						return fmt.Errorf("no pipeline found. It might not exist yet. If this problem continues, check your pipeline configuration.")
-					} else {
-						pipelineId = int(mr.HeadPipeline.ID)
-					}
-
-				} else {
-					pipelineId = int(commit.LastPipeline.ID)
-				}
+				pipelineId = int(pipeline.ID)
 				msgNotFound = fmt.Sprintf("No pipelines running or available on branch: %s", branch)
 			}
 

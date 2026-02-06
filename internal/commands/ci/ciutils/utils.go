@@ -292,16 +292,17 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int64, error) {
 		return int64(inputs.PipelineId), nil
 	}
 
-	branch := GetBranch(inputs.Branch, nil, opts.Repo, opts.Client)
+	branch := GetBranch(inputs.Branch, opts.BranchFunc, opts.Repo, opts.Client)
 	if branch == "" {
 		return 0, fmt.Errorf("unable to determine branch")
 	}
 
-	pipeline, _, err := opts.Client.Pipelines.GetLatestPipeline(opts.Repo.FullName(), &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr(branch)})
+	// Use fallback logic for robust pipeline lookup including MR pipelines
+	pipeline, err := GetPipelineWithFallback(context.Background(), opts.Client, opts.Repo.FullName(), branch, opts.IO)
 	if err != nil {
-		return 0, fmt.Errorf("get last pipeline: %w", err)
+		return 0, fmt.Errorf("failed to get pipeline for branch %s: %w", branch, err)
 	}
-	return pipeline.ID, err
+	return pipeline.ID, nil
 }
 
 // GetDefaultBranch fetches the repository's default branch from GitLab API.
@@ -422,9 +423,10 @@ type JobInputs struct {
 }
 
 type JobOptions struct {
-	Client *gitlab.Client
-	Repo   glrepo.Interface
-	IO     *iostreams.IOStreams
+	Client     *gitlab.Client
+	Repo       glrepo.Interface
+	IO         *iostreams.IOStreams
+	BranchFunc func() (string, error)
 }
 
 func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {

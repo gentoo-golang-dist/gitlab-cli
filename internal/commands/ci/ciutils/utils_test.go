@@ -104,10 +104,17 @@ func TestGetJobId(t *testing.T) {
 			pipelineId:  0,
 			expectedOut: 1122,
 			setupMock: func(tc *gitlabtesting.TestClient) {
+				// GetPipelineWithFallback first tries GetLatestPipeline
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
 					Return(&gitlab.Pipeline{ID: 123}, nil, nil)
-
+				// Then checks if pipeline has jobs
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "test"},
+					}, nil, nil)
+				// Then GetJobId lists all jobs for the pipeline
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 					Return([]*gitlab.Job{
@@ -120,12 +127,17 @@ func TestGetJobId(t *testing.T) {
 			name:          "when getJobId with name and last pipeline is requested and getCommits throws error",
 			jobName:       "lint",
 			pipelineId:    0,
-			expectedError: "get pipeline: get last pipeline:",
+			expectedError: "get pipeline: failed to get pipeline for branch main:",
 			expectedOut:   0,
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				forbiddenResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusForbidden}}
+				// GetPipelineWithFallback tries GetLatestPipeline
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
+					Return(nil, forbiddenResponse, assert.AnError)
+				// Then tries MR lookup (will also fail)
+				tc.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("OWNER/REPO", gomock.Any()).
 					Return(nil, forbiddenResponse, assert.AnError)
 			},
 		},
@@ -136,10 +148,15 @@ func TestGetJobId(t *testing.T) {
 			expectedError: "list pipeline jobs:",
 			expectedOut:   0,
 			setupMock: func(tc *gitlabtesting.TestClient) {
+				// GetPipelineWithFallback tries GetLatestPipeline
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
 					Return(&gitlab.Pipeline{ID: 123}, nil, nil)
-
+				// Check if pipeline has jobs
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any()).
+					Return([]*gitlab.Job{{ID: 1, Name: "test"}}, nil, nil)
+				// Then GetJobId tries to list all jobs (this fails)
 				forbiddenResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusForbidden}}
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).

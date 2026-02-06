@@ -98,13 +98,29 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 
 `,
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockCommits.EXPECT().
-					GetCommit("OWNER/REPO", "main", gomock.Any()).
-					Return(&gitlab.Commit{
-						LastPipeline: &gitlab.PipelineInfo{
-							ID: 123,
-						},
+				// GetPipelineWithFallback first tries GetLatestPipeline
+				tc.MockPipelines.EXPECT().
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
+					Return(&gitlab.Pipeline{
+						ID:         123,
+						IID:        123,
+						Status:     "pending",
+						Source:     "push",
+						Ref:        "main",
+						SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						User:       &gitlab.BasicUser{Username: "test"},
+						YamlErrors: "-",
+						CreatedAt:  &createdAt,
+						StartedAt:  &startedAt,
+						UpdatedAt:  &updatedAt,
 					}, nil, nil)
+				// Check if pipeline has jobs
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "test"}, // Pipeline has jobs, so it's valid
+					}, nil, nil)
+				// Then GetPipeline is called to get full pipeline details
 				tc.MockPipelines.EXPECT().
 					GetPipeline("OWNER/REPO", int64(123)).
 					Return(&gitlab.Pipeline{
@@ -120,6 +136,7 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 						StartedAt:  &startedAt,
 						UpdatedAt:  &updatedAt,
 					}, nil, nil)
+				// Finally ListPipelineJobs is called to get all jobs for display
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 					Return([]*gitlab.Job{}, lastPageResponse, nil)
@@ -340,16 +357,23 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 
 `,
 			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockCommits.EXPECT().
-					GetCommit("OWNER/REPO", "main", gomock.Any()).
-					Return(&gitlab.Commit{
-						LastPipeline: nil,
+				// GetPipelineWithFallback first tries GetLatestPipeline (returns pipeline with no jobs)
+				tc.MockPipelines.EXPECT().
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
+					Return(&gitlab.Pipeline{
+						ID: 999, // A different pipeline that has no jobs
 					}, nil, nil)
+				// Check if pipeline has jobs (it doesn't)
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(999), gomock.Any()).
+					Return([]*gitlab.Job{}, nil, nil)
+				// Falls back to MR lookup
 				tc.MockMergeRequests.EXPECT().
 					ListProjectMergeRequests("OWNER/REPO", gomock.Any()).
 					Return([]*gitlab.BasicMergeRequest{
 						{
-							IID: 1,
+							IID:    1,
+							Author: &gitlab.BasicUser{Username: "testuser"},
 						},
 					}, lastPageResponse, nil)
 				tc.MockMergeRequests.EXPECT().
@@ -359,6 +383,24 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 							ID: 123,
 						},
 					}, nil, nil)
+				// GetPipeline to get full MR pipeline details (called by GetPipelineWithFallback)
+				tc.MockPipelines.EXPECT().
+					GetPipeline("OWNER/REPO", int64(123), gomock.Any()).
+					Return(&gitlab.Pipeline{
+						ID:         123,
+						IID:        123,
+						ProjectID:  5,
+						Status:     "pending",
+						Source:     "push",
+						Ref:        "main",
+						SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						User:       &gitlab.BasicUser{Username: "test"},
+						YamlErrors: "-",
+						CreatedAt:  &createdAt,
+						StartedAt:  &startedAt,
+						UpdatedAt:  &updatedAt,
+					}, nil, nil)
+				// Then GetPipeline is called again to get full pipeline details for display
 				tc.MockPipelines.EXPECT().
 					GetPipeline("OWNER/REPO", int64(123)).
 					Return(&gitlab.Pipeline{
@@ -375,6 +417,7 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 						StartedAt:  &startedAt,
 						UpdatedAt:  &updatedAt,
 					}, nil, nil)
+				// Finally ListPipelineJobs is called to get all jobs for display
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 					Return([]*gitlab.Job{}, lastPageResponse, nil)

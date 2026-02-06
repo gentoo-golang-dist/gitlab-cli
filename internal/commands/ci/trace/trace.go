@@ -11,7 +11,7 @@ import (
 
 func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 	pipelineCITraceCmd := &cobra.Command{
-		Use:   "trace [<job-id>] [flags]",
+		Use:   "trace [<job-id>|<job-name>] [flags]",
 		Short: `Trace a CI/CD job log in real time.`,
 		Example: heredoc.Doc(`
 			# Interactively select a job to trace
@@ -48,9 +48,10 @@ func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 				Branch:     branch,
 				PipelineId: pipelineId,
 			}, &ciutils.JobOptions{
-				Client: client,
-				IO:     f.IO(),
-				Repo:   repo,
+				Client:     client,
+				IO:         f.IO(),
+				Repo:       repo,
+				BranchFunc: f.Branch,
 			})
 		},
 	}

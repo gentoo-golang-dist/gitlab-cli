@@ -123,14 +123,22 @@ func TestCiRetry(t *testing.T) {
 			args:        "lint -b main",
 			expectedOut: "Retried job (ID: 1123), status: pending, ref: branch-name, weburl: https://gitlab.com/OWNER/REPO/-/jobs/1123\n",
 			setupMock: func(tc *gitlabtesting.TestClient) {
+				// GetPipelineWithFallback tries GetLatestPipeline first
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
 					Return(&gitlab.Pipeline{
 						ID: 123,
 					}, nil, nil)
-
+				// Check if pipeline has jobs
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "test"},
+					}, nil, nil)
+
+				// GetJobId lists all jobs for the pipeline
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 					Return([]*gitlab.Job{
 						{
 							ID:     1122,

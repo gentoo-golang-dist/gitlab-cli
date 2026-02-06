@@ -149,9 +149,10 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						return ciutils.TraceJob(cmd.Context(), &ciutils.JobInputs{
 							Branch: branch,
 						}, &ciutils.JobOptions{
-							Repo:   repo,
-							Client: client,
-							IO:     f.IO(),
+							Repo:       repo,
+							Client:     client,
+							IO:         f.IO(),
+							BranchFunc: f.Branch,
 						})
 					case "Retry":
 						_, _, err := client.Pipelines.RetryPipelineBuild(repoName, runningPipeline.ID)

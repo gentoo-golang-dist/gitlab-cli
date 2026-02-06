@@ -124,12 +124,20 @@ func TestCiTrace(t *testing.T) {
 			args:        "lint -b main",
 			expectedOut: "\nGetting job trace...\nShowing logs for lint job #1122.\nLorem ipsum",
 			setupMock: func(tc *gitlabtesting.TestClient) {
+				// GetPipelineWithFallback tries GetLatestPipeline first
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
 					Return(&gitlab.Pipeline{
 						ID: 123,
 					}, nil, nil)
+				// Check if pipeline has jobs
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "test"},
+					}, nil, nil)
 
+				// GetJobId lists all jobs for the pipeline
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 					Return([]*gitlab.Job{
