@@ -11,8 +11,8 @@
 - [ ] Browse through the [development resources](/docs/development_process.md) to get an idea of how the CLI works.
 - [ ] Open a merge request to improve the [documentation](/docs) or [Maintainer Onboarding template](/.gitlab/issue_templates/Maintainer%20Onboarding.md).
 - [ ] _Optional_: [Pair](#code-review-pairing) with a maintainer to review a merge request or implement a small change.
-- [ ] _Optional_: Read the [code review page in the handbook](https://about.gitlab.com/handbook/engineering/workflow/code-review/) and the [code review guidelines](https://docs.gitlab.com/development/code_review/).
-- [ ] _Optional_: Read and understand [how to become a maintainer](https://about.gitlab.com/handbook/engineering/workflow/code-review/#how-to-become-a-project-maintainer).
+- [ ] _Optional_: Read the [code review page in the handbook](https://handbook.gitlab.com/handbook/engineering/workflow/code-review/) and the [code review guidelines](https://docs.gitlab.com/development/code_review/).
+- [ ] _Optional_: Read and understand [how to become a maintainer](https://handbook.gitlab.com/handbook/engineering/workflow/code-review/#how-to-become-a-project-maintainer).
 
 ### Code Review Pairing
 

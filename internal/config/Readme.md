@@ -1,7 +1,7 @@
 ---
 stage: Create
 group: Code Review
-info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://about.gitlab.com/handbook/product/ux/technical-writing/#assignments
+info: To determine the technical writer assigned to the Stage/Group associated with this page, see https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments
 ---
 
 # Add a new configuration
@@ -45,4 +45,3 @@ To add a new configuration to `config.yaml.lock`:
 1. Most configuration keys can be overwritten by their corresponding environment variables.
    If the corresponding environment variable name differs from the configuration key's name,
    set the environment variable's name in the `config_mapping.go` file.
-
