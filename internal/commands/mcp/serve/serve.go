@@ -26,6 +26,7 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			- Manage merge requests (list, create, update, merge, add notes)
 			- Manage projects (list, get details)
 			- Manage CI/CD pipelines and jobs
+			- Read and execute Agent Skills for progressive disclosure
 
 			To configure this server in Claude Code, add this code to your
 			MCP settings:
@@ -55,8 +56,11 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 				rootCmd = rootCmd.Parent()
 			}
 
+			// Get the skill directory flag value
+			skillDir, _ := cmd.Flags().GetString("read-skill")
+
 			// Initialize the MCP server
-			server := newMCPServer(rootCmd)
+			server := newMCPServer(rootCmd, skillDir)
 
 			// Run the server (signal handling is done internally by server.ServeStdio)
 			if err := server.Run(); err != nil {
@@ -66,6 +70,8 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			return nil
 		},
 	}
+
+	serveCmd.Flags().StringP("read-skill", "", "", "Path to Agent Skills directory to expose via MCP tools")
 
 	return serveCmd
 }

@@ -2,10 +2,12 @@ package serve
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -13,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"gitlab.com/gitlab-org/cli/internal/agentskills"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
@@ -29,12 +32,13 @@ const (
 
 // mcpServer wraps the MCP server with GitLab client access
 type mcpServer struct {
-	server  *server.MCPServer
-	rootCmd *cobra.Command
+	server   *server.MCPServer
+	rootCmd  *cobra.Command
+	skillDir string
 }
 
 // newMCPServer creates a new MCP server instance using mark3labs/mcp-go
-func newMCPServer(rootCmd *cobra.Command) *mcpServer {
+func newMCPServer(rootCmd *cobra.Command, skillDir string) *mcpServer {
 	// Create MCP server with usage instructions
 	instructions := `GitLab CLI MCP Server - Provides access to GitLab functionality through glab commands.
 
@@ -52,12 +56,18 @@ General Usage:
 	)
 
 	glabServer := &mcpServer{
-		server:  mcpSrv,
-		rootCmd: rootCmd,
+		server:   mcpSrv,
+		rootCmd:  rootCmd,
+		skillDir: skillDir,
 	}
 
 	// Register all GitLab tools dynamically
 	glabServer.registerToolsFromCommands()
+
+	// Register skill tools if skill directory is provided
+	if glabServer.skillDir != "" {
+		glabServer.registerSkillTools()
+	}
 
 	return glabServer
 }
@@ -90,6 +100,83 @@ func (s *mcpServer) registerToolsFromCommands() {
 		// Register the tool
 		s.server.AddTool(tool, handler)
 	}
+}
+
+// registerSkillTools registers MCP tools for Agent Skills
+func (s *mcpServer) registerSkillTools() {
+	// Import is at the top of the file
+	// Get available skills from the directory
+	skills, err := s.listSkills()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to list skills: %v\n", err)
+		return
+	}
+
+	// Register skill_list_metadata tool
+	metadataTool := mcp.NewTool(
+		"skill_list_metadata",
+		mcp.WithDescription("List all available Agent Skills with their metadata (name and description)"),
+		mcp.WithDestructiveHintAnnotation(false),
+	)
+	s.server.AddTool(metadataTool, s.createSkillMetadataHandler(skills))
+
+	// Register tools for each skill
+	for _, skill := range skills {
+		// Register skill_read_markdown_{skillname} tool
+		markdownToolName := fmt.Sprintf("skill_read_markdown_%s", skill.Name)
+		markdownTool := mcp.NewTool(
+			markdownToolName,
+			mcp.WithDescription(fmt.Sprintf("Read the full SKILL.md content for the '%s' skill", skill.Name)),
+			mcp.WithDestructiveHintAnnotation(false),
+		)
+		skillPath := s.findSkillPath(skill.Name)
+		if skillPath != "" {
+			s.server.AddTool(markdownTool, s.createSkillMarkdownHandler(skillPath))
+		}
+
+		// Register skill_read_reference_{skillname} tool
+		referenceToolName := fmt.Sprintf("skill_read_reference_%s", skill.Name)
+		referenceTool := mcp.NewTool(
+			referenceToolName,
+			mcp.WithDescription(fmt.Sprintf("Read reference files from the references/ directory for the '%s' skill", skill.Name)),
+			mcp.WithString("filename", mcp.Description("Name of the file in the references/ directory to read")),
+			mcp.WithDestructiveHintAnnotation(false),
+		)
+		skillDir := filepath.Dir(skillPath)
+		if skillDir != "" {
+			s.server.AddTool(referenceTool, s.createSkillReferenceHandler(skillDir))
+		}
+	}
+}
+
+// listSkills is a helper to list skills and handle errors
+func (s *mcpServer) listSkills() ([]agentskills.SkillMetadata, error) {
+	return agentskills.ListSkillsInDirectory(s.skillDir)
+}
+
+// findSkillPath finds the path to a skill's SKILL.md file
+func (s *mcpServer) findSkillPath(skillName string) string {
+	var skillPath string
+	var stopWalk error = fmt.Errorf("skill found")
+	err := filepath.Walk(s.skillDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.ToUpper(filepath.Base(path)) == "SKILL.MD" {
+			// Parse to check if this is the right skill
+			content, err := agentskills.ParseSkillFile(path)
+			if err == nil && content.Metadata.Name == skillName {
+				skillPath = path
+				return stopWalk
+			}
+		}
+		return nil
+	})
+	// Ignore the stopWalk error as it's expected
+	if err != nil && err != stopWalk {
+		return ""
+	}
+	return skillPath
 }
 
 func (s *mcpServer) iterCommands(cmd *cobra.Command, path []string) iter.Seq2[*cobra.Command, []string] {
@@ -512,4 +599,160 @@ func (s *mcpServer) isDestructiveCommand(cmd *cobra.Command) bool {
 
 	// Default to destructive for safety if no annotation found (should not happen for executable commands)
 	return true
+}
+
+// createSkillMetadataHandler creates a handler for listing all skill metadata
+func (s *mcpServer) createSkillMetadataHandler(skills []agentskills.SkillMetadata) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Format skills as JSON array with name and description
+		type skillSummary struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}
+
+		summaries := make([]skillSummary, len(skills))
+		for i, skill := range skills {
+			summaries[i] = skillSummary{
+				Name:        skill.Name,
+				Description: skill.Description,
+			}
+		}
+
+		jsonData, err := json.MarshalIndent(summaries, "", "  ")
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{
+						Type: "text",
+						Text: fmt.Sprintf("Error formatting skill metadata: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Type: "text",
+					Text: string(jsonData),
+				},
+			},
+		}, nil
+	}
+}
+
+// createSkillMarkdownHandler creates a handler for reading a skill's SKILL.md file
+func (s *mcpServer) createSkillMarkdownHandler(skillPath string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Read the raw file content to preserve original formatting
+		data, err := os.ReadFile(skillPath)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{
+						Type: "text",
+						Text: fmt.Sprintf("Error reading skill file: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		// Return the full markdown content as-is
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Type: "text",
+					Text: string(data),
+				},
+			},
+		}, nil
+	}
+}
+
+// createSkillReferenceHandler creates a handler for reading reference files from a skill
+func (s *mcpServer) createSkillReferenceHandler(skillDir string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Extract filename parameter from request
+		params := request.GetArguments()
+		filenameParam, exists := params["filename"]
+		if !exists {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{
+						Type: "text",
+						Text: "Error: filename parameter is required",
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		filename, ok := filenameParam.(string)
+		if !ok || filename == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{
+						Type: "text",
+						Text: "Error: filename must be a non-empty string",
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		// Validate filename is within references/ directory using filepath.Clean to prevent directory traversal
+		referencesDir := filepath.Join(skillDir, "references")
+		requestedPath := filepath.Join(referencesDir, filename)
+		cleanPath := filepath.Clean(requestedPath)
+
+		// Ensure the clean path is still within the references directory
+		if !strings.HasPrefix(cleanPath, filepath.Clean(referencesDir)+string(filepath.Separator)) &&
+			cleanPath != filepath.Clean(referencesDir) {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{
+						Type: "text",
+						Text: "Error: invalid file path - must be within references/ directory",
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		// Read the file content
+		content, err := os.ReadFile(cleanPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{
+						mcp.TextContent{
+							Type: "text",
+							Text: fmt.Sprintf("Error: file not found: %s", filename),
+						},
+					},
+					IsError: true,
+				}, nil
+			}
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					mcp.TextContent{
+						Type: "text",
+						Text: fmt.Sprintf("Error reading file: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.TextContent{
+					Type: "text",
+					Text: string(content),
+				},
+			},
+		}, nil
+	}
 }

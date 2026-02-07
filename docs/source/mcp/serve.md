@@ -24,6 +24,7 @@ communication, and provides tools to:
 - Manage merge requests (list, create, update, merge, add notes)
 - Manage projects (list, get details)
 - Manage CI/CD pipelines and jobs
+- Read Agent Skills for progressive disclosure (metadata, markdown, references)
 
 To configure this server in Claude Code, add this code to your
 MCP settings:
@@ -39,6 +40,21 @@ MCP settings:
   }
 }
 ```
+
+## Agent Skills Support
+
+To expose Agent Skills through the MCP server, use the --read-skill flag:
+
+```console
+$ glab mcp serve --read-skill /path/to/skills/directory
+```
+
+This enables three types of tools:
+- skill_list_metadata: List all available skills with their metadata
+- skill_read_markdown_{name}: Read the full SKILL.md for a specific skill
+- skill_read_reference_{name}: Read reference files from the references/ directory
+
+Skills must follow the Agent Skills specification format with YAML frontmatter.
 
 This feature is experimental. It might be broken or removed without any prior notice.
 Read more about what experimental features mean at

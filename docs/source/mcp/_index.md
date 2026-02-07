@@ -18,7 +18,7 @@ Manage Model Context Protocol server features for GitLab integration.
 
 The MCP server exposes GitLab features as tools for use by
 AI assistants (like Claude Code) to interact with GitLab projects, issues,
-merge requests, pipelines, and other resources.
+merge requests, pipelines, and other resources. The server can also expose Agent Skills for progressive disclosure when configured with the --read-skill flag.
 
 This feature is experimental. It might be broken or removed without any prior notice.
 Read more about what experimental features mean at
