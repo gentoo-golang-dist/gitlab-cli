@@ -74,7 +74,7 @@ func TestReleaseUtilsUpload_UploadFiles_ProjectMarkdownFiles(t *testing.T) {
 
 	// GIVEN
 	ios, _, _, _ := cmdtest.TestIOStreams()
-	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL(glinstance.DefaultHostname))
+	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
 	testReleaseFile := bytes.NewBufferString("Hello World")
 	uploadCtx := &Context{
 		Client: tc.Client,
@@ -112,7 +112,7 @@ func TestReleaseUtilsUpload_UploadFiles_GenericPackageRegistry(t *testing.T) {
 
 	// GIVEN
 	ios, _, _, _ := cmdtest.TestIOStreams()
-	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL(glinstance.DefaultHostname))
+	tc := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
 	testReleaseFile := bytes.NewBufferString("Hello World")
 	uploadCtx := &Context{
 		Client: tc.Client,

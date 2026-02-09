@@ -52,7 +52,7 @@ func TestReleaseUpload(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL(glinstance.DefaultHostname))
+			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
 
 			// Mock GetRelease to validate the release exists
 			testClient.MockReleases.EXPECT().
@@ -141,7 +141,7 @@ func TestReleaseUpload_WithAssetsLinksJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL(glinstance.DefaultHostname))
+			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
 
 			// Mock GetRelease to validate the release exists
 			testClient.MockReleases.EXPECT().

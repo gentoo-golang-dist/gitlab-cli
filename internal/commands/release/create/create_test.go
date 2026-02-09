@@ -136,7 +136,7 @@ func TestReleaseCreateWithFiles(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL(glinstance.DefaultHostname))
+			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
 
 			notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
 
@@ -241,7 +241,7 @@ func TestReleaseCreate_WithAssetsLinksJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL(glinstance.DefaultHostname))
+			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
 
 			notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
 
