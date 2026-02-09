@@ -36,4 +36,5 @@ rc
 
 ## Subcommands
 
+- [`create`](create.md)
 - [`list`](list.md)

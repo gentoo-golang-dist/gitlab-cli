@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	createCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/create"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/list"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
@@ -16,6 +17,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Aliases: []string{"rc"},
 	}
 
+	cmd.AddCommand(createCmd.NewCmd(f))
 	cmd.AddCommand(listCmd.NewCmd(f))
 	return cmd
 }
