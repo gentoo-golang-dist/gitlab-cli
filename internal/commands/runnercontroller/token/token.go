@@ -6,6 +6,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	createCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/token/create"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/token/list"
+	revokeCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/token/revoke"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
@@ -18,5 +19,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd.AddCommand(createCmd.NewCmd(f))
 	cmd.AddCommand(listCmd.NewCmd(f))
+	cmd.AddCommand(revokeCmd.NewCmd(f))
 	return cmd
 }

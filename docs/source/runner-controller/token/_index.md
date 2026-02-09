@@ -32,3 +32,4 @@ Use experimental features at your own risk.
 
 - [`create`](create.md)
 - [`list`](list.md)
+- [`revoke`](revoke.md)
