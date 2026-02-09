@@ -98,6 +98,7 @@ in the main README.
 - [`glab opentofu`](opentofu/_index.md)
 - [`glab release`](release/_index.md)
 - [`glab repo`](repo/_index.md)
+- [`glab runner-controller`](runner-controller/_index.md)
 - [`glab schedule`](schedule/_index.md)
 - [`glab securefile`](securefile/_index.md)
 - [`glab snippet`](snippet/_index.md)
