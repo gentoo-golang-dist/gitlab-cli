@@ -7,4 +7,6 @@ const (
 	Destructive = "mcp:destructive"
 	// Safe marks commands that only read data (list, view, get operations)
 	Safe = "mcp:safe"
+	// Interactive marks commands that require an interactive TTY and should be excluded from MCP
+	Interactive = "mcp:interactive"
 )

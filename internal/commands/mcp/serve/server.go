@@ -75,6 +75,13 @@ func (s *mcpServer) registerToolsFromCommands() {
 			continue
 		}
 
+		// Skip interactive commands (TUI commands that require a TTY)
+		if cmd.Annotations != nil {
+			if val, exists := cmd.Annotations[mcpannotations.Interactive]; exists && val == "true" {
+				continue
+			}
+		}
+
 		toolName := "glab_" + strings.Join(path, "_")
 		description := s.buildEnhancedDescription(cmd)
 		if description == "" {

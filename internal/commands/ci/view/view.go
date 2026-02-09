@@ -128,6 +128,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
+			mcpannotations.Interactive: "true",
 		},
 		Example: heredoc.Doc(`
 			# Uses current branch
@@ -178,6 +179,11 @@ func (o *options) complete(args []string) error {
 }
 
 func (o *options) run(ctx context.Context) error {
+	// Check if we're in an interactive terminal (TTY required for TUI)
+	if !o.io.IsOutputTTY() {
+		return fmt.Errorf("ci view requires an interactive terminal (TTY).\nFor non-interactive use, try:\n  - 'glab ci status' to check pipeline status\n  - 'glab ci get' to view pipeline details\n  - 'glab ci trace' to view job logs")
+	}
+
 	client, err := o.gitlabClient()
 	if err != nil {
 		return err
@@ -262,6 +268,19 @@ func (o *options) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Initialize the screen before using it to ensure internal state is set up
+	if err := screen.Init(); err != nil {
+		return fmt.Errorf("failed to initialize terminal screen: %w", err)
+	}
+
+	// Ensure screen is properly cleaned up even if initialization fails
+	defer func() {
+		if screen != nil {
+			screen.Fini()
+		}
+	}()
+
 	app := tview.NewApplication()
 	defer recoverPanic(app)
 
