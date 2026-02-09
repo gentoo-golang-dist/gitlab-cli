@@ -38,3 +38,4 @@ rc
 
 - [`create`](create.md)
 - [`list`](list.md)
+- [`update`](update.md)
