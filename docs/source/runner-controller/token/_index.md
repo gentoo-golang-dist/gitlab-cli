@@ -30,4 +30,5 @@ Use experimental features at your own risk.
 
 ## Subcommands
 
+- [`create`](create.md)
 - [`list`](list.md)
