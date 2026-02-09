@@ -9,6 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testStateValue string
+
+const (
+	testStateDisabled testStateValue = "disabled"
+	testStateEnabled  testStateValue = "enabled"
+	testStateDryRun   testStateValue = "dry_run"
+)
+
 func TestNewEnumValue(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -164,4 +172,21 @@ func TestEnumValue_ValueReference(t *testing.T) {
 
 	// Test that String() returns the same value as the reference
 	assert.Equal(t, value, enumValue.String(), "expected String() to return same as value reference")
+}
+
+func TestEnumValue_CustomStringType(t *testing.T) {
+	var value testStateValue
+	allowed := []testStateValue{testStateDisabled, testStateEnabled, testStateDryRun}
+	enumValue := NewEnumValue(allowed, testStateDisabled, &value)
+
+	assert.Equal(t, testStateDisabled, value, "expected initial value to be %q", testStateDisabled)
+	assert.Equal(t, "disabled", enumValue.String(), "expected String() to return string representation")
+
+	err := enumValue.Set("enabled")
+	require.NoError(t, err, "unexpected error")
+	assert.Equal(t, testStateEnabled, value, "expected value to be set to typed constant")
+
+	err = enumValue.Set("invalid")
+	require.Error(t, err, "expected error for invalid value")
+	assert.Contains(t, err.Error(), "must be one of")
 }
