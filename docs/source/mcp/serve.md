@@ -25,6 +25,11 @@ communication, and provides tools to:
 - Manage projects (list, get details)
 - Manage CI/CD pipelines and jobs
 
+You can filter which commands are exposed as tools using the
+--include or --exclude flags. These flags operate on top-level
+commands (e.g., 'ci' matches all ci_* tools). The flags are
+mutually exclusive.
+
 To configure this server in Claude Code, add this code to your
 MCP settings:
 
@@ -35,6 +40,20 @@ MCP settings:
       "type": "stdio",
       "command": "glab",
       "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+To limit the available tools, add --include or --exclude flags:
+
+```json
+{
+  "mcpServers": {
+    "glab": {
+      "type": "stdio",
+      "command": "glab",
+      "args": ["mcp", "serve", "--include=ci,mr,issue"]
     }
   }
 }
@@ -53,8 +72,25 @@ glab mcp serve [flags]
 ## Examples
 
 ```console
+# Start server with all tools
 $ glab mcp serve
 
+# Only expose CI, MR, and issue tools
+$ glab mcp serve --include=ci,mr,issue
+
+# Expose all tools except OpenTofu and API
+$ glab mcp serve --exclude=opentofu,api
+
+# Using repeated flags
+$ glab mcp serve --include=ci --include=mr --include=issue
+
+```
+
+## Options
+
+```plaintext
+      --exclude strings   Exclude specified top-level commands (comma-separated: opentofu,api)
+      --include strings   Include only specified top-level commands (comma-separated: ci,mr,issue)
 ```
 
 ## Options inherited from parent commands
