@@ -3,10 +3,10 @@ package theme
 import (
 	"image/color"
 
+	lipglossv2 "charm.land/lipgloss/v2" // v2 - used by fang
 	"github.com/charmbracelet/fang"
 	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"               // v1 - used by huh
-	lipglossv2 "github.com/charmbracelet/lipgloss/v2" // v2 - used by fang
+	"github.com/charmbracelet/lipgloss" // v1 - used by huh
 	"github.com/muesli/termenv"
 )
 
