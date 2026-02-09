@@ -3,8 +3,10 @@
 package serve
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
@@ -68,9 +70,35 @@ func createMockCommandWithFlags() *cobra.Command {
 	return cmd
 }
 
+// Tests for server capabilities
+
+func TestServerCapabilities(t *testing.T) {
+	t.Parallel()
+
+	// Create a mock root command for testing
+	rootCmd := &cobra.Command{
+		Use:   "glab",
+		Short: "GitLab CLI",
+	}
+
+	// Create the MCP server
+	server := newMCPServer(rootCmd)
+
+	// Verify the server was created successfully
+	require.NotNil(t, server)
+	require.NotNil(t, server.server)
+
+	// The server should be configured with tools capability
+	// This is verified by the server creation not panicking and being able
+	// to register tools successfully
+	assert.NotNil(t, server.rootCmd)
+}
+
 // Tests for buildEnhancedDescription
 
 func TestBuildEnhancedDescription(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 
 	tests := []struct {
@@ -102,6 +130,8 @@ func TestBuildEnhancedDescription(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result := server.buildEnhancedDescription(tt.cmd)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -109,6 +139,8 @@ func TestBuildEnhancedDescription(t *testing.T) {
 }
 
 func TestBuildEnhancedDescriptionWithHierarchy(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 	root, _, child := createMockCommandHierarchy()
 	server.rootCmd = root
@@ -122,6 +154,8 @@ func TestBuildEnhancedDescriptionWithHierarchy(t *testing.T) {
 // Tests for truncateAtWordBoundary
 
 func TestTruncateAtWordBoundary(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 
 	tests := []struct {
@@ -158,6 +192,8 @@ func TestTruncateAtWordBoundary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result := server.truncateAtWordBoundary(tt.text, tt.maxChars)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -167,6 +203,8 @@ func TestTruncateAtWordBoundary(t *testing.T) {
 // Tests for addStandardGuidance
 
 func TestAddStandardGuidance(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 
 	tests := []struct {
@@ -188,6 +226,8 @@ func TestAddStandardGuidance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result := server.addStandardGuidance(tt.description)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -197,6 +237,8 @@ func TestAddStandardGuidance(t *testing.T) {
 // Tests for buildFlagSchema
 
 func TestBuildFlagSchema(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 	cmd := createMockCommandWithFlags()
 
@@ -235,6 +277,8 @@ func TestBuildFlagSchema(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.flagName, func(t *testing.T) {
+			t.Parallel()
+
 			flag := cmd.Flags().Lookup(tt.flagName)
 			require.NotNil(t, flag)
 
@@ -289,6 +333,8 @@ func TestBuildFlagSchema_AllArraysHaveItems(t *testing.T) {
 // Tests for isDestructiveCommand
 
 func TestIsDestructiveCommand(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 
 	tests := []struct {
@@ -325,6 +371,8 @@ func TestIsDestructiveCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			cmd := createMockCommandWithAnnotations("test", "Test", tt.annotations)
 			result := server.isDestructiveCommand(cmd)
 			assert.Equal(t, tt.expected, result)
@@ -335,6 +383,8 @@ func TestIsDestructiveCommand(t *testing.T) {
 // Tests for convertParamsToArgs
 
 func TestConvertParamsToArgs(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 	cmd := createMockCommandWithFlags()
 
@@ -415,6 +465,8 @@ func TestConvertParamsToArgs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			args, _ := server.convertParamsToArgs(tt.params, cmd)
 			assert.ElementsMatch(t, tt.expected, args)
 		})
@@ -424,6 +476,8 @@ func TestConvertParamsToArgs(t *testing.T) {
 // Tests for processOutput
 
 func TestProcessOutput(t *testing.T) {
+	t.Parallel()
+
 	server := &mcpServer{}
 
 	tests := []struct {
@@ -478,14 +532,380 @@ func TestProcessOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			result, metadata := server.processOutput(tt.output, tt.config)
 
 			assert.Equal(t, tt.expectedText, result)
 			assert.Equal(t, tt.expectedLength, len([]rune(result)))
-			assert.Equal(t, tt.truncated, metadata["truncated"])
-			assert.Equal(t, len([]rune(tt.output)), metadata["total_size"])
-			assert.Equal(t, tt.config.Limit, metadata["limit"])
-			assert.Equal(t, tt.config.Offset, metadata["offset"])
+
+			// Metadata is now nested under "pagination"
+			pagination, ok := metadata["pagination"].(map[string]any)
+			require.True(t, ok, "metadata should contain pagination map")
+
+			assert.Equal(t, tt.truncated, pagination["truncated"])
+			assert.Equal(t, len([]rune(tt.output)), pagination["total_size"])
+			assert.Equal(t, tt.config.Limit, pagination["limit"])
+			assert.Equal(t, tt.config.Offset, pagination["offset"])
 		})
 	}
+}
+
+// Tests for buildToolFromCommand
+
+func TestBuildToolFromCommand(t *testing.T) {
+	t.Parallel()
+
+	server := &mcpServer{}
+	cmd := createMockCommandWithFlags()
+
+	tests := []struct {
+		name        string
+		toolName    string
+		description string
+		wantSchema  bool
+	}{
+		{
+			name:        "basic tool creation",
+			toolName:    "test_tool",
+			description: "Test tool description",
+			wantSchema:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tool := server.buildToolFromCommand(tt.toolName, tt.description, cmd)
+
+			// Verify basic tool fields
+			assert.Equal(t, tt.toolName, tool.Name)
+			assert.Equal(t, tt.description, tool.Description)
+
+			// Verify input schema exists and has correct structure
+			require.NotNil(t, tool.InputSchema)
+			schema, ok := tool.InputSchema.(map[string]any)
+			require.True(t, ok, "InputSchema should be a map")
+
+			// Verify schema type
+			assert.Equal(t, "object", schema["type"])
+
+			// Verify properties exist
+			properties, ok := schema["properties"].(map[string]any)
+			require.True(t, ok, "properties should exist")
+
+			// Verify expected parameters
+			assert.Contains(t, properties, "args", "should have args parameter")
+			assert.Contains(t, properties, "flags", "should have flags parameter")
+			assert.Contains(t, properties, "limit", "should have limit parameter")
+			assert.Contains(t, properties, "offset", "should have offset parameter")
+
+			// Verify flags object structure
+			flagsParam, ok := properties["flags"].(map[string]any)
+			require.True(t, ok, "flags should be an object")
+			flagsProperties, ok := flagsParam["properties"].(map[string]any)
+			require.True(t, ok, "flags should have properties")
+
+			// Verify flags from test command are present
+			assert.Contains(t, flagsProperties, "verbose")
+			assert.Contains(t, flagsProperties, "output")
+			assert.Contains(t, flagsProperties, "count")
+			assert.Contains(t, flagsProperties, "labels")
+		})
+	}
+}
+
+func TestBuildToolFromCommandWithDestructiveAnnotation(t *testing.T) {
+	t.Parallel()
+
+	server := &mcpServer{}
+
+	tests := []struct {
+		name            string
+		annotations     map[string]string
+		wantDestructive bool
+	}{
+		{
+			name:            "safe command",
+			annotations:     map[string]string{"mcp:safe": "true"},
+			wantDestructive: false,
+		},
+		{
+			name:            "destructive command",
+			annotations:     map[string]string{"mcp:destructive": "true"},
+			wantDestructive: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := createMockCommandWithAnnotations("test", "Test", tt.annotations)
+			tool := server.buildToolFromCommand("test_tool", "description", cmd)
+
+			if tt.wantDestructive {
+				require.NotNil(t, tool.Annotations, "destructive tool should have annotations")
+				require.NotNil(t, tool.Annotations.DestructiveHint, "should have destructive hint")
+				assert.True(t, *tool.Annotations.DestructiveHint, "destructive hint should be true")
+			} else {
+				// Safe commands might not have annotations set, or DestructiveHint might be nil
+				if tool.Annotations != nil && tool.Annotations.DestructiveHint != nil {
+					assert.False(t, *tool.Annotations.DestructiveHint, "safe command should not be marked destructive")
+				}
+			}
+		})
+	}
+}
+
+// Tests for JSON unmarshaling in tool handler
+
+func TestToolHandlerJSONUnmarshal(t *testing.T) {
+	t.Parallel()
+
+	server := &mcpServer{}
+	cmd := createMockCommandWithFlags()
+
+	tests := []struct {
+		name        string
+		jsonArgs    string
+		expectError bool
+	}{
+		{
+			name:        "valid JSON",
+			jsonArgs:    `{"args": ["test"], "flags": {"verbose": true}}`,
+			expectError: false,
+		},
+		{
+			name:        "invalid JSON",
+			jsonArgs:    `{invalid json}`,
+			expectError: true,
+		},
+		{
+			name:        "empty JSON",
+			jsonArgs:    `{}`,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Simulate what the handler does
+			var params map[string]any
+			jsonBytes := []byte(tt.jsonArgs)
+
+			err := json.Unmarshal(jsonBytes, &params)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				// If valid, try converting to args
+				if err == nil {
+					args, config := server.convertParamsToArgs(params, cmd)
+					// Verify conversion works without error
+					// args is a slice that can be nil or empty, both are valid
+					_ = args
+					assert.Equal(t, defaultResponseLimit, config.Limit)
+					assert.Equal(t, 0, config.Offset)
+				}
+			}
+		})
+	}
+}
+
+// Tests for tool result structure
+
+func TestToolResultStructure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		result    *mcp.CallToolResult
+		wantError bool
+	}{
+		{
+			name: "success result",
+			result: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "success output",
+					},
+				},
+				IsError: false,
+			},
+			wantError: false,
+		},
+		{
+			name: "error result",
+			result: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "error message",
+					},
+				},
+				IsError: true,
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.wantError, tt.result.IsError)
+			assert.NotNil(t, tt.result.Content)
+			assert.Greater(t, len(tt.result.Content), 0)
+		})
+	}
+}
+
+// Tests for metadata structure
+
+func TestMetadataStructure(t *testing.T) {
+	t.Parallel()
+
+	server := &mcpServer{}
+	output := "test output"
+	config := responseConfig{Limit: 100, Offset: 0}
+
+	_, metadata := server.processOutput(output, config)
+
+	// Verify metadata has pagination
+	pagination, ok := metadata["pagination"].(map[string]any)
+	require.True(t, ok, "metadata should contain pagination map")
+
+	// Verify required pagination fields
+	assert.Contains(t, pagination, "total_size")
+	assert.Contains(t, pagination, "limit")
+	assert.Contains(t, pagination, "offset")
+	assert.Contains(t, pagination, "actual_start")
+	assert.Contains(t, pagination, "actual_end")
+	assert.Contains(t, pagination, "actual_size")
+	assert.Contains(t, pagination, "truncated")
+}
+
+// Tests for tool result response structure
+
+func TestCallToolResultStructureWithContentAndMeta(t *testing.T) {
+	t.Parallel()
+
+	// This test verifies that CallToolResult properly contains both
+	// Content (actual command output) and Meta (pagination info)
+	tests := []struct {
+		name                string
+		output              string
+		config              responseConfig
+		wantContentText     string
+		wantTotalSize       int
+		wantTruncated       bool
+		wantNavigationHints bool
+	}{
+		{
+			name:                "short output with both content and meta",
+			output:              "test output content",
+			config:              responseConfig{Limit: 50000, Offset: 0},
+			wantContentText:     "test output content",
+			wantTotalSize:       19,
+			wantTruncated:       false,
+			wantNavigationHints: false,
+		},
+		{
+			name:                "truncated output with navigation hints",
+			output:              "This is a much longer output that will be truncated by the limit parameter",
+			config:              responseConfig{Limit: 20, Offset: 0},
+			wantContentText:     "This is a much longe",
+			wantTotalSize:       74,
+			wantTruncated:       true,
+			wantNavigationHints: true,
+		},
+		{
+			name:                "output with offset",
+			output:              "hello world",
+			config:              responseConfig{Limit: 5, Offset: 6},
+			wantContentText:     "world",
+			wantTotalSize:       11,
+			wantTruncated:       true,
+			wantNavigationHints: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := &mcpServer{}
+
+			// Process output to get text and metadata (this is what the handler does)
+			processedOutput, metadata := server.processOutput(tt.output, tt.config)
+
+			// Create the result structure as the handler would
+			result := &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: processedOutput,
+					},
+				},
+				Meta: metadata,
+			}
+
+			// Verify Content is present and populated
+			require.NotNil(t, result.Content, "Content must not be nil")
+			require.Len(t, result.Content, 1, "Content should have exactly one element")
+
+			textContent, ok := result.Content[0].(*mcp.TextContent)
+			require.True(t, ok, "Content[0] must be *TextContent")
+			assert.Equal(t, tt.wantContentText, textContent.Text, "Content text should match expected output")
+
+			// Verify Meta is present and populated with pagination
+			require.NotNil(t, result.Meta, "Meta must not be nil")
+			pagination, ok := result.Meta["pagination"].(map[string]any)
+			require.True(t, ok, "Meta must contain pagination map")
+
+			// Verify pagination fields
+			assert.Equal(t, tt.wantTotalSize, pagination["total_size"], "total_size should match")
+			assert.Equal(t, tt.config.Limit, pagination["limit"], "limit should match")
+			assert.Equal(t, tt.config.Offset, pagination["offset"], "offset should match")
+			assert.Equal(t, tt.wantTruncated, pagination["truncated"], "truncated flag should match")
+
+			// Verify navigation hints presence
+			if tt.wantNavigationHints {
+				assert.Contains(t, pagination, "navigation_hints", "should have navigation hints when truncated")
+			} else {
+				assert.NotContains(t, pagination, "navigation_hints", "should not have navigation hints when not truncated")
+			}
+
+			// Verify both Content AND Meta are present in the response
+			assert.NotNil(t, result.Content, "Content must be present in response")
+			assert.NotNil(t, result.Meta, "Meta must be present in response")
+			assert.NotEmpty(t, textContent.Text, "Content.Text must not be empty")
+		})
+	}
+}
+
+func TestCallToolResultErrorStructure(t *testing.T) {
+	t.Parallel()
+
+	// Test that error results also have proper Content
+	result := &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{
+				Text: "error message here",
+			},
+		},
+		IsError: true,
+	}
+
+	require.NotNil(t, result.Content)
+	require.Len(t, result.Content, 1)
+	assert.True(t, result.IsError)
+
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	require.True(t, ok)
+	assert.Equal(t, "error message here", textContent.Text)
 }

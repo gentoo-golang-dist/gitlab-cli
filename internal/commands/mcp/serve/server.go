@@ -2,14 +2,14 @@ package serve
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -29,11 +29,11 @@ const (
 
 // mcpServer wraps the MCP server with GitLab client access
 type mcpServer struct {
-	server  *server.MCPServer
+	server  *mcp.Server
 	rootCmd *cobra.Command
 }
 
-// newMCPServer creates a new MCP server instance using mark3labs/mcp-go
+// newMCPServer creates a new MCP server instance
 func newMCPServer(rootCmd *cobra.Command) *mcpServer {
 	// Create MCP server with usage instructions
 	instructions := `GitLab CLI MCP Server - Provides access to GitLab functionality through glab commands.
@@ -44,11 +44,19 @@ General Usage:
 - Check 'total_size' in response metadata to navigate results
 - Most tools support common flags like --output for formatting`
 
-	mcpSrv := server.NewMCPServer(
-		"glab-mcp-server",
-		"1.0.0",
-		server.WithToolCapabilities(true),
-		server.WithInstructions(instructions),
+	mcpSrv := mcp.NewServer(
+		&mcp.Implementation{
+			Name:    "glab-mcp-server",
+			Version: "1.0.0",
+		},
+		&mcp.ServerOptions{
+			Instructions: instructions,
+			Capabilities: &mcp.ServerCapabilities{
+				Tools: &mcp.ToolCapabilities{
+					ListChanged: false,
+				},
+			},
+		},
 	)
 
 	glabServer := &mcpServer{
@@ -63,8 +71,8 @@ General Usage:
 }
 
 // Run starts the MCP server with stdio transport
-func (s *mcpServer) Run() error {
-	return server.ServeStdio(s.server)
+func (s *mcpServer) Run(ctx context.Context) error {
+	return s.server.Run(ctx, &mcp.StdioTransport{})
 }
 
 // registerToolsFromCommands automatically registers all glab commands as MCP tools
@@ -88,13 +96,12 @@ func (s *mcpServer) registerToolsFromCommands() {
 			description = fmt.Sprintf("Execute glab %s command", strings.Join(path, " "))
 		}
 
-		// Build the tool with dynamic schema using the builder pattern
+		// Build the tool with dynamic schema
 		tool := s.buildToolFromCommand(toolName, description, cmd)
 
 		// Create handler for this command
 		handler := s.createCommandHandler(path, cmd)
 
-		// Register the tool
 		s.server.AddTool(tool, handler)
 	}
 }
@@ -171,17 +178,8 @@ func (s *mcpServer) addStandardGuidance(description string) string {
 	return description
 }
 
-// buildToolFromCommand creates a tool using the builder pattern with dynamic schema
-func (s *mcpServer) buildToolFromCommand(toolName, description string, cmd *cobra.Command) mcp.Tool {
-	// Start building the tool
-	toolOptions := []mcp.ToolOption{
-		mcp.WithDescription(description),
-	}
-
-	// Determine if this is a destructive command
-	isDestructive := s.isDestructiveCommand(cmd)
-	toolOptions = append(toolOptions, mcp.WithDestructiveHintAnnotation(isDestructive))
-
+// buildToolFromCommand creates a tool with dynamic schema
+func (s *mcpServer) buildToolFromCommand(toolName, description string, cmd *cobra.Command) *mcp.Tool {
 	// Create nested flags object schema with all available flags
 	flagsProperties := make(map[string]any)
 
@@ -218,16 +216,53 @@ func (s *mcpServer) buildToolFromCommand(toolName, description string, cmd *cobr
 		}
 	})
 
-	// Add the new nested structure parameters
-	toolOptions = append(toolOptions,
-		// Simplified parameter definitions to reduce token usage
-		mcp.WithArray(argsParam, mcp.WithStringItems(), mcp.Description("Positional arguments")),
-		mcp.WithObject(flagsParam, mcp.Properties(flagsProperties), mcp.Description("Command flags")),
-		mcp.WithNumber(limitParam, mcp.Description("Response size limit"), mcp.DefaultNumber(float64(defaultResponseLimit))),
-		mcp.WithNumber(offsetParam, mcp.Description("Pagination offset"), mcp.DefaultNumber(0)),
-	)
+	// Determine if this is a destructive command
+	isDestructive := s.isDestructiveCommand(cmd)
 
-	return mcp.NewTool(toolName, toolOptions...)
+	// Build the input schema manually
+	inputSchema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			argsParam: map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": "Positional arguments",
+			},
+			flagsParam: map[string]any{
+				"type":        "object",
+				"properties":  flagsProperties,
+				"description": "Command flags",
+			},
+			limitParam: map[string]any{
+				"type":        "number",
+				"description": "Response size limit",
+				"default":     float64(defaultResponseLimit),
+			},
+			offsetParam: map[string]any{
+				"type":        "number",
+				"description": "Pagination offset",
+				"default":     float64(0),
+			},
+		},
+	}
+
+	// Create the tool
+	tool := &mcp.Tool{
+		Name:        toolName,
+		Description: description,
+		InputSchema: inputSchema,
+	}
+
+	// Add destructive annotation if needed
+	if isDestructive {
+		if tool.Annotations == nil {
+			tool.Annotations = &mcp.ToolAnnotations{}
+		}
+		destructiveHint := true
+		tool.Annotations.DestructiveHint = &destructiveHint
+	}
+
+	return tool
 }
 
 // buildFlagSchema creates a JSON schema object for a flag (used in nested flags object)
@@ -278,10 +313,22 @@ func (s *mcpServer) buildFlagSchema(flag *pflag.Flag) map[string]any {
 }
 
 // createCommandHandler creates a handler function for a specific glab command
-func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// Get parameters from the request
-		params := request.GetArguments()
+func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) mcp.ToolHandler {
+	return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Get parameters from the request - need to unmarshal json.RawMessage
+		var params map[string]any
+		if len(request.Params.Arguments) > 0 {
+			if err := json.Unmarshal(request.Params.Arguments, &params); err != nil {
+				return &mcp.CallToolResult{
+					Content: []mcp.Content{
+						&mcp.TextContent{
+							Text: fmt.Sprintf("failed to parse arguments: %v", err),
+						},
+					},
+					IsError: true,
+				}, nil
+			}
+		}
 
 		// Convert MCP parameters to command line arguments and extract response config
 		args, config := s.convertParamsToArgs(params, cmd)
@@ -292,8 +339,7 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) f
 			// Return the error as content so the user can see what went wrong
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					mcp.TextContent{
-						Type: "text",
+					&mcp.TextContent{
 						Text: output, // This includes the actual error message from the command
 					},
 				},
@@ -307,14 +353,11 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) f
 		// Return the result with clean content and structured metadata
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				mcp.TextContent{
-					Type: "text",
+				&mcp.TextContent{
 					Text: processedOutput,
 				},
 			},
-			StructuredContent: map[string]any{
-				"pagination": metadata,
-			},
+			Meta: metadata,
 		}, nil
 	}
 }
@@ -352,24 +395,26 @@ func (s *mcpServer) processOutput(output string, config responseConfig) (string,
 	// Create comprehensive metadata
 	truncated := (start > 0 || end < totalSize)
 	metadata := map[string]any{
-		"total_size":   totalSize,
-		"limit":        config.Limit,
-		"offset":       config.Offset,
-		"actual_start": start,
-		"actual_end":   end,
-		"actual_size":  len(processedRunes),
-		"truncated":    truncated,
+		"pagination": map[string]any{
+			"total_size":   totalSize,
+			"limit":        config.Limit,
+			"offset":       config.Offset,
+			"actual_start": start,
+			"actual_end":   end,
+			"actual_size":  len(processedRunes),
+			"truncated":    truncated,
+		},
 	}
 
 	// Add helpful navigation hints for AI
 	if truncated {
-		metadata["navigation_hints"] = map[string]any{
+		metadata["pagination"].(map[string]any)["navigation_hints"] = map[string]any{
 			"to_beginning": 0,
 			"to_end":       totalSize - config.Limit,
 			"next_page":    end,
 			"prev_page":    start - config.Limit,
 		}
-		metadata["usage_guide"] = "To navigate: use 'to_end' offset to jump to end where failures typically occur, 'next_page' for next section, or calculate custom offset. Example: for logs that end with errors, use offset = total_size - limit."
+		metadata["pagination"].(map[string]any)["usage_guide"] = "To navigate: use 'to_end' offset to jump to end where failures typically occur, 'next_page' for next section, or calculate custom offset. Example: for logs that end with errors, use offset = total_size - limit."
 	}
 
 	return string(processedRunes), metadata
