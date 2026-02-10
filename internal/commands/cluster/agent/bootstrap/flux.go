@@ -8,7 +8,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	"gopkg.in/yaml.v3"
 )
 
@@ -163,7 +163,7 @@ func (f *localFluxWrapper) reconcile() error {
 	}
 
 	// just reconciling doesn't mean that the HelmRelease now exists ... (bug in flux? At least very unfortunate behavior)
-	err = retry.Do(func() error {
+	err = retry.New(retry.Attempts(6), retry.Delay(f.reconcileRetryDelay)).Do(func() error {
 		output, err := f.cmd.RunWithOutput(f.binary, "get", "helmreleases", f.helmReleaseName, fmt.Sprintf("-n=%s", f.helmReleaseNamespace))
 		if err != nil {
 			// flux always returns with exit code 0, even when the helmrelease does not exist (yet)
@@ -175,7 +175,7 @@ func (f *localFluxWrapper) reconcile() error {
 		}
 
 		return nil
-	}, retry.Attempts(6), retry.Delay(f.reconcileRetryDelay))
+	})
 	if err != nil {
 		return err
 	}

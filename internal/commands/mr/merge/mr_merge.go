@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/avast/retry-go/v4"
+	"github.com/avast/retry-go/v5"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
@@ -239,7 +239,10 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 	// with `nil` and will cause a crash on the second run
 	mrIID := mr.IID
 
-	err = retry.Do(func() error {
+	err = retry.New(
+		retry.Attempts(3),
+		retry.Delay(time.Second*6),
+	).Do(func() error {
 		var resp *gitlab.Response
 		mr, resp, err = apiClient.MergeRequests.AcceptMergeRequest(repo.FullName(), mrIID, mergeOpts)
 		if err != nil {
@@ -261,7 +264,7 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 			return retry.Unrecoverable(err)
 		}
 		return err
-	}, retry.Attempts(3), retry.Delay(time.Second*6))
+	})
 	if err != nil {
 		return err
 	}
