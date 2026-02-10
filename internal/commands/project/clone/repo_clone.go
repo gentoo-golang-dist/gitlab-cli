@@ -63,8 +63,7 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 	ctxOpts := &ContextOpts{}
 
 	repoCloneCmd := &cobra.Command{
-		Use: `clone <repo> [flags] [<dir>] [-- <gitflags>...]
-glab repo clone -g <group> [flags] [<dir>] [-- <gitflags>...]`,
+		Use:   `clone [<repo> | -g <group>] [<dir>] [flags] [-- <gitflags>...]`,
 		Short: `Clone a GitLab repository or project.`,
 		Example: heredoc.Doc(`
 			# Clones repository into current directory
@@ -80,6 +79,15 @@ glab repo clone -g <group> [flags] [<dir>] [-- <gitflags>...]`,
 			# Finds the project by the ID provided and clones it
 			$ glab repo clone 4356677
 
+			# Clones a specific branch
+			$ glab repo clone gitlab-org/cli -- --branch development
+
+			# Clones with a shallow clone (depth 1)
+			$ glab repo clone gitlab-org/cli -- --depth 1
+
+			# Clones with multiple Git flags
+			$ glab repo clone gitlab-org/cli -- --branch main --single-branch --depth 1
+
 			# Clones all repos in a group
 			$ glab repo clone -g everyonecancontribute --paginate
 
@@ -92,14 +100,18 @@ glab repo clone -g <group> [flags] [<dir>] [-- <gitflags>...]`,
 			# Clones from a GitLab Self-Managed or GitLab Dedicated instance
 			$ GITLAB_HOST=salsa.debian.org glab repo clone myrepo
 		`),
-		Long: heredoc.Doc(`
-		Clone supports these shorthand references:
+		Long: heredoc.Docf(`
+		Clone a GitLab repository to your local machine. Specify the
+		repository by name, namespace/repo path, full URL, or project ID.
 
-		- repo
-		- namespace/repo
-		- org/group/repo
-		- project ID
-		`),
+		The command uses your configured protocol (SSH or HTTPS).
+
+		To pass Git clone flags, add them after %[1]s--%[1]s. For example:
+		%[1]sglab repo clone <repo> -- --branch <branch-name>%[1]s
+
+		When you clone a fork you own, the command adds an %[1]supstream%[1]s
+		remote that points to the parent project.
+		`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

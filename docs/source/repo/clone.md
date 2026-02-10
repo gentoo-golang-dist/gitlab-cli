@@ -14,16 +14,19 @@ Clone a GitLab repository or project.
 
 ## Synopsis
 
-Clone supports these shorthand references:
+Clone a GitLab repository to your local machine. Specify the
+repository by name, namespace/repo path, full URL, or project ID.
 
-- repo
-- namespace/repo
-- org/group/repo
-- project ID
+The command uses your configured protocol (SSH or HTTPS).
+
+To pass Git clone flags, add them after `--`. For example:
+`glab repo clone <repo> -- --branch <branch-name>`
+
+When you clone a fork you own, the command adds an `upstream`
+remote that points to the parent project.
 
 ```plaintext
-glab repo clone <repo> [flags] [<dir>] [-- <gitflags>...]
-glab repo clone -g <group> [flags] [<dir>] [-- <gitflags>...]
+glab repo clone [<repo> | -g <group>] [<dir>] [flags] [-- <gitflags>...]
 ```
 
 ## Examples
@@ -41,6 +44,15 @@ $ glab repo clone glab
 
 # Finds the project by the ID provided and clones it
 $ glab repo clone 4356677
+
+# Clones a specific branch
+$ glab repo clone gitlab-org/cli -- --branch development
+
+# Clones with a shallow clone (depth 1)
+$ glab repo clone gitlab-org/cli -- --depth 1
+
+# Clones with multiple Git flags
+$ glab repo clone gitlab-org/cli -- --branch main --single-branch --depth 1
 
 # Clones all repos in a group
 $ glab repo clone -g everyonecancontribute --paginate
