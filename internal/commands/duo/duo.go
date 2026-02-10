@@ -23,7 +23,7 @@ func NewCmdDuo(f cmdutils.Factory) *cobra.Command {
 			[GitLab Duo CLI](https://docs.gitlab.com/user/gitlab_duo_cli/).
 
 			A unified experience is proposed in
-			[issue 585937](https://gitlab.com/gitlab-org/gitlab/-/work_items/585937).
+			[epic 20826](https://gitlab.com/groups/gitlab-org/-/work_items/20826).
 		`),
 	}
 
