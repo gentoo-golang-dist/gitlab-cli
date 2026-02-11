@@ -50,7 +50,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 		`,
 		),
 		Annotations: map[string]string{
-			mcpannotations.Safe: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(cmd); err != nil {

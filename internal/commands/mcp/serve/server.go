@@ -83,13 +83,13 @@ func (s *mcpServer) registerToolsFromCommands() {
 			continue
 		}
 
-		// Skip commands
+		// Skip commands that should not be exposed via MCP
 		if cmd.Annotations != nil {
-			if val, exists := cmd.Annotations[mcpannotations.Skip]; exists && val == "true" {
+			if val, exists := cmd.Annotations[mcpannotations.Interactive]; exists && val == "true" {
 				continue
 			}
-
-			if val, exists := cmd.Annotations[mcpannotations.Interactive]; exists && val == "true" {
+			// Skip explicitly excluded commands (credentials/secrets handling)
+			if val, exists := cmd.Annotations[mcpannotations.Exclude]; exists && val == "true" {
 				continue
 			}
 		}

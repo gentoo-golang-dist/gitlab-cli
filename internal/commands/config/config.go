@@ -60,7 +60,7 @@ func NewCmdConfigGet(f cmdutils.Factory) *cobra.Command {
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			mcpannotations.Safe: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := f.Config()
@@ -99,6 +99,9 @@ Specifying the '--host' flag also saves in the global configuration file.
 - glab config set token xxxxx --host gitlab.com
 - glab config set check_update false --global`),
 		Args: cobra.ExactArgs(2),
+		Annotations: map[string]string{
+			mcpannotations.Exclude: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := f.Config()
 
@@ -162,6 +165,9 @@ The command uses the following order when choosing the editor to use:
 			- glab config edit -l
 		`),
 		Args: cobra.NoArgs,
+		Annotations: map[string]string{
+			mcpannotations.Exclude: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var configPath string
 

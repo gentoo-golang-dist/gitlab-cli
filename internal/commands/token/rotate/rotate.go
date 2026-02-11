@@ -78,7 +78,7 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 		$ glab token rotate --user johndoe johns-personal-token --duration 90d
 		`),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(cmd, args); err != nil {

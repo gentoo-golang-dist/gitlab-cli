@@ -54,7 +54,7 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 		Long: ``,
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
-			mcpannotations.Safe: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.GitLabClient()

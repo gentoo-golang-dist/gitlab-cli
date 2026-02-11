@@ -48,7 +48,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			$ glab runner-controller token rotate 42 1 --force --output json
 		`),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(args); err != nil {

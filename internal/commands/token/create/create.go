@@ -90,7 +90,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 		`),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(cmd, args); err != nil {

@@ -62,7 +62,7 @@ This command creates a personal access token that is valid until the end of the 
 You might receive an email from your GitLab instance that a new personal access token has been created.
 `, desc),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.validate(); err != nil {

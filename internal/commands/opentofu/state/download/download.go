@@ -45,7 +45,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Args: cobra.MinimumNArgs(1),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(args); err != nil {

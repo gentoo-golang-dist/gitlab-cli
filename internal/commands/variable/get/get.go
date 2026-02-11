@@ -45,7 +45,7 @@ func NewCmdGet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 			$ glab variable get -s SCOPE VAR_KEY
 		`),
 		Annotations: map[string]string{
-			mcpannotations.Safe: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)

@@ -91,7 +91,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 		`, "`"),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" {

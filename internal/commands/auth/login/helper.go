@@ -42,7 +42,7 @@ func NewCmdCredential(f cmdutils.Factory) *cobra.Command {
 		Short:  "Implements Git credential helper manager.",
 		Hidden: true,
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)

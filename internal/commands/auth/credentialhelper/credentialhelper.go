@@ -80,7 +80,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short:  "Implements a generic credential helper.",
 		Hidden: true,
 		Annotations: map[string]string{
-			mcpannotations.Skip: "true",
+			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			resp := opts.run()
