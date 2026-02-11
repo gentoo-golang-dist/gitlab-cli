@@ -14,7 +14,7 @@ Manage runner controllers. (EXPERIMENTAL)
 
 ## Synopsis
 
-Manages GitLab runner controllers. This is an admin-only feature.
+Manages runner controllers. This is an admin-only feature.
 
 This feature is experimental. It might be broken or removed without any prior notice.
 Read more about what experimental features mean at

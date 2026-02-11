@@ -14,7 +14,7 @@ Manage runner controller tokens. (EXPERIMENTAL)
 
 ## Synopsis
 
-Manages GitLab runner controller tokens. This is an admin-only feature.
+Manages runner controller tokens. This is an admin-only feature.
 
 This feature is experimental. It might be broken or removed without any prior notice.
 Read more about what experimental features mean at
