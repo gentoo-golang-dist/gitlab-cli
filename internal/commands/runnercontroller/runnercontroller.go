@@ -7,6 +7,7 @@ import (
 	createCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/create"
 	deleteCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/delete"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/list"
+	scopeCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/scope"
 	tokenCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/token"
 	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller/update"
 	"gitlab.com/gitlab-org/cli/internal/text"
@@ -23,6 +24,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.AddCommand(createCmd.NewCmd(f))
 	cmd.AddCommand(deleteCmd.NewCmd(f))
 	cmd.AddCommand(listCmd.NewCmd(f))
+	cmd.AddCommand(scopeCmd.NewCmd(f))
 	cmd.AddCommand(tokenCmd.NewCmd(f))
 	cmd.AddCommand(updateCmd.NewCmd(f))
 	return cmd
