@@ -16,11 +16,10 @@ Create, manage, and work with stacked diffs. (EXPERIMENTAL)
 
 Stacked diffs are a way of creating small changes that build upon each other to ultimately deliver a feature. This kind of workflow can be used to accelerate development time by continuing to build upon your changes, while earlier changes in the stack are reviewed and updated based on feedback.
 
-This feature is experimental. It might be broken or removed without any prior notice.
-Read more about what experimental features mean at
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/)
-
-Use experimental features at your own risk.
+This feature is an experiment and is not ready for production use.
+It might be unstable or removed at any time.
+For more information, see
+[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
 
 ## Aliases
 

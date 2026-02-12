@@ -67,11 +67,10 @@ To understand what is possible, and how to do it, see the
 The user should have permission to access the agent project.
 For more information, see [Grant users Kubernetes access](https://docs.gitlab.com/user/clusters/agent/user_access/).
 
-This feature is experimental. It might be broken or removed without any prior notice.
-Read more about what experimental features mean at
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/)
-
-Use experimental features at your own risk.
+This feature is an experiment and is not ready for production use.
+It might be unstable or removed at any time.
+For more information, see
+[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
 
 ```plaintext
 glab cluster graph [flags]

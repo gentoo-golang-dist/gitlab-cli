@@ -20,11 +20,10 @@ The MCP server exposes GitLab features as tools for use by
 AI assistants (like Claude Code) to interact with GitLab projects, issues,
 merge requests, pipelines, and other resources.
 
-This feature is experimental. It might be broken or removed without any prior notice.
-Read more about what experimental features mean at
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/)
-
-Use experimental features at your own risk.
+This feature is an experiment and is not ready for production use.
+It might be unstable or removed at any time.
+For more information, see
+[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
 
 ## Examples
 
