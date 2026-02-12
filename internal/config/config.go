@@ -22,6 +22,13 @@ const (
 	defaultAPIProtocol  = "https"
 )
 
+// keyringEligibleKeys is a map of config keys that can be stored in the keyring
+var keyringEligibleKeys = map[string]struct{}{
+	"token":                {},
+	"oauth2_refresh_token": {},
+	"job_token":            {},
+}
+
 // A Config reads and writes persistent configuration for glab.
 type Config interface {
 	Get(string, string) (string, error)
@@ -196,14 +203,28 @@ func (c *fileConfig) GetWithSource(hostname, key string, searchENVVars bool) (st
 
 		var hostValue string
 		if hostCfg != nil {
+			// Check if use_keyring field is enabled for token keys
+			if isKeyringEligibleKey(key) {
+				useKeyring, _ := hostCfg.GetStringValue("use_keyring")
+
+				if useKeyring == "true" {
+					// Keyring enabled - retrieve from platform-native secure storage
+					token, err := getFromKeyring(hostname, key)
+					if err == nil {
+						return token, "keyring", nil
+					}
+					return "", "", fmt.Errorf("%s not found in keyring", key)
+				}
+			}
+
 			hostValue, err = hostCfg.GetStringValue(key)
 			if err != nil && !isNotFoundError(err) {
 				return "", "", err
 			}
 
-			if (err != nil || hostValue == "") && key == "token" {
-				token, err := keyring.Get("glab:"+hostname, "")
-
+			// Fallback: check keyring if token not in config (backward compat for existing users)
+			if (err != nil || hostValue == "") && isKeyringEligibleKey(key) {
+				token, err := getFromKeyring(hostname, key)
 				if err == nil {
 					return token, "keyring", nil
 				}
@@ -242,8 +263,74 @@ func (c *fileConfig) GetWithSource(hostname, key string, searchENVVars bool) (st
 	return value, source, cfgError
 }
 
+// isKeyringEligibleKey returns true if the key can be stored in keyring
+func isKeyringEligibleKey(key string) bool {
+	_, eligible := keyringEligibleKeys[key]
+	return eligible
+}
+
+// buildKeyringKey constructs the keyring key for a given hostname and config key
+func buildKeyringKey(hostname, key string) string {
+	// Always suffix with the key name to avoid collisions
+	// e.g., "glab:gitlab.com:token", "glab:gitlab.com:oauth2_refresh_token"
+	return "glab:" + hostname + ":" + key
+}
+
+// getFromKeyring attempts to retrieve a value from the keyring, trying both
+// new and legacy key formats for backward compatibility.
+func getFromKeyring(hostname, key string) (string, error) {
+	// Try new format first
+	keyringKey := buildKeyringKey(hostname, key)
+	token, err := keyring.Get(keyringKey, "")
+	if err == nil {
+		return token, nil
+	}
+
+	// Fallback to legacy key format for backward compatibility
+	legacyKey := buildLegacyKeyringKey(hostname, key)
+	return keyring.Get(legacyKey, "")
+}
+
+// buildLegacyKeyringKey constructs the old keyring key format for backward compatibility.
+// Legacy format used "glab:hostname" for token/job_token
+// and "glab:hostname:refresh_token" for oauth2_refresh_token.
+func buildLegacyKeyringKey(hostname, key string) string {
+	if key == "oauth2_refresh_token" {
+		return "glab:" + hostname + ":refresh_token"
+	}
+	return "glab:" + hostname
+}
+
 func (c *fileConfig) Set(hostname, key, value string) error {
 	key = ConfigKeyEquivalence(key)
+
+	// Check if this is a keyring-eligible key and keyring is enabled
+	if isKeyringEligibleKey(key) && hostname != "" {
+		useKeyring, _ := c.Get(hostname, "use_keyring")
+		if useKeyring == "true" {
+			if value != "" {
+				// Store in keyring instead of config file
+				keyringKey := buildKeyringKey(hostname, key)
+				if err := keyring.Set(keyringKey, "", value); err != nil {
+					return err
+				}
+				// Remove any existing plaintext token from config
+				// Set value to empty to trigger removal below
+				value = ""
+			} else {
+				// Delete from keyring when value is empty
+				// Try both new and legacy formats for thorough cleanup
+				keyringKey := buildKeyringKey(hostname, key)
+				_ = keyring.Delete(keyringKey, "")
+
+				legacyKey := buildLegacyKeyringKey(hostname, key)
+				_ = keyring.Delete(legacyKey, "")
+
+				// Also remove from config file below
+			}
+		}
+	}
+
 	var cfg interface {
 		SetStringValue(string, string) error
 		RemoveEntry(string)

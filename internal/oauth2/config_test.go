@@ -22,6 +22,7 @@ func (s stubConfig) Get(host string, key string) (string, error) {
 }
 
 func (s stubConfig) GetWithSource(string, string, bool) (string, string, error) { return "", "", nil }
+
 func (s stubConfig) Set(host string, key string, value string) error {
 	if _, ok := s.hosts[host]; !ok {
 		s.hosts[host] = make(map[string]string)

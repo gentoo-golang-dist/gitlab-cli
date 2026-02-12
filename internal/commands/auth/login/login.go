@@ -14,7 +14,6 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
-	"github.com/zalando/go-keyring"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -158,46 +157,50 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	c := opts.IO.Color()
 	cfg := opts.Config()
 
+	// Enable keyring mode if requested - do this once at the beginning
+	// so all authentication methods benefit from it
+	if opts.UseKeyring {
+		if err := cfg.Set(opts.Hostname, "use_keyring", "true"); err != nil {
+			return err
+		}
+	}
+
 	if opts.Token != "" {
 		if opts.Hostname == "" {
 			return errors.New("empty hostname would leak `oauth_token`")
 		}
 
-		if opts.UseKeyring {
-			return keyring.Set("glab:"+opts.Hostname, "", opts.Token)
-		} else {
-			err := cfg.Set(opts.Hostname, "token", opts.Token)
+		err := cfg.Set(opts.Hostname, "token", opts.Token)
+		if err != nil {
+			return err
+		}
+
+		if token := config.GetFromEnv("token"); token != "" {
+			fmt.Fprintf(opts.IO.StdErr, "%s One of %s environment variables is set. If you don't want to use it for glab, unset it.\n", c.Yellow("WARNING:"), strings.Join(config.EnvKeyEquivalence("token"), ", "))
+		}
+
+		if opts.ApiHost != "" {
+			err := cfg.Set(opts.Hostname, "api_host", opts.ApiHost)
 			if err != nil {
 				return err
 			}
-
-			if token := config.GetFromEnv("token"); token != "" {
-				fmt.Fprintf(opts.IO.StdErr, "%s One of %s environment variables is set. If you don't want to use it for glab, unset it.\n", c.Yellow("WARNING:"), strings.Join(config.EnvKeyEquivalence("token"), ", "))
-			}
-			if opts.ApiHost != "" {
-				err = cfg.Set(opts.Hostname, "api_host", opts.ApiHost)
-				if err != nil {
-					return err
-				}
-			}
-
-			if opts.ApiProtocol != "" {
-				err = cfg.Set(opts.Hostname, "api_protocol", opts.ApiProtocol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if opts.GitProtocol != "" {
-				err = cfg.Set(opts.Hostname, "git_protocol", opts.GitProtocol)
-				if err != nil {
-					return err
-				}
-			}
-
-			return cfg.Write()
 		}
 
+		if opts.ApiProtocol != "" {
+			err := cfg.Set(opts.Hostname, "api_protocol", opts.ApiProtocol)
+			if err != nil {
+				return err
+			}
+		}
+
+		if opts.GitProtocol != "" {
+			err := cfg.Set(opts.Hostname, "git_protocol", opts.GitProtocol)
+			if err != nil {
+				return err
+			}
+		}
+
+		return cfg.Write()
 	}
 
 	if opts.JobToken != "" {
@@ -205,37 +208,33 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return errors.New("empty hostname would leak `oauth_token`")
 		}
 
-		if opts.UseKeyring {
-			return keyring.Set("glab:"+opts.Hostname, "", opts.JobToken)
-		} else {
-			err := cfg.Set(opts.Hostname, "job_token", opts.JobToken)
+		err := cfg.Set(opts.Hostname, "job_token", opts.JobToken)
+		if err != nil {
+			return err
+		}
+
+		if opts.ApiHost != "" {
+			err := cfg.Set(opts.Hostname, "api_host", opts.ApiHost)
 			if err != nil {
 				return err
 			}
-
-			if opts.ApiHost != "" {
-				err = cfg.Set(opts.Hostname, "api_host", opts.ApiHost)
-				if err != nil {
-					return err
-				}
-			}
-
-			if opts.ApiProtocol != "" {
-				err = cfg.Set(opts.Hostname, "api_protocol", opts.ApiProtocol)
-				if err != nil {
-					return err
-				}
-			}
-
-			if opts.GitProtocol != "" {
-				err = cfg.Set(opts.Hostname, "git_protocol", opts.GitProtocol)
-				if err != nil {
-					return err
-				}
-			}
-
-			return cfg.Write()
 		}
+
+		if opts.ApiProtocol != "" {
+			err := cfg.Set(opts.Hostname, "api_protocol", opts.ApiProtocol)
+			if err != nil {
+				return err
+			}
+		}
+
+		if opts.GitProtocol != "" {
+			err := cfg.Set(opts.Hostname, "git_protocol", opts.GitProtocol)
+			if err != nil {
+				return err
+			}
+		}
+
+		return cfg.Write()
 	}
 
 	hostname := opts.Hostname
@@ -447,21 +446,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	}
 
-	if opts.UseKeyring {
-		err = keyring.Set("glab:"+hostname, "", token)
-		if err != nil {
-			return err
-		}
-	} else {
-		err = cfg.Set(hostname, "token", token)
-		if err != nil {
-			return err
-		}
+	err = cfg.Set(hostname, "token", token)
+	if err != nil {
+		return err
+	}
 
-		err = setContainerRegistryDomains(cfg, hostname, containerRegistryDomains)
-		if err != nil {
-			return err
-		}
+	err = setContainerRegistryDomains(cfg, hostname, containerRegistryDomains)
+	if err != nil {
+		return err
 	}
 
 	if hostname == "" {

@@ -339,7 +339,7 @@ func Test_keyringLogin(t *testing.T) {
 
 	keyring.MockInit()
 
-	token, err := keyring.Get("glab:gitlab.com", "")
+	token, err := keyring.Get("glab:gitlab.com:token", "")
 	assert.Error(t, err)
 	assert.Equal(t, "", token)
 
@@ -353,7 +353,7 @@ func Test_keyringLogin(t *testing.T) {
 	_, err = cmd.ExecuteC()
 	assert.Nil(t, err)
 
-	token, err = keyring.Get("glab:gitlab.com", "")
+	token, err = keyring.Get("glab:gitlab.com:token", "")
 	assert.NoError(t, err)
 	assert.Equal(t, "glpat-1234", token)
 }

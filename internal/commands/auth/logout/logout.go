@@ -19,6 +19,7 @@ var fieldsToClear = []string{
 	"is_oauth2",
 	"oauth2_refresh_token",
 	"oauth2_expiry_date",
+	"use_keyring",
 }
 
 type options struct {
@@ -62,6 +63,7 @@ func NewCmdLogout(f cmdutils.Factory) *cobra.Command {
 func (o *options) run() error {
 	cfg := o.config()
 
+	// Clear config entries (cfg.Set will handle keyring deletion if use_keyring is enabled)
 	for _, key := range fieldsToClear {
 		if err := cfg.Set(o.hostname, key, ""); err != nil {
 			return err

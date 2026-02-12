@@ -246,3 +246,191 @@ func TestConfig_parseHosts_NoHosts(t *testing.T) {
 
 	assert.True(t, isNotFoundError(err))
 }
+
+func Test_SetKeyring_StoresTokenInKeyringAndSetsIndicator(t *testing.T) {
+	mainBuf := bytes.Buffer{}
+	hostsBuf := bytes.Buffer{}
+	defer StubWriteConfig(&mainBuf, &hostsBuf)()
+
+	keyring.MockInit()
+	cfg := NewBlankConfig()
+
+	// Enable keyring mode
+	err := cfg.Set("gitlab.com", "use_keyring", "true")
+	require.NoError(t, err)
+
+	// Set a token - should go to keyring
+	err = cfg.Set("gitlab.com", "token", "glpat-secret-token")
+	require.NoError(t, err)
+
+	// Verify token is stored in keyring with new key format
+	storedToken, err := keyring.Get("glab:gitlab.com:token", "")
+	require.NoError(t, err)
+	assert.Equal(t, "glpat-secret-token", storedToken)
+
+	// Verify use_keyring indicator is set in config
+	useKeyring, err := cfg.Get("gitlab.com", "use_keyring")
+	require.NoError(t, err)
+	assert.Equal(t, "true", useKeyring)
+
+	// Verify token is NOT in config (removed/empty)
+	err = cfg.Write()
+	require.NoError(t, err)
+	configContent := mainBuf.String()
+	assert.NotContains(t, configContent, "glpat-secret-token", "Token should not be in plaintext config")
+	assert.Contains(t, configContent, "use_keyring: \"true\"")
+}
+
+func Test_SetKeyring_OAuth2RefreshToken(t *testing.T) {
+	mainBuf := bytes.Buffer{}
+	hostsBuf := bytes.Buffer{}
+	defer StubWriteConfig(&mainBuf, &hostsBuf)()
+
+	keyring.MockInit()
+	cfg := NewBlankConfig()
+
+	// Enable keyring mode
+	err := cfg.Set("gitlab.com", "use_keyring", "true")
+	require.NoError(t, err)
+
+	// Set a refresh token - should go to keyring
+	err = cfg.Set("gitlab.com", "oauth2_refresh_token", "refresh-secret-token")
+	require.NoError(t, err)
+
+	// Verify refresh token is stored in keyring with new key format
+	storedToken, err := keyring.Get("glab:gitlab.com:oauth2_refresh_token", "")
+	require.NoError(t, err)
+	assert.Equal(t, "refresh-secret-token", storedToken)
+
+	// Verify use_keyring indicator is set in config
+	useKeyring, err := cfg.Get("gitlab.com", "use_keyring")
+	require.NoError(t, err)
+	assert.Equal(t, "true", useKeyring)
+
+	// Verify refresh token is NOT in config
+	err = cfg.Write()
+	require.NoError(t, err)
+	configContent := mainBuf.String()
+	assert.NotContains(t, configContent, "refresh-secret-token", "Refresh token should not be in plaintext config")
+}
+
+func Test_GetWithSource_RetrievesFromKeyringWhenUseKeyringSet(t *testing.T) {
+	defer StubConfig(heredoc.Doc(`
+		---
+		hosts:
+		  gitlab.com:
+		    use_keyring: "true"
+		    is_oauth2: true
+	`), ``)()
+
+	keyring.MockInit()
+
+	// Store token in keyring with new key format
+	err := keyring.Set("glab:gitlab.com:token", "", "glpat-from-keyring")
+	require.NoError(t, err)
+
+	// Store refresh token in keyring with new key format
+	err = keyring.Set("glab:gitlab.com:oauth2_refresh_token", "", "refresh-from-keyring")
+	require.NoError(t, err)
+
+	cfg, err := ParseConfig("config.yml")
+	require.NoError(t, err)
+
+	// Retrieve token - should come from keyring, not config
+	token, source, err := cfg.GetWithSource("gitlab.com", "token", false)
+	require.NoError(t, err)
+	assert.Equal(t, "glpat-from-keyring", token)
+	assert.Equal(t, "keyring", source)
+
+	// Retrieve refresh token - should come from keyring
+	refreshToken, source, err := cfg.GetWithSource("gitlab.com", "oauth2_refresh_token", false)
+	require.NoError(t, err)
+	assert.Equal(t, "refresh-from-keyring", refreshToken)
+	assert.Equal(t, "keyring", source)
+}
+
+func Test_GetWithSource_ErrorsWhenKeyringEnabledButTokenMissing(t *testing.T) {
+	defer StubConfig(`---
+hosts:
+  gitlab.com:
+    use_keyring: "true"
+`, ``)()
+
+	keyring.MockInit()
+	// Don't store any token in keyring
+
+	cfg, err := ParseConfig("config.yml")
+	require.NoError(t, err)
+
+	// Should error when trying to retrieve from keyring but token doesn't exist
+	token, source, err := cfg.GetWithSource("gitlab.com", "token", false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "token not found in keyring")
+	assert.Empty(t, token)
+	assert.Empty(t, source)
+}
+
+func Test_SetKeyring_JobToken(t *testing.T) {
+	mainBuf := bytes.Buffer{}
+	hostsBuf := bytes.Buffer{}
+	defer StubWriteConfig(&mainBuf, &hostsBuf)()
+
+	keyring.MockInit()
+	cfg := NewBlankConfig()
+
+	// Enable keyring mode
+	err := cfg.Set("gitlab.com", "use_keyring", "true")
+	require.NoError(t, err)
+
+	// Set a job token - should go to keyring
+	err = cfg.Set("gitlab.com", "job_token", "job-token-value")
+	require.NoError(t, err)
+
+	// Verify job token is stored in keyring with new key format
+	storedToken, err := keyring.Get("glab:gitlab.com:job_token", "")
+	require.NoError(t, err)
+	assert.Equal(t, "job-token-value", storedToken)
+
+	// Verify use_keyring indicator is set
+	useKeyring, err := cfg.Get("gitlab.com", "use_keyring")
+	require.NoError(t, err)
+	assert.Equal(t, "true", useKeyring)
+}
+
+func Test_SetKeyring_CleansUpExistingPlaintextToken(t *testing.T) {
+	defer StubConfig(`---
+hosts:
+  gitlab.com:
+    token: glpat-old-plaintext-token
+`, ``)()
+
+	mainBuf := bytes.Buffer{}
+	hostsBuf := bytes.Buffer{}
+	defer StubWriteConfig(&mainBuf, &hostsBuf)()
+
+	keyring.MockInit()
+	cfg, err := ParseConfig("config.yml")
+	require.NoError(t, err)
+
+	// Enable keyring mode
+	err = cfg.Set("gitlab.com", "use_keyring", "true")
+	require.NoError(t, err)
+
+	// Set token - should go to keyring and remove plaintext token from config
+	err = cfg.Set("gitlab.com", "token", "glpat-new-keyring-token")
+	require.NoError(t, err)
+
+	err = cfg.Write()
+	require.NoError(t, err)
+
+	// Verify old plaintext token is removed from config
+	configContent := mainBuf.String()
+	assert.NotContains(t, configContent, "glpat-old-plaintext-token")
+	assert.NotContains(t, configContent, "glpat-new-keyring-token")
+	assert.Contains(t, configContent, "use_keyring: \"true\"")
+
+	// Verify new token is in keyring with new key format
+	storedToken, err := keyring.Get("glab:gitlab.com:token", "")
+	require.NoError(t, err)
+	assert.Equal(t, "glpat-new-keyring-token", storedToken)
+}
