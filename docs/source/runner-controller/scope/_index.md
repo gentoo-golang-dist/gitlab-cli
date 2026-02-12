@@ -30,4 +30,5 @@ For more information, see
 ## Subcommands
 
 - [`create`](create.md)
+- [`delete`](delete.md)
 - [`list`](list.md)
