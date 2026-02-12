@@ -83,8 +83,12 @@ func (s *mcpServer) registerToolsFromCommands() {
 			continue
 		}
 
-		// Skip interactive commands (TUI commands that require a TTY)
+		// Skip commands
 		if cmd.Annotations != nil {
+			if val, exists := cmd.Annotations[mcpannotations.Skip]; exists && val == "true" {
+				continue
+			}
+
 			if val, exists := cmd.Annotations[mcpannotations.Interactive]; exists && val == "true" {
 				continue
 			}

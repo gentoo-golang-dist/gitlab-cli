@@ -9,4 +9,6 @@ const (
 	Safe = "mcp:safe"
 	// Interactive marks commands that require an interactive TTY and should be excluded from MCP
 	Interactive = "mcp:interactive"
+	// Skip marks commands that should be excluded from MCP
+	Skip = "mcp:skip"
 )
