@@ -290,6 +290,18 @@ func TestListPersonalAccessToken(t *testing.T) {
 					Return(testPATs, noMorePages(), nil)
 			},
 		},
+		{
+			name: "list active personal access tokens as json",
+			cli:  "--user @me --active --output json",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(testUser, nil, nil)
+				tc.MockPersonalAccessTokens.EXPECT().
+					ListPersonalAccessTokens(gomock.Any(), gomock.Any()).
+					Return(testPATs, noMorePages(), nil)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -323,6 +335,16 @@ func TestListPersonalAccessToken(t *testing.T) {
 				err := json.Unmarshal(out.OutBuf.Bytes(), &result)
 				require.NoError(t, err)
 				assert.Len(t, result, 3)
+			}
+			if tc.cli == "--user @me --active --output json" {
+				// For JSON output with --active flag, verify only active tokens are returned
+				var result []map[string]any
+				err := json.Unmarshal(out.OutBuf.Bytes(), &result)
+				require.NoError(t, err)
+				assert.Len(t, result, 1, "should only return 1 active token")
+				// Verify the returned token is the active one
+				assert.Equal(t, "10171440", result[0]["ID"])
+				assert.Equal(t, "true", result[0]["Active"])
 			}
 			assert.Empty(t, out.ErrBuf.String())
 		})

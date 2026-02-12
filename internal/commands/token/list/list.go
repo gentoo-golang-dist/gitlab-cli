@@ -160,7 +160,6 @@ func (o *options) run() error {
 	}
 	client := apiClient.Lab()
 
-	var apiTokens any
 	var outputTokens Tokens
 	switch {
 	case o.user != "":
@@ -177,7 +176,6 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
@@ -203,7 +201,6 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
@@ -234,7 +231,6 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		apiTokens = tokens
 		outputTokens = make([]Token, 0, len(tokens))
 		for _, token := range tokens {
 			if !o.listActive || token.Active {
@@ -255,7 +251,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		return o.io.PrintJSON(apiTokens)
+		return o.io.PrintJSON(outputTokens)
 	}
 
 	table := createTablePrinter(outputTokens)
