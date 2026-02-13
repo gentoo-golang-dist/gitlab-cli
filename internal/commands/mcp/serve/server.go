@@ -83,15 +83,17 @@ func (s *mcpServer) registerToolsFromCommands() {
 			continue
 		}
 
-		// Skip commands that should not be exposed via MCP
-		if cmd.Annotations != nil {
-			if val, exists := cmd.Annotations[mcpannotations.Interactive]; exists && val == "true" {
-				continue
-			}
-			// Skip explicitly excluded commands (credentials/secrets handling)
-			if val, exists := cmd.Annotations[mcpannotations.Exclude]; exists && val == "true" {
-				continue
-			}
+		// Skip commands that don't have explicit MCP annotations (require opt-in)
+		if !mcpannotations.HasAnnotation(cmd.Annotations) {
+			continue
+		}
+
+		// Skip commands marked as interactive or excluded
+		if val := cmd.Annotations[mcpannotations.Interactive]; val == "true" {
+			continue
+		}
+		if val := cmd.Annotations[mcpannotations.Exclude]; val == "true" {
+			continue
 		}
 
 		toolName := "glab_" + strings.Join(path, "_")
@@ -540,6 +542,6 @@ func (s *mcpServer) isDestructiveCommand(cmd *cobra.Command) bool {
 		}
 	}
 
-	// Default to destructive for safety if no annotation found (should not happen for executable commands)
+	// Default to destructive for safety if no annotation found (should not happen - unannotated commands are filtered out)
 	return true
 }

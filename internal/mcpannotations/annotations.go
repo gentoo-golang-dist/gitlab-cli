@@ -12,3 +12,17 @@ const (
 	// Exclude marks commands that should never be exposed via MCP
 	Exclude = "mcp:exclude"
 )
+
+// HasAnnotation checks if the given annotations map contains any valid MCP annotation.
+// Returns false if annotations is nil or contains no MCP annotations.
+// Commands without MCP annotations should not be exposed as MCP tools.
+func HasAnnotation(annotations map[string]string) bool {
+	if annotations == nil {
+		return false
+	}
+	_, hasSafe := annotations[Safe]
+	_, hasDestructive := annotations[Destructive]
+	_, hasExclude := annotations[Exclude]
+	_, hasInteractive := annotations[Interactive]
+	return hasSafe || hasDestructive || hasExclude || hasInteractive
+}

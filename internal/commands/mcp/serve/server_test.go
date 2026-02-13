@@ -94,6 +94,79 @@ func TestServerCapabilities(t *testing.T) {
 	assert.NotNil(t, server.rootCmd)
 }
 
+func TestRegisterToolsFromCommands_RequiresMCPAnnotation(t *testing.T) {
+	t.Parallel()
+
+	rootCmd := &cobra.Command{
+		Use:   "glab",
+		Short: "GitLab CLI",
+	}
+
+	// Command with MCP annotation - should be registered
+	annotatedCmd := &cobra.Command{
+		Use:   "annotated",
+		Short: "Annotated command",
+		Annotations: map[string]string{
+			mcpannotations.Safe: "true",
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+
+	// Command without MCP annotation - should NOT be registered
+	unannotatedCmd := &cobra.Command{
+		Use:   "unannotated",
+		Short: "Unannotated command",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+
+	// Command with non-MCP annotation only - should NOT be registered
+	otherAnnotationCmd := &cobra.Command{
+		Use:   "other",
+		Short: "Other annotation command",
+		Annotations: map[string]string{
+			"help:arguments": "some help text",
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+
+	rootCmd.AddCommand(annotatedCmd)
+	rootCmd.AddCommand(unannotatedCmd)
+	rootCmd.AddCommand(otherAnnotationCmd)
+
+	server := newMCPServer(rootCmd)
+
+	// Count registered tools by iterating through commands the same way the server does
+	registeredTools := make(map[string]bool)
+	for cmd := range server.iterCommands(server.rootCmd, []string{}) {
+		if cmd.RunE == nil || cmd == server.rootCmd {
+			continue
+		}
+		if !mcpannotations.HasAnnotation(cmd.Annotations) {
+			continue
+		}
+		if val := cmd.Annotations[mcpannotations.Interactive]; val == "true" {
+			continue
+		}
+		if val := cmd.Annotations[mcpannotations.Exclude]; val == "true" {
+			continue
+		}
+		toolName := "glab_" + cmd.Use
+		registeredTools[toolName] = true
+	}
+
+	// Only the annotated command should be registered
+	assert.True(t, registeredTools["glab_annotated"], "annotated command should be registered")
+	assert.False(t, registeredTools["glab_unannotated"], "unannotated command should NOT be registered")
+	assert.False(t, registeredTools["glab_other"], "command with only non-MCP annotations should NOT be registered")
+	assert.Len(t, registeredTools, 1, "only one tool should be registered")
+}
+
 // Tests for buildEnhancedDescription
 
 func TestBuildEnhancedDescription(t *testing.T) {
