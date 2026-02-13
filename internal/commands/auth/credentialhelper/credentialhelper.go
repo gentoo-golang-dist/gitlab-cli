@@ -154,7 +154,7 @@ func (o *options) run() responseType {
 				Token: as.Token,
 			},
 		}
-	case api.UnauthenticatedAuthSource:
+	case gitlab.Unauthenticated:
 		return errorResponse{Message: "glab is not authenticated. Use glab auth login to authenticate"}
 	default:
 		return errorResponse{Message: "unable to determine token"}

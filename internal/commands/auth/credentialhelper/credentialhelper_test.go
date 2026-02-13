@@ -18,7 +18,6 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -181,7 +180,7 @@ func TestCredentialHelper_ApiClientUnauthenticated(t *testing.T) {
 		NewCmd,
 		false,
 		cmdtest.WithBaseRepo("OWNER", "REPO", "gitlab.example.com"),
-		cmdtest.WithApiClient(cmdtest.NewTestAuthSourceApiClient(t, nil, api.UnauthenticatedAuthSource{}, "gitlab.example.com")),
+		cmdtest.WithApiClient(cmdtest.NewTestAuthSourceApiClient(t, nil, gitlab.Unauthenticated{}, "gitlab.example.com")),
 	)
 
 	out, err := exec("")

@@ -344,7 +344,7 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 	default:
 		// NOTE: use an unauthenticated client.
 		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
-			return UnauthenticatedAuthSource{}, nil
+			return gitlab.Unauthenticated{}, nil
 		}
 	}
 
