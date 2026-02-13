@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/oauth2"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
@@ -31,7 +30,7 @@ func NewTestApiClient(t *testing.T, httpClient *http.Client, token, host string,
 	return testClient
 }
 
-func NewTestOAuth2ApiClient(t *testing.T, httpClient *http.Client, tokenSource oauth2.TokenSource, host string, options ...api.ClientOption) *api.Client {
+func NewTestAuthSourceApiClient(t *testing.T, httpClient *http.Client, authSource gitlab.AuthSource, host string, options ...api.ClientOption) *api.Client {
 	t.Helper()
 
 	opts := []api.ClientOption{
@@ -43,7 +42,7 @@ func NewTestOAuth2ApiClient(t *testing.T, httpClient *http.Client, tokenSource o
 	opts = append(opts, options...)
 	testClient, err := api.NewClient(
 		func(*http.Client) (gitlab.AuthSource, error) {
-			return gitlab.OAuthTokenSource{TokenSource: tokenSource}, nil
+			return authSource, nil
 		},
 		opts...,
 	)

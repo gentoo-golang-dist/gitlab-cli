@@ -15,6 +15,8 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/assert"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
@@ -48,9 +50,9 @@ func Test_helperRun(t *testing.T) {
 		return func(repoHost string) (*api.Client, error) {
 			tokenSource, _ := oauth2.NewConfigTokenSource(config, &http.Client{}, glinstance.DefaultProtocol, repoHost)
 			if responseFunc != nil {
-				return cmdtest.NewTestOAuth2ApiClient(t, &http.Client{Transport: responseFunc}, tokenSource, repoHost), nil
+				return cmdtest.NewTestAuthSourceApiClient(t, &http.Client{Transport: responseFunc}, gitlab.OAuthTokenSource{TokenSource: tokenSource}, repoHost), nil
 			}
-			return cmdtest.NewTestOAuth2ApiClient(t, nil, tokenSource, repoHost), nil
+			return cmdtest.NewTestAuthSourceApiClient(t, nil, gitlab.OAuthTokenSource{TokenSource: tokenSource}, repoHost), nil
 		}
 	}
 
