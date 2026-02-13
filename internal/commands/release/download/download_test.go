@@ -3,6 +3,7 @@
 package download
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -195,4 +196,24 @@ func Test_downloadAssets(t *testing.T) {
 			assert.True(t, doesFileExist(filePathWanted), "File should exist")
 		})
 	}
+}
+
+func Test_downloadAsset_SameHost_UsesContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer testServer.Close()
+
+	gitlabClient, err := gitlab.NewClient("test-token", gitlab.WithBaseURL(testServer.URL))
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	destPath := filepath.Join(t.TempDir(), "asset.bin")
+	err = downloadAsset(ctx, gitlabClient, testServer.URL+"/asset.bin", destPath)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
 }

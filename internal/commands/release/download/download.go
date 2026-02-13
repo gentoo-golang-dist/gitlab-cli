@@ -231,7 +231,10 @@ func downloadAsset(ctx context.Context, client *gitlab.Client, assetURL, destina
 	baseURL, _ := url.Parse(assetURL)
 	gitlabBaseURL := client.BaseURL()
 	if gitlabBaseURL.Scheme == baseURL.Scheme && gitlabBaseURL.Host == baseURL.Host {
-		r, err := client.NewRequestToURL(http.MethodGet, baseURL, http.NoBody, []gitlab.RequestOptionFunc{gitlab.WithHeader("Accept", "application/octet-stream")})
+		r, err := client.NewRequestToURL(http.MethodGet, baseURL, http.NoBody, []gitlab.RequestOptionFunc{
+			gitlab.WithContext(ctx),
+			gitlab.WithHeader("Accept", "application/octet-stream"),
+		})
 		if err != nil {
 			return err
 		}
