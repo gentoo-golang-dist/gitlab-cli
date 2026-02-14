@@ -159,17 +159,20 @@ func TestCredentialHelper_BaseRepoError(t *testing.T) {
 		t,
 		NewCmd,
 		false,
-		cmdtest.WithBaseRepo("OWNER", "REPO", "gitlab.example.com"),
 		cmdtest.WithBaseRepoError(errors.New("not a git repository")),
+		cmdtest.WithApiClient(cmdtest.NewTestAuthSourceApiClient(t, nil, gitlab.AccessTokenAuthSource{Token: "any-pat"}, "gitlab.example.com")),
 	)
 
 	out, err := exec("")
 
 	require.NoError(t, err)
 
-	var resp errorResponse
+	var resp response
 	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &resp))
-	assert.Equal(t, "not a git repository", resp.Message)
+	assert.Equal(t, "https://gitlab.example.com", resp.InstanceURL)
+	assert.Equal(t, "pat", resp.Token.Type)
+	assert.Equal(t, "any-pat", resp.Token.Token)
+	assert.True(t, resp.Token.ExpiryTimestamp.IsZero())
 }
 
 func TestCredentialHelper_ApiClientUnauthenticated(t *testing.T) {

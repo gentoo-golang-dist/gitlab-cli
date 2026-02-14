@@ -108,11 +108,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 func (o *options) run() responseType {
 	baseRepo, err := o.baseRepo()
-	if err != nil {
-		return errorResponse{Message: err.Error()}
+	host := "" // NOTE: an empty host is the default configured host
+	if err == nil {
+		host = baseRepo.RepoHost()
 	}
 
-	host := baseRepo.RepoHost()
 	apiClient, err := o.apiClient(host)
 	if err != nil {
 		return errorResponse{Message: err.Error()}
