@@ -16,8 +16,11 @@ Delete a scope from a runner controller. (EXPERIMENTAL)
 
 Deletes a scope from a runner controller. This is an administrator-only feature.
 
-Only instance-level scopes are supported. Use the `--instance` flag
-to remove an instance-level scope from the runner controller.
+Use one of the following flags to specify the scope type:
+
+- --instance: Remove an instance-level scope from the runner controller.
+- --runner <id>: Remove a runner-level scope for a specific runner. Multiple IDs
+  can be comma-separated or specified by repeating the flag.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -37,13 +40,21 @@ $ glab runner-controller scope delete 42 --instance
 # Remove an instance-level scope without confirmation
 $ glab runner-controller scope delete 42 --instance --force
 
+# Remove a runner-level scope for runner 5 from runner controller 42
+$ glab runner-controller scope delete 42 --runner 5 --force
+
+# Remove runner-level scopes for multiple runners
+$ glab runner-controller scope delete 42 --runner 5 --runner 10 --force
+$ glab runner-controller scope delete 42 --runner 5,10 --force
+
 ```
 
 ## Options
 
 ```plaintext
-  -f, --force      Skip confirmation prompt.
-      --instance   Remove an instance-level scope.
+  -f, --force               Skip confirmation prompt.
+      --instance            Remove an instance-level scope.
+      --runner int64Slice   Remove a runner-level scope for the specified runner ID. Multiple IDs can be comma-separated or specified by repeating the flag. (default [])
 ```
 
 ## Options inherited from parent commands

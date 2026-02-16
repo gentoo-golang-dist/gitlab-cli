@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -23,6 +24,7 @@ type options struct {
 	apiClient func(repoHost string) (*api.Client, error)
 
 	controllerID int64
+	runnerIDs    []int64
 	instance     bool
 	force        bool
 }
@@ -39,9 +41,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			Deletes a scope from a runner controller. This is an administrator-only feature.
 
-			Only instance-level scopes are supported. Use the %[1]s--instance%[1]s flag
-			to remove an instance-level scope from the runner controller.
-			%s`, "`", text.ExperimentalString),
+			Use one of the following flags to specify the scope type:
+
+			- --instance: Remove an instance-level scope from the runner controller.
+			- --runner <id>: Remove a runner-level scope for a specific runner. Multiple IDs
+			  can be comma-separated or specified by repeating the flag.
+			%s`, text.ExperimentalString),
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Remove an instance-level scope from runner controller 42 (with confirmation)
@@ -49,6 +54,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 			# Remove an instance-level scope without confirmation
 			$ glab runner-controller scope delete 42 --instance --force
+
+			# Remove a runner-level scope for runner 5 from runner controller 42
+			$ glab runner-controller scope delete 42 --runner 5 --force
+
+			# Remove runner-level scopes for multiple runners
+			$ glab runner-controller scope delete 42 --runner 5 --runner 10 --force
+			$ glab runner-controller scope delete 42 --runner 5,10 --force
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -66,9 +78,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.BoolVar(&opts.instance, "instance", false, "Remove an instance-level scope.")
+	fl.Int64SliceVar(&opts.runnerIDs, "runner", nil, "Remove a runner-level scope for the specified runner ID. Multiple IDs can be comma-separated or specified by repeating the flag.")
 	fl.BoolVarP(&opts.force, "force", "f", false, "Skip confirmation prompt.")
 
-	cobra.CheckErr(cmd.MarkFlagRequired("instance"))
+	cmd.MarkFlagsMutuallyExclusive("instance", "runner")
+	cmd.MarkFlagsOneRequired("instance", "runner")
 
 	return cmd
 }
@@ -88,8 +102,20 @@ func (o *options) validate(ctx context.Context) error {
 			return cmdutils.FlagError{Err: errors.New("--force required when not running interactively")}
 		}
 
+		var confirmMsg string
+		switch {
+		case o.instance:
+			confirmMsg = fmt.Sprintf("Remove instance-level scope from runner controller %d?", o.controllerID)
+		default:
+			ids := make([]string, 0, len(o.runnerIDs))
+			for _, id := range o.runnerIDs {
+				ids = append(ids, strconv.FormatInt(id, 10))
+			}
+			confirmMsg = fmt.Sprintf("Remove runner-level scope for runner(s) %s from runner controller %d?", strings.Join(ids, ", "), o.controllerID)
+		}
+
 		var confirmed bool
-		err := o.io.Confirm(ctx, &confirmed, fmt.Sprintf("Remove instance-level scope from runner controller %d?", o.controllerID))
+		err := o.io.Confirm(ctx, &confirmed, confirmMsg)
 		if err != nil {
 			return err
 		}
@@ -108,11 +134,22 @@ func (o *options) run(ctx context.Context) error {
 	}
 	client := apiClient.Lab()
 
-	_, err = client.RunnerControllerScopes.RemoveRunnerControllerInstanceScope(o.controllerID, gitlab.WithContext(ctx))
-	if err != nil {
-		return cmdutils.WrapError(err, "failed to remove instance-level scope")
+	switch {
+	case o.instance:
+		_, err = client.RunnerControllerScopes.RemoveRunnerControllerInstanceScope(o.controllerID, gitlab.WithContext(ctx))
+		if err != nil {
+			return cmdutils.WrapError(err, "failed to remove instance-level scope")
+		}
+		o.io.LogInfof("Removed instance-level scope from runner controller %d\n", o.controllerID)
+	default:
+		for _, runnerID := range o.runnerIDs {
+			_, err = client.RunnerControllerScopes.RemoveRunnerControllerRunnerScope(o.controllerID, runnerID, gitlab.WithContext(ctx))
+			if err != nil {
+				return cmdutils.WrapError(err, fmt.Sprintf("failed to remove runner-level scope for runner %d", runnerID))
+			}
+			o.io.LogInfof("Removed runner-level scope for runner %d from runner controller %d\n", runnerID, o.controllerID)
+		}
 	}
 
-	o.io.LogInfof("Removed instance-level scope from runner controller %d\n", o.controllerID)
 	return nil
 }

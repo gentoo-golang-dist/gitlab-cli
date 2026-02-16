@@ -16,7 +16,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func TestDelete(t *testing.T) {
+func TestDeleteInstanceScope(t *testing.T) {
 	t.Parallel()
 
 	tc := gitlabtesting.NewTestClient(t)
@@ -37,7 +37,7 @@ func TestDelete(t *testing.T) {
 	assert.Equal(t, "Removed instance-level scope from runner controller 42\n", out.OutBuf.String())
 }
 
-func TestDeleteError(t *testing.T) {
+func TestDeleteInstanceScopeError(t *testing.T) {
 	t.Parallel()
 
 	tc := gitlabtesting.NewTestClient(t)
@@ -58,7 +58,127 @@ func TestDeleteError(t *testing.T) {
 	assert.Contains(t, err.Error(), "API error")
 }
 
-func TestDeleteRequiresInstanceFlag(t *testing.T) {
+func TestDeleteRunnerScope(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	tc.MockRunnerControllerScopes.EXPECT().
+		RemoveRunnerControllerRunnerScope(int64(42), int64(5), gomock.Any()).
+		Return(nil, nil)
+
+	out, err := exec("42 --runner 5 --force")
+	require.NoError(t, err)
+	assert.Equal(t, "Removed runner-level scope for runner 5 from runner controller 42\n", out.OutBuf.String())
+}
+
+func TestDeleteMultipleRunnerScopes(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	gomock.InOrder(
+		tc.MockRunnerControllerScopes.EXPECT().
+			RemoveRunnerControllerRunnerScope(int64(42), int64(5), gomock.Any()).
+			Return(nil, nil),
+		tc.MockRunnerControllerScopes.EXPECT().
+			RemoveRunnerControllerRunnerScope(int64(42), int64(10), gomock.Any()).
+			Return(nil, nil),
+	)
+
+	out, err := exec("42 --runner 5 --runner 10 --force")
+	require.NoError(t, err)
+	assert.Equal(t, "Removed runner-level scope for runner 5 from runner controller 42\nRemoved runner-level scope for runner 10 from runner controller 42\n", out.OutBuf.String())
+}
+
+func TestDeleteMultipleRunnerScopesCommaSeparated(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	gomock.InOrder(
+		tc.MockRunnerControllerScopes.EXPECT().
+			RemoveRunnerControllerRunnerScope(int64(42), int64(5), gomock.Any()).
+			Return(nil, nil),
+		tc.MockRunnerControllerScopes.EXPECT().
+			RemoveRunnerControllerRunnerScope(int64(42), int64(10), gomock.Any()).
+			Return(nil, nil),
+	)
+
+	out, err := exec("42 --runner 5,10 --force")
+	require.NoError(t, err)
+	assert.Equal(t, "Removed runner-level scope for runner 5 from runner controller 42\nRemoved runner-level scope for runner 10 from runner controller 42\n", out.OutBuf.String())
+}
+
+func TestDeleteMultipleRunnerScopesPartialError(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	gomock.InOrder(
+		tc.MockRunnerControllerScopes.EXPECT().
+			RemoveRunnerControllerRunnerScope(int64(42), int64(5), gomock.Any()).
+			Return(nil, nil),
+		tc.MockRunnerControllerScopes.EXPECT().
+			RemoveRunnerControllerRunnerScope(int64(42), int64(10), gomock.Any()).
+			Return(nil, errors.New("API error")),
+	)
+
+	_, err := exec("42 --runner 5,10 --force")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "API error")
+}
+
+func TestDeleteRunnerScopeError(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	tc.MockRunnerControllerScopes.EXPECT().
+		RemoveRunnerControllerRunnerScope(int64(42), int64(5), gomock.Any()).
+		Return(nil, errors.New("API error"))
+
+	_, err := exec("42 --runner 5 --force")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "API error")
+}
+
+func TestDeleteRequiresScopeType(t *testing.T) {
 	t.Parallel()
 
 	tc := gitlabtesting.NewTestClient(t)
@@ -72,7 +192,24 @@ func TestDeleteRequiresInstanceFlag(t *testing.T) {
 
 	_, err := exec("42 --force")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `required flag(s) "instance" not set`)
+	assert.Contains(t, err.Error(), "at least one of the flags in the group [instance runner] is required")
+}
+
+func TestDeleteMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	_, err := exec("42 --instance --runner 5 --force")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "if any flags in the group [instance runner] are set none of the others can be")
 }
 
 func TestDeleteRequiresForceNonInteractive(t *testing.T) {
@@ -88,6 +225,23 @@ func TestDeleteRequiresForceNonInteractive(t *testing.T) {
 	)
 
 	_, err := exec("42 --instance")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--force required")
+}
+
+func TestDeleteRunnerScopeRequiresForceNonInteractive(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	_, err := exec("42 --runner 5")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--force required")
 }
