@@ -39,14 +39,15 @@ func TestList(t *testing.T) {
 			InstanceLevelScopings: []*gitlab.RunnerControllerInstanceLevelScoping{
 				{CreatedAt: &fixedTime, UpdatedAt: &fixedTime},
 			},
+			RunnerLevelScopings: []*gitlab.RunnerControllerRunnerLevelScoping{},
 		}, nil, nil)
 
 	out, err := exec("42")
 	require.NoError(t, err)
 
 	expectedOutput := heredoc.Docf(`
-		Scope Type%[1]sCreated At%[1]sUpdated At
-		instance%[1]s%[2]s%[1]s%[2]s
+		Scope Type%[1]sRunner ID%[1]sCreated At%[1]sUpdated At
+		instance%[1]s-%[1]s%[2]s%[1]s%[2]s
 	`, "\t", fixedTime)
 	assert.Equal(t, expectedOutput, out.OutBuf.String())
 }
@@ -67,6 +68,7 @@ func TestListEmpty(t *testing.T) {
 		ListRunnerControllerScopes(int64(42), gomock.Any()).
 		Return(&gitlab.RunnerControllerScopes{
 			InstanceLevelScopings: []*gitlab.RunnerControllerInstanceLevelScoping{},
+			RunnerLevelScopings:   []*gitlab.RunnerControllerRunnerLevelScoping{},
 		}, nil, nil)
 
 	out, err := exec("42")
@@ -93,6 +95,7 @@ func TestListJSON(t *testing.T) {
 			InstanceLevelScopings: []*gitlab.RunnerControllerInstanceLevelScoping{
 				{CreatedAt: &fixedTime, UpdatedAt: &fixedTime},
 			},
+			RunnerLevelScopings: []*gitlab.RunnerControllerRunnerLevelScoping{},
 		}, nil, nil)
 
 	out, err := exec("42 --output json")
@@ -105,6 +108,75 @@ func TestListJSON(t *testing.T) {
 	require.Len(t, result.InstanceLevelScopings, 1)
 	assert.Equal(t, fixedTime, *result.InstanceLevelScopings[0].CreatedAt)
 	assert.Equal(t, fixedTime, *result.InstanceLevelScopings[0].UpdatedAt)
+}
+
+func TestListRunnerLevelScopes(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	fixedTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	tc.MockRunnerControllerScopes.EXPECT().
+		ListRunnerControllerScopes(int64(42), gomock.Any()).
+		Return(&gitlab.RunnerControllerScopes{
+			InstanceLevelScopings: []*gitlab.RunnerControllerInstanceLevelScoping{},
+			RunnerLevelScopings: []*gitlab.RunnerControllerRunnerLevelScoping{
+				{RunnerID: 5, CreatedAt: &fixedTime, UpdatedAt: &fixedTime},
+			},
+		}, nil, nil)
+
+	out, err := exec("42")
+	require.NoError(t, err)
+
+	expectedOutput := heredoc.Docf(`
+		Scope Type%[1]sRunner ID%[1]sCreated At%[1]sUpdated At
+		runner%[1]s5%[1]s%[2]s%[1]s%[2]s
+	`, "\t", fixedTime)
+	assert.Equal(t, expectedOutput, out.OutBuf.String())
+}
+
+func TestListMixedScopes(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(tc.Client))),
+	)
+
+	fixedTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	tc.MockRunnerControllerScopes.EXPECT().
+		ListRunnerControllerScopes(int64(42), gomock.Any()).
+		Return(&gitlab.RunnerControllerScopes{
+			InstanceLevelScopings: []*gitlab.RunnerControllerInstanceLevelScoping{
+				{CreatedAt: &fixedTime, UpdatedAt: &fixedTime},
+			},
+			RunnerLevelScopings: []*gitlab.RunnerControllerRunnerLevelScoping{
+				{RunnerID: 5, CreatedAt: &fixedTime, UpdatedAt: &fixedTime},
+				{RunnerID: 10, CreatedAt: &fixedTime, UpdatedAt: &fixedTime},
+			},
+		}, nil, nil)
+
+	out, err := exec("42")
+	require.NoError(t, err)
+
+	expectedOutput := heredoc.Docf(`
+		Scope Type%[1]sRunner ID%[1]sCreated At%[1]sUpdated At
+		instance%[1]s-%[1]s%[2]s%[1]s%[2]s
+		runner%[1]s5%[1]s%[2]s%[1]s%[2]s
+		runner%[1]s10%[1]s%[2]s%[1]s%[2]s
+	`, "\t", fixedTime)
+	assert.Equal(t, expectedOutput, out.OutBuf.String())
 }
 
 func TestListError(t *testing.T) {

@@ -90,15 +90,18 @@ func (o *options) run(ctx context.Context) error {
 func (o *options) printTable(scopes *gitlab.RunnerControllerScopes) error {
 	c := o.io.Color()
 
-	if len(scopes.InstanceLevelScopings) == 0 {
+	if len(scopes.InstanceLevelScopings) == 0 && len(scopes.RunnerLevelScopings) == 0 {
 		o.io.LogInfof("No scopes configured for runner controller %d\n", o.controllerID)
 		return nil
 	}
 
 	table := tableprinter.NewTablePrinter()
-	table.AddRow(c.Bold("Scope Type"), c.Bold("Created At"), c.Bold("Updated At"))
+	table.AddRow(c.Bold("Scope Type"), c.Bold("Runner ID"), c.Bold("Created At"), c.Bold("Updated At"))
 	for _, s := range scopes.InstanceLevelScopings {
-		table.AddRow("instance", s.CreatedAt, s.UpdatedAt)
+		table.AddRow("instance", "-", s.CreatedAt, s.UpdatedAt)
+	}
+	for _, s := range scopes.RunnerLevelScopings {
+		table.AddRow("runner", s.RunnerID, s.CreatedAt, s.UpdatedAt)
 	}
 	fmt.Fprint(o.io.StdOut, table.Render())
 	return nil
