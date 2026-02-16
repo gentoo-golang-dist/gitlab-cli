@@ -2,6 +2,7 @@ package create
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -21,6 +22,7 @@ type options struct {
 	apiClient func(repoHost string) (*api.Client, error)
 
 	controllerID int64
+	runnerIDs    []int64
 	instance     bool
 	outputFormat string
 }
@@ -37,17 +39,28 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			Creates a scope for a runner controller. This is an administrator-only feature.
 
-			Only instance-level scopes are supported. Use the %[1]s--instance%[1]s flag
-			to add an instance-level scope. With an instance-level scope, the runner
-			controller can evaluate jobs for all runners in the GitLab instance.
-			%s`, "`", text.ExperimentalString),
+			Use one of the following flags to specify the scope type:
+
+			- --instance: Add an instance-level scope, allowing the runner controller
+			  to evaluate jobs for all runners in the GitLab instance.
+			- --runner <id>: Add a runner-level scope, allowing the runner controller
+			  to evaluate jobs for a specific instance-level runner. Multiple IDs can
+			  be comma-separated or specified by repeating the flag.
+			%s`, text.ExperimentalString),
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Add an instance-level scope to runner controller 42
 			$ glab runner-controller scope create 42 --instance
 
-			# Add an instance-level scope and output as JSON
-			$ glab runner-controller scope create 42 --instance --output json
+			# Add a runner-level scope for runner 5 to runner controller 42
+			$ glab runner-controller scope create 42 --runner 5
+
+			# Add runner-level scopes for multiple runners
+			$ glab runner-controller scope create 42 --runner 5 --runner 10
+			$ glab runner-controller scope create 42 --runner 5,10
+
+			# Add a runner-level scope and output as JSON
+			$ glab runner-controller scope create 42 --runner 5 --output json
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -62,9 +75,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.BoolVar(&opts.instance, "instance", false, "Add an instance-level scope.")
+	fl.Int64SliceVar(&opts.runnerIDs, "runner", nil, "Add a runner-level scope for the specified runner ID. Multiple IDs can be comma-separated or specified by repeating the flag.")
 	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
-	cobra.CheckErr(cmd.MarkFlagRequired("instance"))
+	cmd.MarkFlagsMutuallyExclusive("instance", "runner")
+	cmd.MarkFlagsOneRequired("instance", "runner")
 
 	return cmd
 }
@@ -85,16 +100,36 @@ func (o *options) run(ctx context.Context) error {
 	}
 	client := apiClient.Lab()
 
-	scoping, _, err := client.RunnerControllerScopes.AddRunnerControllerInstanceScope(o.controllerID, gitlab.WithContext(ctx))
-	if err != nil {
-		return cmdutils.WrapError(err, "failed to add instance-level scope")
+	var results []any
+
+	switch {
+	case o.instance:
+		scoping, _, err := client.RunnerControllerScopes.AddRunnerControllerInstanceScope(o.controllerID, gitlab.WithContext(ctx))
+		if err != nil {
+			return cmdutils.WrapError(err, "failed to add instance-level scope")
+		}
+		results = append(results, scoping)
+	default:
+		for _, runnerID := range o.runnerIDs {
+			scoping, _, err := client.RunnerControllerScopes.AddRunnerControllerRunnerScope(o.controllerID, runnerID, gitlab.WithContext(ctx))
+			if err != nil {
+				return cmdutils.WrapError(err, fmt.Sprintf("failed to add runner-level scope for runner %d", runnerID))
+			}
+			results = append(results, scoping)
+		}
 	}
 
-	switch o.outputFormat {
-	case "json":
-		return o.io.PrintJSON(scoping)
-	default:
-		o.io.LogInfof("Added instance-level scope to runner controller %d\n", o.controllerID)
-		return nil
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(results)
 	}
+
+	switch {
+	case o.instance:
+		o.io.LogInfof("Added instance-level scope to runner controller %d\n", o.controllerID)
+	default:
+		for _, runnerID := range o.runnerIDs {
+			o.io.LogInfof("Added runner-level scope for runner %d to runner controller %d\n", runnerID, o.controllerID)
+		}
+	}
+	return nil
 }
