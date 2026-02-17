@@ -100,16 +100,16 @@ func (o *options) complete(cmd *cobra.Command) error {
 }
 
 type Token struct {
-	ID          string
-	Name        string
-	Description string
-	AccessLevel string
-	Active      string
-	Revoked     string
-	CreatedAt   string
-	ExpiresAt   string
-	LastUsedAt  string
-	Scopes      string
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	AccessLevel string `json:"access_level"`
+	Active      string `json:"active"`
+	Revoked     string `json:"revoked"`
+	CreatedAt   string `json:"created_at"`
+	ExpiresAt   string `json:"expires_at"`
+	LastUsedAt  string `json:"last_used_at"`
+	Scopes      string `json:"scopes"`
 }
 
 type Tokens []Token

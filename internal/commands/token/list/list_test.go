@@ -343,8 +343,8 @@ func TestListPersonalAccessToken(t *testing.T) {
 				require.NoError(t, err)
 				assert.Len(t, result, 1, "should only return 1 active token")
 				// Verify the returned token is the active one
-				assert.Equal(t, "10171440", result[0]["ID"])
-				assert.Equal(t, "true", result[0]["Active"])
+				assert.Equal(t, "10171440", result[0]["id"])
+				assert.Equal(t, "true", result[0]["active"])
 			}
 			assert.Empty(t, out.ErrBuf.String())
 		})
