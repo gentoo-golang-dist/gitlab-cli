@@ -14,9 +14,9 @@ Delete a scope from a runner controller. (EXPERIMENTAL)
 
 ## Synopsis
 
-Delete a scope from a runner controller. This is an admin-only feature.
+Deletes a scope from a runner controller. This is an administrator-only feature.
 
-Currently, only instance-level scopes are supported. Use the --instance flag
+Only instance-level scopes are supported. Use the `--instance` flag
 to remove an instance-level scope from the runner controller.
 
 This feature is an experiment and is not ready for production use.

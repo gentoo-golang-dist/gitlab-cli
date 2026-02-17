@@ -14,11 +14,11 @@ Create a scope for a runner controller. (EXPERIMENTAL)
 
 ## Synopsis
 
-Create a scope for a runner controller. This is an admin-only feature.
+Creates a scope for a runner controller. This is an administrator-only feature.
 
-Currently, only instance-level scopes are supported. Use the --instance flag
-to add an instance-level scope, which allows the runner controller to evaluate
-jobs for all runners in the GitLab instance.
+Only instance-level scopes are supported. Use the `--instance` flag
+to add an instance-level scope. With an instance-level scope, the runner
+controller can evaluate jobs for all runners in the GitLab instance.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

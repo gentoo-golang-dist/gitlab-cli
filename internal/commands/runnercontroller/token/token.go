@@ -15,7 +15,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "token <command> [flags]",
 		Short: `Manage runner controller tokens. (EXPERIMENTAL)`,
-		Long:  `Manages runner controller tokens. This is an admin-only feature.` + "\n" + text.ExperimentalString,
+		Long:  `Manages runner controller tokens. This is an administrator-only feature.` + "\n" + text.ExperimentalString,
 	}
 
 	cmd.AddCommand(createCmd.NewCmd(f))

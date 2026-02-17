@@ -34,7 +34,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list <agent-id> [flags]",
-		Short: `List tokens of an agent.`,
+		Short: `List tokens for an agent.`,
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

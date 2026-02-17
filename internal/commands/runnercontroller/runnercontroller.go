@@ -17,7 +17,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "runner-controller <command> [flags]",
 		Short:   `Manage runner controllers. (EXPERIMENTAL)`,
-		Long:    `Manages runner controllers. This is an admin-only feature.` + "\n" + text.ExperimentalString,
+		Long:    `Manages runner controllers. This is an administrator-only feature.` + "\n" + text.ExperimentalString,
 		Aliases: []string{"rc"},
 	}
 

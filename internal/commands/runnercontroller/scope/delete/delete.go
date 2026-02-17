@@ -37,11 +37,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "delete <controller-id> [flags]",
 		Short: `Delete a scope from a runner controller. (EXPERIMENTAL)`,
 		Long: heredoc.Docf(`
-			Delete a scope from a runner controller. This is an admin-only feature.
+			Deletes a scope from a runner controller. This is an administrator-only feature.
 
-			Currently, only instance-level scopes are supported. Use the --instance flag
+			Only instance-level scopes are supported. Use the %[1]s--instance%[1]s flag
 			to remove an instance-level scope from the runner controller.
-			%s`, text.ExperimentalString),
+			%s`, "`", text.ExperimentalString),
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Remove an instance-level scope from runner controller 42 (with confirmation)

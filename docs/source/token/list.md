@@ -14,7 +14,7 @@ List user, group, or project access tokens.
 
 ## Synopsis
 
-List all tokens of a user, group, or project.
+List all tokens for a user, group, or project.
 
 The output contains the token's meta information, not the actual token value. The output format
 can be "JSON" or "text". The access level property is printed in human-readable form in the text

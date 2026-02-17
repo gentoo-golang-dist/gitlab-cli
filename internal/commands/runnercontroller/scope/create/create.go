@@ -35,12 +35,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "create <controller-id> [flags]",
 		Short: `Create a scope for a runner controller. (EXPERIMENTAL)`,
 		Long: heredoc.Docf(`
-			Create a scope for a runner controller. This is an admin-only feature.
+			Creates a scope for a runner controller. This is an administrator-only feature.
 
-			Currently, only instance-level scopes are supported. Use the --instance flag
-			to add an instance-level scope, which allows the runner controller to evaluate
-			jobs for all runners in the GitLab instance.
-			%s`, text.ExperimentalString),
+			Only instance-level scopes are supported. Use the %[1]s--instance%[1]s flag
+			to add an instance-level scope. With an instance-level scope, the runner
+			controller can evaluate jobs for all runners in the GitLab instance.
+			%s`, "`", text.ExperimentalString),
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Add an instance-level scope to runner controller 42

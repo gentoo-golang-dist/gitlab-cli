@@ -35,10 +35,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list <controller-id> [flags]",
-		Short: `List tokens of a runner controller. (EXPERIMENTAL)`,
+		Short: `List tokens for a runner controller. (EXPERIMENTAL)`,
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
-			# List all tokens of runner controller 42
+			# List all tokens for runner controller 42
 			$ glab runner-controller token list 42
 
 			# List tokens as JSON
