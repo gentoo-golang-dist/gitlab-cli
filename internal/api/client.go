@@ -333,13 +333,14 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 			}
 			return gitlab.OAuthTokenSource{TokenSource: ts}, nil
 		}
+	case token != "":
+		// Check for PAT first since it's more common than job tokens
+		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: token}, nil
+		}
 	case jobToken != "":
 		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
 			return gitlab.JobTokenAuthSource{Token: jobToken}, nil
-		}
-	case token != "":
-		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
-			return gitlab.AccessTokenAuthSource{Token: token}, nil
 		}
 	default:
 		// NOTE: use an unauthenticated client.

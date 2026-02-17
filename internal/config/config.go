@@ -223,7 +223,9 @@ func (c *fileConfig) GetWithSource(hostname, key string, searchENVVars bool) (st
 			}
 
 			// Fallback: check keyring if token not in config (backward compat for existing users)
-			if (err != nil || hostValue == "") && isKeyringEligibleKey(key) {
+			// Only check for PAT (token) and OAuth2 refresh tokens, not job_token, since job tokens
+			// were not commonly stored in keyring historically and the legacy format is ambiguous.
+			if (err != nil || hostValue == "") && (key == "token" || key == "oauth2_refresh_token") {
 				token, err := getFromKeyring(hostname, key)
 				if err == nil {
 					return token, "keyring", nil
@@ -286,19 +288,32 @@ func getFromKeyring(hostname, key string) (string, error) {
 		return token, nil
 	}
 
-	// Fallback to legacy key format for backward compatibility
+	// Fallback to legacy key format for backward compatibility (if one exists)
 	legacyKey := buildLegacyKeyringKey(hostname, key)
-	return keyring.Get(legacyKey, "")
+	if legacyKey != "" {
+		return keyring.Get(legacyKey, "")
+	}
+
+	// No legacy format exists for this key type
+	return "", err
 }
 
 // buildLegacyKeyringKey constructs the old keyring key format for backward compatibility.
-// Legacy format used "glab:hostname" for token/job_token
+// Legacy format used "glab:hostname" for token (PAT only)
 // and "glab:hostname:refresh_token" for oauth2_refresh_token.
+// Returns empty string for keys that did not have a legacy format (e.g., job_token).
+// Note: The old code used "glab:hostname" ambiguously for both token and job_token,
+// but we only check it for token (PAT) since that was the common use case for keyring.
 func buildLegacyKeyringKey(hostname, key string) string {
 	if key == "oauth2_refresh_token" {
 		return "glab:" + hostname + ":refresh_token"
 	}
-	return "glab:" + hostname
+	if key == "token" {
+		// Only PATs were commonly stored in keyring
+		return "glab:" + hostname
+	}
+	// No legacy format for job_token and other keys
+	return ""
 }
 
 func (c *fileConfig) Set(hostname, key, value string) error {
