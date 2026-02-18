@@ -1,6 +1,6 @@
 //go:build !integration
 
-package config
+package set
 
 import (
 	"errors"
@@ -61,62 +61,9 @@ func (c configStub) Write() error {
 	return nil
 }
 
-func TestConfigGet(t *testing.T) {
-	tests := []struct {
-		name   string
-		config configStub
-		args   []string
-		stdout string
-		stderr string
-		isTTY  bool
-	}{
-		{
-			name: "get key",
-			config: configStub{
-				"editor": "ed",
-			},
-			args:   []string{"editor"},
-			stdout: "ed\n",
-			stderr: "",
-			isTTY:  true,
-		},
-		{
-			name: "get key scoped by host",
-			config: configStub{
-				"editor":            "ed",
-				"gitlab.com:editor": "vim",
-			},
-			args:   []string{"editor", "--host", "gitlab.com"},
-			stdout: "vim\n",
-			stderr: "",
-			isTTY:  true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			io, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(tt.isTTY))
-
-			f := cmdtest.NewTestFactory(io,
-				cmdtest.WithConfig(tt.config),
-			)
-
-			cmd := NewCmdConfigGet(f)
-			cmd.Flags().BoolP("help", "x", false, "")
-			cmd.SetArgs(tt.args)
-			cmd.SetOut(stdout)
-			cmd.SetErr(stderr)
-
-			_, err := cmd.ExecuteC()
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.stdout, stdout.String())
-			assert.Equal(t, tt.stderr, stderr.String())
-			assert.Equal(t, "", tt.config["_written"])
-		})
-	}
-}
-
 func TestConfigSet(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		config    configStub
@@ -147,13 +94,15 @@ func TestConfigSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			io, _, stdout, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(tt.isTTY))
 
 			f := cmdtest.NewTestFactory(io,
 				cmdtest.WithConfig(tt.config),
 			)
 
-			cmd := NewCmdConfigSet(f)
+			cmd := NewCmdSet(f)
 			cmd.Flags().BoolP("help", "x", false, "")
 			cmd.SetArgs(append(tt.args, "-g"))
 			cmd.SetOut(stdout)
