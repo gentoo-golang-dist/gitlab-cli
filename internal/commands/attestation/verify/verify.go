@@ -17,6 +17,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const (
@@ -67,6 +68,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			# Verify attestation for the filename.txt file in the project with ID 123.
 			$ glab attestation verify 123 filename.txt
 		`),
+		Annotations: map[string]string{
+			mcpannotations.Safe: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.project = args[0]
 			opts.filename = args[1]

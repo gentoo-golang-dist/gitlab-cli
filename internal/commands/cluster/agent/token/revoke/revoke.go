@@ -12,6 +12,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -34,6 +35,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "revoke <agent-id> <token-id>",
 		Short: `Revoke a token of an agent.`,
 		Args:  cobra.ExactArgs(2),
+		Annotations: map[string]string{
+			mcpannotations.Destructive: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(args); err != nil {
 				return err

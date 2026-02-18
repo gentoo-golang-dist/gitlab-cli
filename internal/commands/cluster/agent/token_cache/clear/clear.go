@@ -20,6 +20,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	agentutils "gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 const keyringService = "glab"
@@ -50,6 +51,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "clear [flags]",
 		Short: "Clear cached GitLab Agent tokens",
 		Long:  longHelp,
+		Annotations: map[string]string{
+			mcpannotations.Destructive: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.validate(); err != nil {
 				return err
