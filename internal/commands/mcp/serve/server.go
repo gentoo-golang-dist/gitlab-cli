@@ -351,17 +351,16 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) m
 			}, nil
 		}
 
-		// Process output with rune-based limiting and metadata
-		processedOutput, metadata := s.processOutput(output, config)
+		// Process output with rune-based limiting
+		processedOutput := s.processOutput(output, config)
 
-		// Return the result with clean content and structured metadata
+		// Return the result with clean content
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
 					Text: processedOutput,
 				},
 			},
-			Meta: metadata,
 		}, nil
 	}
 }
@@ -372,8 +371,8 @@ type responseConfig struct {
 	Offset int
 }
 
-// processOutput handles rune-based output limiting and generates metadata
-func (s *mcpServer) processOutput(output string, config responseConfig) (string, map[string]any) {
+// processOutput handles rune-based output limiting
+func (s *mcpServer) processOutput(output string, config responseConfig) string {
 	// Convert to runes for Unicode-safe processing
 	runes := []rune(output)
 	totalSize := len(runes)
@@ -396,32 +395,7 @@ func (s *mcpServer) processOutput(output string, config responseConfig) (string,
 		processedRunes = runes[start:end]
 	}
 
-	// Create comprehensive metadata
-	truncated := (start > 0 || end < totalSize)
-	metadata := map[string]any{
-		"pagination": map[string]any{
-			"total_size":   totalSize,
-			"limit":        config.Limit,
-			"offset":       config.Offset,
-			"actual_start": start,
-			"actual_end":   end,
-			"actual_size":  len(processedRunes),
-			"truncated":    truncated,
-		},
-	}
-
-	// Add helpful navigation hints for AI
-	if truncated {
-		metadata["pagination"].(map[string]any)["navigation_hints"] = map[string]any{
-			"to_beginning": 0,
-			"to_end":       totalSize - config.Limit,
-			"next_page":    end,
-			"prev_page":    start - config.Limit,
-		}
-		metadata["pagination"].(map[string]any)["usage_guide"] = "To navigate: use 'to_end' offset to jump to end where failures typically occur, 'next_page' for next section, or calculate custom offset. Example: for logs that end with errors, use offset = total_size - limit."
-	}
-
-	return string(processedRunes), metadata
+	return string(processedRunes)
 }
 
 // convertParamsToArgs converts MCP JSON parameters to command line arguments and extracts response config

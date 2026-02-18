@@ -486,7 +486,6 @@ func TestProcessOutput(t *testing.T) {
 		config         responseConfig
 		expectedText   string
 		expectedLength int
-		truncated      bool
 	}{
 		{
 			name:           "short output no limiting",
@@ -494,7 +493,6 @@ func TestProcessOutput(t *testing.T) {
 			config:         responseConfig{Limit: 100, Offset: 0},
 			expectedText:   "hello world",
 			expectedLength: 11,
-			truncated:      false,
 		},
 		{
 			name:           "output with limiting",
@@ -502,7 +500,6 @@ func TestProcessOutput(t *testing.T) {
 			config:         responseConfig{Limit: 5, Offset: 0},
 			expectedText:   "hello",
 			expectedLength: 5,
-			truncated:      true,
 		},
 		{
 			name:           "output with offset",
@@ -510,7 +507,6 @@ func TestProcessOutput(t *testing.T) {
 			config:         responseConfig{Limit: 5, Offset: 6},
 			expectedText:   "world",
 			expectedLength: 5,
-			truncated:      true,
 		},
 		{
 			name:           "negative offset",
@@ -518,7 +514,6 @@ func TestProcessOutput(t *testing.T) {
 			config:         responseConfig{Limit: 5, Offset: -5},
 			expectedText:   "world",
 			expectedLength: 5,
-			truncated:      true,
 		},
 		{
 			name:           "unicode handling",
@@ -526,7 +521,6 @@ func TestProcessOutput(t *testing.T) {
 			config:         responseConfig{Limit: 5, Offset: 0},
 			expectedText:   "héllo",
 			expectedLength: 5,
-			truncated:      true,
 		},
 	}
 
@@ -534,19 +528,10 @@ func TestProcessOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, metadata := server.processOutput(tt.output, tt.config)
+			result := server.processOutput(tt.output, tt.config)
 
 			assert.Equal(t, tt.expectedText, result)
 			assert.Equal(t, tt.expectedLength, len([]rune(result)))
-
-			// Metadata is now nested under "pagination"
-			pagination, ok := metadata["pagination"].(map[string]any)
-			require.True(t, ok, "metadata should contain pagination map")
-
-			assert.Equal(t, tt.truncated, pagination["truncated"])
-			assert.Equal(t, len([]rune(tt.output)), pagination["total_size"])
-			assert.Equal(t, tt.config.Limit, pagination["limit"])
-			assert.Equal(t, tt.config.Offset, pagination["offset"])
 		})
 	}
 }
@@ -767,71 +752,36 @@ func TestToolResultStructure(t *testing.T) {
 
 // Tests for metadata structure
 
-func TestMetadataStructure(t *testing.T) {
-	t.Parallel()
-
-	server := &mcpServer{}
-	output := "test output"
-	config := responseConfig{Limit: 100, Offset: 0}
-
-	_, metadata := server.processOutput(output, config)
-
-	// Verify metadata has pagination
-	pagination, ok := metadata["pagination"].(map[string]any)
-	require.True(t, ok, "metadata should contain pagination map")
-
-	// Verify required pagination fields
-	assert.Contains(t, pagination, "total_size")
-	assert.Contains(t, pagination, "limit")
-	assert.Contains(t, pagination, "offset")
-	assert.Contains(t, pagination, "actual_start")
-	assert.Contains(t, pagination, "actual_end")
-	assert.Contains(t, pagination, "actual_size")
-	assert.Contains(t, pagination, "truncated")
-}
-
 // Tests for tool result response structure
 
-func TestCallToolResultStructureWithContentAndMeta(t *testing.T) {
+func TestCallToolResultStructure(t *testing.T) {
 	t.Parallel()
 
-	// This test verifies that CallToolResult properly contains both
-	// Content (actual command output) and Meta (pagination info)
+	// This test verifies that CallToolResult properly contains
+	// Content (actual command output)
 	tests := []struct {
-		name                string
-		output              string
-		config              responseConfig
-		wantContentText     string
-		wantTotalSize       int
-		wantTruncated       bool
-		wantNavigationHints bool
+		name            string
+		output          string
+		config          responseConfig
+		wantContentText string
 	}{
 		{
-			name:                "short output with both content and meta",
-			output:              "test output content",
-			config:              responseConfig{Limit: 50000, Offset: 0},
-			wantContentText:     "test output content",
-			wantTotalSize:       19,
-			wantTruncated:       false,
-			wantNavigationHints: false,
+			name:            "short output",
+			output:          "test output content",
+			config:          responseConfig{Limit: 50000, Offset: 0},
+			wantContentText: "test output content",
 		},
 		{
-			name:                "truncated output with navigation hints",
-			output:              "This is a much longer output that will be truncated by the limit parameter",
-			config:              responseConfig{Limit: 20, Offset: 0},
-			wantContentText:     "This is a much longe",
-			wantTotalSize:       74,
-			wantTruncated:       true,
-			wantNavigationHints: true,
+			name:            "truncated output",
+			output:          "This is a much longer output that will be truncated by the limit parameter",
+			config:          responseConfig{Limit: 20, Offset: 0},
+			wantContentText: "This is a much longe",
 		},
 		{
-			name:                "output with offset",
-			output:              "hello world",
-			config:              responseConfig{Limit: 5, Offset: 6},
-			wantContentText:     "world",
-			wantTotalSize:       11,
-			wantTruncated:       true,
-			wantNavigationHints: true,
+			name:            "output with offset",
+			output:          "hello world",
+			config:          responseConfig{Limit: 5, Offset: 6},
+			wantContentText: "world",
 		},
 	}
 
@@ -841,8 +791,8 @@ func TestCallToolResultStructureWithContentAndMeta(t *testing.T) {
 
 			server := &mcpServer{}
 
-			// Process output to get text and metadata (this is what the handler does)
-			processedOutput, metadata := server.processOutput(tt.output, tt.config)
+			// Process output to get text (this is what the handler does)
+			processedOutput := server.processOutput(tt.output, tt.config)
 
 			// Create the result structure as the handler would
 			result := &mcp.CallToolResult{
@@ -851,7 +801,6 @@ func TestCallToolResultStructureWithContentAndMeta(t *testing.T) {
 						Text: processedOutput,
 					},
 				},
-				Meta: metadata,
 			}
 
 			// Verify Content is present and populated
@@ -862,27 +811,8 @@ func TestCallToolResultStructureWithContentAndMeta(t *testing.T) {
 			require.True(t, ok, "Content[0] must be *TextContent")
 			assert.Equal(t, tt.wantContentText, textContent.Text, "Content text should match expected output")
 
-			// Verify Meta is present and populated with pagination
-			require.NotNil(t, result.Meta, "Meta must not be nil")
-			pagination, ok := result.Meta["pagination"].(map[string]any)
-			require.True(t, ok, "Meta must contain pagination map")
-
-			// Verify pagination fields
-			assert.Equal(t, tt.wantTotalSize, pagination["total_size"], "total_size should match")
-			assert.Equal(t, tt.config.Limit, pagination["limit"], "limit should match")
-			assert.Equal(t, tt.config.Offset, pagination["offset"], "offset should match")
-			assert.Equal(t, tt.wantTruncated, pagination["truncated"], "truncated flag should match")
-
-			// Verify navigation hints presence
-			if tt.wantNavigationHints {
-				assert.Contains(t, pagination, "navigation_hints", "should have navigation hints when truncated")
-			} else {
-				assert.NotContains(t, pagination, "navigation_hints", "should not have navigation hints when not truncated")
-			}
-
-			// Verify both Content AND Meta are present in the response
+			// Verify Content is present in the response
 			assert.NotNil(t, result.Content, "Content must be present in response")
-			assert.NotNil(t, result.Meta, "Meta must be present in response")
 			assert.NotEmpty(t, textContent.Text, "Content.Text must not be empty")
 		})
 	}
