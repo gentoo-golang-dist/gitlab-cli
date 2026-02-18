@@ -469,7 +469,7 @@ func TestConvertParamsToArgs(t *testing.T) {
 		{
 			name:     "empty params",
 			params:   map[string]any{},
-			expected: []string{},
+			expected: []string{"--output", "json"}, // Auto-added for JSON output
 		},
 		{
 			name: "boolean flag true",
@@ -478,7 +478,7 @@ func TestConvertParamsToArgs(t *testing.T) {
 					"verbose": true,
 				},
 			},
-			expected: []string{"--verbose"},
+			expected: []string{"--verbose", "--output", "json"}, // Auto-added for JSON output
 		},
 		{
 			name: "boolean flag false",
@@ -487,7 +487,7 @@ func TestConvertParamsToArgs(t *testing.T) {
 					"verbose": false,
 				},
 			},
-			expected: []string{},
+			expected: []string{"--output", "json"}, // Auto-added for JSON output
 		},
 		{
 			name: "string flag",
@@ -496,7 +496,7 @@ func TestConvertParamsToArgs(t *testing.T) {
 					"output": "json",
 				},
 			},
-			expected: []string{"--output", "json"},
+			expected: []string{"--output", "json"}, // User-specified, not auto-added
 		},
 		{
 			name: "number flag",
@@ -505,7 +505,7 @@ func TestConvertParamsToArgs(t *testing.T) {
 					"count": float64(25),
 				},
 			},
-			expected: []string{"--count", "25"},
+			expected: []string{"--count", "25", "--output", "json"}, // Auto-added for JSON output
 		},
 		{
 			name: "array flag",
@@ -514,14 +514,14 @@ func TestConvertParamsToArgs(t *testing.T) {
 					"labels": []any{"bug", "urgent"},
 				},
 			},
-			expected: []string{"--labels", "bug", "--labels", "urgent"},
+			expected: []string{"--labels", "bug", "--labels", "urgent", "--output", "json"}, // Auto-added for JSON output
 		},
 		{
 			name: "positional args",
 			params: map[string]any{
 				"args": []any{"arg1", "arg2"},
 			},
-			expected: []string{"arg1", "arg2"},
+			expected: []string{"--output", "json", "arg1", "arg2"}, // Auto-added for JSON output, positionals at end
 		},
 		{
 			name: "mixed params",
@@ -532,7 +532,7 @@ func TestConvertParamsToArgs(t *testing.T) {
 					"output":  "json",
 				},
 			},
-			expected: []string{"--verbose", "--output", "json", "pos1"},
+			expected: []string{"--verbose", "--output", "json", "pos1"}, // User-specified output, not auto-added
 		},
 	}
 

@@ -356,7 +356,23 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) m
 		// Process output with rune-based limiting
 		processedOutput := s.processOutput(output, config)
 
-		// Return the result with clean content
+		// Try to parse as JSON and return structured content for better LLM parsing
+		var structuredData any
+		if err := json.Unmarshal([]byte(processedOutput), &structuredData); err == nil {
+			// Successfully parsed JSON - return both content and structured content
+			// This follows MCP spec: "For backwards compatibility, a tool that returns
+			// structured content SHOULD also return the serialized JSON in a TextContent block"
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: processedOutput,
+					},
+				},
+				StructuredContent: structuredData,
+			}, nil
+		}
+
+		// Not JSON or parse failed - return as plain text
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
@@ -497,6 +513,31 @@ func (s *mcpServer) convertParamsToArgs(params map[string]any, cmd *cobra.Comman
 					}
 				}
 			}
+		}
+	}
+
+	// Auto-enable JSON output for commands that support it (better for LLM parsing)
+	// Only add if user hasn't already specified an output format via MCP params
+	if outputFlag := cmd.Flags().Lookup("output"); outputFlag != nil {
+		// Check if output flag was already provided by user in their MCP parameters
+		// (which would have been processed into args above)
+		// Users could specify either long form ("output") or short form ("o")
+		outputAlreadySet := false
+		for _, arg := range args {
+			// Check for all possible forms:
+			// - "--output" or "--output=" (long form)
+			// - "--o" or "--o=" (short form, our code adds -- prefix)
+			// - "-o" (short form, for robustness)
+			if arg == "--output" || strings.HasPrefix(arg, "--output=") ||
+				arg == "--o" || strings.HasPrefix(arg, "--o=") ||
+				arg == "-o" {
+				outputAlreadySet = true
+				break
+			}
+		}
+
+		if !outputAlreadySet {
+			args = append(args, "--output", "json")
 		}
 	}
 
