@@ -268,19 +268,11 @@ func (o *options) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	// Initialize the screen before using it to ensure internal state is set up
-	if err := screen.Init(); err != nil {
-		return fmt.Errorf("failed to initialize terminal screen: %w", err)
-	}
-
-	// Ensure screen is properly cleaned up even if initialization fails
 	defer func() {
 		if screen != nil {
 			screen.Fini()
 		}
 	}()
-
 	app := tview.NewApplication()
 	defer recoverPanic(app)
 
