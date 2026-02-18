@@ -165,7 +165,7 @@ func (o *options) run(ctx context.Context) error {
 		return cmdutils.WrapError(err, "failed to download release.")
 	}
 
-	o.io.LogInfof(color.Bold("%s release %q downloaded\n"), color.RedCheck(), release.Name)
+	o.io.LogInfof(color.Bold("%s release %q downloaded\n"), color.GreenCheck(), release.Name)
 
 	return nil
 }
