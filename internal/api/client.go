@@ -54,6 +54,7 @@ type Client struct {
 	userAgent string
 
 	customHeaders map[string]string
+	proxy         func(*http.Request) (*url.URL, error)
 }
 
 func (c *Client) HTTPClient() *http.Client {
@@ -87,7 +88,9 @@ type newAuthSource func(c *http.Client) (authSource gitlab.AuthSource, err error
 // NewClient initializes a api client for use throughout glab.
 func NewClient(newAuthSource newAuthSource, options ...ClientOption) (*Client, error) {
 	// 0. initialize empty Client
-	client := &Client{}
+	client := &Client{
+		proxy: http.ProxyFromEnvironment,
+	}
 
 	// 1. apply provided option functions to populate client
 	for _, option := range options {
@@ -189,7 +192,7 @@ func (c *Client) initializeHTTPClient() error {
 	}
 
 	var rt http.RoundTripper = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: c.proxy,
 		DialContext: (&net.Dialer{
 			Timeout:   dialTimeout,
 			KeepAlive: keepAlive,
@@ -208,6 +211,14 @@ func (c *Client) initializeHTTPClient() error {
 
 	c.httpClient = &http.Client{Transport: rt}
 	return nil
+}
+
+// WithProxy allows overriding the proxy function for the transport
+func WithProxy(proxy func(*http.Request) (*url.URL, error)) ClientOption {
+	return func(c *Client) error {
+		c.proxy = proxy
+		return nil
+	}
 }
 
 // WithCustomHeaders is a ClientOption that sets custom headers
@@ -296,10 +307,15 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 	caCert, _ := cfg.Get(repoHost, "ca_cert")
 	clientCert, _ := cfg.Get(repoHost, "client_cert")
 	keyFile, _ := cfg.Get(repoHost, "client_key")
+	proxy, err := ProxyFromConfig(cfg, repoHost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve proxy function: %w", err)
+	}
 
 	// Build options based on configuration
 	options := []ClientOption{
 		WithUserAgent(userAgent),
+		WithProxy(proxy),
 	}
 
 	// Resolve custom headers from config

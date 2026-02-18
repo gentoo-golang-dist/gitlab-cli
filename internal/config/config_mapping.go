@@ -28,6 +28,8 @@ func ConfigKeyEquivalence(key string) string {
 		return "editor"
 	case "client_id":
 		return "client_id"
+	case "proxy":
+		return "proxy"
 	default:
 		return key
 	}

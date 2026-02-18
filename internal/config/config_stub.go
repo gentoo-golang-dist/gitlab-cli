@@ -147,6 +147,15 @@ func rootConfig() *yaml.Node {
 										Value: "",
 									},
 									{
+										HeadComment: "# Custom proxy for this host. Overrides environment proxy settings when set.",
+										Kind:        yaml.ScalarNode,
+										Value:       "proxy",
+									},
+									{
+										Kind:  yaml.ScalarNode,
+										Value: "",
+									},
+									{
 										HeadComment: "# The domains of associated container registries. These are used to configure the\n# Docker credential helper.",
 										Kind:        yaml.ScalarNode,
 										Value:       "container_registry_domains",
