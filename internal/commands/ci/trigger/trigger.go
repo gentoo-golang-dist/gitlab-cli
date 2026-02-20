@@ -59,9 +59,10 @@ func NewCmdTrigger(f cmdutils.Factory) *cobra.Command {
 					return s.Status == "manual"
 				},
 			}, &ciutils.JobOptions{
-				Client: client,
-				IO:     f.IO(),
-				Repo:   repo,
+				Client:     client,
+				IO:         f.IO(),
+				Repo:       repo,
+				BranchFunc: f.Branch,
 			})
 			if err != nil {
 				if jobName != "" {

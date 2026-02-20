@@ -167,6 +167,50 @@ func TestCiRetry(t *testing.T) {
 					}, nil, nil)
 			},
 		},
+		{
+			name:        "when retry uses current git branch if no branch specified",
+			args:        "lint",
+			expectedOut: "Retried job (ID: 1123), status: pending, ref: feature-branch, weburl: https://gitlab.com/OWNER/REPO/-/jobs/1123\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				// GetPipelineWithFallback tries GetLatestPipeline for current branch
+				tc.MockPipelines.EXPECT().
+					GetLatestPipeline("OWNER/REPO", gomock.Any(), gomock.Any()).
+					Return(&gitlab.Pipeline{
+						ID: 456,
+					}, nil, nil)
+				// Check if pipeline has jobs
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(456), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "test"},
+					}, nil, nil)
+
+				// GetJobId lists all jobs for the pipeline
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(456), gomock.Any(), gomock.Any()).
+					Return([]*gitlab.Job{
+						{
+							ID:     1122,
+							Name:   "lint",
+							Status: "failed",
+						},
+					}, lastPageResponse, nil)
+
+				tc.MockJobs.EXPECT().
+					RetryJob("OWNER/REPO", int64(1122), gomock.Any()).
+					Return(&gitlab.Job{
+						ID:           1123,
+						Status:       "pending",
+						Stage:        "build",
+						Name:         "lint",
+						Ref:          "feature-branch",
+						Tag:          false,
+						AllowFailure: false,
+						CreatedAt:    &createdAt,
+						WebURL:       "https://gitlab.com/OWNER/REPO/-/jobs/1123",
+					}, nil, nil)
+			},
+		},
 	}
 
 	for _, tc := range tests {

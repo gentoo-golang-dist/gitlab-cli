@@ -55,9 +55,10 @@ func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
 				PipelineId:      pipelineId,
 				SelectionPrompt: "Select pipeline job to retry:",
 			}, &ciutils.JobOptions{
-				Client: client,
-				IO:     f.IO(),
-				Repo:   repo,
+				Client:     client,
+				IO:         f.IO(),
+				Repo:       repo,
+				BranchFunc: f.Branch,
 			})
 			if err != nil {
 				if jobName != "" {
