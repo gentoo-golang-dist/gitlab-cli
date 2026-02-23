@@ -3,6 +3,7 @@
 package sync
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -22,11 +23,13 @@ import (
 )
 
 type SyncScenario struct {
-	refs       map[string]TestRef
-	title      string
-	baseBranch string
-	pushNeeded bool
-	noVerify   bool
+	refs        map[string]TestRef
+	title       string
+	baseBranch  string
+	pushNeeded  bool
+	noVerify    bool
+	updateBase  bool
+	rebaseError bool
 }
 
 type TestRef struct {
@@ -96,6 +99,12 @@ func TestNewCmdSyncStack_Flags(t *testing.T) {
 	require.NotNil(t, noVerifyFlag)
 	assert.Equal(t, "false", noVerifyFlag.DefValue)
 	assert.Contains(t, noVerifyFlag.Usage, "pre-push hook")
+
+	// Test --update-base flag exists
+	updateBaseFlag := cmd.Flag("update-base")
+	require.NotNil(t, updateBaseFlag)
+	assert.Equal(t, "false", updateBaseFlag.DefValue)
+	assert.Contains(t, updateBaseFlag.Usage, "base branch")
 }
 
 func Test_stackSync(t *testing.T) {
@@ -108,6 +117,7 @@ func Test_stackSync(t *testing.T) {
 		args       args
 		setupMocks func(t *testing.T, testClient *gitlabtesting.TestClient)
 		wantErr    bool
+		wantErrMsg string
 	}{
 		{
 			name: "two branches, 1st branch has MR, 2nd branch behind, stacks are named",
@@ -538,6 +548,159 @@ func Test_stackSync(t *testing.T) {
 					})
 			},
 		},
+
+		{
+			name: "update-base rebases stack onto base branch with diverged branches",
+			args: args{
+				stack: SyncScenario{
+					title:      "my cool stack",
+					updateBase: true,
+					pushNeeded: true,
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+							},
+							state: BranchHasDiverged,
+						},
+						"2": {
+							ref: git.StackRef{
+								SHA: "2", Prev: "1", Next: "", Branch: "Branch2",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/2",
+							},
+							state: BranchHasDiverged,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						return []*gitlab.BasicMergeRequest{
+							{
+								ID:           25,
+								IID:          25,
+								ProjectID:    3,
+								SourceBranch: *opts.SourceBranch,
+								State:        "opened",
+							},
+						}, nil, nil
+					}).Times(2)
+
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(25), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							ID:        25,
+							IID:       25,
+							ProjectID: 3,
+							State:     "opened",
+						},
+					}, nil, nil).Times(2)
+			},
+		},
+
+		{
+			name: "update-base with custom base branch",
+			args: args{
+				stack: SyncScenario{
+					title:      "my cool stack",
+					baseBranch: "develop",
+					updateBase: true,
+					pushNeeded: true,
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+							},
+							state: BranchHasDiverged,
+						},
+						"2": {
+							ref: git.StackRef{
+								SHA: "2", Prev: "1", Next: "", Branch: "Branch2",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/2",
+							},
+							state: BranchHasDiverged,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						return []*gitlab.BasicMergeRequest{
+							{
+								ID:           25,
+								IID:          25,
+								ProjectID:    3,
+								SourceBranch: *opts.SourceBranch,
+								State:        "opened",
+							},
+						}, nil, nil
+					}).Times(2)
+
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(25), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							ID:        25,
+							IID:       25,
+							ProjectID: 3,
+							State:     "opened",
+						},
+					}, nil, nil).Times(2)
+			},
+		},
+
+		{
+			name: "update-base rebase failure includes target branch name in error",
+			args: args{
+				stack: SyncScenario{
+					title:       "my cool stack",
+					updateBase:  true,
+					rebaseError: true,
+					baseBranch:  "feature-branch",
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+							},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref: git.StackRef{
+								SHA: "2", Prev: "1", Next: "", Branch: "Branch2",
+								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/2",
+							},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+			},
+			wantErr:    true,
+			wantErrMsg: "could not rebase onto origin/feature-branch",
+		},
 	}
 
 	for _, tc := range tests {
@@ -552,8 +715,9 @@ func Test_stackSync(t *testing.T) {
 
 			f, opts := setupTestFactory(t, testClient)
 
-			// Set noVerify option from test case
+			// Set options from test case
 			opts.noVerify = tc.args.stack.noVerify
+			opts.updateBase = tc.args.stack.updateBase
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)
@@ -564,44 +728,65 @@ func Test_stackSync(t *testing.T) {
 
 			mockCmd.EXPECT().Git([]string{"fetch", "origin"})
 
-			for ref := range stack.Iter() {
-				state := tc.args.stack.refs[ref.SHA].state
-
-				mockCmd.EXPECT().Git([]string{"checkout", ref.Branch})
-				mockCmd.EXPECT().Git([]string{"status", "-uno"}).Return(state, nil)
-
-				switch state {
-				case BranchIsBehind:
-					mockCmd.EXPECT().Git([]string{"pull"}).Return(state, nil)
-
-				case BranchHasDiverged:
-					mockCmd.EXPECT().Git([]string{"checkout", stack.Last().Branch})
-					mockCmd.EXPECT().Git([]string{"rebase", "--fork-point", "--update-refs", ref.Branch})
-
-				case NothingToCommit:
+			if tc.args.stack.updateBase {
+				baseBranch := "main"
+				if tc.args.stack.baseBranch != "" {
+					baseBranch = tc.args.stack.baseBranch
+					err := git.AddStackBaseBranch(tc.args.stack.title, tc.args.stack.baseBranch)
+					require.NoError(t, err)
+				} else {
+					mockCmd.EXPECT().Git([]string{"remote", "show", "origin"}).Return("HEAD branch: main", nil)
 				}
 
-				if ref.MR == "" {
-					if ref.IsFirst() == true {
-						if tc.args.stack.baseBranch != "" {
-							err := git.AddStackBaseBranch(tc.args.stack.title, tc.args.stack.baseBranch)
-							require.NoError(t, err)
-							mockCmd.EXPECT().Git([]string{"ls-remote", "--exit-code", "--heads", "origin", tc.args.stack.baseBranch})
-						} else {
-							// this is to check for the default branch
-							mockCmd.EXPECT().Git([]string{"remote", "show", "origin"}).Return("HEAD branch: main", nil)
-							mockCmd.EXPECT().Git([]string{"ls-remote", "--exit-code", "--heads", "origin", "main"})
+				mockCmd.EXPECT().Git([]string{"checkout", stack.Last().Branch})
+				if tc.args.stack.rebaseError {
+					mockCmd.EXPECT().Git([]string{"rebase", "--fork-point", "--update-refs", "origin/" + baseBranch}).
+						Return("", fmt.Errorf("conflict"))
+				} else {
+					mockCmd.EXPECT().Git([]string{"rebase", "--fork-point", "--update-refs", "origin/" + baseBranch})
+				}
+			}
+
+			if !tc.args.stack.rebaseError {
+				for ref := range stack.Iter() {
+					state := tc.args.stack.refs[ref.SHA].state
+
+					mockCmd.EXPECT().Git([]string{"checkout", ref.Branch})
+					mockCmd.EXPECT().Git([]string{"status", "-uno"}).Return(state, nil)
+
+					switch state {
+					case BranchIsBehind:
+						mockCmd.EXPECT().Git([]string{"pull"}).Return(state, nil)
+
+					case BranchHasDiverged:
+						mockCmd.EXPECT().Git([]string{"checkout", stack.Last().Branch})
+						mockCmd.EXPECT().Git([]string{"rebase", "--fork-point", "--update-refs", ref.Branch})
+
+					case NothingToCommit:
+					}
+
+					if ref.MR == "" {
+						if ref.IsFirst() == true {
+							if tc.args.stack.baseBranch != "" {
+								err := git.AddStackBaseBranch(tc.args.stack.title, tc.args.stack.baseBranch)
+								require.NoError(t, err)
+								mockCmd.EXPECT().Git([]string{"ls-remote", "--exit-code", "--heads", "origin", tc.args.stack.baseBranch})
+							} else {
+								// this is to check for the default branch
+								mockCmd.EXPECT().Git([]string{"remote", "show", "origin"}).Return("HEAD branch: main", nil)
+								mockCmd.EXPECT().Git([]string{"ls-remote", "--exit-code", "--heads", "origin", "main"})
+							}
 						}
-					}
 
-					// Build push command with --no-verify if noVerify is set
-					pushCmd := []string{"push", "--set-upstream", "origin"}
-					if tc.args.stack.noVerify {
-						pushCmd = append(pushCmd, "--no-verify")
-					}
-					pushCmd = append(pushCmd, ref.Branch)
-					mockCmd.EXPECT().Git(pushCmd).Return("a", nil)
+						// Build push command with --no-verify if noVerify is set
+						pushCmd := []string{"push", "--set-upstream", "origin"}
+						if tc.args.stack.noVerify {
+							pushCmd = append(pushCmd, "--no-verify")
+						}
+						pushCmd = append(pushCmd, ref.Branch)
+						mockCmd.EXPECT().Git(pushCmd).Return("a", nil)
 
+					}
 				}
 			}
 
@@ -618,6 +803,9 @@ func Test_stackSync(t *testing.T) {
 
 			if tc.wantErr {
 				require.Error(t, err)
+				if tc.wantErrMsg != "" {
+					assert.Contains(t, err.Error(), tc.wantErrMsg)
+				}
 			} else {
 				require.NoError(t, err)
 			}

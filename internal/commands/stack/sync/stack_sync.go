@@ -24,15 +24,16 @@ import (
 )
 
 type options struct {
-	io        *iostreams.IOStreams
-	stack     git.Stack
-	target    glrepo.Interface
-	source    glrepo.Interface
-	labClient *gitlab.Client
-	baseRepo  func() (glrepo.Interface, error)
-	remotes   func() (glrepo.Remotes, error)
-	user      gitlab.User
-	noVerify  bool
+	io         *iostreams.IOStreams
+	stack      git.Stack
+	target     glrepo.Interface
+	source     glrepo.Interface
+	labClient  *gitlab.Client
+	baseRepo   func() (glrepo.Interface, error)
+	remotes    func() (glrepo.Remotes, error)
+	user       gitlab.User
+	noVerify   bool
+	updateBase bool
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -60,6 +61,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 
 1. Optional. If working in a fork, select whether to push to the fork,
    or the upstream repository.
+1. Optional. If --update-base is set, rebases the entire stack onto the
+   latest version of the base branch.
 1. Pushes any amended changes to their merge requests.
 1. Rebases any changes that happened previously in the stack.
 1. Removes any branches that were already merged, or with a closed merge request.
@@ -67,6 +70,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ glab stack sync
 			$ glab stack sync --no-verify
+			$ glab stack sync --update-base
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -82,6 +86,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	}
 
 	stackSaveCmd.Flags().BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
+	stackSaveCmd.Flags().BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
 
 	return stackSaveCmd
 }
@@ -130,6 +135,22 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	}
 
 	pushAfterSync := false
+
+	if o.updateBase {
+		baseBranch, err := stack.BaseBranch(gr)
+		if err != nil {
+			return fmt.Errorf("error getting base branch: %w", err)
+		}
+
+		remoteBase := git.DefaultRemote + "/" + baseBranch
+		fmt.Print(progressString(o.io, "Rebasing stack onto "+remoteBase+"..."))
+
+		err = rebaseWithUpdateRefs(o.io, remoteBase, &stack, gr)
+		if err != nil {
+			return err
+		}
+		pushAfterSync = true
+	}
 
 	for ref := range stack.Iter() {
 		status, err := branchStatus(&ref, gr)
@@ -241,7 +262,7 @@ func branchStatus(ref *git.StackRef, gr git.GitRunner) (string, error) {
 	return output, nil
 }
 
-func rebaseWithUpdateRefs(ref *git.StackRef, stack *git.Stack, gr git.GitRunner) error {
+func rebaseWithUpdateRefs(io *iostreams.IOStreams, target string, stack *git.Stack, gr git.GitRunner) error {
 	lastRef := stack.Last()
 
 	checkout, err := gr.Git("checkout", lastRef.Branch)
@@ -250,9 +271,13 @@ func rebaseWithUpdateRefs(ref *git.StackRef, stack *git.Stack, gr git.GitRunner)
 	}
 	dbg.Debug("Checked out:", checkout)
 
-	rebase, err := gr.Git("rebase", "--fork-point", "--update-refs", ref.Branch)
+	rebase, err := gr.Git("rebase", "--fork-point", "--update-refs", target)
 	if err != nil {
-		return err
+		return errors.New(errorString(
+			io,
+			"could not rebase onto "+target+", likely due to a merge conflict.",
+			"Fix the issues with Git and run `glab stack sync` again.",
+		))
 	}
 	dbg.Debug("Rebased:", rebase)
 
@@ -387,13 +412,9 @@ func progressString(io *iostreams.IOStreams, lines ...string) string {
 func branchDiverged(io *iostreams.IOStreams, ref *git.StackRef, stack *git.Stack, gr git.GitRunner) (bool, error) {
 	fmt.Println(progressString(io, ref.Branch+" has diverged. Rebasing..."))
 
-	err := rebaseWithUpdateRefs(ref, stack, gr)
+	err := rebaseWithUpdateRefs(io, ref.Branch, stack, gr)
 	if err != nil {
-		return false, errors.New(errorString(
-			io,
-			"could not rebase, likely due to a merge conflict.",
-			"Fix the issues with Git and run `glab stack sync` again.",
-		))
+		return false, err
 	}
 
 	return true, nil
