@@ -49,7 +49,9 @@ func hasStdIn() bool {
 		return false
 	}
 
-	return fi.Size() > 0
+	// Check if stdin is a pipe or redirected file (not a character device/TTY).
+	// Note: fi.Size() is always 0 for pipes, so we check the mode instead.
+	return (fi.Mode() & os.ModeCharDevice) == 0
 }
 
 func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
