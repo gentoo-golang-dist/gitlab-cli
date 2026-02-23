@@ -66,6 +66,18 @@ type ResolvedRemotes struct {
 func (r *ResolvedRemotes) BaseRepo(ctx context.Context, ios *iostreams.IOStreams) (Interface, error) {
 	// if any of the remotes already has a resolution, respect that
 	for _, remote := range r.remotes {
+		// Check new ResolvedBase field first
+		if remote.ResolvedBase == "base" {
+			return remote, nil
+		} else if after, ok := strings.CutPrefix(remote.ResolvedBase, "base:"); ok {
+			repo, err := FromFullName(after, r.defaultHostname)
+			if err != nil {
+				return nil, err
+			}
+			return NewWithHost(repo.RepoOwner(), repo.RepoName(), remote.RepoHost()), nil
+		}
+
+		// Fall back to legacy Resolved field for backward compatibility
 		if remote.Resolved == "base" {
 			return remote, nil
 		} else if after, ok := strings.CutPrefix(remote.Resolved, "base:"); ok {
@@ -158,6 +170,18 @@ func (r *ResolvedRemotes) BaseRepo(ctx context.Context, ios *iostreams.IOStreams
 func (r *ResolvedRemotes) HeadRepo(ctx context.Context, ios *iostreams.IOStreams) (Interface, error) {
 	// if any of the remotes already has a resolution, respect that
 	for _, remote := range r.remotes {
+		// Check new ResolvedHead field first
+		if remote.ResolvedHead == "head" {
+			return remote, nil
+		} else if after, ok := strings.CutPrefix(remote.ResolvedHead, "head:"); ok {
+			repo, err := FromFullName(after, r.defaultHostname)
+			if err != nil {
+				return nil, err
+			}
+			return NewWithHost(repo.RepoOwner(), repo.RepoName(), remote.RepoHost()), nil
+		}
+
+		// Fall back to legacy Resolved field for backward compatibility
 		if remote.Resolved == "head" {
 			return remote, nil
 		} else if after, ok := strings.CutPrefix(remote.Resolved, "head:"); ok {

@@ -550,3 +550,84 @@ func TestGitUserName(t *testing.T) {
 		})
 	}
 }
+
+func TestSetRemoteResolution(t *testing.T) {
+	tests := []struct {
+		name          string
+		resolution    string
+		expectedKey   string
+		expectedValue string
+	}{
+		{
+			name:          "base resolution uses glab-resolved-base key",
+			resolution:    "base",
+			expectedKey:   "remote.origin.glab-resolved-base",
+			expectedValue: "base",
+		},
+		{
+			name:          "base: resolution uses glab-resolved-base key",
+			resolution:    "base: gitlab.com/gitlab-org/cli",
+			expectedKey:   "remote.origin.glab-resolved-base",
+			expectedValue: "base: gitlab.com/gitlab-org/cli",
+		},
+		{
+			name:          "head resolution uses glab-resolved-head key",
+			resolution:    "head",
+			expectedKey:   "remote.origin.glab-resolved-head",
+			expectedValue: "head",
+		},
+		{
+			name:          "head: resolution uses glab-resolved-head key",
+			resolution:    "head: gitlab.com/user/fork",
+			expectedKey:   "remote.origin.glab-resolved-head",
+			expectedValue: "head: gitlab.com/user/fork",
+		},
+		{
+			name:          "other resolution uses legacy glab-resolved key",
+			resolution:    "something-else",
+			expectedKey:   "remote.origin.glab-resolved",
+			expectedValue: "something-else",
+		},
+		{
+			name:          "basement does not match base prefix",
+			resolution:    "basement",
+			expectedKey:   "remote.origin.glab-resolved",
+			expectedValue: "basement",
+		},
+		{
+			name:          "baseball does not match base prefix",
+			resolution:    "baseball",
+			expectedKey:   "remote.origin.glab-resolved",
+			expectedValue: "baseball",
+		},
+		{
+			name:          "header does not match head prefix",
+			resolution:    "header",
+			expectedKey:   "remote.origin.glab-resolved",
+			expectedValue: "header",
+		},
+		{
+			name:          "heading does not match head prefix",
+			resolution:    "heading",
+			expectedKey:   "remote.origin.glab-resolved",
+			expectedValue: "heading",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			InitGitRepo(t)
+
+			// Call SetRemoteResolution
+			err := SetRemoteResolution("origin", tc.resolution)
+			require.NoError(t, err)
+
+			// Verify the correct config key was set
+			cmd := exec.Command("git", "config", tc.expectedKey)
+			output, err := run.PrepareCmd(cmd).Output()
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expectedValue, string(output[:len(output)-1])) // trim trailing newline
+		})
+	}
+}

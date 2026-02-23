@@ -324,6 +324,51 @@ func Test_BaseRepo(t *testing.T) {
 		assert.EqualError(t, err, `expected the "[HOST/]OWNER/[NAMESPACE/]REPO" format, got "NotAnActualValidValue"`)
 	})
 
+	t.Run("ResolvedBase->base (new field)", func(t *testing.T) {
+		localRem := rem()
+
+		// Set the new ResolvedBase field
+		localRem.remotes[0].ResolvedBase = "base"
+
+		got, err := localRem.BaseRepo(t.Context(), iostreams.New())
+		assert.NoError(t, err)
+
+		assert.Equal(t, localRem.remotes[0].FullName(), got.FullName())
+		assert.Equal(t, localRem.remotes[0].RepoHost(), got.RepoHost())
+	})
+
+	t.Run("ResolvedBase->base: (new field with prefix)", func(t *testing.T) {
+		localRem := rem()
+
+		expectedResolution := NewWithHost("example", "glab", "gitlab.com")
+
+		// Set the new ResolvedBase field with prefix
+		localRem.remotes[0].ResolvedBase = "base: gitlab.com/example/glab"
+
+		got, err := localRem.BaseRepo(t.Context(), iostreams.New())
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedResolution.FullName(), got.FullName())
+		assert.Equal(t, expectedResolution.RepoHost(), got.RepoHost())
+	})
+
+	t.Run("ResolvedBase takes precedence over Resolved", func(t *testing.T) {
+		localRem := rem()
+
+		expectedResolution := NewWithHost("example", "glab", "gitlab.com")
+
+		// Set both fields - new field should win
+		localRem.remotes[0].ResolvedBase = "base: gitlab.com/example/glab"
+		localRem.remotes[0].Resolved = "base: gitlab.com/different/repo"
+
+		got, err := localRem.BaseRepo(t.Context(), iostreams.New())
+		assert.NoError(t, err)
+
+		// Should use ResolvedBase, not Resolved
+		assert.Equal(t, expectedResolution.FullName(), got.FullName())
+		assert.Equal(t, expectedResolution.RepoHost(), got.RepoHost())
+	})
+
 	t.Run("Prompt==false", func(t *testing.T) {
 		localRem := rem()
 
@@ -701,6 +746,51 @@ func Test_HeadRepo(t *testing.T) {
 		got, err := localRem.HeadRepo(t.Context(), iostreams.New())
 		assert.Nil(t, got)
 		assert.EqualError(t, err, `expected the "[HOST/]OWNER/[NAMESPACE/]REPO" format, got "NotAnActualValidValue"`)
+	})
+
+	t.Run("ResolvedHead->head (new field)", func(t *testing.T) {
+		localRem := rem()
+
+		// Set the new ResolvedHead field
+		localRem.remotes[0].ResolvedHead = "head"
+
+		got, err := localRem.HeadRepo(t.Context(), iostreams.New())
+		assert.NoError(t, err)
+
+		assert.Equal(t, localRem.remotes[0].FullName(), got.FullName())
+		assert.Equal(t, localRem.remotes[0].RepoHost(), got.RepoHost())
+	})
+
+	t.Run("ResolvedHead->head: (new field with prefix)", func(t *testing.T) {
+		localRem := rem()
+
+		expectedResolution := NewWithHost("example", "glab", "gitlab.com")
+
+		// Set the new ResolvedHead field with prefix
+		localRem.remotes[0].ResolvedHead = "head: gitlab.com/example/glab"
+
+		got, err := localRem.HeadRepo(t.Context(), iostreams.New())
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedResolution.FullName(), got.FullName())
+		assert.Equal(t, expectedResolution.RepoHost(), got.RepoHost())
+	})
+
+	t.Run("ResolvedHead takes precedence over Resolved", func(t *testing.T) {
+		localRem := rem()
+
+		expectedResolution := NewWithHost("example", "glab", "gitlab.com")
+
+		// Set both fields - new field should win
+		localRem.remotes[0].ResolvedHead = "head: gitlab.com/example/glab"
+		localRem.remotes[0].Resolved = "head: gitlab.com/different/repo"
+
+		got, err := localRem.HeadRepo(t.Context(), iostreams.New())
+		assert.NoError(t, err)
+
+		// Should use ResolvedHead, not Resolved
+		assert.Equal(t, expectedResolution.FullName(), got.FullName())
+		assert.Equal(t, expectedResolution.RepoHost(), got.RepoHost())
 	})
 
 	t.Run("Prompt==false", func(t *testing.T) {

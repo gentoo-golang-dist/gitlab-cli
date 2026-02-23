@@ -332,10 +332,12 @@ func NewRemote(name string, u string) *Remote {
 
 // Remote is a parsed git remote
 type Remote struct {
-	Name     string
-	Resolved string
-	FetchURL *url.URL
-	PushURL  *url.URL
+	Name         string
+	Resolved     string // Deprecated: Use ResolvedBase or ResolvedHead
+	ResolvedBase string
+	ResolvedHead string
+	FetchURL     *url.URL
+	PushURL      *url.URL
 }
 
 func (r *Remote) String() string {
@@ -351,21 +353,34 @@ func Remotes() (RemoteSet, error) {
 	remotes := parseRemotes(list)
 
 	// this is affected by SetRemoteResolution
-	remoteCmd := exec.Command("git", "config", "--get-regexp", `^remote\..*\.glab-resolved$`)
+	// Read from both old and new config keys for backward compatibility
+	remoteCmd := exec.Command("git", "config", "--get-regexp", `^remote\..*\.glab-resolved(-base|-head)?$`)
 	output, _ := run.PrepareCmd(remoteCmd).Output()
 	for _, l := range outputLines(output) {
 		parts := strings.SplitN(l, " ", 2)
 		if len(parts) < 2 {
 			continue
 		}
-		rp := strings.SplitN(parts[0], ".", 3)
-		if len(rp) < 2 {
+		rp := strings.SplitN(parts[0], ".", 4)
+		if len(rp) < 3 {
 			continue
 		}
 		name := rp[1]
+		configKey := rp[2]
+		resolution := parts[1]
+
 		for _, r := range remotes {
 			if r.Name == name {
-				r.Resolved = parts[1]
+				// Store in appropriate field based on config key
+				switch configKey {
+				case "glab-resolved-base":
+					r.ResolvedBase = resolution
+				case "glab-resolved-head":
+					r.ResolvedHead = resolution
+				case "glab-resolved":
+					// Legacy config key - populate Resolved for backward compatibility
+					r.Resolved = resolution
+				}
 				break
 			}
 		}
@@ -443,7 +458,15 @@ func AddRemote(name, u string) (*Remote, error) {
 }
 
 var SetRemoteResolution = func(name, resolution string) error {
-	return SetRemoteConfig(name, "glab-resolved", resolution)
+	// Use separate config keys for base and head resolutions to avoid conflicts
+	// when both are stored for the same remote
+	configKey := "glab-resolved"
+	if resolution == "base" || strings.HasPrefix(resolution, "base:") {
+		configKey = "glab-resolved-base"
+	} else if resolution == "head" || strings.HasPrefix(resolution, "head:") {
+		configKey = "glab-resolved-head"
+	}
+	return SetRemoteConfig(name, configKey, resolution)
 }
 
 func SetRemoteConfig(remote, key, value string) error {
