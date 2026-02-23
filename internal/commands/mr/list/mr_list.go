@@ -34,19 +34,22 @@ var defaultSortByOrder = map[string]string{
 
 type options struct {
 	// metadata
-	assignee      []string
-	reviewer      []string
-	author        string
-	labels        []string
-	notLabels     []string
-	milestone     string
-	sourceBranch  string
-	targetBranch  string
-	search        string
-	mine          bool
-	group         string
-	createdBefore time.Time
-	createdAfter  time.Time
+	assignee       []string
+	author         string
+	createdAfter   time.Time
+	createdBefore  time.Time
+	deployedAfter  time.Time
+	deployedBefore time.Time
+	environment    string
+	group          string
+	labels         []string
+	milestone      string
+	mine           bool
+	notLabels      []string
+	reviewer       []string
+	search         string
+	sourceBranch   string
+	targetBranch   string
 
 	// issue states
 	state    string
@@ -137,8 +140,11 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	mrListCmd.Flags().StringSliceVarP(&opts.reviewer, "reviewer", "r", []string{}, "Get only merge requests with users as reviewer. Multiple users can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringVarP(&opts.sort, "sort", "S", "", "Sort direction for --order field: asc or desc.")
 	mrListCmd.Flags().StringVarP(&opts.orderBy, "order", "o", "", "Order merge requests by <field>. Order options: created_at, updated_at, merged_at, title, priority, label_priority, milestone_due, and popularity.")
-	mrListCmd.Flags().TimeVar(&opts.createdAfter, "created-before", time.Time{}, []string{time.RFC3339}, "Filter merge requests created after a certain date (ISO 8601 format).")
+	mrListCmd.Flags().TimeVar(&opts.createdBefore, "created-before", time.Time{}, []string{time.RFC3339}, "Filter merge requests created before a certain date (ISO 8601 format).")
 	mrListCmd.Flags().TimeVar(&opts.createdAfter, "created-after", time.Time{}, []string{time.RFC3339}, "Filter merge requests created after a certain date (ISO 8601 format).")
+	mrListCmd.Flags().TimeVar(&opts.deployedBefore, "deployed-before", time.Time{}, []string{time.RFC3339}, "Filter merge requests deployed before a certain date (ISO 8601 format).")
+	mrListCmd.Flags().TimeVar(&opts.deployedAfter, "deployed-after", time.Time{}, []string{time.RFC3339}, "Filter merge requests deployed after a certain date (ISO 8601 format).")
+	mrListCmd.Flags().StringVar(&opts.environment, "environment", "", "Filter merge requests deployed to the given environment <name>.")
 
 	mrListCmd.Flags().BoolP("opened", "O", false, "Get only open merge requests.")
 	_ = mrListCmd.Flags().MarkHidden("opened")
@@ -313,6 +319,18 @@ func (o *options) run() error {
 
 	if !o.createdAfter.IsZero() {
 		l.CreatedAfter = gitlab.Ptr(o.createdAfter)
+	}
+
+	if !o.deployedBefore.IsZero() {
+		l.DeployedBefore = gitlab.Ptr(o.deployedBefore)
+	}
+
+	if !o.deployedAfter.IsZero() {
+		l.DeployedAfter = gitlab.Ptr(o.deployedAfter)
+	}
+
+	if o.environment != "" {
+		l.Environment = gitlab.Ptr(o.environment)
 	}
 
 	if o.group != "" {

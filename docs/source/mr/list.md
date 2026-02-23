@@ -48,8 +48,11 @@ $ glab mr list --not-draft
       --author string          Filter merge request by author <username>.
   -c, --closed                 Get only closed merge requests.
       --created-after time     Filter merge requests created after a certain date (ISO 8601 format).
-      --created-before time    Filter merge requests created after a certain date (ISO 8601 format).
+      --created-before time    Filter merge requests created before a certain date (ISO 8601 format).
+      --deployed-after time    Filter merge requests deployed after a certain date (ISO 8601 format).
+      --deployed-before time   Filter merge requests deployed before a certain date (ISO 8601 format).
   -d, --draft                  Filter by draft merge requests.
+      --environment string     Filter merge requests deployed to the given environment <name>.
   -g, --group string           Select a group/subgroup. This option is ignored if a repo argument is set.
   -l, --label strings          Filter merge request by label <name>. Multiple labels can be comma-separated or specified by repeating the flag.
   -M, --merged                 Get only merged merge requests.
