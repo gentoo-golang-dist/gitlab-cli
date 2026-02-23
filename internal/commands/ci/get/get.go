@@ -217,12 +217,12 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	_ = pipelineGetCmd.Flags().MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
 	pipelineGetCmd.Flags().BoolP("with-job-details", "d", false, "Show extended job information.")
 	pipelineGetCmd.Flags().Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
-	pipelineGetCmd.Flags().Bool("with-downstream-pipelines", false, "Show child pipelines.")
+	pipelineGetCmd.Flags().Bool("with-downstream-pipelines", false, "Show downstream pipelines.")
 
 	return pipelineGetCmd
 }
 
-func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool, withChildPipelines bool) {
+func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool, withDownstreamPipelines bool) {
 	printPipelineTable(p.Pipeline, dest)
 
 	if showJobDetails {
@@ -233,24 +233,24 @@ func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool, w
 
 	printVariables(p.Variables, dest)
 
-	if withChildPipelines {
+	if withDownstreamPipelines {
 		for idx, bridge := range p.Bridges {
-			normal_idx := idx + 1
-			printPipelineTable(bridge.Pipeline, dest, normal_idx)
+			normalIdx := idx + 1
+			printPipelineTable(bridge.Pipeline, dest, normalIdx)
 			if showJobDetails {
-				printJobTable(bridge.Jobs, dest, normal_idx)
+				printJobTable(bridge.Jobs, dest, normalIdx)
 			} else {
-				printJobText(bridge.Jobs, dest, normal_idx)
+				printJobText(bridge.Jobs, dest, normalIdx)
 			}
 
-			printVariables(bridge.Variables, dest, normal_idx)
+			printVariables(bridge.Variables, dest, normalIdx)
 		}
 	}
 }
 
-func printPipelineTable(p *gitlab.Pipeline, dest io.Writer, isChild ...int) {
-	if len(isChild) > 0 {
-		fmt.Fprintf(dest, "# Child %d pipeline :\n", isChild[0])
+func printPipelineTable(p *gitlab.Pipeline, dest io.Writer, isDownstream ...int) {
+	if len(isDownstream) > 0 {
+		fmt.Fprintf(dest, "# Downstream %d pipeline :\n", isDownstream[0])
 	} else {
 		fmt.Fprint(dest, "# Pipeline:\n")
 	}
@@ -269,9 +269,9 @@ func printPipelineTable(p *gitlab.Pipeline, dest io.Writer, isChild ...int) {
 	fmt.Fprintln(dest, pipelineTable.String())
 }
 
-func printJobTable(p []*gitlab.Job, dest io.Writer, isChild ...int) {
-	if len(isChild) > 0 {
-		fmt.Fprintf(dest, "# Child %d jobs :\n", isChild[0])
+func printJobTable(p []*gitlab.Job, dest io.Writer, isDownstream ...int) {
+	if len(isDownstream) > 0 {
+		fmt.Fprintf(dest, "# Downstream %d jobs :\n", isDownstream[0])
 	} else {
 		fmt.Fprint(dest, "# Jobs:\n")
 	}
@@ -283,9 +283,9 @@ func printJobTable(p []*gitlab.Job, dest io.Writer, isChild ...int) {
 	fmt.Fprintln(dest, jobTable.String())
 }
 
-func printJobText(p []*gitlab.Job, dest io.Writer, isChild ...int) {
-	if len(isChild) > 0 {
-		fmt.Fprintf(dest, "# Child %d jobs :\n", isChild[0])
+func printJobText(p []*gitlab.Job, dest io.Writer, isDownstream ...int) {
+	if len(isDownstream) > 0 {
+		fmt.Fprintf(dest, "# Downstream %d jobs :\n", isDownstream[0])
 	} else {
 		fmt.Fprint(dest, "# Jobs:\n")
 	}
@@ -296,10 +296,10 @@ func printJobText(p []*gitlab.Job, dest io.Writer, isChild ...int) {
 	fmt.Fprintln(dest, jobTable.String())
 }
 
-func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isChild ...int) {
+func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isDownstream ...int) {
 	if vars != nil {
-		if len(isChild) > 0 {
-			fmt.Fprintf(dest, "# Child %d variables :\n", isChild[0])
+		if len(isDownstream) > 0 {
+			fmt.Fprintf(dest, "# Downstream %d variables :\n", isDownstream[0])
 		} else {
 			fmt.Fprint(dest, "# Variables:\n")
 		}
@@ -317,32 +317,32 @@ func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isChild ...
 
 func fetchDownstreamPipeline(ctx context.Context, apiClient *gitlab.Client, br *gitlab.Bridge, showVariables bool) (PipelineBridge, error) {
 	// Get the downstream pipeline
-	childPipeline, _, err := apiClient.Pipelines.GetPipeline(br.DownstreamPipeline.ProjectID, br.DownstreamPipeline.ID, gitlab.WithContext(ctx))
+	downstreamPipeline, _, err := apiClient.Pipelines.GetPipeline(br.DownstreamPipeline.ProjectID, br.DownstreamPipeline.ID, gitlab.WithContext(ctx))
 	if err != nil {
 		return PipelineBridge{}, err
 	}
 
 	// Get jobs for the downstream pipeline
-	childJobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
-		return apiClient.Jobs.ListPipelineJobs(br.DownstreamPipeline.ProjectID, childPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(ctx))
+	downstreamJobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
+		return apiClient.Jobs.ListPipelineJobs(br.DownstreamPipeline.ProjectID, downstreamPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(ctx))
 	})
 	if err != nil {
 		return PipelineBridge{}, err
 	}
 
 	// Optionally fetch variables
-	var childVariables []*gitlab.PipelineVariable
+	var downstreamVariables []*gitlab.PipelineVariable
 	if showVariables {
-		childVariables, _, err = apiClient.Pipelines.GetPipelineVariables(br.DownstreamPipeline.ProjectID, childPipeline.ID, gitlab.WithContext(ctx))
+		downstreamVariables, _, err = apiClient.Pipelines.GetPipelineVariables(br.DownstreamPipeline.ProjectID, downstreamPipeline.ID, gitlab.WithContext(ctx))
 		if err != nil {
 			return PipelineBridge{}, err
 		}
 	}
 
 	return PipelineBridge{
-		Pipeline:  childPipeline,
+		Pipeline:  downstreamPipeline,
 		Bridge:    br,
-		Jobs:      childJobs,
-		Variables: childVariables,
+		Jobs:      downstreamJobs,
+		Variables: downstreamVariables,
 	}, nil
 }

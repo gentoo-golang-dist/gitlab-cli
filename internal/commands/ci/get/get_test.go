@@ -767,8 +767,8 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 		ListPipelineBridges("OWNER/REPO", int64(452959326), gomock.Any(), gomock.Any()).
 		Return(bs, &gitlab.Response{NextPage: int64(0)}, nil)
 
-	// child pipeline
-	childP := &gitlab.Pipeline{
+	// downstream pipeline
+	downstreamP := &gitlab.Pipeline{
 		ID:        int64(12345678),
 		IID:       int64(12345678),
 		ProjectID: int64(29316529),
@@ -780,15 +780,15 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 	}
 	tc.MockPipelines.EXPECT().
 		GetPipeline(int64(29316529), int64(12345678), gomock.Any()).
-		Return(childP, nil, nil)
+		Return(downstreamP, nil, nil)
 
-	// child jobs
-	childJ := []*gitlab.Job{
+	// downstream jobs
+	downstreamJ := []*gitlab.Job{
 		{ID: 2, Name: "child-build", Status: "success"},
 	}
 	tc.MockJobs.EXPECT().
 		ListPipelineJobs(int64(29316529), int64(12345678), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(childJ, &gitlab.Response{NextPage: int64(0)}, nil)
+		Return(downstreamJ, &gitlab.Response{NextPage: int64(0)}, nil)
 
 	output, err := exec("-p 452959326 -F json -b main --with-downstream-pipelines")
 	require.NoError(t, err)
@@ -801,8 +801,8 @@ func TestCIGetJSONWithBridges(t *testing.T) {
 		Bridges: []PipelineBridge{
 			{
 				Bridge:    br,
-				Pipeline:  childP,
-				Jobs:      childJ,
+				Pipeline:  downstreamP,
+				Jobs:      downstreamJ,
 				Variables: nil,
 			},
 		},
@@ -877,8 +877,8 @@ func TestCIGetWithBridges(t *testing.T) {
 		ListPipelineBridges("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 		Return(bs, &gitlab.Response{NextPage: int64(0)}, nil)
 
-	// child pipeline
-	childP := &gitlab.Pipeline{
+	// downstream pipeline
+	downstreamP := &gitlab.Pipeline{
 		ID:         int64(456),
 		IID:        int64(456),
 		ProjectID:  int64(10),
@@ -894,23 +894,23 @@ func TestCIGetWithBridges(t *testing.T) {
 	}
 	tc.MockPipelines.EXPECT().
 		GetPipeline(int64(10), int64(456), gomock.Any()).
-		Return(childP, nil, nil)
+		Return(downstreamP, nil, nil)
 
-	// child jobs
-	childJ := []*gitlab.Job{
+	// downstream jobs
+	downstreamJ := []*gitlab.Job{
 		{ID: 123, Name: "publish", Status: "failed", FailureReason: "bad timing"},
 	}
 	tc.MockJobs.EXPECT().
 		ListPipelineJobs(int64(10), int64(456), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(childJ, &gitlab.Response{NextPage: 0}, nil)
+		Return(downstreamJ, &gitlab.Response{NextPage: 0}, nil)
 
-	// child variables
-	childVs := []*gitlab.PipelineVariable{
+	// downstream variables
+	downstreamVs := []*gitlab.PipelineVariable{
 		{Key: "RUN_DAILY_BUILD", VariableType: "env_var", Value: "true"},
 	}
 	tc.MockPipelines.EXPECT().
 		GetPipelineVariables(int64(10), int64(456), gomock.Any()).
-		Return(childVs, nil, nil)
+		Return(downstreamVs, nil, nil)
 
 	output, err := exec("-p=123 -b=main --with-downstream-pipelines --with-job-details --with-variables")
 	require.NoError(t, err)
@@ -935,7 +935,7 @@ ID	Name	Status	Duration	Failure reason
 # Variables:
 RUN_NIGHTLY_BUILD:	true
 
-# Child 1 pipeline :
+# Downstream 1 pipeline :
 id:	456
 status:	pending
 source:	push
@@ -948,11 +948,11 @@ created:	2022-01-20 21:47:16.276 +0000 UTC
 started:	2022-01-20 21:47:17.448 +0000 UTC
 updated:	2022-01-20 21:47:31.358 +0000 UTC
 
-# Child 1 jobs :
+# Downstream 1 jobs :
 ID	Name	Status	Duration	Failure reason
 123	publish	failed	0	bad timing
 
-# Child 1 variables :
+# Downstream 1 variables :
 RUN_DAILY_BUILD:	true
 
 `
