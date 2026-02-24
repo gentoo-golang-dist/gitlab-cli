@@ -293,6 +293,50 @@ func (o *options) run(ctx context.Context) error {
 	return nil
 }
 
+// handleBridgeJobSelection handles the user pressing Enter on a bridge job (downstream pipeline trigger).
+// It navigates to the downstream pipeline if it exists, or shows an informational modal if it doesn't.
+func handleBridgeJobSelection(app *tview.Application, root *tview.Pages, forceUpdateCh chan<- bool) {
+	// If downstream pipeline exists, navigate to it
+	if curJob.OriginalBridge.DownstreamPipeline != nil {
+		pipelines = append(pipelines, *curJob.OriginalBridge.DownstreamPipeline)
+		curJob = nil
+		forceUpdateCh <- true
+		app.ForceDraw()
+		return
+	}
+
+	// No downstream pipeline exists yet - show informational modal
+	modalVisible = true
+
+	// Determine appropriate message based on job status
+	// Note: We suggest GitLab UI instead of Ctrl+R/P because bridge jobs cannot be
+	// manually triggered via the CLI - they are excluded from the run/retry commands
+	// (see line 377: if curJob.Kind != Job { break })
+	var message string
+	switch curJob.Status {
+	case "manual":
+		message = fmt.Sprintf("Downstream pipeline '%s' is waiting to be triggered.\n\nStatus: %s\n\nThis trigger will create a child pipeline when it runs.\nTrigger it via the GitLab UI or wait for the pipeline to run it.", curJob.Name, curJob.Status)
+	case "pending", "created":
+		message = fmt.Sprintf("Downstream pipeline '%s' has not started yet.\n\nStatus: %s\n\nThis trigger will create a child pipeline when it runs.", curJob.Name, curJob.Status)
+	case "skipped":
+		message = fmt.Sprintf("Downstream pipeline '%s' was skipped and won't create a child pipeline.\n\nStatus: %s", curJob.Name, curJob.Status)
+	default:
+		message = fmt.Sprintf("Downstream pipeline '%s' has not triggered a child pipeline yet.\n\nStatus: %s\n\nThe child pipeline will appear here once the trigger completes.", curJob.Name, curJob.Status)
+	}
+
+	modal := tview.NewModal().
+		SetBackgroundColor(tcell.ColorDefault).
+		SetText(message).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			modalVisible = false
+			root.RemovePage("downstream-info")
+			app.ForceDraw()
+		})
+	root.AddAndSwitchToPage("downstream-info", modal, false)
+	app.ForceDraw()
+}
+
 func inputCapture(
 	ctx context.Context,
 	app *tview.Application,
@@ -421,10 +465,8 @@ func inputCapture(
 					inputCh <- struct{}{}
 					app.ForceDraw()
 				} else {
-					pipelines = append(pipelines, *curJob.OriginalBridge.DownstreamPipeline)
-					curJob = nil
-					forceUpdateCh <- true
-					app.ForceDraw()
+					// Downstream pipeline trigger selected
+					handleBridgeJobSelection(app, root, forceUpdateCh)
 				}
 				return nil
 			}

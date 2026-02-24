@@ -1212,6 +1212,85 @@ func Test_bracketEscaper(t *testing.T) {
 	}
 }
 
+// Test_bridgeWithoutDownstreamPipeline tests that we correctly handle bridge jobs
+// without downstream pipelines (fixes crash in work item #7372)
+func Test_bridgeWithoutDownstreamPipeline(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		bridge *gitlab.Bridge
+	}{
+		{
+			name: "manual bridge without downstream pipeline",
+			bridge: &gitlab.Bridge{
+				ID:                 1,
+				Name:               "trigger-job",
+				Status:             "manual",
+				Stage:              "deploy",
+				DownstreamPipeline: nil, // This nil caused crash in #7372
+			},
+		},
+		{
+			name: "created bridge without downstream pipeline",
+			bridge: &gitlab.Bridge{
+				ID:                 2,
+				Name:               "trigger-pipeline",
+				Status:             "created",
+				Stage:              "deploy",
+				DownstreamPipeline: nil,
+			},
+		},
+		{
+			name: "skipped bridge without downstream pipeline",
+			bridge: &gitlab.Bridge{
+				ID:                 3,
+				Name:               "conditional-trigger",
+				Status:             "skipped",
+				Stage:              "deploy",
+				DownstreamPipeline: nil,
+			},
+		},
+		{
+			name: "bridge with downstream pipeline",
+			bridge: &gitlab.Bridge{
+				ID:     4,
+				Name:   "active-trigger",
+				Status: "success",
+				Stage:  "deploy",
+				DownstreamPipeline: &gitlab.PipelineInfo{
+					ID:     123,
+					Status: "running",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			viewJob := ViewJobFromBridge(tt.bridge)
+
+			// Verify the ViewJob was created correctly
+			assert.NotNil(t, viewJob)
+			assert.Equal(t, tt.bridge.Name, viewJob.Name)
+			assert.Equal(t, tt.bridge.Status, viewJob.Status)
+			assert.Equal(t, Bridge, viewJob.Kind)
+			assert.NotNil(t, viewJob.OriginalBridge)
+
+			// Verify DownstreamPipeline state matches expectation
+			if tt.bridge.DownstreamPipeline == nil {
+				assert.Nil(t, viewJob.OriginalBridge.DownstreamPipeline,
+					"Bridge job without downstream pipeline should have nil DownstreamPipeline")
+			} else {
+				assert.NotNil(t, viewJob.OriginalBridge.DownstreamPipeline,
+					"Bridge job with downstream pipeline should have non-nil DownstreamPipeline")
+			}
+		})
+	}
+}
+
 func TestCIView(t *testing.T) {
 	createdAt, _ := time.Parse(time.RFC3339, "2025-10-28T16:52:39.000+01:00")
 
