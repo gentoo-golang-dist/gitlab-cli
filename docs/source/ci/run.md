@@ -71,9 +71,20 @@ $ glab ci run -b main --variables-file MYKEY:file1 --variables KEY2:some_value
 $ glab ci run -b main --input key1:val1 --input key2:val2
 $ glab ci run -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
 
-// For an example of 'glab ci run -f' with a variables file, see
-// [Run a CI/CD pipeline with variables from a file](https://docs.gitlab.com/editor_extensions/gitlab_cli/#run-a-cicd-pipeline-with-variables-from-a-file)
-// in the GitLab documentation.
+# Load variables from JSON file
+# Create variables.json with this format:
+# [
+#   {
+#     "key": "CI_PIPELINE_SOURCE",
+#     "value": "web",
+#     "variable_type": "env_var"
+#   },
+#   {
+#     "key": "DEPLOY_ENV",
+#     "value": "production"
+#   }
+# ]
+$ glab ci run -b main --variables-from variables.json
 
 ```
 

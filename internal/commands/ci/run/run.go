@@ -186,7 +186,7 @@ func resolvePipelineVars(cmd *cobra.Command) ([]*gitlab.PipelineVariableOptions,
 		var result []*gitlab.PipelineVariableOptions
 		err = json.Unmarshal(b, &result)
 		if err != nil {
-			return nil, fmt.Errorf("loading pipeline values: %w", err)
+			return nil, fmt.Errorf("loading pipeline values: %w. Expected JSON array format: [{\"key\": \"VAR_NAME\", \"value\": \"VAR_VALUE\", \"variable_type\": \"env_var\"}]", err)
 		}
 		pipelineVars = append(pipelineVars, result...)
 	}
@@ -219,9 +219,20 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 			$ glab ci run -b main --input key1:val1 --input key2:val2
 			$ glab ci run -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
 
-			// For an example of 'glab ci run -f' with a variables file, see
-			// [Run a CI/CD pipeline with variables from a file](https://docs.gitlab.com/editor_extensions/gitlab_cli/#run-a-cicd-pipeline-with-variables-from-a-file)
-			// in the GitLab documentation.
+			# Load variables from JSON file
+			# Create variables.json with this format:
+			# [
+			#   {
+			#     "key": "CI_PIPELINE_SOURCE",
+			#     "value": "web",
+			#     "variable_type": "env_var"
+			#   },
+			#   {
+			#     "key": "DEPLOY_ENV",
+			#     "value": "production"
+			#   }
+			# ]
+			$ glab ci run -b main --variables-from variables.json
 			`),
 
 		Long: "The `--branch` " + `option is available for all pipeline types.
