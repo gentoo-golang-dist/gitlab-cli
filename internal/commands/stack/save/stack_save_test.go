@@ -140,6 +140,78 @@ func TestSaveNewStack(t *testing.T) {
 	}
 }
 
+func TestSaveStack_WarningWhenNotOnLastEntry(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+
+	firstRef := git.StackRef{
+		SHA:         "first123",
+		Branch:      "user-test-stack-first123",
+		Description: "first entry",
+		Next:        "second456",
+	}
+	secondRef := git.StackRef{
+		SHA:         "second456",
+		Branch:      "user-test-stack-second456",
+		Description: "second entry",
+		Prev:        "first123",
+	}
+
+	tests := []struct {
+		desc          string
+		checkoutRef   git.StackRef
+		expectWarning bool
+	}{
+		{
+			desc:          "warning when on first entry of stack",
+			checkoutRef:   firstRef,
+			expectWarning: true,
+		},
+		{
+			desc:          "no warning when on last entry of stack",
+			checkoutRef:   secondRef,
+			expectWarning: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			dir := git.InitGitRepoWithCommit(t)
+			stackTitle := "test-stack"
+			err := git.SetLocalConfig("glab.currentstack", stackTitle)
+			require.Nil(t, err)
+
+			err = git.AddStackRefFile(stackTitle, firstRef)
+			require.Nil(t, err)
+			err = git.AddStackRefFile(stackTitle, secondRef)
+			require.Nil(t, err)
+
+			err = git.CheckoutNewBranch(tc.checkoutRef.Branch)
+			require.Nil(t, err)
+
+			createTemporaryFiles(t, dir, []string{"newfile"})
+
+			ctrl := gomock.NewController(t)
+			mockCmd := git_testing.NewMockGitRunner(ctrl)
+
+			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+				return NewCmdSaveStack(f, mockCmd, getMockEditor("", &[]string{}))
+			}, true,
+				cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, nil, "", "gitlab.com").Lab()),
+			)
+
+			output, err := exec(". -m \"new changes\"")
+			require.Nil(t, err)
+
+			if tc.expectWarning {
+				require.Contains(t, output.Stderr(), "warning: you are not on the last entry of the stack")
+				require.Contains(t, output.Stderr(), "glab stack amend")
+			} else {
+				require.NotContains(t, output.Stderr(), "warning: you are not on the last entry of the stack")
+			}
+		})
+	}
+}
+
 func Test_addFiles(t *testing.T) {
 	tests := []struct {
 		desc     string
