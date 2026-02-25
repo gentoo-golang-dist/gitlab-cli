@@ -55,11 +55,11 @@ type options struct {
 
 	IsConfidential bool `json:"is_confidential,omitempty"`
 
-	noEditor      bool
-	isInteractive bool
-	yes           bool
-	web           bool
-	recover       bool
+	noEditor    bool
+	needsPrompt bool
+	yes         bool
+	web         bool
+	recover     bool
 
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
@@ -108,9 +108,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			hasDescription := cmd.Flags().Changed("description")
 
 			// disable interactive mode if title and description are explicitly defined
-			opts.isInteractive = !(hasTitle && hasDescription)
+			opts.needsPrompt = !(hasTitle && hasDescription)
 
-			if opts.isInteractive && !opts.io.PromptEnabled() {
+			if opts.needsPrompt && !opts.io.IsInteractive() {
 				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' required for non-interactive mode.")}
 			}
 
@@ -215,7 +215,7 @@ var createRun = func(ctx context.Context, opts *options) error {
 		}
 	}
 
-	if opts.isInteractive {
+	if opts.needsPrompt {
 		// Step 1: Template selection (if not using --no-editor and description is empty)
 		if opts.Description == "" && !opts.noEditor {
 			templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.IssueTemplate)
@@ -308,7 +308,7 @@ var createRun = func(ctx context.Context, opts *options) error {
 	var action cmdutils.Action
 
 	// submit without prompting for non interactive mode
-	if !opts.isInteractive || opts.yes {
+	if !opts.needsPrompt || opts.yes {
 		action = cmdutils.SubmitAction
 	}
 

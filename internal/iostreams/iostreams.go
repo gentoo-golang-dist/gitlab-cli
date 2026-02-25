@@ -252,13 +252,18 @@ func (s *IOStreams) TerminalWidth() int {
 	return TerminalWidth(s.StdOut)
 }
 
-// IsOutputTTY returns true if both stdout and stderr is TTY
+// IsOutputTTY returns true if both stdout and stderr are TTYs.
+// Use this for output formatting decisions (tables vs plain text).
+// For interactive prompts, use PromptEnabled() or IsInteractive() instead.
 func (s *IOStreams) IsOutputTTY() bool {
 	return s.IsErrTTY && s.IsaTTY
 }
 
-func (s *IOStreams) IsInputTTY() bool {
-	return s.IsInTTY && s.IsaTTY && s.IsErrTTY
+// IsInteractive returns true if the environment supports interactive prompts that require user input.
+// This checks if stdin is a TTY and prompts are enabled (stdout/stderr are TTYs and NO_PROMPT is not set).
+// Use this before displaying interactive forms/menus that need to read user input (e.g., huh forms).
+func (s *IOStreams) IsInteractive() bool {
+	return s.IsInTTY && s.PromptEnabled()
 }
 
 func (s *IOStreams) ResolveBackgroundColor(style string) string {

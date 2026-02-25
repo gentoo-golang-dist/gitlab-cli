@@ -70,7 +70,7 @@ func NewCmdAdd(f cmdutils.Factory) *cobra.Command {
 
 func (o *options) complete(args []string) error {
 	if len(args) == 0 {
-		if o.io.IsOutputTTY() && o.io.IsInTTY {
+		if o.io.IsInteractive() {
 			return &cmdutils.FlagError{Err: errors.New("missing key file")}
 		}
 		o.keyFile = "-"

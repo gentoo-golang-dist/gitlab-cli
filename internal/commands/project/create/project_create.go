@@ -130,14 +130,18 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 	// Determine if we need to initialize git in the current directory
 	var needsGitInit bool
 	if !skipGitInit && !isGitInitialized {
-		// Default to running git init
-		needsGitInit = true
-		// If prompts are enabled, ask the user
-		if f.IO().PromptEnabled() {
+		// Default behavior depends on whether we can prompt
+		if f.IO().IsInteractive() {
+			// If interactive, default to true and ask the user
+			needsGitInit = true
 			err := f.IO().Confirm(cmd.Context(), &needsGitInit, "Directory not Git initialized. Run `git init`?")
 			if err != nil {
 				return err
 			}
+		} else {
+			// In non-interactive mode, default to false for safety
+			// Users can explicitly use --skipGitInit=false to force git init
+			needsGitInit = false
 		}
 	}
 
@@ -303,13 +307,18 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 
 	// When a project name is provided (not working in current directory)
 	// we need to set up a local subdirectory for it
-	// Default to creating the subdirectory
-	doSetup := true
-	// If prompts are enabled, ask the user
-	if f.IO().PromptEnabled() {
+	// Default behavior depends on whether we can prompt
+	var doSetup bool
+	if f.IO().IsInteractive() {
+		// If interactive, default to true and ask the user
+		doSetup = true
 		if err := f.IO().Confirm(cmd.Context(), &doSetup, fmt.Sprintf("Create a local project directory for %s?", project.NameWithNamespace)); err != nil {
 			return err
 		}
+	} else {
+		// In non-interactive mode, default to false (only create remote project)
+		// This prevents unexpected directory creation for AI agents
+		doSetup = false
 	}
 
 	if doSetup {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -225,6 +226,13 @@ func (o *options) complete(flags *pflag.FlagSet, args []string) error {
 		return err
 	}
 	o.noteProvided = o.notes != ""
+
+	// Validate that we can prompt for notes if they weren't provided
+	if !o.noteProvided && !o.io.IsInteractive() {
+		return &cmdutils.FlagError{
+			Err: errors.New("--notes or --notes-file required for non-interactive mode"),
+		}
+	}
 
 	if !flags.Changed("use-package-registry") {
 		if usePackageRegistry, err := strconv.ParseBool(os.Getenv("GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY")); err != nil {

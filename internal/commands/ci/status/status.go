@@ -133,7 +133,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						}
 					}
 					runningPipeline = updatedPipeline
-				} else if f.IO().IsInputTTY() && f.IO().PromptEnabled() {
+				} else if f.IO().IsInteractive() {
 					var answer string
 					selector := huh.NewSelect[string]().
 						Title("Choose an action:").

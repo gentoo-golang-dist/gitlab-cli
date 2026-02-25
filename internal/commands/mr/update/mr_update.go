@@ -119,6 +119,13 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				// Check if --yes flag is provided to skip confirmation
 				skipConfirmation, _ := cmd.Flags().GetBool("yes")
 
+				// Validate that we can prompt if confirmation is needed
+				if !skipConfirmation && !f.IO().IsInteractive() {
+					return &cmdutils.FlagError{
+						Err: errors.New("--yes required with --fill for non-interactive mode"),
+					}
+				}
+
 				// Show preview and ask for confirmation unless --yes is provided
 				if !skipConfirmation {
 					fmt.Fprintf(f.IO().StdOut, "\nProposed changes:\n")

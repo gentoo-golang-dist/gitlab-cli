@@ -52,7 +52,6 @@ func Test_projectCreateCmd(t *testing.T) {
 			Args: []string{"reponame"},
 			ExpectedStdout: []string{
 				"Created project on GitLab: reponame -",
-				"Initialized repository in './reponame/'",
 			},
 			SetupMocks: func() {
 				createProject = func(client *gitlab.Client, opts *gitlab.CreateProjectOptions) (*gitlab.Project, error) {
@@ -88,7 +87,6 @@ func Test_projectCreateCmd(t *testing.T) {
 			Args: []string{"reponame/"},
 			ExpectedStdout: []string{
 				"Created project on GitLab: reponame -",
-				"Initialized repository in './reponame/'",
 			},
 			SetupMocks: func() {
 				createProject = func(client *gitlab.Client, opts *gitlab.CreateProjectOptions) (*gitlab.Project, error) {
@@ -124,7 +122,6 @@ func Test_projectCreateCmd(t *testing.T) {
 			Args: []string{"test-repo", "--skipGitInit"},
 			ExpectedStdout: []string{
 				"Created project on GitLab: test-repo -",
-				"Initialized repository in './test-repo/'",
 			},
 			SetupMocks: func() {
 				createProject = func(client *gitlab.Client, opts *gitlab.CreateProjectOptions) (*gitlab.Project, error) {
@@ -182,11 +179,10 @@ func Test_projectCreateCmd(t *testing.T) {
 			wantErr: true, // API failures should error
 		},
 		{
-			Name: "Create project with name - NO_PROMPT creates subdirectory by default",
+			Name: "Create project with name - NO_PROMPT does not create subdirectory by default",
 			Args: []string{"new-project"},
 			ExpectedStdout: []string{
 				"Created project on GitLab: username/new-project -",
-				"Initialized repository in './new-project/'",
 			},
 			SetupMocks: func() {
 				createProject = func(client *gitlab.Client, opts *gitlab.CreateProjectOptions) (*gitlab.Project, error) {

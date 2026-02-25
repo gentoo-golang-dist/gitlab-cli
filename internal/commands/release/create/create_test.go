@@ -34,7 +34,7 @@ func TestReleaseCreate(t *testing.T) {
 	}{
 		{
 			name: "when a release is created",
-			cli:  "0.0.1",
+			cli:  "0.0.1 --notes \"test release\"",
 		},
 		{
 			name:                "when a release is created with a description",
@@ -43,7 +43,7 @@ func TestReleaseCreate(t *testing.T) {
 		},
 		{
 			name:               "when a release is created with a tag message",
-			cli:                `0.0.1 --tag-message "tag message"`,
+			cli:                `0.0.1 --notes "test release" --tag-message "tag message"`,
 			expectedTagMessage: "tag message",
 		},
 	}
@@ -114,20 +114,20 @@ func TestReleaseCreateWithFiles(t *testing.T) {
 	}{
 		{
 			name: "when a release is created and a file is uploaded using filename only",
-			cli:  "0.0.1 testdata/test_file.txt",
+			cli:  "0.0.1 --notes \"test release\" testdata/test_file.txt",
 
 			wantType: false,
 		},
 		{
 			name: "when a release is created and a filename is uploaded with display name and type",
-			cli:  "0.0.1 testdata/test_file.txt#test_file#other",
+			cli:  "0.0.1 --notes \"test release\" testdata/test_file.txt#test_file#other",
 
 			wantType:     true,
 			expectedType: gitlab.OtherLinkType,
 		},
 		{
 			name: "when a release is created and a filename is uploaded with a type",
-			cli:  "0.0.1 testdata/test_file.txt##package",
+			cli:  "0.0.1 --notes \"test release\" testdata/test_file.txt##package",
 
 			wantType:     true,
 			expectedType: gitlab.PackageLinkType,
@@ -218,7 +218,7 @@ func TestReleaseCreate_WithAssetsLinksJSON(t *testing.T) {
 	}{
 		{
 			name: "with direct_asset_path",
-			cli:  `0.0.1 --assets-links='[{"name": "any-name", "url": "https://example.com/any-asset-url", "direct_asset_path": "/any-path"}]'`,
+			cli:  `0.0.1 --notes "test release" --assets-links='[{"name": "any-name", "url": "https://example.com/any-asset-url", "direct_asset_path": "/any-path"}]'`,
 			expectedOutput: `• Validating tag 0.0.1
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
@@ -228,7 +228,7 @@ func TestReleaseCreate_WithAssetsLinksJSON(t *testing.T) {
 		},
 		{
 			name: "with filepath aliased to direct_asset_path",
-			cli:  `0.0.1 --assets-links='[{"name": "any-name", "url": "https://example.com/any-asset-url", "filepath": "/any-path"}]'`,
+			cli:  `0.0.1 --notes "test release" --assets-links='[{"name": "any-name", "url": "https://example.com/any-asset-url", "filepath": "/any-path"}]'`,
 			expectedOutput: `• Validating tag 0.0.1
 • Creating or updating release repo=OWNER/REPO tag=0.0.1
 ✓ Release created:	url=https://gitlab.com/OWNER/REPO/-/releases/0.0.1
@@ -308,7 +308,7 @@ func TestReleaseCreateWithPublishToCatalog(t *testing.T) {
 	}{
 		{
 			name: "with version",
-			cli:  "0.0.1 --publish-to-catalog",
+			cli:  "0.0.1 --notes \"test release\" --publish-to-catalog",
 			wantBody: `{
 				"version": "0.0.1",
 				"metadata": {
@@ -454,7 +454,7 @@ func TestReleaseCreate_NoUpdate(t *testing.T) {
 			Links:   gitlab.ReleaseLinks{Self: "https://gitlab.com/OWNER/REPO/-/releases/0.0.1"},
 		}, nil, nil)
 
-		output, err := exec("0.0.1 --no-update")
+		output, err := exec("0.0.1 --notes \"test release\" --no-update")
 		require.NoError(t, err)
 		assert.Contains(t, output.String(), "Release created:")
 	})
@@ -481,7 +481,7 @@ func TestReleaseCreate_NoUpdate(t *testing.T) {
 			Links:   gitlab.ReleaseLinks{Self: "https://gitlab.com/OWNER/REPO/-/releases/0.0.1"},
 		}, okResponse, nil)
 
-		_, err := exec("0.0.1 --no-update")
+		_, err := exec("0.0.1 --notes \"test release\" --no-update")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "release for tag \"0.0.1\" already exists and --no-update flag was specified")
 	})
@@ -535,7 +535,7 @@ func TestReleaseCreate_MilestoneClosing(t *testing.T) {
 			State: "closed",
 		}, nil, nil)
 
-		output, err := exec("0.0.1 --milestone 'v1.0'")
+		output, err := exec("0.0.1 --notes \"test release\" --milestone 'v1.0'")
 
 		require.NoError(t, err)
 		assert.Contains(t, output.String(), `• Validating tag 0.0.1
@@ -573,7 +573,7 @@ func TestReleaseCreate_MilestoneClosing(t *testing.T) {
 
 		// No milestone API calls expected when --no-close-milestone is set
 
-		output, err := exec("0.0.1 --milestone 'v1.0' --no-close-milestone")
+		output, err := exec("0.0.1 --notes \"test release\" --milestone 'v1.0' --no-close-milestone")
 
 		require.NoError(t, err)
 		assert.Contains(t, output.String(), `• Validating tag 0.0.1
@@ -602,12 +602,13 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(&gitlab.Project{DefaultBranch: "some-default-branch"}, nil, nil)
 		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
 		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
-			Name:    gitlab.Ptr("0.0.1"),
-			TagName: gitlab.Ptr("0.0.1"),
-			Ref:     gitlab.Ptr("some-default-branch"),
+			Name:        gitlab.Ptr("0.0.1"),
+			TagName:     gitlab.Ptr("0.0.1"),
+			Description: gitlab.Ptr("test release"),
+			Ref:         gitlab.Ptr("some-default-branch"),
 		}).Return(&gitlab.Release{}, nil, nil)
 
-		_, err := exec("0.0.1")
+		_, err := exec("0.0.1 --notes \"test release\"")
 		require.NoError(t, err)
 	})
 
@@ -629,12 +630,13 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(nil, nil, errors.New("forbidden"))
 		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
 		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
-			Name:    gitlab.Ptr("0.0.1"),
-			TagName: gitlab.Ptr("0.0.1"),
-			Ref:     gitlab.Ptr("some-default-branch"),
+			Name:        gitlab.Ptr("0.0.1"),
+			TagName:     gitlab.Ptr("0.0.1"),
+			Description: gitlab.Ptr("test release"),
+			Ref:         gitlab.Ptr("some-default-branch"),
 		}).Return(&gitlab.Release{}, nil, nil)
 
-		_, err := exec("0.0.1")
+		_, err := exec("0.0.1 --notes \"test release\"")
 		require.NoError(t, err)
 	})
 
@@ -654,12 +656,13 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(nil, nil, errors.New("forbidden"))
 		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
 		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
-			Name:    gitlab.Ptr("0.0.1"),
-			TagName: gitlab.Ptr("0.0.1"),
-			Ref:     nil,
+			Name:        gitlab.Ptr("0.0.1"),
+			TagName:     gitlab.Ptr("0.0.1"),
+			Description: gitlab.Ptr("test release"),
+			Ref:         nil,
 		}).Return(&gitlab.Release{}, nil, nil)
 
-		_, err := exec("0.0.1")
+		_, err := exec("0.0.1 --notes \"test release\"")
 		require.NoError(t, err)
 	})
 }

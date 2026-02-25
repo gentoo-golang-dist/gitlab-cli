@@ -55,12 +55,12 @@ type options struct {
 	IsWIP          bool `json:"is_wip,omitempty"`
 	ShouldPush     bool `json:"should_push,omitempty"`
 
-	noEditor      bool
-	isInteractive bool
-	yes           bool
-	web           bool
-	recover       bool
-	signoff       bool
+	noEditor    bool
+	needsPrompt bool
+	yes         bool
+	web         bool
+	recover     bool
+	signoff     bool
 
 	io              *iostreams.IOStreams             `json:"-"`
 	branch          func() (string, error)           `json:"-"`
@@ -176,7 +176,7 @@ func (o *options) complete(cmd *cobra.Command) {
 	hasDescription := cmd.Flags().Changed("description")
 
 	// disable interactive mode if title and description are explicitly defined
-	o.isInteractive = !(hasTitle && hasDescription)
+	o.needsPrompt = !(hasTitle && hasDescription)
 
 	// Handle boolean flags: only set if explicitly provided by user
 	// This allows users to override project defaults or use them when omitted
@@ -205,7 +205,7 @@ func (o *options) validate(cmd *cobra.Command) error {
 			Err: errors.New("usage of --title and --description overrides --fill."),
 		}
 	}
-	if o.isInteractive && !o.io.PromptEnabled() && !o.Autofill {
+	if o.needsPrompt && !o.io.IsInteractive() && !o.Autofill {
 		return &cmdutils.FlagError{Err: errors.New("--title or --fill required for non-interactive mode.")}
 	}
 	if cmd.Flags().Changed("wip") && cmd.Flags().Changed("draft") {
@@ -416,7 +416,7 @@ func (o *options) run(ctx context.Context) error {
 			}
 
 			o.ShouldPush = true
-		} else if o.isInteractive {
+		} else if o.needsPrompt {
 			var templateName string
 			var templateContents string
 			if o.Description == "" {
@@ -569,7 +569,7 @@ func (o *options) run(ctx context.Context) error {
 	var action cmdutils.Action
 
 	// submit without prompting for non interactive mode
-	if !o.isInteractive || o.yes {
+	if !o.needsPrompt || o.yes {
 		action = cmdutils.SubmitAction
 	}
 
