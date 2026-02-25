@@ -63,7 +63,7 @@ var listProjectMembers = func(client *gitlab.Client, projectID any, opts *gitlab
 // https://docs.gitlab.com/user/project/description_templates/#set-a-default-template-for-merge-requests-and-issues.
 //
 // TODO: load from remote repository if repo is overridden by -R flag
-func LoadGitLabTemplate(tmplType, tmplName string) (string, error) {
+var LoadGitLabTemplate = func(tmplType, tmplName string) (string, error) {
 	wdir, err := git.ToplevelDir()
 	if err != nil {
 		return "", err

@@ -61,6 +61,8 @@ type options struct {
 	web           bool
 	recover       bool
 
+	Template string
+
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
@@ -89,6 +91,8 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			$ glab issue create -m release-2.0.0 -t "we need this feature" --label important
 			$ glab issue new -t "Fix CVE-YYYY-XXXX" -l security --linked-mr 123
 			$ glab issue create -m release-1.0.1 -t "security fix" --label security --web --recover
+			$ glab issue create -t "Bug Report" --template bug
+			$ glab issue create -t "Feature Request" --template feature.md
 		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -106,12 +110,13 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			}
 			hasTitle := cmd.Flags().Changed("title")
 			hasDescription := cmd.Flags().Changed("description")
+			hasTemplate := cmd.Flags().Changed("template")
 
 			// disable interactive mode if title and description are explicitly defined
-			opts.isInteractive = !(hasTitle && hasDescription)
+			opts.isInteractive = !(hasTitle && (hasDescription || hasTemplate))
 
 			if opts.isInteractive && !opts.io.PromptEnabled() {
-				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' required for non-interactive mode.")}
+				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' (or '--template') required for non-interactive mode.")}
 			}
 
 			// Remove this once --yes does more than just skip the prompts that --web happen to skip
@@ -163,6 +168,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)")
 	issueCreateCmd.Flags().Int64VarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
+	issueCreateCmd.Flags().StringVarP(&opts.Template, "template", "", "", "Name of the issue template to use from your local .gitlab/issue_templates/ directory. The .md extension is optional.")
+
+	// Mark description and template flags as mutually exclusive
+	issueCreateCmd.MarkFlagsMutuallyExclusive("description", "template")
 
 	return issueCreateCmd
 }
@@ -178,7 +187,6 @@ var createRun = func(ctx context.Context, opts *options) error {
 		return err
 	}
 
-	var templateName string
 	var templateContents string
 
 	issueCreateOpts := &gitlab.CreateIssueOptions{}
@@ -215,9 +223,20 @@ var createRun = func(ctx context.Context, opts *options) error {
 		}
 	}
 
+	if opts.Template != "" {
+		templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, opts.Template)
+		if err != nil {
+			return fmt.Errorf("failed to get template contents: %w", err)
+		}
+
+		if templateContents == "" {
+			return fmt.Errorf("template %q not found or empty", opts.Template)
+		}
+	}
+
 	if opts.isInteractive {
-		// Step 1: Template selection (if not using --no-editor and description is empty)
-		if opts.Description == "" && !opts.noEditor {
+		// Step 1: Template selection (if not using --no-editor and description is empty, and no template flag provided)
+		if opts.Description == "" && !opts.noEditor && opts.Template == "" {
 			templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.IssueTemplate)
 			if err != nil {
 				return fmt.Errorf("error getting templates: %w", err)
@@ -232,8 +251,7 @@ var createRun = func(ctx context.Context, opts *options) error {
 			}
 
 			if selectedTemplate != blankIssueOption {
-				templateName = selectedTemplate
-				templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, templateName)
+				templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, selectedTemplate)
 				if err != nil {
 					return fmt.Errorf("failed to get template contents: %w", err)
 				}
@@ -303,6 +321,10 @@ var createRun = func(ctx context.Context, opts *options) error {
 		}
 	} else if opts.Title == "" {
 		return fmt.Errorf("title can't be blank")
+	}
+
+	if opts.Description == "" && templateContents != "" {
+		opts.Description = templateContents
 	}
 
 	var action cmdutils.Action
