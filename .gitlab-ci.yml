@@ -237,7 +237,7 @@ lint:
   needs:
     - job: prepare_go_cache
       optional: true
-  image: ${GITLAB_DEPENDENCY_PROXY}golangci/golangci-lint:v2.8.0
+  image: ${GITLAB_DEPENDENCY_PROXY}golangci/golangci-lint:v2.10.1-alpine
   cache:
     key:
       prefix: lint
@@ -415,7 +415,7 @@ homebrew-release:
 windows_installer:
   stage: build
   image:
-    name: ${GITLAB_DEPENDENCY_PROXY}amake/innosetup
+    name: ${GITLAB_DEPENDENCY_PROXY}amake/innosetup:latest
     entrypoint: [""]
   rules:
     - if: $CI_COMMIT_TAG

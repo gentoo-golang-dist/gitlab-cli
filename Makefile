@@ -47,7 +47,7 @@ BUILDLOC ?= ./bin/glab
 
 # Dependency versions
 GOTESTSUM_VERSION = 1.13.0
-GOLANGCI_LINT_VERSION = 2.7.2
+GOLANGCI_LINT_VERSION = 2.10.1
 
 # Add the ability to override some variables
 # Use with care
@@ -122,7 +122,7 @@ test: PAGER=
 test: GITLAB_TOKEN=
 test: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test: bin/gotestsum ## Run tests
-	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+	$(GOTEST) --no-summary=skipped --format-hide-empty-pkg --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
 
 .PHONY: test-race
 test-race: TEST_FORMAT ?= short
@@ -133,7 +133,7 @@ test-race: PAGER=
 test-race: GITLAB_TOKEN=
 test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test-race: bin/gotestsum ## Run tests with race detection
-	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+	$(GOTEST) --no-summary=skipped --format-hide-empty-pkg --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
 
 .PHONY: integration-test-race
 integration-test-race: TEST_FORMAT ?= short
@@ -143,7 +143,7 @@ integration-test-race: EDITOR=
 integration-test-race: PAGER=
 integration-test-race: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 integration-test-race: bin/gotestsum ## Run tests with race detection
-	$(GOTEST) --no-summary=skipped --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race -tags=integration $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...) -count=1
+	$(GOTEST) --no-summary=skipped --format-hide-empty-pkg --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic -race -tags=integration $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...) -count=1
 
 ifdef HASGOCILINT
 bin/golangci-lint:
