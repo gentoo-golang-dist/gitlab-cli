@@ -44,6 +44,7 @@ import (
 	userCmd "gitlab.com/gitlab-org/cli/internal/commands/user"
 	variableCmd "gitlab.com/gitlab-org/cli/internal/commands/variable"
 	versionCmd "gitlab.com/gitlab-org/cli/internal/commands/version"
+	workitemsCmd "gitlab.com/gitlab-org/cli/internal/commands/workitems"
 )
 
 // NewCmdRoot is the main root/parent command
@@ -175,7 +176,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(userCmd.NewCmdUser(f))
 	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 	rootCmd.AddCommand(runnerControllerCmd.NewCmd(f))
-
+	rootCmd.AddCommand(workitemsCmd.NewCmdWorkItems(f))
 	// TODO: This can probably be removed by GitLab 18.3
 	// See: https://gitlab.com/gitlab-org/cli/-/issues/7885
 	// Add global repo override flag but keep it hidden
