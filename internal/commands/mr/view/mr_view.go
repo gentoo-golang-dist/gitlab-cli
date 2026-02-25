@@ -192,7 +192,7 @@ func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitl
 	mrTimeAgo := utils.TimeToPrettyTimeAgo(*mr.CreatedAt)
 	// Header
 	fmt.Fprint(out, mrState(c, mr))
-	fmt.Fprintf(out, c.Gray(" • opened by %s %s\n"), mr.Author.Username, mrTimeAgo)
+	fmt.Fprintf(out, c.Gray(" • opened by @%s %s\n"), mr.Author.Username, mrTimeAgo)
 	fmt.Fprint(out, mr.Title)
 	fmt.Fprintf(out, c.Gray(" !%d"), mr.IID)
 	fmt.Fprintln(out)
@@ -272,7 +272,7 @@ func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitl
 					continue
 				}
 				createdAt := utils.TimeToPrettyTimeAgo(*note.CreatedAt)
-				fmt.Fprint(out, note.Author.Username)
+				fmt.Fprint(out, "@", note.Author.Username)
 				if note.System {
 					fmt.Fprintf(out, " %s ", note.Body)
 					fmt.Fprintln(out, c.Gray(createdAt))
