@@ -176,7 +176,8 @@ func TestCredentialHelper_BaseRepoError(t *testing.T) {
 }
 
 func TestCredentialHelper_ApiClientUnauthenticated(t *testing.T) {
-	t.Parallel()
+	// Skip wrapper detection to test the basic unauthenticated case
+	t.Setenv(skipWrapperDetectionEnv, "1")
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
@@ -234,4 +235,26 @@ func TestCredentialHelper_RepoOverride(t *testing.T) {
 	assert.Equal(t, "https://gitlab.example.com", resp.InstanceURL)
 	assert.Equal(t, "pat", resp.Token.Type)
 	assert.Equal(t, "example-token", resp.Token.Token)
+}
+
+func TestCredentialHelper_UnauthenticatedSkipsWrapperWhenEnvSet(t *testing.T) {
+	// Set the skip wrapper env var to prevent recursion
+	t.Setenv(skipWrapperDetectionEnv, "1")
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithBaseRepo("OWNER", "REPO", "gitlab.example.com"),
+		cmdtest.WithApiClient(cmdtest.NewTestAuthSourceApiClient(t, nil, gitlab.Unauthenticated{}, "gitlab.example.com")),
+	)
+
+	out, err := exec("")
+
+	require.NoError(t, err)
+
+	var resp errorResponse
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &resp))
+	// Should get the standard unauthenticated error, not try wrapper detection
+	assert.Equal(t, "glab is not authenticated. Use glab auth login to authenticate", resp.Message)
 }
