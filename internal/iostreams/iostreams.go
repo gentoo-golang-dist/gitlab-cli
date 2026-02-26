@@ -402,7 +402,7 @@ func (s *IOStreams) MultiSelect(ctx context.Context, result *[]string, title str
 		huh.NewMultiSelect[string]().
 			Title(title).
 			Options(huh.NewOptions(options...)...).
-			Filterable(false).
+			Filterable(true).
 			Limit(limit).
 			Value(result))
 }

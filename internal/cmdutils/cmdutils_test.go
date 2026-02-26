@@ -785,7 +785,7 @@ func Test_UsersPrompt(t *testing.T) {
 				t.Skip(tC.skipReason)
 			}
 
-			listProjectMembers = func(client *gitlab.Client, projectID any, opts *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
+			listProjectMembers = func(ctx context.Context, client *gitlab.Client, projectID any, opts *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
 				return tC.mock, nil
 			}
 
@@ -841,7 +841,7 @@ func Test_UsersPrompt(t *testing.T) {
 	t.Run("API Failed", func(t *testing.T) {
 		var got []string
 
-		listProjectMembers = func(client *gitlab.Client, projectID any, opts *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
+		listProjectMembers = func(ctx context.Context, client *gitlab.Client, projectID any, opts *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
 			return nil, errors.New("meant to fail")
 		}
 
@@ -853,7 +853,7 @@ func Test_UsersPrompt(t *testing.T) {
 	t.Run("respect-flags", func(t *testing.T) {
 		got := []string{"foo"}
 
-		listProjectMembers = func(_ *gitlab.Client, _ any, _ *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
+		listProjectMembers = func(_ context.Context, _ *gitlab.Client, _ any, _ *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
 			return []*gitlab.ProjectMember{
 				{
 					Username:    "foo",

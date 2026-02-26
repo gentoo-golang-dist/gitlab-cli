@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
@@ -50,12 +51,14 @@ var projectMilestoneByTitle = func(client *gitlab.Client, projectID any, name st
 	return milestones[0], nil
 }
 
-var listProjectMembers = func(client *gitlab.Client, projectID any, opts *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
-	members, _, err := client.ProjectMembers.ListAllProjectMembers(projectID, opts)
-	if err != nil {
-		return nil, err
-	}
-	return members, nil
+var listProjectMembers = func(ctx context.Context, client *gitlab.Client, projectID any, opts *gitlab.ListProjectMembersOptions) ([]*gitlab.ProjectMember, error) {
+	// Set a timeout to prevent hanging on very large projects
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	return gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.ProjectMember, *gitlab.Response, error) {
+		return client.ProjectMembers.ListAllProjectMembers(projectID, opts, p, gitlab.WithContext(ctx))
+	})
 }
 
 // LoadGitLabTemplate finds and loads the GitLab template from the working git directory
@@ -244,10 +247,21 @@ func UsersPrompt(ctx context.Context, response *[]string, apiClient *gitlab.Clie
 	var userOptions []string
 	userMap := map[string]string{}
 
-	lOpts := &gitlab.ListProjectMembersOptions{}
-	lOpts.PerPage = 100
-	members, err := listProjectMembers(apiClient, repoRemote.FullName(), lOpts)
+	lOpts := &gitlab.ListProjectMembersOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: 100,
+		},
+	}
+
+	if io != nil {
+		io.StartSpinner("Loading project members...")
+	}
+
+	members, err := listProjectMembers(ctx, apiClient, repoRemote.FullName(), lOpts)
 	if err != nil {
+		if io != nil {
+			io.StopSpinner("")
+		}
 		return err
 	}
 
@@ -260,6 +274,12 @@ func UsersPrompt(ctx context.Context, response *[]string, apiClient *gitlab.Clie
 			userMap[fmt.Sprintf("%s (%s)", members[i].Username, GroupMemberLevel[int(members[i].AccessLevel)])] = members[i].Username
 		}
 	}
+
+	// Stop spinner before showing the prompt
+	if io != nil {
+		io.StopSpinner("")
+	}
+
 	if len(userOptions) == 0 {
 		fmt.Fprintf(io.StdErr, "Couldn't fetch any members with minimum permission level %d.\n", minimumAccessLevel)
 		return nil
