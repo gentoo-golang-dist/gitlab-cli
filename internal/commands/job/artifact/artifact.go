@@ -11,14 +11,21 @@ import (
 func NewCmdArtifact(f cmdutils.Factory) *cobra.Command {
 	jobArtifactCmd := &cobra.Command{
 		Use:     "artifact <refName> <jobName> [flags]",
-		Short:   `Download all artifacts from the last pipeline.`,
+		Short:   `Download all artifacts from the most recent pipeline.`,
 		Aliases: []string{"push"},
 		Example: heredoc.Doc(`
-			$ glab job artifact main build
-			$ glab job artifact main deploy --path="artifacts/"
-			$ glab job artifact main deploy --list-paths
-		`),
-		Long: ``,
+		$ glab job artifact main build
+		$ glab job artifact main deploy --path="artifacts/"
+		$ glab job artifact main deploy --list-paths
+		$ glab job artifact refs/merge-requests/123/head build
+	`),
+		Long: heredoc.Docf(`
+		Downloads all artifacts from the most recent successful pipeline.
+
+		%[1]s<refName>%[1]s is a branch name, tag, or merge request reference. For a branch
+		or tag, use the name directly. For a merge request pipeline, use the ref
+		%[1]srefs/merge-requests/<iid>/head%[1]s, where %[1]s<iid>%[1]s is the merge request IID.
+		`, "`"),
 		Args: cobra.ExactArgs(2),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
