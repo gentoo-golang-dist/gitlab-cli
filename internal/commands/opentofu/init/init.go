@@ -88,7 +88,7 @@ func (o *options) run(ctx context.Context) error {
 
 	client := apiClient.Lab()
 	baseURL := client.BaseURL()
-	stateAPIURL := baseURL.JoinPath("projects", gitlab.PathEscape(repo.FullName()), "terraform", "state", o.stateName)
+	stateAPIURL := baseURL.JoinPath("projects", gitlab.PathEscape(repo.FullName()), "terraform", "state", gitlab.PathEscape(o.stateName))
 	args := []string{
 		fmt.Sprintf(`-chdir=%s`, o.directory),
 		"init",

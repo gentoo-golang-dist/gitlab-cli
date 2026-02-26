@@ -3,6 +3,7 @@
 package init
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,6 +17,8 @@ import (
 )
 
 func TestInit_CommandConstruction(t *testing.T) {
+	t.Parallel()
+
 	// GIVEN
 	ctrl := gomock.NewController(t)
 	tc := gitlabtesting.NewTestClientWithCtrl(ctrl, gitlab.WithBaseURL("https://gitlab.example.com"))
@@ -47,33 +50,55 @@ func TestInit_CommandConstruction(t *testing.T) {
 }
 
 func TestInit_CommandConstruction_InitArgs(t *testing.T) {
-	// GIVEN
-	ctrl := gomock.NewController(t)
-	tc := gitlabtesting.NewTestClientWithCtrl(ctrl, gitlab.WithBaseURL("https://gitlab.example.com"))
-	execMock := cmdtest.NewMockExecutor(ctrl)
-	exec := cmdtest.SetupCmdForTest(
-		t,
-		NewCmd,
-		false,
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "testtoken", "gitlab.example.com", api.WithGitLabClient(tc.Client))),
-		cmdtest.WithBaseRepo("OWNER", "REPO", "gitlab.example.com"),
-		cmdtest.WithExecutor(execMock),
-	)
+	t.Parallel()
 
-	execMock.EXPECT().Exec(gomock.Any(), "my-tofu", []string{
-		"-chdir=infra",
-		"init",
-		"-backend-config=address=https://gitlab.example.com/api/v4/projects/OWNER%2FREPO/terraform/state/production",
-		"-backend-config=lock_address=https://gitlab.example.com/api/v4/projects/OWNER%2FREPO/terraform/state/production/lock",
-		"-backend-config=unlock_address=https://gitlab.example.com/api/v4/projects/OWNER%2FREPO/terraform/state/production/lock",
-		"-backend-config=lock_method=POST",
-		"-backend-config=unlock_method=DELETE",
-		"-backend-config=retry_wait_min=5",
-		"-backend-config=headers={\"Authorization\" = \"Bearer testtoken\"}",
-		"-reconfigure",
-	}, nil)
+	tests := []struct {
+		stateName              string
+		expectedStateTFURLPart string
+	}{
+		{
+			stateName:              "production",
+			expectedStateTFURLPart: "terraform/state/production",
+		},
+		{
+			stateName:              "production/iac",
+			expectedStateTFURLPart: "terraform/state/production%2Fiac",
+		},
+	}
 
-	// WHEN
-	_, err := exec("production -d infra -b my-tofu -- -reconfigure")
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.stateName, func(t *testing.T) {
+			t.Parallel()
+
+			// GIVEN
+			ctrl := gomock.NewController(t)
+			tc := gitlabtesting.NewTestClientWithCtrl(ctrl, gitlab.WithBaseURL("https://gitlab.example.com"))
+			execMock := cmdtest.NewMockExecutor(ctrl)
+			exec := cmdtest.SetupCmdForTest(
+				t,
+				NewCmd,
+				false,
+				cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "testtoken", "gitlab.example.com", api.WithGitLabClient(tc.Client))),
+				cmdtest.WithBaseRepo("OWNER", "REPO", "gitlab.example.com"),
+				cmdtest.WithExecutor(execMock),
+			)
+
+			execMock.EXPECT().Exec(gomock.Any(), "my-tofu", []string{
+				"-chdir=infra",
+				"init",
+				fmt.Sprintf("-backend-config=address=https://gitlab.example.com/api/v4/projects/OWNER%%2FREPO/%s", tt.expectedStateTFURLPart),
+				fmt.Sprintf("-backend-config=lock_address=https://gitlab.example.com/api/v4/projects/OWNER%%2FREPO/%s/lock", tt.expectedStateTFURLPart),
+				fmt.Sprintf("-backend-config=unlock_address=https://gitlab.example.com/api/v4/projects/OWNER%%2FREPO/%s/lock", tt.expectedStateTFURLPart),
+				"-backend-config=lock_method=POST",
+				"-backend-config=unlock_method=DELETE",
+				"-backend-config=retry_wait_min=5",
+				"-backend-config=headers={\"Authorization\" = \"Bearer testtoken\"}",
+				"-reconfigure",
+			}, nil)
+
+			// WHEN
+			_, err := exec(fmt.Sprintf("%s -d infra -b my-tofu -- -reconfigure", tt.stateName))
+			require.NoError(t, err)
+		})
+	}
 }
