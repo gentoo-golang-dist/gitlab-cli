@@ -68,17 +68,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	fl := cmd.Flags()
-
-	fl.Var(cmdutils.NewBoolPtrFlag(&opts.pause, true), "pause", "Pause the runner")
-	fl.Lookup("pause").NoOptDefVal = "true"
-
-	fl.Var(cmdutils.NewBoolPtrFlag(&opts.pause, false), "unpause", "Resume a paused runner")
-	fl.Lookup("unpause").NoOptDefVal = "true"
-
-	cmd.MarkFlagsMutuallyExclusive("pause", "unpause")
+	cmdutils.NewBoolFlagPair(cmd, &opts.pause, "pause", "Pause the runner", "unpause", "Resume a paused runner")
 	cmd.MarkFlagsOneRequired("pause", "unpause")
-
 	return cmd
 }
 
