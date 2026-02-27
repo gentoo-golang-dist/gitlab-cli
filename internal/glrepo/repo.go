@@ -174,7 +174,7 @@ func FromURL(u *url.URL, defaultHostname string) (Interface, error) {
 	cfg, err := config.ParseDefaultConfig()
 	// an error is fine here, there might not be a config available
 	if err == nil {
-		apiHost, _ = cfg.Get(u.Hostname(), "api_host")
+		apiHost, _ = cfg.Get(u.Host, "api_host")
 	}
 
 	if apiHost != "" {
