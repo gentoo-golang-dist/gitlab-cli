@@ -5,6 +5,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/list"
+	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/update"
 )
 
 func NewCmdRunner(f cmdutils.Factory) *cobra.Command {
@@ -17,6 +18,7 @@ func NewCmdRunner(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableRepoOverride(runnerCmd, f)
 
 	runnerCmd.AddCommand(listCmd.NewCmd(f))
+	runnerCmd.AddCommand(updateCmd.NewCmd(f))
 
 	return runnerCmd
 }

@@ -31,3 +31,4 @@ Manages GitLab CI/CD runners for projects, groups, or the entire instance.
 ## Subcommands
 
 - [`list`](list.md)
+- [`update`](update.md)
