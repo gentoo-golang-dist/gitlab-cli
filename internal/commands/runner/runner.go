@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	deleteCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/delete"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/list"
 	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/update"
 )
@@ -19,6 +20,7 @@ func NewCmdRunner(f cmdutils.Factory) *cobra.Command {
 
 	runnerCmd.AddCommand(listCmd.NewCmd(f))
 	runnerCmd.AddCommand(updateCmd.NewCmd(f))
+	runnerCmd.AddCommand(deleteCmd.NewCmd(f))
 
 	return runnerCmd
 }
