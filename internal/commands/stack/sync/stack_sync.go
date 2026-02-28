@@ -39,12 +39,86 @@ type options struct {
 const maxMRTitleSize = 252
 
 const (
-	BranchIsBehind    = "Your branch is behind"
-	BranchHasDiverged = "have diverged"
-	NothingToCommit   = "nothing to commit"
-	mergedStatus      = "merged"
-	closedStatus      = "closed"
+	mergedStatus = "merged"
+	closedStatus = "closed"
 )
+
+// BranchTrackingStatus represents the relationship between local and upstream branches
+type BranchTrackingStatus int
+
+const (
+	StatusUnknown BranchTrackingStatus = iota
+	StatusUpToDate
+	StatusBehind
+	StatusAhead
+	StatusDiverged
+	StatusNoUpstream
+)
+
+// parsePorcelainStatus parses git status --porcelain=v1 -b output
+// to determine branch tracking status.
+//
+// Expected format:
+//
+//	## branch...upstream [ahead N, behind M]
+//
+// Returns:
+//   - StatusBehind: branch is behind upstream
+//   - StatusAhead: branch is ahead of upstream
+//   - StatusDiverged: branch has diverged from upstream
+//   - StatusUpToDate: branch is up to date with upstream
+//   - StatusNoUpstream: branch has no upstream configured
+//   - StatusUnknown: unable to parse status
+func parsePorcelainStatus(porcelainOutput string) BranchTrackingStatus {
+	lines := strings.Split(strings.TrimSpace(porcelainOutput), "\n")
+	if len(lines) == 0 {
+		return StatusUnknown
+	}
+
+	// First line should be branch header: ## branch...upstream [tracking]
+	branchLine := lines[0]
+	if !strings.HasPrefix(branchLine, "## ") {
+		return StatusUnknown
+	}
+
+	// Remove "## " prefix
+	branchInfo := strings.TrimPrefix(branchLine, "## ")
+
+	// Check for detached HEAD
+	if strings.HasPrefix(branchInfo, "HEAD (no branch)") {
+		return StatusUnknown
+	}
+
+	// Check if branch has upstream
+	if !strings.Contains(branchInfo, "...") {
+		return StatusNoUpstream
+	}
+
+	// Extract tracking information (content within brackets)
+	trackingStart := strings.Index(branchInfo, "[")
+	trackingEnd := strings.Index(branchInfo, "]")
+
+	if trackingStart == -1 || trackingEnd == -1 {
+		// No tracking information means branches are in sync
+		return StatusUpToDate
+	}
+
+	tracking := branchInfo[trackingStart+1 : trackingEnd]
+
+	hasAhead := strings.Contains(tracking, "ahead ")
+	hasBehind := strings.Contains(tracking, "behind ")
+
+	switch {
+	case hasAhead && hasBehind:
+		return StatusDiverged
+	case hasBehind:
+		return StatusBehind
+	case hasAhead:
+		return StatusAhead
+	default:
+		return StatusUpToDate
+	}
+}
 
 func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	opts := &options{
@@ -137,13 +211,15 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 			return fmt.Errorf("error getting branch status: %v", err)
 		}
 
-		switch {
-		case strings.Contains(status, BranchIsBehind):
+		trackingStatus := parsePorcelainStatus(status)
+
+		switch trackingStatus {
+		case StatusBehind:
 			err = branchBehind(o.io, &ref, gr)
 			if err != nil {
 				return err
 			}
-		case strings.Contains(status, BranchHasDiverged):
+		case StatusDiverged:
 			needsPush, err := branchDiverged(o.io, &ref, &stack, gr)
 			if err != nil {
 				return err
@@ -152,10 +228,12 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 			if needsPush {
 				pushAfterSync = true
 			}
-		case strings.Contains(status, NothingToCommit):
+		case StatusUpToDate, StatusNoUpstream:
 			// this is fine. we can just move on.
-		default:
+		case StatusAhead:
 			return fmt.Errorf("your Git branch is ahead, but it shouldn't be. You might need to squash your commits.")
+		case StatusUnknown:
+			return fmt.Errorf("unable to determine status for branch %s", ref.Branch)
 		}
 
 		if ref.MR == "" {
@@ -232,7 +310,8 @@ func branchStatus(ref *git.StackRef, gr git.GitRunner) (string, error) {
 	}
 	dbg.Debug("Checked out:", checkout)
 
-	output, err := gr.Git("status", "-uno")
+	// Use porcelain format for machine-readable, locale-independent output
+	output, err := gr.Git("status", "--porcelain=v1", "-b", "-uno")
 	if err != nil {
 		return "", err
 	}

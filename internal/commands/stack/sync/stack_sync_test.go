@@ -21,6 +21,15 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
+// Porcelain format test outputs
+const (
+	PorcelainUpToDate   = "## main...origin/main\n"
+	PorcelainBehind     = "## main...origin/main [behind 2]\n"
+	PorcelainAhead      = "## main...origin/main [ahead 1]\n"
+	PorcelainDiverged   = "## main...origin/main [ahead 1, behind 2]\n"
+	PorcelainNoUpstream = "## feature-branch\n"
+)
+
 type SyncScenario struct {
 	refs       map[string]TestRef
 	title      string
@@ -121,11 +130,11 @@ func Test_stackSync(t *testing.T) {
 								MR:          "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
 								Description: "single line desc",
 							},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 						"2": {
 							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: "", Description: "multi line desc\n\ndescription, bark!"},
-							state: BranchIsBehind,
+							state: PorcelainBehind,
 						},
 					},
 				},
@@ -203,11 +212,11 @@ func Test_stackSync(t *testing.T) {
 					refs: map[string]TestRef{
 						"1": {
 							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: "", Description: "some description"},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 						"2": {
 							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: ""},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 					},
 				},
@@ -265,27 +274,27 @@ func Test_stackSync(t *testing.T) {
 								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
 								MR: "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
 							},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 						"2": {
 							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "3", Branch: "Branch2", MR: ""},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 						"3": {
 							ref:   git.StackRef{SHA: "3", Prev: "2", Next: "4", Branch: "Branch3", MR: ""},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 						"4": {
 							ref:   git.StackRef{SHA: "4", Prev: "3", Next: "5", Branch: "Branch4", MR: ""},
-							state: BranchHasDiverged,
+							state: PorcelainDiverged,
 						},
 						"5": {
 							ref:   git.StackRef{SHA: "5", Prev: "4", Next: "6", Branch: "Branch5", MR: ""},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 						"6": {
 							ref:   git.StackRef{SHA: "6", Prev: "5", Next: "", Branch: "Branch6", MR: ""},
-							state: NothingToCommit,
+							state: PorcelainUpToDate,
 						},
 					},
 				},
@@ -347,11 +356,11 @@ func Test_stackSync(t *testing.T) {
 					refs: map[string]TestRef{
 						"1": {
 							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: ""},
-							state: BranchIsBehind,
+							state: PorcelainBehind,
 						},
 						"2": {
 							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: ""},
-							state: BranchIsBehind,
+							state: PorcelainBehind,
 						},
 					},
 				},
@@ -568,17 +577,18 @@ func Test_stackSync(t *testing.T) {
 				state := tc.args.stack.refs[ref.SHA].state
 
 				mockCmd.EXPECT().Git([]string{"checkout", ref.Branch})
-				mockCmd.EXPECT().Git([]string{"status", "-uno"}).Return(state, nil)
+				mockCmd.EXPECT().Git([]string{"status", "--porcelain=v1", "-b", "-uno"}).Return(state, nil)
 
-				switch state {
-				case BranchIsBehind:
+				trackingStatus := parsePorcelainStatus(state)
+				switch trackingStatus {
+				case StatusBehind:
 					mockCmd.EXPECT().Git([]string{"pull"}).Return(state, nil)
 
-				case BranchHasDiverged:
+				case StatusDiverged:
 					mockCmd.EXPECT().Git([]string{"checkout", stack.Last().Branch})
 					mockCmd.EXPECT().Git([]string{"rebase", "--fork-point", "--update-refs", ref.Branch})
 
-				case NothingToCommit:
+				case StatusUpToDate, StatusNoUpstream:
 				}
 
 				if ref.MR == "" {
@@ -635,5 +645,101 @@ func createStack(t *testing.T, title string, scenario map[string]TestRef) {
 
 		err = git.CheckoutNewBranch(ref.ref.Branch)
 		require.NoError(t, err)
+	}
+}
+
+func TestParsePorcelainStatus(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected BranchTrackingStatus
+	}{
+		{
+			name:     "up to date",
+			input:    "## main...origin/main\n",
+			expected: StatusUpToDate,
+		},
+		{
+			name:     "behind",
+			input:    "## main...origin/main [behind 2]\n",
+			expected: StatusBehind,
+		},
+		{
+			name:     "behind single commit",
+			input:    "## feature...origin/feature [behind 1]\n",
+			expected: StatusBehind,
+		},
+		{
+			name:     "ahead",
+			input:    "## main...origin/main [ahead 1]\n",
+			expected: StatusAhead,
+		},
+		{
+			name:     "ahead multiple commits",
+			input:    "## main...origin/main [ahead 15]\n",
+			expected: StatusAhead,
+		},
+		{
+			name:     "diverged",
+			input:    "## main...origin/main [ahead 1, behind 2]\n",
+			expected: StatusDiverged,
+		},
+		{
+			name:     "diverged large numbers",
+			input:    "## feature...origin/feature [ahead 100, behind 50]\n",
+			expected: StatusDiverged,
+		},
+		{
+			name:     "no upstream",
+			input:    "## feature-branch\n",
+			expected: StatusNoUpstream,
+		},
+		{
+			name:     "with uncommitted changes - behind",
+			input:    "## main...origin/main [behind 1]\n M file.txt\n",
+			expected: StatusBehind,
+		},
+		{
+			name:     "with uncommitted changes - up to date",
+			input:    "## main...origin/main\n M file.txt\nA  new.txt\n",
+			expected: StatusUpToDate,
+		},
+		{
+			name:     "empty output",
+			input:    "",
+			expected: StatusUnknown,
+		},
+		{
+			name:     "invalid format - no ## prefix",
+			input:    "not a valid porcelain output\n",
+			expected: StatusUnknown,
+		},
+		{
+			name:     "detached HEAD",
+			input:    "## HEAD (no branch)\n",
+			expected: StatusUnknown,
+		},
+		{
+			name:     "whitespace only",
+			input:    "   \n\t\n",
+			expected: StatusUnknown,
+		},
+		{
+			name:     "branch with slashes in name",
+			input:    "## feature/my-branch...origin/feature/my-branch [behind 3]\n",
+			expected: StatusBehind,
+		},
+		{
+			name:     "branch with special characters",
+			input:    "## fix-bug-123...origin/fix-bug-123\n",
+			expected: StatusUpToDate,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parsePorcelainStatus(tt.input)
+			assert.Equal(t, tt.expected, result, "parsePorcelainStatus(%q) = %v, want %v", tt.input, result, tt.expected)
+		})
 	}
 }
