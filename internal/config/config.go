@@ -100,6 +100,7 @@ func (cm *ConfigMap) SetStringValue(key, value string) error {
 	}
 
 	valueNode.Value = value
+	valueNode.Tag = "!!str"
 
 	return nil
 }
