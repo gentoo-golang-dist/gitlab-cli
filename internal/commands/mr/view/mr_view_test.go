@@ -108,38 +108,50 @@ func TestMain(m *testing.M) {
 }
 
 func TestMRView(t *testing.T) {
-	oldListMrNotes := listMRNotes
+	oldListMrDiscussions := listMRDiscussions
 	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
-	listMRNotes = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestNotesOptions) ([]*gitlab.Note, error) {
+	listMRDiscussions = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
 		if projectID == "PROJECT_MR_WITH_EMPTY_NOTE" {
-			return []*gitlab.Note{}, nil
+			return []*gitlab.Discussion{}, nil
 		}
-		return []*gitlab.Note{
+		return []*gitlab.Discussion{
 			{
-				ID:    1,
-				Body:  "Note Body",
-				Title: "Note Title",
-				Author: gitlab.NoteAuthor{
-					ID:       1,
-					Username: "johnwick",
-					Name:     "John Wick",
+				ID:             "disc1",
+				IndividualNote: true,
+				Notes: []*gitlab.Note{
+					{
+						ID:    1,
+						Body:  "Note Body",
+						Title: "Note Title",
+						Author: gitlab.NoteAuthor{
+							ID:       1,
+							Username: "johnwick",
+							Name:     "John Wick",
+						},
+						System:     false,
+						CreatedAt:  &timer,
+						NoteableID: 0,
+					},
 				},
-				System:     false,
-				CreatedAt:  &timer,
-				NoteableID: 0,
 			},
 			{
-				ID:    1,
-				Body:  "Marked MR as ready",
-				Title: "",
-				Author: gitlab.NoteAuthor{
-					ID:       1,
-					Username: "johnwick",
-					Name:     "John Wick",
+				ID:             "disc2",
+				IndividualNote: true,
+				Notes: []*gitlab.Note{
+					{
+						ID:    2,
+						Body:  "Marked MR as ready",
+						Title: "",
+						Author: gitlab.NoteAuthor{
+							ID:       1,
+							Username: "johnwick",
+							Name:     "John Wick",
+						},
+						System:     true,
+						CreatedAt:  &timer,
+						NoteableID: 0,
+					},
 				},
-				System:     true,
-				CreatedAt:  &timer,
-				NoteableID: 0,
 			},
 		}, nil
 	}
@@ -208,7 +220,7 @@ func TestMRView(t *testing.T) {
 			}
 		}
 	})
-	listMRNotes = oldListMrNotes
+	listMRDiscussions = oldListMrDiscussions
 }
 
 func Test_rawMRPreview(t *testing.T) {
@@ -239,35 +251,53 @@ func Test_rawMRPreview(t *testing.T) {
 		},
 	}
 
-	notes := []*gitlab.Note{
+	discussions := []*gitlab.Discussion{
 		{
-			System:    true,
-			Author:    fakeNote1.Author,
-			Body:      "assigned to @alice",
-			CreatedAt: &time1,
+			ID:             "disc1",
+			IndividualNote: true,
+			Notes: []*gitlab.Note{
+				{
+					System:    true,
+					Author:    fakeNote1.Author,
+					Body:      "assigned to @alice",
+					CreatedAt: &time1,
+				},
+			},
 		},
 		{
-			System:    false,
-			Author:    fakeNote1.Author,
-			Body:      "Some comment",
-			CreatedAt: &time1,
+			ID:             "disc2",
+			IndividualNote: true,
+			Notes: []*gitlab.Note{
+				{
+					System:    false,
+					Author:    fakeNote1.Author,
+					Body:      "Some comment",
+					CreatedAt: &time1,
+				},
+			},
 		},
 		{
-			System:    false,
-			Author:    fakeNote2.Author,
-			Body:      "Another comment",
-			CreatedAt: &time2,
+			ID:             "disc3",
+			IndividualNote: true,
+			Notes: []*gitlab.Note{
+				{
+					System:    false,
+					Author:    fakeNote2.Author,
+					Body:      "Another comment",
+					CreatedAt: &time2,
+				},
+			},
 		},
 	}
 
 	ioStreams, _, _, _ = cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
 
 	tests := []struct {
-		name  string
-		opts  *options
-		mr    *gitlab.MergeRequest
-		notes []*gitlab.Note
-		want  []string
+		name        string
+		opts        *options
+		mr          *gitlab.MergeRequest
+		discussions []*gitlab.Discussion
+		want        []string
 	}{
 		{
 			"mr_default",
@@ -275,7 +305,7 @@ func Test_rawMRPreview(t *testing.T) {
 				io: ioStreams,
 			},
 			mr,
-			notes,
+			discussions,
 			[]string{
 				"title:\tMR title",
 				"state:\tmerged",
@@ -299,7 +329,7 @@ func Test_rawMRPreview(t *testing.T) {
 				showSystemLogs: true,
 			},
 			mr,
-			[]*gitlab.Note{},
+			[]*gitlab.Discussion{},
 			[]string{
 				"title:\tMR title",
 				"state:\tmerged",
@@ -325,7 +355,7 @@ func Test_rawMRPreview(t *testing.T) {
 				showSystemLogs: true,
 			},
 			mr,
-			notes,
+			discussions,
 			[]string{
 				"title:\tMR title",
 				"state:\tmerged",
@@ -355,7 +385,7 @@ func Test_rawMRPreview(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			want := strings.Join(tt.want, "\n") + "\n"
-			got := rawMRPreview(tt.opts, tt.mr, tt.notes)
+			got := rawMRPreview(tt.opts, tt.mr, tt.discussions)
 
 			require.Equal(t, want, got)
 		})
@@ -604,7 +634,7 @@ func Test_printTTYMRPreview_closedMRWithNilClosedBy(t *testing.T) {
 	}
 
 	// This should not panic - the bug would cause a nil pointer dereference here
-	printTTYMRPreview(opts, mr, nil, []*gitlab.Note{})
+	printTTYMRPreview(opts, mr, nil, []*gitlab.Discussion{})
 	output := stdout.String()
 
 	// Verify that it contains "Closed" but not "Closed by:" since ClosedBy is nil

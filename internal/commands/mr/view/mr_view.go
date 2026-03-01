@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -22,17 +23,33 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
-var listMRNotes = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestNotesOptions) ([]*gitlab.Note, error) {
+var listMRDiscussions = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
 	if opts.PerPage == 0 {
 		opts.PerPage = api.DefaultListLimit
 	}
 
-	notes, _, err := client.Notes.ListMergeRequestNotes(projectID, mrID, opts)
-	if err != nil {
-		return notes, err
+	var allDiscussions []*gitlab.Discussion
+	page := opts.Page
+	if page == 0 {
+		page = 1
 	}
 
-	return notes, nil
+	for {
+		opts.Page = page
+		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(projectID, mrID, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		allDiscussions = append(allDiscussions, discussions...)
+
+		if resp == nil || resp.NextPage == 0 {
+			break
+		}
+		page = resp.NextPage
+	}
+
+	return allDiscussions, nil
 }
 
 type options struct {
@@ -49,9 +66,9 @@ type options struct {
 	config       func() config.Config
 }
 
-type MRWithNotes struct {
+type MRWithDiscussions struct {
 	*gitlab.MergeRequest
-	Notes []*gitlab.Note
+	Discussions []*gitlab.Discussion
 }
 
 func NewCmdView(f cmdutils.Factory) *cobra.Command {
@@ -120,18 +137,18 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 		return utils.OpenInBrowser(mr.WebURL, browser)
 	}
 
-	notes := []*gitlab.Note{}
+	discussions := []*gitlab.Discussion{}
 
 	if o.showComments {
-		l := &gitlab.ListMergeRequestNotesOptions{
-			Sort: gitlab.Ptr("asc"),
+		l := &gitlab.ListMergeRequestDiscussionsOptions{
 			ListOptions: gitlab.ListOptions{
 				Page:    int64(o.commentPageNujmber),
 				PerPage: int64(o.commentLimit),
+				Sort:    "asc",
 			},
 		}
 
-		notes, err = listMRNotes(client, baseRepo.FullName(), mr.IID, l)
+		discussions, err = listMRDiscussions(client, baseRepo.FullName(), mr.IID, l)
 		if err != nil {
 			return err
 		}
@@ -146,11 +163,11 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 
 	switch {
 	case o.outputFormat == "json":
-		printJSONMR(o, mr, notes)
+		printJSONMR(o, mr, discussions)
 	case o.io.IsOutputTTY():
-		printTTYMRPreview(o, mr, mrApprovals, notes)
+		printTTYMRPreview(o, mr, mrApprovals, discussions)
 	default:
-		printRawMRPreview(o, mr, notes)
+		printRawMRPreview(o, mr, discussions)
 	}
 	return nil
 }
@@ -186,7 +203,7 @@ func mrState(c *iostreams.ColorPalette, mr *gitlab.MergeRequest) string {
 	}
 }
 
-func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitlab.MergeRequestApprovalState, notes []*gitlab.Note) {
+func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitlab.MergeRequestApprovalState, discussions []*gitlab.Discussion) {
 	c := opts.io.Color()
 	out := opts.io.StdOut
 	mrTimeAgo := utils.TimeToPrettyTimeAgo(*mr.CreatedAt)
@@ -263,32 +280,87 @@ func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitl
 	if opts.showComments {
 		fmt.Fprintln(out, heredoc.Doc(`
 			--------------------------------------------
-			Comments / Notes
+			Discussions
 			--------------------------------------------
 			`))
-		if len(notes) > 0 {
-			for _, note := range notes {
-				if note.System && !opts.showSystemLogs {
+		if len(discussions) > 0 {
+			for _, discussion := range discussions {
+				if len(discussion.Notes) == 0 {
 					continue
 				}
-				createdAt := utils.TimeToPrettyTimeAgo(*note.CreatedAt)
-				fmt.Fprint(out, "@", note.Author.Username)
-				if note.System {
-					fmt.Fprintf(out, " %s ", note.Body)
-					fmt.Fprintln(out, c.Gray(createdAt))
-				} else {
-					body, _ := utils.RenderMarkdown(note.Body, opts.io.BackgroundColor())
-					fmt.Fprint(out, " commented ")
-					fmt.Fprintf(out, c.Gray("%s\n"), createdAt)
 
-					// Display file and line context if available
-					if note.Position != nil {
-						printCommentFileContext(out, c, note.Position)
+				// Skip system notes unless --system-logs is specified
+				firstNote := discussion.Notes[0]
+				if firstNote.System && !opts.showSystemLogs {
+					continue
+				}
+
+				// For threaded discussions (not individual notes)
+				if !discussion.IndividualNote && len(discussion.Notes) > 1 {
+					// Print thread header with first note ID
+					fmt.Fprintf(out, "Thread [#%d]", firstNote.ID)
+
+					// Show resolution status if resolvable
+					if firstNote.Resolvable {
+						if firstNote.Resolved {
+							fmt.Fprint(out, c.Green(" ✓ resolved"))
+						} else {
+							fmt.Fprint(out, c.Yellow(" ⚠ unresolved"))
+						}
+					}
+					fmt.Fprintln(out)
+
+					// Print first note
+					createdAt := utils.TimeToPrettyTimeAgo(*firstNote.CreatedAt)
+					fmt.Fprintf(out, "  @%s commented ", firstNote.Author.Username)
+					fmt.Fprintln(out, c.Gray(createdAt))
+
+					if firstNote.Position != nil {
+						printCommentFileContext(out, c, firstNote.Position)
 					}
 
-					fmt.Fprintln(out, utils.Indent(body, " "))
+					body, _ := utils.RenderMarkdown(firstNote.Body, opts.io.BackgroundColor())
+					fmt.Fprintln(out, utils.Indent(body, "  "))
+					fmt.Fprintln(out)
+
+					// Print replies (indented)
+					for i, note := range discussion.Notes[1:] {
+						if note.System && !opts.showSystemLogs {
+							continue
+						}
+						replyTime := utils.TimeToPrettyTimeAgo(*note.CreatedAt)
+						fmt.Fprintf(out, "    @%s replied ", note.Author.Username)
+						fmt.Fprintln(out, c.Gray(replyTime))
+
+						replyBody, _ := utils.RenderMarkdown(note.Body, opts.io.BackgroundColor())
+						fmt.Fprintln(out, utils.Indent(replyBody, "    "))
+						if i < len(discussion.Notes[1:])-1 {
+							fmt.Fprintln(out)
+						}
+					}
+					fmt.Fprintln(out)
+				} else {
+					// Individual note (not a thread)
+					note := firstNote
+					createdAt := utils.TimeToPrettyTimeAgo(*note.CreatedAt)
+					fmt.Fprint(out, "@", note.Author.Username)
+					if note.System {
+						fmt.Fprintf(out, " %s ", note.Body)
+						fmt.Fprintln(out, c.Gray(createdAt))
+					} else {
+						body, _ := utils.RenderMarkdown(note.Body, opts.io.BackgroundColor())
+						fmt.Fprint(out, " commented ")
+						fmt.Fprintf(out, c.Gray("%s\n"), createdAt)
+
+						// Display file and line context if available
+						if note.Position != nil {
+							printCommentFileContext(out, c, note.Position)
+						}
+
+						fmt.Fprintln(out, utils.Indent(body, " "))
+					}
+					fmt.Fprintln(out)
 				}
-				fmt.Fprintln(out)
 			}
 		} else {
 			fmt.Fprintln(out, "This merge request has no comments.")
@@ -299,11 +371,11 @@ func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitl
 	fmt.Fprintf(out, c.Gray("View this merge request on GitLab: %s\n"), mr.WebURL)
 }
 
-func printRawMRPreview(opts *options, mr *gitlab.MergeRequest, notes []*gitlab.Note) {
-	fmt.Fprint(opts.io.StdOut, rawMRPreview(opts, mr, notes))
+func printRawMRPreview(opts *options, mr *gitlab.MergeRequest, discussions []*gitlab.Discussion) {
+	fmt.Fprint(opts.io.StdOut, rawMRPreview(opts, mr, discussions))
 }
 
-func rawMRPreview(opts *options, mr *gitlab.MergeRequest, notes []*gitlab.Note) string {
+func rawMRPreview(opts *options, mr *gitlab.MergeRequest, discussions []*gitlab.Discussion) string {
 	var out string
 
 	assignees := assigneesList(mr)
@@ -325,14 +397,30 @@ func rawMRPreview(opts *options, mr *gitlab.MergeRequest, notes []*gitlab.Note) 
 	out += "--\n"
 	out += fmt.Sprintf("%s\n", mr.Description)
 
+	// Flatten discussions to notes for raw output
+	var notes []*gitlab.Note
+	if opts.showComments {
+		for _, discussion := range discussions {
+			for _, note := range discussion.Notes {
+				if note.System && !opts.showSystemLogs {
+					continue
+				}
+				notes = append(notes, note)
+			}
+		}
+		// Sort notes chronologically by creation time
+		sort.Slice(notes, func(i, j int) bool {
+			return notes[i].CreatedAt.Before(*notes[j].CreatedAt)
+		})
+	}
 	out += issuableView.RawIssuableNotes(notes, opts.showComments, opts.showSystemLogs, "merge request")
 
 	return out
 }
 
-func printJSONMR(opts *options, mr *gitlab.MergeRequest, notes []*gitlab.Note) {
+func printJSONMR(opts *options, mr *gitlab.MergeRequest, discussions []*gitlab.Discussion) {
 	if opts.showComments {
-		extendedMR := MRWithNotes{mr, notes}
+		extendedMR := MRWithDiscussions{mr, discussions}
 		mrJSON, _ := json.Marshal(extendedMR)
 		fmt.Fprintln(opts.io.StdOut, string(mrJSON))
 	} else {
