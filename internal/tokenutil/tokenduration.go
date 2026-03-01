@@ -1,4 +1,4 @@
-package tokenduration
+package tokenutil
 
 import (
 	"fmt"
