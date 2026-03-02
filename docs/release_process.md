@@ -33,7 +33,7 @@ Prerequisites:
 
 To manually update the version available through Homebrew:
 
-1. Generate a new token with the `repo`, `workflow`, and `gist` scopes  [using this link](https://github.com/settings/tokens/new?scopes=gist,repo,workflow&description=Homebrew).
+1. Generate a new token with the `repo`, `workflow`, and `gist` scopes [using this link](https://github.com/settings/tokens/new?scopes=gist,repo,workflow&description=Homebrew).
    If you have an existing token with the correct scope, you can use it instead.
 1. On the [**Releases** page for this project](https://gitlab.com/gitlab-org/cli/-/releases), identify the release version you want to publish.
 1. In the **Assets** area for the release, download the packaged source code (`Source code (tar.gz)`) for this release.
