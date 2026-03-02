@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -302,6 +303,27 @@ var ToplevelDir = func() (string, error) {
 	showCmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	output, err := run.PrepareCmd(showCmd).Output()
 	return firstLine(output), err
+}
+
+// GitCommonDir returns the common git directory shared across worktrees.
+// In a regular repository this is the same as --git-dir (i.e. ".git").
+// In a worktree it resolves to the main repository's ".git" directory,
+// ensuring resources like stacked diffs are shared across worktrees.
+var GitCommonDir = func() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--git-common-dir")
+	output, err := run.PrepareCmd(cmd).Output()
+	if err != nil {
+		return "", err
+	}
+	dir := firstLine(output)
+	if !filepath.IsAbs(dir) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		dir = filepath.Join(cwd, dir)
+	}
+	return filepath.Clean(dir), nil
 }
 
 func outputLines(output []byte) []string {

@@ -61,7 +61,7 @@ func TestCreateNewStack(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			tempDir := git.InitGitRepo(t)
+			git.InitGitRepo(t)
 
 			ctrl := gomock.NewController(t)
 			mockCmd := git_testing.NewMockGitRunner(ctrl)
@@ -100,12 +100,9 @@ func TestCreateNewStack(t *testing.T) {
 			configValue, err := git.GetCurrentStackTitle()
 			require.Nil(t, err)
 
-			createdBaseFile := path.Join(
-				tempDir,
-				"/.git/stacked/",
-				tc.expectedBranch,
-				git.BaseBranchFile,
-			)
+			stackRoot, err := git.StackRootDir(tc.expectedBranch)
+			require.NoError(t, err)
+			createdBaseFile := path.Join(stackRoot, git.BaseBranchFile)
 
 			fileContents, err := config.TrimmedFileContents(createdBaseFile)
 			require.NoError(t, err)
