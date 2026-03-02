@@ -27,6 +27,16 @@ hosts:
         api_protocol: https
         # Configure host for API endpoint. Defaults to the host itself.
         api_host: gitlab.com
+        # Subfolder where GitLab is installed (e.g., 'gitlab' for https://example.com/gitlab/)
+        # Use this when GitLab is hosted at a subfolder rather than domain root.
+        # Supports nested paths (e.g., 'apps/gitlab' for https://example.com/apps/gitlab/)
+        # Slashes are automatically trimmed, so 'gitlab', '/gitlab', and 'gitlab/' are equivalent.
+        # Only applies to HTTP/HTTPS operations (API and git clone).
+        subfolder:
+        # Alternate hostname for SSH git operations (e.g., 'ssh.example.com' or 'git.example.com')
+        # Use this when SSH uses a different hostname than HTTP/API operations.
+        # Only affects SSH cloning and git operations.
+        ssh_host:
         # Your GitLab access token. To get one, read https://docs.gitlab.com/user/profile/personal_access_tokens/
         token:
         # Custom proxy for this host. Overrides environment proxy settings when set.

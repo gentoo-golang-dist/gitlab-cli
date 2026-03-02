@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/zalando/go-keyring"
 	"gopkg.in/yaml.v3"
@@ -612,8 +614,42 @@ func GetFromEnvWithSource(key string) (string, string) {
 	envEq := EnvKeyEquivalence(key)
 	for _, e := range envEq {
 		if val := os.Getenv(e); val != "" {
-			return val, e
+			// Special handling for CI autologin variables that need parsing
+			switch {
+			case key == "subfolder" && e == "CI_SERVER_URL":
+				// Extract subfolder from CI_SERVER_URL
+				// is like "https://example.com/gitlab" or "https://example.com"
+				if subfolder := extractSubfolderFromURL(val); subfolder != "" {
+					return subfolder, e
+				}
+				// If no subfolder in URL, continue checking other env vars
+				continue
+			case key == "ssh_host" && e == "CI_SERVER_SHELL_SSH_HOST":
+				// Combine SSH host and port if port is set
+				sshHost := val
+				if sshPort := os.Getenv("CI_SERVER_SHELL_SSH_PORT"); sshPort != "" && sshPort != "22" {
+					// Only include port if it's non-default (not 22)
+					sshHost = sshHost + ":" + sshPort
+				}
+				return sshHost, e
+			default:
+				return val, e
+			}
 		}
 	}
 	return "", ""
+}
+
+// extractSubfolderFromURL parses a URL and extracts the path component (subfolder).
+// Returns empty string if URL has no path or only "/".
+func extractSubfolderFromURL(urlStr string) string {
+	// Parse the URL
+	u, err := url.Parse(urlStr)
+	if err != nil {
+		return ""
+	}
+
+	// Extract and clean the path
+	subfolder := strings.Trim(u.Path, "/")
+	return subfolder
 }

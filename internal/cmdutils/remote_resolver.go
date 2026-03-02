@@ -1,6 +1,7 @@
 package cmdutils
 
 import (
+	"cmp"
 	"errors"
 	"net/url"
 	"sort"
@@ -54,10 +55,16 @@ func (rr *remoteResolver) Resolver(hostOverride string) func() (glrepo.Remotes, 
 		cfg := rr.getConfig()
 
 		knownHosts := map[string]bool{}
+		sshHostMapping := map[string]string{} // Maps SSH hostnames to config keys
 		knownHosts[glinstance.DefaultHostname] = true
 		if authenticatedHosts, err := cfg.Hosts(); err == nil {
 			for _, h := range authenticatedHosts {
 				knownHosts[h] = true
+
+				// Build SSH host mapping
+				if sshHost, _ := cfg.Get(h, "ssh_host"); sshHost != "" {
+					sshHostMapping[sshHost] = h
+				}
 			}
 		}
 
@@ -83,14 +90,24 @@ func (rr *remoteResolver) Resolver(hostOverride string) func() (glrepo.Remotes, 
 		}
 
 		for _, r := range resolvedRemotes {
-			if hostname == "" {
-				if !knownHosts[r.RepoHost()] {
+			repoHost := r.RepoHost()
+
+			// Check if this is a known host or SSH host that maps to a config entry
+			if !knownHosts[repoHost] {
+				configHost, found := sshHostMapping[repoHost]
+				if !found {
+					// Unknown host - skip this remote
 					continue
 				}
-				hostname = r.RepoHost()
-			} else if r.RepoHost() != hostname {
+				// SSH host that maps to a config entry
+				repoHost = configHost
+			}
+
+			if repoHost != hostname && hostname != "" {
 				continue
 			}
+
+			hostname = cmp.Or(hostname, repoHost)
 			cachedRemotes = append(cachedRemotes, r)
 		}
 

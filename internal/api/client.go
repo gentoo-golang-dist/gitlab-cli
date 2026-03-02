@@ -292,6 +292,7 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 	if apiHost == "" {
 		apiHost = repoHost
 	}
+	subfolder, _ := cfg.Get(repoHost, "subfolder")
 
 	apiProtocol, _ := cfg.Get(repoHost, "api_protocol")
 	if apiProtocol == "" {
@@ -367,9 +368,9 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 
 	var baseURL string
 	if isGraphQL {
-		baseURL = glinstance.GraphQLEndpoint(apiHost, apiProtocol)
+		baseURL = glinstance.GraphQLEndpoint(repoHost, apiProtocol, apiHost, subfolder)
 	} else {
-		baseURL = glinstance.APIEndpoint(apiHost, apiProtocol, "")
+		baseURL = glinstance.APIEndpoint(repoHost, apiProtocol, apiHost, subfolder)
 	}
 	options = append(options, WithBaseURL(baseURL))
 

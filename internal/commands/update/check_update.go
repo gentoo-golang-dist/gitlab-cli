@@ -127,7 +127,7 @@ func checkUpdate(f cmdutils.Factory, silentSuccess bool, forceCheck bool) error 
 func createUnauthenticatedClient(userAgent string, options ...api.ClientOption) (*api.Client, error) {
 	// Create a client with an empty token for unauthenticated requests
 	opts := []api.ClientOption{
-		api.WithBaseURL(glinstance.APIEndpoint(glinstance.DefaultHostname, glinstance.DefaultProtocol, "")),
+		api.WithBaseURL(glinstance.APIEndpoint(glinstance.DefaultHostname, glinstance.DefaultProtocol, "", "")),
 		api.WithUserAgent(userAgent),
 	}
 	opts = append(opts, options...)

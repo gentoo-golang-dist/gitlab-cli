@@ -182,6 +182,54 @@ func TestEnvKeyEquivalence(t *testing.T) {
 			givenKey:         "client_key",
 			expectedKeys:     []string{"CI_SERVER_TLS_KEY_FILE"},
 		},
+		{
+			autologinEnabled: false,
+			inCi:             false,
+			givenKey:         "subfolder",
+			expectedKeys:     []string{"GITLAB_SUBFOLDER"},
+		},
+		{
+			autologinEnabled: true,
+			inCi:             false,
+			givenKey:         "subfolder",
+			expectedKeys:     []string{"GITLAB_SUBFOLDER"},
+		},
+		{
+			autologinEnabled: false,
+			inCi:             true,
+			givenKey:         "subfolder",
+			expectedKeys:     []string{"GITLAB_SUBFOLDER"},
+		},
+		{
+			autologinEnabled: true,
+			inCi:             true,
+			givenKey:         "subfolder",
+			expectedKeys:     []string{"GITLAB_SUBFOLDER", "CI_SERVER_URL"},
+		},
+		{
+			autologinEnabled: false,
+			inCi:             false,
+			givenKey:         "ssh_host",
+			expectedKeys:     []string{"GITLAB_SSH_HOST"},
+		},
+		{
+			autologinEnabled: true,
+			inCi:             false,
+			givenKey:         "ssh_host",
+			expectedKeys:     []string{"GITLAB_SSH_HOST"},
+		},
+		{
+			autologinEnabled: false,
+			inCi:             true,
+			givenKey:         "ssh_host",
+			expectedKeys:     []string{"GITLAB_SSH_HOST"},
+		},
+		{
+			autologinEnabled: true,
+			inCi:             true,
+			givenKey:         "ssh_host",
+			expectedKeys:     []string{"GITLAB_SSH_HOST", "CI_SERVER_SHELL_SSH_HOST"},
+		},
 	}
 
 	// clear potentially set keys that we use during tests

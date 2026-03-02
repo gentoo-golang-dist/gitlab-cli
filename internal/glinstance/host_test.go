@@ -98,10 +98,11 @@ func TestNormalizeHostname(t *testing.T) {
 
 func TestAPIEndpoint(t *testing.T) {
 	tests := []struct {
-		host     string
-		apiHost  string
-		protocol string
-		want     string
+		host      string
+		apiHost   string
+		subfolder string
+		protocol  string
+		want      string
 	}{
 		{
 			host:     "gitlab.com",
@@ -144,7 +145,7 @@ func TestAPIEndpoint(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("%d - %s", i, tt.host), func(t *testing.T) {
-			if got := APIEndpoint(tt.host, tt.protocol, tt.apiHost); got != tt.want {
+			if got := APIEndpoint(tt.host, tt.protocol, tt.apiHost, tt.subfolder); got != tt.want {
 				t.Errorf("APIEndpoint() = %v, want %v", got, tt.want)
 			}
 		})
@@ -260,10 +261,12 @@ func TestHostnameValidator(t *testing.T) {
 
 func Test_GraphQLEndpoint(t *testing.T) {
 	testCases := []struct {
-		name     string
-		protocol string
-		hostname string
-		output   string
+		name      string
+		protocol  string
+		hostname  string
+		apiHost   string
+		subfolder string
+		output    string
 	}{
 		{
 			name:     "OfficialInstance/https",
@@ -304,7 +307,7 @@ func Test_GraphQLEndpoint(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.name, func(t *testing.T) {
-			got := GraphQLEndpoint(tC.hostname, tC.protocol)
+			got := GraphQLEndpoint(tC.hostname, tC.protocol, tC.apiHost, tC.subfolder)
 			assert.Equal(t, tC.output, got)
 		})
 	}

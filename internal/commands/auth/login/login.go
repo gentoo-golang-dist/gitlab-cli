@@ -19,6 +19,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/auth/authutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -170,7 +171,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return errors.New("empty hostname would leak `oauth_token`")
 		}
 
-		err := cfg.Set(opts.Hostname, "token", opts.Token)
+		// Split hostname and subfolder
+		hostname, subfolder := splitHostnameAndSubfolder(opts.Hostname)
+
+		err := cfg.Set(hostname, "token", opts.Token)
 		if err != nil {
 			return err
 		}
@@ -180,21 +184,28 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 
 		if opts.ApiHost != "" {
-			err := cfg.Set(opts.Hostname, "api_host", opts.ApiHost)
+			err := cfg.Set(hostname, "api_host", opts.ApiHost)
+			if err != nil {
+				return err
+			}
+		}
+
+		if subfolder != "" {
+			err := cfg.Set(hostname, "subfolder", subfolder)
 			if err != nil {
 				return err
 			}
 		}
 
 		if opts.ApiProtocol != "" {
-			err := cfg.Set(opts.Hostname, "api_protocol", opts.ApiProtocol)
+			err := cfg.Set(hostname, "api_protocol", opts.ApiProtocol)
 			if err != nil {
 				return err
 			}
 		}
 
 		if opts.GitProtocol != "" {
-			err := cfg.Set(opts.Hostname, "git_protocol", opts.GitProtocol)
+			err := cfg.Set(hostname, "git_protocol", opts.GitProtocol)
 			if err != nil {
 				return err
 			}
@@ -208,27 +219,37 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return errors.New("empty hostname would leak `oauth_token`")
 		}
 
-		err := cfg.Set(opts.Hostname, "job_token", opts.JobToken)
+		// Split hostname and subfolder
+		hostname, subfolder := splitHostnameAndSubfolder(opts.Hostname)
+
+		err := cfg.Set(hostname, "job_token", opts.JobToken)
 		if err != nil {
 			return err
 		}
 
 		if opts.ApiHost != "" {
-			err := cfg.Set(opts.Hostname, "api_host", opts.ApiHost)
+			err := cfg.Set(hostname, "api_host", opts.ApiHost)
+			if err != nil {
+				return err
+			}
+		}
+
+		if subfolder != "" {
+			err := cfg.Set(hostname, "subfolder", subfolder)
 			if err != nil {
 				return err
 			}
 		}
 
 		if opts.ApiProtocol != "" {
-			err := cfg.Set(opts.Hostname, "api_protocol", opts.ApiProtocol)
+			err := cfg.Set(hostname, "api_protocol", opts.ApiProtocol)
 			if err != nil {
 				return err
 			}
 		}
 
 		if opts.GitProtocol != "" {
-			err := cfg.Set(opts.Hostname, "git_protocol", opts.GitProtocol)
+			err := cfg.Set(hostname, "git_protocol", opts.GitProtocol)
 			if err != nil {
 				return err
 			}
@@ -237,8 +258,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		return cfg.Write()
 	}
 
-	hostname := opts.Hostname
-	apiHostname := opts.Hostname
+	// Split hostname into base hostname and subfolder if present
+	var subfolder string
+	hostname, _ := splitHostnameAndSubfolder(opts.Hostname)
+	apiHostname := hostname
 
 	if opts.ApiHost != "" {
 		apiHostname = opts.ApiHost
@@ -446,13 +469,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	}
 
-	err = cfg.Set(hostname, "token", token)
-	if err != nil {
+	// Re-split hostname in case it was changed by prompts
+	hostname, subfolder = splitHostnameAndSubfolder(hostname)
+
+	if err := cfg.Set(hostname, "token", token); err != nil {
 		return err
 	}
 
-	err = setContainerRegistryDomains(cfg, hostname, containerRegistryDomains)
-	if err != nil {
+	if err := setContainerRegistryDomains(cfg, hostname, containerRegistryDomains); err != nil {
 		return err
 	}
 
@@ -460,9 +484,44 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		return errors.New("empty hostname would leak the token")
 	}
 
-	err = cfg.Set(hostname, "api_host", apiHostname)
-	if err != nil {
+	if err := cfg.Set(hostname, "api_host", apiHostname); err != nil {
 		return err
+	}
+
+	// Set subfolder if present
+	if subfolder != "" {
+		if err := cfg.Set(hostname, "subfolder", subfolder); err != nil {
+			return err
+		}
+	}
+
+	// Detect and optionally set SSH host
+	sshHost := detectSSHHost(hostname)
+	if sshHost != "" && sshHost != hostname {
+		// Found different SSH host
+		if opts.Interactive {
+			var setSSHHost bool
+			prompt := fmt.Sprintf("Detected SSH hostname: %s. Use this for SSH operations?", sshHost)
+			confirmInput := huh.NewConfirm().
+				Title(prompt).
+				Value(&setSSHHost).
+				Affirmative("Yes").
+				Negative("No")
+			err := opts.IO.Run(ctx, confirmInput)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+			if setSSHHost {
+				if err := cfg.Set(hostname, "ssh_host", sshHost); err != nil {
+					return err
+				}
+			}
+		} else {
+			// In non-interactive mode, auto-set if detected
+			if err := cfg.Set(hostname, "ssh_host", sshHost); err != nil {
+				return err
+			}
+		}
 	}
 
 	gitProtocol := "https"
@@ -501,16 +560,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 
 		fmt.Fprintf(opts.IO.StdErr, "- glab config set -h %s git_protocol %s\n", hostname, gitProtocol)
-		err = cfg.Set(hostname, "git_protocol", gitProtocol)
-		if err != nil {
+		if err := cfg.Set(hostname, "git_protocol", gitProtocol); err != nil {
 			return err
 		}
 
 		fmt.Fprintf(opts.IO.StdErr, "%s Configured Git protocol.\n", c.GreenCheck())
 
 		fmt.Fprintf(opts.IO.StdErr, "- glab config set -h %s api_protocol %s\n", hostname, apiProtocol)
-		err = cfg.Set(hostname, "api_protocol", apiProtocol)
-		if err != nil {
+		if err := cfg.Set(hostname, "api_protocol", apiProtocol); err != nil {
 			return err
 		}
 
@@ -527,8 +584,7 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	}
 	username := user.Username
 
-	err = cfg.Set(hostname, "user", username)
-	if err != nil {
+	if err := cfg.Set(hostname, "user", username); err != nil {
 		return err
 	}
 
@@ -546,6 +602,13 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 
 	fmt.Fprintf(opts.IO.StdErr, "%s Logged in as %s\n", c.GreenCheck(), c.Bold(username))
 	fmt.Fprintf(opts.IO.StdErr, "%s Configuration saved to %s\n", c.GreenCheck(), config.ConfigFile())
+	fmt.Fprintf(opts.IO.StdErr, "  - Host: %s\n", hostname)
+	if subfolder != "" {
+		fmt.Fprintf(opts.IO.StdErr, "  - Subfolder: %s\n", subfolder)
+	}
+	if sshHostValue, _ := cfg.Get(hostname, "ssh_host"); sshHostValue != "" {
+		fmt.Fprintf(opts.IO.StdErr, "  - SSH host: %s\n", sshHostValue)
+	}
 
 	return nil
 }
@@ -621,4 +684,70 @@ func defaultContainerRegistryDomainsString(hostname string) string {
 
 func setContainerRegistryDomains(cfg config.Config, hostname string, domains string) error {
 	return cfg.Set(hostname, "container_registry_domains", domains)
+}
+
+// splitHostnameAndSubfolder splits a hostname that may contain a subfolder path.
+// Examples:
+//   - "example.com" → ("example.com", "")
+//   - "example.com/gitlab" → ("example.com", "gitlab")
+//   - "example.com:3000/gitlab" → ("example.com:3000", "gitlab")
+//   - "https://example.com/gitlab" → ("example.com", "gitlab")
+func splitHostnameAndSubfolder(input string) (string, string) {
+	// Ensure the input has a scheme for proper URL parsing
+	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
+		input = "https://" + input
+	}
+
+	// Parse the URL
+	u, err := url.Parse(input)
+	if err != nil {
+		// Fallback to string manipulation if parsing fails
+		input = strings.TrimPrefix(input, "https://")
+		input = strings.TrimPrefix(input, "http://")
+		input = strings.TrimSuffix(input, "/")
+		return glinstance.ExtractSubfolder(input)
+	}
+
+	// Use u.Host to preserve port information (e.g., "example.com:3000")
+	hostname := u.Host
+	subfolder := strings.Trim(u.Path, "/")
+
+	return hostname, subfolder
+}
+
+// detectSSHHost attempts to detect the SSH hostname from git remotes.
+// Returns empty string if not found or same as HTTP hostname.
+func detectSSHHost(httpHostname string) string {
+	// Check if we're in a git repository
+	remotes, err := git.Remotes()
+	if err != nil {
+		return ""
+	}
+
+	// Look for SSH remotes and extract hostname
+	for _, remote := range remotes {
+		if remote.FetchURL != nil && remote.FetchURL.Scheme == "ssh" {
+			sshHost := remote.FetchURL.Hostname()
+			if sshHost != "" && sshHost != httpHostname {
+				return sshHost
+			}
+		}
+		// Also check SCP-style URLs (git@host:path)
+		if remote.FetchURL != nil {
+			// Try to parse as SCP-style: git@hostname:path
+			urlStr := remote.FetchURL.String()
+			if strings.Contains(urlStr, "@") && strings.Contains(urlStr, ":") && !strings.Contains(urlStr, "://") {
+				// This looks like SCP-style
+				parts := strings.SplitN(urlStr, "@", 2)
+				if len(parts) == 2 {
+					hostParts := strings.SplitN(parts[1], ":", 2)
+					if len(hostParts) == 2 && hostParts[0] != httpHostname {
+						return hostParts[0]
+					}
+				}
+			}
+		}
+	}
+
+	return ""
 }

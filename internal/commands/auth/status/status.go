@@ -130,8 +130,10 @@ func (o *options) run() error {
 		}
 		apiProto, _ := cfg.Get(instance, "api_protocol")
 		apiHost, _ := cfg.Get(instance, "api_host")
-		apiEndpoint := glinstance.APIEndpoint(instance, apiProto, apiHost)
-		graphQLEndpoint := glinstance.GraphQLEndpoint(instance, apiProto)
+		subfolder, _ := cfg.Get(instance, "subfolder")
+		sshHost, _ := cfg.Get(instance, "ssh_host")
+		apiEndpoint := glinstance.APIEndpoint(instance, apiProto, apiHost, subfolder)
+		graphQLEndpoint := glinstance.GraphQLEndpoint(instance, apiProto, apiHost, subfolder)
 		if apiProto != "" {
 			addMsg("%s API calls for %s are made over %s protocol.",
 				c.GreenCheck(), instance, c.Bold(apiProto))
@@ -139,6 +141,12 @@ func (o *options) run() error {
 				c.GreenCheck(), c.Bold(apiEndpoint))
 			addMsg("%s GraphQL Endpoint: %s",
 				c.GreenCheck(), c.Bold(graphQLEndpoint))
+		}
+		if subfolder != "" {
+			addMsg("%s Subfolder: %s", c.GreenCheck(), c.Bold(subfolder))
+		}
+		if sshHost != "" {
+			addMsg("%s SSH Host: %s", c.GreenCheck(), c.Bold(sshHost))
 		}
 		if api.IsTokenConfigured(token) {
 			tokenDisplay := "**************************"

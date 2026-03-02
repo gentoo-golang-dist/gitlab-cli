@@ -121,7 +121,12 @@ func (r *ResolvedRemotes) BaseRepo(ctx context.Context, ios *iostreams.IOStreams
 	var repoNames []string
 	repoMap := map[string]*gitlab.Project{}
 	add := func(r *gitlab.Project) {
-		fn, _ := FullNameFromURL(r.HTTPURLToRepo)
+		// Prefer PathWithNamespace from API over parsing URLs to avoid
+		// issues with split-host setups where config is keyed differently
+		fn := r.PathWithNamespace
+		if fn == "" {
+			fn, _ = FullNameFromURL(r.HTTPURLToRepo)
+		}
 		if _, ok := repoMap[fn]; !ok {
 			repoMap[fn] = r
 			repoNames = append(repoNames, fn)
@@ -151,7 +156,11 @@ func (r *ResolvedRemotes) BaseRepo(ctx context.Context, ios *iostreams.IOStreams
 	remote, _ := r.RemoteForRepo(selectedRepoInfo)
 	if remote == nil {
 		remote = r.remotes[0]
-		resolution, _ = FullNameFromURL(selectedRepo.HTTPURLToRepo)
+		// Prefer PathWithNamespace from API to avoid URL parsing issues
+		resolution = selectedRepo.PathWithNamespace
+		if resolution == "" {
+			resolution, _ = FullNameFromURL(selectedRepo.HTTPURLToRepo)
+		}
 		resolution = "base:" + resolution
 	}
 
@@ -207,7 +216,12 @@ func (r *ResolvedRemotes) HeadRepo(ctx context.Context, ios *iostreams.IOStreams
 	var repoNames []string
 	repoMap := map[string]*gitlab.Project{}
 	add := func(r *gitlab.Project) {
-		fn, _ := FullNameFromURL(r.HTTPURLToRepo)
+		// Prefer PathWithNamespace from API over parsing URLs to avoid
+		// issues with split-host setups where config is keyed differently
+		fn := r.PathWithNamespace
+		if fn == "" {
+			fn, _ = FullNameFromURL(r.HTTPURLToRepo)
+		}
 		if _, ok := repoMap[fn]; !ok {
 			repoMap[fn] = r
 			repoNames = append(repoNames, fn)
@@ -250,7 +264,11 @@ func (r *ResolvedRemotes) HeadRepo(ctx context.Context, ios *iostreams.IOStreams
 	remote, _ := r.RemoteForRepo(selectedRepoInfo)
 	if remote == nil {
 		remote = r.remotes[0]
-		resolution, _ = FullNameFromURL(selectedRepo.HTTPURLToRepo)
+		// Prefer PathWithNamespace from API to avoid URL parsing issues
+		resolution = selectedRepo.PathWithNamespace
+		if resolution == "" {
+			resolution, _ = FullNameFromURL(selectedRepo.HTTPURLToRepo)
+		}
 		resolution = "head:" + resolution
 	}
 

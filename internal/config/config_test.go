@@ -434,3 +434,154 @@ hosts:
 	require.NoError(t, err)
 	assert.Equal(t, "glpat-new-keyring-token", storedToken)
 }
+
+func Test_extractSubfolderFromURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		url      string
+		expected string
+	}{
+		{
+			name:     "URL with subfolder",
+			url:      "https://example.com/gitlab",
+			expected: "gitlab",
+		},
+		{
+			name:     "URL with nested subfolder",
+			url:      "https://example.com/tools/gitlab",
+			expected: "tools/gitlab",
+		},
+		{
+			name:     "URL without subfolder",
+			url:      "https://example.com",
+			expected: "",
+		},
+		{
+			name:     "URL with only slash",
+			url:      "https://example.com/",
+			expected: "",
+		},
+		{
+			name:     "URL with trailing slash",
+			url:      "https://example.com/gitlab/",
+			expected: "gitlab",
+		},
+		{
+			name:     "URL with port and subfolder",
+			url:      "https://example.com:3000/gitlab",
+			expected: "gitlab",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractSubfolderFromURL(tt.url)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func Test_GetFromEnvWithSource_CI_Subfolder(t *testing.T) {
+	t.Run("subfolder from GITLAB_SUBFOLDER", func(t *testing.T) {
+		t.Setenv("GITLAB_SUBFOLDER", "mysubfolder")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "")
+		t.Setenv("GITLAB_CI", "")
+
+		value, source := GetFromEnvWithSource("subfolder")
+		assert.Equal(t, "mysubfolder", value)
+		assert.Equal(t, "GITLAB_SUBFOLDER", source)
+	})
+
+	t.Run("subfolder from CI_SERVER_URL with path", func(t *testing.T) {
+		t.Setenv("GITLAB_SUBFOLDER", "")
+		t.Setenv("CI_SERVER_URL", "https://example.com/gitlab")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("subfolder")
+		assert.Equal(t, "gitlab", value)
+		assert.Equal(t, "CI_SERVER_URL", source)
+	})
+
+	t.Run("subfolder from CI_SERVER_URL without path", func(t *testing.T) {
+		t.Setenv("GITLAB_SUBFOLDER", "")
+		t.Setenv("CI_SERVER_URL", "https://example.com")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("subfolder")
+		assert.Equal(t, "", value)
+		assert.Equal(t, "", source)
+	})
+
+	t.Run("GITLAB_SUBFOLDER takes precedence over CI_SERVER_URL", func(t *testing.T) {
+		t.Setenv("GITLAB_SUBFOLDER", "explicit")
+		t.Setenv("CI_SERVER_URL", "https://example.com/gitlab")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("subfolder")
+		assert.Equal(t, "explicit", value)
+		assert.Equal(t, "GITLAB_SUBFOLDER", source)
+	})
+}
+
+func Test_GetFromEnvWithSource_CI_SSHHost(t *testing.T) {
+	t.Run("ssh_host from GITLAB_SSH_HOST", func(t *testing.T) {
+		t.Setenv("GITLAB_SSH_HOST", "ssh.example.com")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "")
+		t.Setenv("GITLAB_CI", "")
+
+		value, source := GetFromEnvWithSource("ssh_host")
+		assert.Equal(t, "ssh.example.com", value)
+		assert.Equal(t, "GITLAB_SSH_HOST", source)
+	})
+
+	t.Run("ssh_host from CI_SERVER_SHELL_SSH_HOST without port", func(t *testing.T) {
+		t.Setenv("GITLAB_SSH_HOST", "")
+		t.Setenv("CI_SERVER_SHELL_SSH_HOST", "git.example.com")
+		t.Setenv("CI_SERVER_SHELL_SSH_PORT", "")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("ssh_host")
+		assert.Equal(t, "git.example.com", value)
+		assert.Equal(t, "CI_SERVER_SHELL_SSH_HOST", source)
+	})
+
+	t.Run("ssh_host from CI_SERVER_SHELL_SSH_HOST with custom port", func(t *testing.T) {
+		t.Setenv("GITLAB_SSH_HOST", "")
+		t.Setenv("CI_SERVER_SHELL_SSH_HOST", "git.example.com")
+		t.Setenv("CI_SERVER_SHELL_SSH_PORT", "2222")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("ssh_host")
+		assert.Equal(t, "git.example.com:2222", value)
+		assert.Equal(t, "CI_SERVER_SHELL_SSH_HOST", source)
+	})
+
+	t.Run("ssh_host from CI_SERVER_SHELL_SSH_HOST with default port 22", func(t *testing.T) {
+		t.Setenv("GITLAB_SSH_HOST", "")
+		t.Setenv("CI_SERVER_SHELL_SSH_HOST", "git.example.com")
+		t.Setenv("CI_SERVER_SHELL_SSH_PORT", "22")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("ssh_host")
+		assert.Equal(t, "git.example.com", value)
+		assert.Equal(t, "CI_SERVER_SHELL_SSH_HOST", source)
+	})
+
+	t.Run("GITLAB_SSH_HOST takes precedence over CI_SERVER_SHELL_SSH_HOST", func(t *testing.T) {
+		t.Setenv("GITLAB_SSH_HOST", "ssh.example.com:3000")
+		t.Setenv("CI_SERVER_SHELL_SSH_HOST", "git.example.com")
+		t.Setenv("CI_SERVER_SHELL_SSH_PORT", "2222")
+		t.Setenv("GLAB_ENABLE_CI_AUTOLOGIN", "true")
+		t.Setenv("GITLAB_CI", "true")
+
+		value, source := GetFromEnvWithSource("ssh_host")
+		assert.Equal(t, "ssh.example.com:3000", value)
+		assert.Equal(t, "GITLAB_SSH_HOST", source)
+	})
+}

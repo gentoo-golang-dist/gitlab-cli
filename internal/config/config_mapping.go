@@ -14,6 +14,10 @@ func ConfigKeyEquivalence(key string) string {
 	switch key {
 	case "gitlab_api_host":
 		return "api_host"
+	case "gitlab_subfolder":
+		return "subfolder"
+	case "gitlab_ssh_host":
+		return "ssh_host"
 	case "gitlab_host", "gitlab_uri", "gl_host":
 		return "host"
 	case "gitlab_token", "oauth_token":
@@ -52,6 +56,18 @@ func EnvKeyEquivalence(key string) []string {
 		}
 
 		return []string{"GITLAB_API_HOST"}
+	case "subfolder":
+		if ciAutologinEnabled {
+			return []string{"GITLAB_SUBFOLDER", "CI_SERVER_URL"}
+		}
+
+		return []string{"GITLAB_SUBFOLDER"}
+	case "ssh_host":
+		if ciAutologinEnabled {
+			return []string{"GITLAB_SSH_HOST", "CI_SERVER_SHELL_SSH_HOST"}
+		}
+
+		return []string{"GITLAB_SSH_HOST"}
 	case "api_protocol":
 		if ciAutologinEnabled {
 			return []string{"CI_SERVER_PROTOCOL"}

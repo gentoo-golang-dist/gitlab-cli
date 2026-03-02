@@ -138,6 +138,24 @@ func rootConfig() *yaml.Node {
 										Value: "gitlab.com",
 									},
 									{
+										HeadComment: "# Subfolder where GitLab is installed (e.g., 'gitlab' for https://example.com/gitlab/)\n# Use this when GitLab is hosted at a subfolder rather than domain root.\n# Supports nested paths (e.g., 'apps/gitlab' for https://example.com/apps/gitlab/)\n# Slashes are automatically trimmed, so 'gitlab', '/gitlab', and 'gitlab/' are equivalent.\n# Only applies to HTTP/HTTPS operations (API and git clone).",
+										Kind:        yaml.ScalarNode,
+										Value:       "subfolder",
+									},
+									{
+										Kind:  yaml.ScalarNode,
+										Value: "",
+									},
+									{
+										HeadComment: "# Alternate hostname for SSH git operations (e.g., 'ssh.example.com' or 'git.example.com')\n# Use this when SSH uses a different hostname than HTTP/API operations.\n# Only affects SSH cloning and git operations.",
+										Kind:        yaml.ScalarNode,
+										Value:       "ssh_host",
+									},
+									{
+										Kind:  yaml.ScalarNode,
+										Value: "",
+									},
+									{
 										HeadComment: "# Your GitLab access token. To get one, read https://docs.gitlab.com/user/profile/personal_access_tokens/",
 										Kind:        yaml.ScalarNode,
 										Value:       "token",

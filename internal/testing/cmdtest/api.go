@@ -17,7 +17,7 @@ func NewTestApiClient(t *testing.T, httpClient *http.Client, token, host string,
 
 	opts := []api.ClientOption{
 		api.WithUserAgent("glab test client"),
-		api.WithBaseURL(glinstance.APIEndpoint(host, glinstance.DefaultProtocol, "")),
+		api.WithBaseURL(glinstance.APIEndpoint(host, glinstance.DefaultProtocol, "", "")),
 		api.WithInsecureSkipVerify(true),
 		api.WithHTTPClient(httpClient),
 	}
@@ -35,7 +35,7 @@ func NewTestAuthSourceApiClient(t *testing.T, httpClient *http.Client, authSourc
 
 	opts := []api.ClientOption{
 		api.WithUserAgent("glab test client"),
-		api.WithBaseURL(glinstance.APIEndpoint(host, glinstance.DefaultProtocol, "")),
+		api.WithBaseURL(glinstance.APIEndpoint(host, glinstance.DefaultProtocol, "", "")),
 		api.WithInsecureSkipVerify(true),
 		api.WithHTTPClient(httpClient),
 	}

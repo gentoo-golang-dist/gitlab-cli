@@ -166,35 +166,43 @@ func FromURL(u *url.URL, defaultHostname string) (Interface, error) {
 		return nil, fmt.Errorf("no hostname detected")
 	}
 
-	var urlPath string
-	var repo string
-	var pathWithoutRepo string
-	var apiHost string
-
 	cfg, err := config.ParseDefaultConfig()
-	// an error is fine here, there might not be a config available
+
+	// Retrieve subfolder from config - now we always know it!
+	var subfolder string
 	if err == nil {
-		apiHost, _ = cfg.Get(u.Hostname(), "api_host")
-	}
+		subfolder, _ = cfg.Get(u.Hostname(), "subfolder")
 
-	if apiHost != "" {
-		parts := strings.SplitN(apiHost, "/", 2)
-		if len(parts) > 1 {
-			gitSubdirectory := strings.Replace(apiHost, parts[0], "", 1)
-			urlPath = strings.Replace(apiHost+u.Path, apiHost+gitSubdirectory, "", 1)
-		} else {
-			urlPath = strings.Replace(apiHost+u.Path, apiHost, "", 1)
+		// Backward compatibility: extract subfolder from api_host if subfolder field is empty
+		if subfolder == "" {
+			apiHost, _ := cfg.Get(u.Hostname(), "api_host")
+			if apiHost != "" && strings.Contains(apiHost, "/") {
+				parts := strings.SplitN(apiHost, "/", 2)
+				if len(parts) == 2 {
+					subfolder = parts[1]
+				}
+			}
 		}
-
-		urlPath = strings.Trim(strings.TrimSuffix(urlPath, ".git"), "/")
-		pathWithoutRepo = strings.TrimSuffix(urlPath[:strings.LastIndex(urlPath, "/")+1], "/")
-		pathWithoutRepo = strings.TrimPrefix(pathWithoutRepo, "/")
-	} else {
-		urlPath = strings.Trim(strings.TrimSuffix(u.Path, ".git"), "/")
-		pathWithoutRepo = strings.TrimSuffix(urlPath[:strings.LastIndex(urlPath, "/")+1], "/")
 	}
 
-	repo = urlPath[strings.LastIndex(urlPath, "/")+1:]
+	// Simple subfolder removal - much cleaner than old code!
+	urlPath := strings.TrimPrefix(u.Path, "/")
+	if subfolder != "" {
+		subfolderPrefix := strings.Trim(subfolder, "/") + "/"
+		if after, ok := strings.CutPrefix(urlPath, subfolderPrefix); ok {
+			urlPath = after
+		}
+	}
+
+	// Standard path parsing
+	urlPath = strings.Trim(strings.TrimSuffix(urlPath, ".git"), "/")
+	if urlPath == "" || !strings.Contains(urlPath, "/") {
+		return nil, fmt.Errorf("invalid path: %s", u.Path)
+	}
+
+	lastSlash := strings.LastIndex(urlPath, "/")
+	repo := urlPath[lastSlash+1:]
+	pathWithoutRepo := urlPath[:lastSlash]
 
 	if repo != "" && pathWithoutRepo != "" {
 		parts := strings.SplitN(pathWithoutRepo, "/", 2)
