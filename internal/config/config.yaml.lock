@@ -20,6 +20,18 @@ no_prompt: false
 # See https://docs.gitlab.com/administration/settings/usage_statistics/
 # for more information
 telemetry: true
+# Automatically run GitLab Duo CLI without prompting (true/false). Set to true to skip the confirmation prompt.
+duo_cli_auto_run:
+# Automatically download Duo CLI binary without prompting (true/false).
+duo_cli_auto_download:
+# Path to the installed Duo CLI binary (automatically set). Default: ~/.config/glab-cli/bin/duo
+duo_cli_binary_path:
+# Version of the installed Duo CLI binary (automatically set).
+duo_cli_binary_version:
+# SHA256 checksum of the installed Duo CLI binary (automatically set).
+duo_cli_binary_checksum:
+# Last time an update check was performed (automatically set).
+duo_cli_last_update_check:
 # Configuration specific for GitLab instances.
 hosts:
     gitlab.com:

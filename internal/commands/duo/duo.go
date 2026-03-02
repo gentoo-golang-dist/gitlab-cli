@@ -6,9 +6,13 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	duoAskCmd "gitlab.com/gitlab-org/cli/internal/commands/duo/ask"
+	duoCLICmd "gitlab.com/gitlab-org/cli/internal/commands/duo/cli"
 )
 
-func NewCmdDuo(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
+	// Create cli command first
+	cliCmd := duoCLICmd.NewCmd(f)
+
 	duoCmd := &cobra.Command{
 		Use:   "duo <command> prompt",
 		Short: "Work with GitLab Duo",
@@ -25,9 +29,15 @@ func NewCmdDuo(f cmdutils.Factory) *cobra.Command {
 			A unified experience is proposed in
 			[epic 20826](https://gitlab.com/groups/gitlab-org/-/work_items/20826).
 		`),
+		// Default to running cli when no subcommand is provided
+		RunE: cliCmd.RunE,
 	}
 
 	duoCmd.AddCommand(duoAskCmd.NewCmdAsk(f))
+	duoCmd.AddCommand(cliCmd)
+
+	// Allow unknown flags to be passed through to the Duo CLI binary
+	duoCmd.FParseErrWhitelist.UnknownFlags = true
 
 	return duoCmd
 }

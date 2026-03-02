@@ -151,7 +151,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(changelogCmd.NewCmdChangelog(f))
 	rootCmd.AddCommand(clusterCmd.NewCmdCluster(f))
 	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
-	rootCmd.AddCommand(duoCmd.NewCmdDuo(f))
+	rootCmd.AddCommand(duoCmd.NewCmd(f))
 	rootCmd.AddCommand(gpgCmd.NewCmdGPGKey(f))
 	rootCmd.AddCommand(incidentCmd.NewCmdIncident(f))
 	rootCmd.AddCommand(issueCmd.NewCmdIssue(f))

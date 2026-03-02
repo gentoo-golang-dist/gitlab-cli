@@ -105,6 +105,60 @@ func rootConfig() *yaml.Node {
 						Value: "true",
 					},
 					{
+						HeadComment: "# Automatically run GitLab Duo CLI without prompting (true/false). Set to true to skip the confirmation prompt.",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_auto_run",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Automatically download Duo CLI binary without prompting (true/false).",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_auto_download",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Path to the installed Duo CLI binary (automatically set). Default: ~/.config/glab-cli/bin/duo",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_binary_path",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Version of the installed Duo CLI binary (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_binary_version",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# SHA256 checksum of the installed Duo CLI binary (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_binary_checksum",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Last time an update check was performed (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "duo_cli_last_update_check",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
 						HeadComment: "# Configuration specific for GitLab instances.",
 						Kind:        yaml.ScalarNode,
 						Value:       "hosts",

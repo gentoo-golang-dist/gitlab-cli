@@ -26,6 +26,10 @@ To interact with the GitLab Duo Agent Platform, use the
 A unified experience is proposed in
 [epic 20826](https://gitlab.com/groups/gitlab-org/-/work_items/20826).
 
+```plaintext
+glab duo <command> prompt [flags]
+```
+
 ## Options inherited from parent commands
 
 ```plaintext
@@ -35,3 +39,4 @@ A unified experience is proposed in
 ## Subcommands
 
 - [`ask`](ask.md)
+- [`cli`](cli.md)
