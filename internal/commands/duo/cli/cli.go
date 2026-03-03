@@ -106,7 +106,8 @@ type updateCheckResult struct {
 
 // performUpdateCheck checks for available updates and saves the check timestamp.
 // Returns nil result (not error) if no version is installed.
-func (o *options) performUpdateCheck(ctx context.Context) (*updateCheckResult, error) {
+// If forceCheck is true, ignores the 24h delay and checks immediately.
+func (o *options) performUpdateCheck(ctx context.Context, forceCheck bool) (*updateCheckResult, error) {
 	currentVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
 	if currentVersion == "" {
 		return nil, nil
@@ -117,7 +118,6 @@ func (o *options) performUpdateCheck(ctx context.Context) (*updateCheckResult, e
 	if lastCheckStr != "" {
 		lastCheckTime, _ = time.Parse(time.RFC3339, lastCheckStr)
 	}
-	forceCheck := shouldForceUpdateCheck()
 
 	hasUpdate, latestVersion, newCheckTime, err := o.manager.CheckForUpdate(ctx, currentVersion, lastCheckTime, forceCheck)
 	if err != nil {
@@ -188,7 +188,7 @@ func (o *options) saveBinaryInfo(info *cliutils.BinaryInfo) error {
 }
 
 func (o *options) handleUpdate(ctx context.Context) error {
-	result, err := o.performUpdateCheck(ctx)
+	result, err := o.performUpdateCheck(ctx, true)
 	if err != nil {
 		return fmt.Errorf("failed to check for updates: %w", err)
 	}
@@ -269,7 +269,7 @@ func (o *options) checkAutoRun(ctx context.Context) error {
 // checkForUpdates checks for updates in the background (non-blocking).
 // Silently fails on error - this is a non-critical background operation.
 func (o *options) checkForUpdates(ctx context.Context) {
-	result, err := o.performUpdateCheck(ctx)
+	result, err := o.performUpdateCheck(ctx, shouldForceUpdateCheck())
 	if err != nil || result == nil {
 		return
 	}
