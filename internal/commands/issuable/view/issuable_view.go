@@ -14,6 +14,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/noteutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -282,36 +283,9 @@ func rawIssuePreview(opts *options) string {
 	out += "--\n"
 	out += fmt.Sprintf("%s\n", opts.issue.Description)
 
-	out += RawIssuableNotes(opts.notes, opts.showComments, opts.showSystemLogs, *opts.issue.IssueType)
+	out += noteutils.RawNotes(opts.notes, opts.showComments, opts.showSystemLogs, *opts.issue.IssueType)
 
 	return out
-}
-
-// RawIssuableNotes returns a list of comments/notes in a raw format
-func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bool, issuableName string) string {
-	var out strings.Builder
-
-	if showComments {
-		out.WriteString("\n--\ncomments/notes:\n\n")
-
-		if len(notes) > 0 {
-			for _, note := range notes {
-				if note.System && !showSystemLogs {
-					continue
-				}
-
-				if note.System {
-					out.WriteString(fmt.Sprintf("%s %s %s\n\n", note.Author.Username, note.Body, note.CreatedAt.String()))
-				} else {
-					out.WriteString(fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body))
-				}
-			}
-		} else {
-			out.WriteString(fmt.Sprintf("There are no comments on this %s.\n", issuableName))
-		}
-	}
-
-	return out.String()
 }
 
 func printJSONIssue(opts *options) {
