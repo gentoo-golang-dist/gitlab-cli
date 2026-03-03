@@ -287,6 +287,60 @@ func rawIssuePreview(opts *options) string {
 	return out
 }
 
+type FileContext struct {
+	Path      string
+	StartLine int64
+	EndLine   int64
+}
+
+func (fc FileContext) String() string {
+	if fc.Path == "" {
+		return ""
+	}
+	if fc.StartLine != fc.EndLine {
+		return fmt.Sprintf("%s:%d-%d", fc.Path, fc.StartLine, fc.EndLine)
+	}
+	return fmt.Sprintf("%s:%d", fc.Path, fc.StartLine)
+}
+
+// CommentFileContext extracts file path and line information from a note's diff position.
+func CommentFileContext(pos *gitlab.NotePosition) FileContext {
+	if pos == nil {
+		return FileContext{}
+	}
+
+	if pos.LineRange != nil && pos.LineRange.StartRange != nil && pos.LineRange.EndRange != nil {
+		startLine := pos.LineRange.StartRange.NewLine
+		endLine := pos.LineRange.EndRange.NewLine
+
+		if startLine == 0 {
+			startLine = pos.LineRange.StartRange.OldLine
+		}
+		if endLine == 0 {
+			endLine = pos.LineRange.EndRange.OldLine
+		}
+
+		if startLine > 0 && endLine > 0 {
+			filePath := pos.NewPath
+			if filePath == "" {
+				filePath = pos.OldPath
+			}
+			if filePath != "" {
+				return FileContext{Path: filePath, StartLine: startLine, EndLine: endLine}
+			}
+		}
+	}
+
+	if pos.NewPath != "" && pos.NewLine > 0 {
+		return FileContext{Path: pos.NewPath, StartLine: pos.NewLine, EndLine: pos.NewLine}
+	}
+	if pos.OldPath != "" && pos.OldLine > 0 {
+		return FileContext{Path: pos.OldPath, StartLine: pos.OldLine, EndLine: pos.OldLine}
+	}
+
+	return FileContext{}
+}
+
 // RawIssuableNotes returns a list of comments/notes in a raw format
 func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bool, issuableName string) string {
 	var out strings.Builder
@@ -303,7 +357,12 @@ func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bo
 				if note.System {
 					out.WriteString(fmt.Sprintf("%s %s %s\n\n", note.Author.Username, note.Body, note.CreatedAt.String()))
 				} else {
-					out.WriteString(fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body))
+					fileContext := CommentFileContext(note.Position)
+					if fileContext.Path != "" {
+						out.WriteString(fmt.Sprintf("%s commented on %s %s\n%s\n\n", note.Author.Username, fileContext, note.CreatedAt.String(), note.Body))
+					} else {
+						out.WriteString(fmt.Sprintf("%s commented %s\n%s\n\n", note.Author.Username, note.CreatedAt.String(), note.Body))
+					}
 				}
 			}
 		} else {

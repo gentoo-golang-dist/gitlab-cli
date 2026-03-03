@@ -380,6 +380,70 @@ func Test_rawMRPreview(t *testing.T) {
 				"",
 			},
 		},
+		{
+			"mr_with_diff_position_comments",
+			&options{
+				io:             ioStreams,
+				showComments:   true,
+				showSystemLogs: false,
+			},
+			mr,
+			[]*gitlab.Note{
+				{
+					System:    false,
+					Author:    fakeNote1.Author,
+					Body:      "Needs refactoring",
+					CreatedAt: &time1,
+					Position: &gitlab.NotePosition{
+						NewPath: "src/main.go",
+						NewLine: 42,
+					},
+				},
+				{
+					System:    false,
+					Author:    fakeNote2.Author,
+					Body:      "Multi-line issue",
+					CreatedAt: &time2,
+					Position: &gitlab.NotePosition{
+						NewPath: "src/handler.go",
+						LineRange: &gitlab.LineRange{
+							StartRange: &gitlab.LinePosition{NewLine: 10},
+							EndRange:   &gitlab.LinePosition{NewLine: 20},
+						},
+					},
+				},
+				{
+					System:    false,
+					Author:    fakeNote2.Author,
+					Body:      "Plain comment",
+					CreatedAt: &time2,
+				},
+			},
+			[]string{
+				"title:\tMR title",
+				"state:\tmerged",
+				"author:\talice",
+				"labels:\tlabel1, label2",
+				"assignees:\talice, bob",
+				"reviewers:\tjohn, paul",
+				"comments:\t2",
+				"milestone:\tSome milestone",
+				"number:\t503",
+				"url:\thttps://gitlab.com/OWNER/REPO/-/merge_requests/503",
+				"--",
+				"MR description",
+				"\n--\ncomments/notes:\n",
+				fmt.Sprintf("bob commented on src/main.go:42 %s", time1),
+				"Needs refactoring",
+				"",
+				fmt.Sprintf("alice commented on src/handler.go:10-20 %s", time2),
+				"Multi-line issue",
+				"",
+				fmt.Sprintf("alice commented %s", time2),
+				"Plain comment",
+				"",
+			},
+		},
 	}
 
 	for _, tt := range tests {

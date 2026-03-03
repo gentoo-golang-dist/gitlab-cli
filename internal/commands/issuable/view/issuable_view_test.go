@@ -488,6 +488,143 @@ func Test_assigneesList(t *testing.T) {
 	}
 }
 
+func TestCommentFileContext(t *testing.T) {
+	tests := []struct {
+		name     string
+		position *gitlab.NotePosition
+		expected FileContext
+	}{
+		{
+			name:     "nil position",
+			position: nil,
+			expected: FileContext{},
+		},
+		{
+			name: "single line comment on new file",
+			position: &gitlab.NotePosition{
+				NewPath: "src/main.go",
+				NewLine: 42,
+			},
+			expected: FileContext{Path: "src/main.go", StartLine: 42, EndLine: 42},
+		},
+		{
+			name: "single line comment on old file",
+			position: &gitlab.NotePosition{
+				OldPath: "src/main.go",
+				OldLine: 35,
+			},
+			expected: FileContext{Path: "src/main.go", StartLine: 35, EndLine: 35},
+		},
+		{
+			name: "multi-line comment with new lines",
+			position: &gitlab.NotePosition{
+				NewPath: "src/handler.go",
+				LineRange: &gitlab.LineRange{
+					StartRange: &gitlab.LinePosition{NewLine: 10},
+					EndRange:   &gitlab.LinePosition{NewLine: 20},
+				},
+			},
+			expected: FileContext{Path: "src/handler.go", StartLine: 10, EndLine: 20},
+		},
+		{
+			name: "multi-line comment falling back to old lines",
+			position: &gitlab.NotePosition{
+				OldPath: "src/handler.go",
+				LineRange: &gitlab.LineRange{
+					StartRange: &gitlab.LinePosition{OldLine: 5},
+					EndRange:   &gitlab.LinePosition{OldLine: 15},
+				},
+			},
+			expected: FileContext{Path: "src/handler.go", StartLine: 5, EndLine: 15},
+		},
+		{
+			name: "single line range (same start and end)",
+			position: &gitlab.NotePosition{
+				NewPath: "main.go",
+				LineRange: &gitlab.LineRange{
+					StartRange: &gitlab.LinePosition{NewLine: 10},
+					EndRange:   &gitlab.LinePosition{NewLine: 10},
+				},
+			},
+			expected: FileContext{Path: "main.go", StartLine: 10, EndLine: 10},
+		},
+		{
+			name: "position with no line numbers",
+			position: &gitlab.NotePosition{
+				NewPath: "file.go",
+				NewLine: 0,
+			},
+			expected: FileContext{},
+		},
+		{
+			name: "line range with nil EndRange falls back to single line",
+			position: &gitlab.NotePosition{
+				NewPath: "src/main.go",
+				NewLine: 7,
+				LineRange: &gitlab.LineRange{
+					StartRange: &gitlab.LinePosition{NewLine: 5},
+					EndRange:   nil,
+				},
+			},
+			expected: FileContext{Path: "src/main.go", StartLine: 7, EndLine: 7},
+		},
+		{
+			name: "line range with nil StartRange falls back to single line",
+			position: &gitlab.NotePosition{
+				NewPath: "src/main.go",
+				NewLine: 12,
+				LineRange: &gitlab.LineRange{
+					StartRange: nil,
+					EndRange:   &gitlab.LinePosition{NewLine: 15},
+				},
+			},
+			expected: FileContext{Path: "src/main.go", StartLine: 12, EndLine: 12},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := CommentFileContext(tt.position)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestRawIssuableNotes_withPositionContext(t *testing.T) {
+	time1, _ := time.Parse(time.RFC3339, "2023-03-09T16:50:20.111Z")
+
+	notes := []*gitlab.Note{
+		{
+			Author:    gitlab.NoteAuthor{Username: "bob"},
+			Body:      "Needs refactoring",
+			CreatedAt: &time1,
+			Position: &gitlab.NotePosition{
+				NewPath: "src/main.go",
+				NewLine: 42,
+			},
+		},
+		{
+			Author:    gitlab.NoteAuthor{Username: "alice"},
+			Body:      "Plain comment",
+			CreatedAt: &time1,
+		},
+	}
+
+	got := RawIssuableNotes(notes, true, false, "merge request")
+	want := strings.Join([]string{
+		"\n--\ncomments/notes:\n",
+		fmt.Sprintf("bob commented on src/main.go:42 %s", time1),
+		"Needs refactoring",
+		"",
+		fmt.Sprintf("alice commented %s", time1),
+		"Plain comment",
+		"",
+		"",
+	}, "\n")
+
+	assert.Equal(t, want, got)
+}
+
 func TestIssueViewJSON(t *testing.T) {
 	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 		return NewCmdView(f, issuable.TypeIssue)
