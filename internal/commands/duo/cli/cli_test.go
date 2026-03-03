@@ -13,14 +13,22 @@ import (
 func TestNewCmd_Help(t *testing.T) {
 	t.Parallel()
 
-	exec := cmdtest.SetupCmdForTest(
-		t,
-		NewCmd,
-		false,
-	)
+	// This test verifies that the command is properly configured for transparent
+	// pass-through behavior, including --help flag handling. We test the command
+	// structure without executing the duo binary to avoid download prompts.
 
-	_, err := exec("--help")
-	assert.NoError(t, err)
+	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+	factory := cmdtest.NewTestFactory(ios)
+	cmd := NewCmd(factory)
+
+	// Verify DisableFlagParsing is enabled for transparent pass-through
+	assert.True(t, cmd.DisableFlagParsing, "DisableFlagParsing should be enabled for transparent pass-through")
+
+	// Verify the command accepts arbitrary arguments (no Args validator)
+	assert.Nil(t, cmd.Args, "Args should be nil to accept any arguments")
+
+	// Verify RunE is set (the function that handles help transformation)
+	assert.NotNil(t, cmd.RunE, "RunE should be set to handle flag transformation")
 }
 
 func TestShouldForceUpdateCheck(t *testing.T) {

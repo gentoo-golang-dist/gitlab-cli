@@ -30,13 +30,16 @@ Configuration options:
 - `duo_cli_auto_run`: Skip run confirmation prompt
 - `duo_cli_auto_download`: Skip download confirmation prompt
 
+Note: All arguments and flags are passed through to the Duo CLI binary.
+Use `--update` to check for and install updates to the binary.
+
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
 [https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
 
 ```plaintext
-glab duo cli [flags]
+glab duo cli [command] [flags]
 ```
 
 ## Examples
@@ -45,18 +48,15 @@ glab duo cli [flags]
 # Run GitLab Duo CLI
 $ glab duo cli
 
+# Show Duo CLI help
+$ glab duo cli --help
+
 # Run using the alias (glab duo defaults to cli)
 $ glab duo
 
 # Check for and install updates
 $ glab duo cli --update
 
-```
-
-## Options
-
-```plaintext
-      --update   Check for and install updates
 ```
 
 ## Options inherited from parent commands

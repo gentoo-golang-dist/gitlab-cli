@@ -34,7 +34,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "cli",
+		Use:   "cli [command]",
 		Short: "Run the GitLab Duo CLI (EXPERIMENTAL)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
@@ -51,10 +51,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		- %[1]sduo_cli_auto_run%[1]s: Skip run confirmation prompt
 		- %[1]sduo_cli_auto_download%[1]s: Skip download confirmation prompt
+
+		Note: All arguments and flags are passed through to the Duo CLI binary.
+		Use %[1]s--update%[1]s to check for and install updates to the binary.
 	`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 		# Run GitLab Duo CLI
 		$ glab duo cli
+
+		# Show Duo CLI help
+		$ glab duo cli --help
 
 		# Run using the alias (glab duo defaults to cli)
 		$ glab duo
@@ -62,13 +68,26 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		# Check for and install updates
 		$ glab duo cli --update
 	`),
+		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Handle --update flag manually since DisableFlagParsing is true
+			if len(args) > 0 && args[0] == "--update" {
+				opts.update = true
+				return opts.run(cmd.Context())
+			}
+
+			// Convert --help/-h to help command for duo binary
+			for i, arg := range args {
+				if arg == "--help" || arg == "-h" {
+					args[i] = "help"
+					break
+				}
+			}
+
 			opts.complete(args)
 			return opts.run(cmd.Context())
 		},
 	}
-
-	cmd.Flags().BoolVar(&opts.update, "update", false, "Check for and install updates")
 
 	return cmd
 }
