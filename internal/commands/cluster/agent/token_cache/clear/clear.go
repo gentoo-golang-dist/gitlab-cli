@@ -3,7 +3,6 @@ package clear
 import (
 	"context"
 	_ "embed"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,8 +21,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
-
-const keyringService = "glab"
 
 type options struct {
 	gitlabClient func() (*gitlab.Client, error)
@@ -141,41 +138,43 @@ func (o *options) validate() error {
 }
 
 func (o *options) getKeyringTokens() ([]cachedToken, error) {
-	// Unfortunately, the keyring library doesn't provide a way to list all keys
-	// We would need to know the agent IDs to construct the cache keys
-	// For now, we'll return an empty list and suggest using --agent flag
-	if len(o.agents) == 0 {
-		return nil, fmt.Errorf("keyring token clearing requires --agent flag to specify agent IDs")
-	}
-
-	client, err := o.gitlabClient()
+	tokenIDs, err := agentutils.GetKeyringInventory()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create GitLab client: %w", err)
+		return nil, fmt.Errorf("failed to read keyring inventory: %w", err)
 	}
-
-	gitlabInstance := base64.StdEncoding.EncodeToString([]byte(client.BaseURL().String()))
 
 	var tokens []cachedToken
-	for _, agentID := range o.agents {
-		cacheID := fmt.Sprintf("%s-%d", gitlabInstance, agentID)
-
-		data, err := keyring.Get(keyringService, cacheID)
+	for _, id := range tokenIDs {
+		data, err := keyring.Get(agentutils.KeyringService, id)
 		if err != nil {
 			if errors.Is(err, keyring.ErrNotFound) {
-				continue // Token not found in keyring, skip
+				continue
 			}
-			return nil, fmt.Errorf("failed to get token from keyring for agent %d: %w", agentID, err)
+			return nil, fmt.Errorf("failed to get token from keyring: %w", err)
 		}
 
 		var pat gitlab.PersonalAccessToken
 		if err := json.Unmarshal([]byte(data), &pat); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal token for agent %d: %w", agentID, err)
+			fmt.Fprintf(o.io.StdErr, "Warning: Corrupted token in keyring, removing from inventory: %v\n", err)
+			if rmErr := agentutils.RemoveFromKeyringInventory(id); rmErr != nil {
+				fmt.Fprintf(o.io.StdErr, "Warning: Failed to remove corrupted token from inventory: %v\n", rmErr)
+			}
+			continue
+		}
+
+		gitlabURL, agentID, err := agentutils.ParseCacheID(id)
+		if err != nil {
+			fmt.Fprintf(o.io.StdErr, "Warning: Invalid cache ID in inventory, removing: %v\n", err)
+			if rmErr := agentutils.RemoveFromKeyringInventory(id); rmErr != nil {
+				fmt.Fprintf(o.io.StdErr, "Warning: Failed to remove invalid token from inventory: %v\n", rmErr)
+			}
+			continue
 		}
 
 		token := cachedToken{
-			ID:        cacheID,
+			ID:        id,
 			AgentID:   agentID,
-			GitLabURL: client.BaseURL().String(),
+			GitLabURL: gitlabURL,
 			Token:     &pat,
 			Source:    "keyring",
 		}
@@ -367,10 +366,14 @@ func (o *options) clearTokens(tokens []cachedToken) []error {
 		if token.Source != "keyring" {
 			continue
 		}
-		err := keyring.Delete(keyringService, token.ID)
+		err := keyring.Delete(agentutils.KeyringService, token.ID)
 		if err != nil && !errors.Is(err, keyring.ErrNotFound) {
 			errs = append(errs, fmt.Errorf("failed to delete token from keyring for agent %d: %w", token.AgentID, err))
 			continue
+		}
+		// Remove from inventory
+		if err := agentutils.RemoveFromKeyringInventory(token.ID); err != nil {
+			errs = append(errs, fmt.Errorf("failed to update keyring inventory: %w", err))
 		}
 		fmt.Fprintf(o.io.StdOut, "Cleared token for agent %d from keyring.\n", token.AgentID)
 	}

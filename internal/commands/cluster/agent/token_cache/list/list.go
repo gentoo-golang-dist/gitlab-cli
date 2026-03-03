@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/zalando/go-keyring"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
@@ -104,10 +105,51 @@ func (o *options) run() error {
 }
 
 func (o *options) getKeyringTokens() ([]cachedToken, error) {
-	// Unfortunately, the keyring library doesn't provide a way to list all keys
-	// We would need to know the agent IDs to construct the cache keys
-	// For now, we'll return an empty list and suggest using --agent flag
-	return nil, fmt.Errorf("keyring token listing requires --agent flag to specify agent IDs")
+	tokenIDs, err := agentutils.GetKeyringInventory()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read keyring inventory: %w", err)
+	}
+
+	var tokens []cachedToken
+	for _, id := range tokenIDs {
+		token, err := o.readKeyringToken(id)
+		if err != nil {
+			agentutils.RemoveFromKeyringInventory(id)
+			continue
+		}
+		tokens = append(tokens, *token)
+	}
+	return tokens, nil
+}
+
+// readKeyringToken reads a single token from the keyring by its cache ID
+func (o *options) readKeyringToken(id string) (*cachedToken, error) {
+	data, err := keyring.Get(agentutils.KeyringService, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var pat gitlab.PersonalAccessToken
+	if err := json.Unmarshal([]byte(data), &pat); err != nil {
+		return nil, err
+	}
+
+	gitlabURL, agentID, err := agentutils.ParseCacheID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	token := &cachedToken{
+		ID:        id,
+		AgentID:   agentID,
+		GitLabURL: gitlabURL,
+		Token:     &pat,
+		Source:    "keyring",
+		Expired:   pat.ExpiresAt != nil && time.Time(*pat.ExpiresAt).Before(time.Now().UTC()),
+		Revoked:   pat.Revoked,
+	}
+
+	return token, nil
 }
 
 func (o *options) getFilesystemTokens() ([]cachedToken, error) {

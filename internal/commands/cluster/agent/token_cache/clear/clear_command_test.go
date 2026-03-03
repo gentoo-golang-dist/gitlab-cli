@@ -199,14 +199,13 @@ func TestClear_FilterAgents_OnlySpecified(t *testing.T) {
 	assert.NoError(t, err, "agent 31 token should still exist")
 }
 
-func TestClear_KeyringRequiresAgentFlag(t *testing.T) {
+func TestClear_KeyringOnly_NoTokensFound(t *testing.T) {
 	keyring.MockInit()
 	tc := gitlab_testing.NewTestClient(t, gitlab.WithBaseURL("https://gitlab.example.com"))
 	exec := cmdtest.SetupCmdForTest(t, NewCmd, false, cmdtest.WithGitLabClient(tc.Client))
 
+	// With inventory-based keyring listing, an empty inventory just means no tokens
 	out, err := exec("--filesystem=false --keyring=true --revoke=false")
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "No cached tokens found to clear")
-	assert.Contains(t, out.Stderr(), "Warning: failed to read keyring tokens")
-	assert.Contains(t, out.Stderr(), "keyring token clearing requires --agent flag")
 }

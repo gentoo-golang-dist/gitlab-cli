@@ -16,6 +16,8 @@ import (
 	"github.com/zalando/go-keyring"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
+
+	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
 )
 
 type mockStorage struct {
@@ -194,7 +196,7 @@ func TestKeyringStorage_get(t *testing.T) {
 	keyring.MockInit()
 
 	// populate keyring
-	err := keyring.Set(keyringService, "test-id", "any-data")
+	err := keyring.Set(agentutils.KeyringService, "test-id", "any-data")
 	require.NoError(t, err)
 	s := keyringStorage{}
 
@@ -243,9 +245,24 @@ func TestKeyringStorage_set(t *testing.T) {
 
 	// THEN
 	require.NoError(t, err)
-	setData, err := keyring.Get(keyringService, "test-id")
+	setData, err := keyring.Get(agentutils.KeyringService, "test-id")
 	require.NoError(t, err)
 	assert.Equal(t, "any-data", setData)
+}
+
+func TestKeyringStorage_set_UnsupportedPlatform(t *testing.T) {
+	// GIVEN
+	keyring.MockInitWithError(keyring.ErrUnsupportedPlatform)
+
+	s := keyringStorage{}
+
+	// WHEN
+	err := s.set("test-id", []byte("any-data"))
+
+	// THEN
+	// Should succeed because token is stored in keyring (which fails)
+	// but that's caught by the keyring.Set call, not the inventory
+	require.ErrorIs(t, err, errUnsupportedPlatform)
 }
 
 func TestFileStorage_get(t *testing.T) {
