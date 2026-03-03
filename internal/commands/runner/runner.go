@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	assignCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/assign"
 	deleteCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/delete"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/list"
 	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/update"
@@ -18,6 +19,7 @@ func NewCmdRunner(f cmdutils.Factory) *cobra.Command {
 
 	cmdutils.EnableRepoOverride(runnerCmd, f)
 
+	runnerCmd.AddCommand(assignCmd.NewCmd(f))
 	runnerCmd.AddCommand(listCmd.NewCmd(f))
 	runnerCmd.AddCommand(updateCmd.NewCmd(f))
 	runnerCmd.AddCommand(deleteCmd.NewCmd(f))
