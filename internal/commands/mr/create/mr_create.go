@@ -236,6 +236,59 @@ func parseIssue(apiClientFunc func(repoHost string) (*api.Client, error), gitlab
 	return issue, nil
 }
 
+func (o *options) selectTemplate(ctx context.Context, client *gitlab.Client) (string, error) {
+	templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.MergeRequestTemplate)
+	if err != nil {
+		return "", fmt.Errorf("error getting templates: %w", err)
+	}
+
+	const mrWithCommitsTemplate = "Open a merge request with commit messages."
+	const mrEmptyTemplate = "Open a blank merge request."
+
+	templateNames = append(templateNames, mrWithCommitsTemplate)
+	templateNames = append(templateNames, mrEmptyTemplate)
+
+	var templateName string
+	if err := o.io.Select(ctx, &templateName, "Choose a template:", templateNames); err != nil {
+		return "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	var templateContents string
+	switch templateName {
+	case mrWithCommitsTemplate:
+		commits, err := git.Commits(o.TargetTrackingBranch, o.SourceBranch)
+		if err != nil {
+			return "", fmt.Errorf("failed to get commits: %w", err)
+		}
+		templateContents, err = mrutils.GenerateMRCommitListBody(commits, true)
+		if err != nil {
+			return "", err
+		}
+		if o.signoff {
+			u, _, err := client.Users.CurrentUser()
+			if err != nil {
+				return "", fmt.Errorf("failed to get current user for signoff: %w", err)
+			}
+			templateContents += "Signed-off-by: " + u.Name + " <" + u.Email + ">"
+		}
+	case mrEmptyTemplate:
+		if o.signoff {
+			u, _, err := client.Users.CurrentUser()
+			if err != nil {
+				return "", fmt.Errorf("failed to get current user for signoff: %w", err)
+			}
+			templateContents += "Signed-off-by: " + u.Name + " <" + u.Email + ">"
+		}
+	default:
+		templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.MergeRequestTemplate, templateName)
+		if err != nil {
+			return "", fmt.Errorf("failed to get template contents: %w", err)
+		}
+	}
+
+	return templateContents, nil
+}
+
 func (o *options) run(ctx context.Context) error {
 	out := o.io.StdOut
 	c := o.io.Color()
@@ -391,18 +444,12 @@ func (o *options) run(ctx context.Context) error {
 			return cmdutils.SilentError
 		}
 
-		// Handle -d- flag to directly open external editor
-		if o.Description == "-" {
-			editor, err := cmdutils.GetEditor(o.config)
-			if err != nil {
-				return err
-			}
-
-			o.Description = ""
-			err = o.io.DirectEditor(ctx, &o.Description, "", editor)
-			if err != nil {
-				return err
-			}
+		// Handle -d- flag: show template selection first, then open editor
+		err = cmdutils.HandleDescriptionEditor(ctx, &o.Description, o.io, o.config, func(ctx context.Context) (string, error) {
+			return o.selectTemplate(ctx, client)
+		})
+		if err != nil {
+			return err
 		}
 
 		if o.Autofill {
@@ -417,7 +464,6 @@ func (o *options) run(ctx context.Context) error {
 
 			o.ShouldPush = true
 		} else if o.needsPrompt {
-			var templateName string
 			var templateContents string
 			if o.Description == "" {
 				if o.noEditor {
@@ -426,46 +472,9 @@ func (o *options) run(ctx context.Context) error {
 						return err
 					}
 				} else {
-					templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.MergeRequestTemplate)
+					templateContents, err = o.selectTemplate(ctx, client)
 					if err != nil {
-						return fmt.Errorf("error getting templates: %w", err)
-					}
-
-					const mrWithCommitsTemplate = "Open a merge request with commit messages."
-					const mrEmptyTemplate = "Open a blank merge request."
-
-					templateNames = append(templateNames, mrWithCommitsTemplate)
-					templateNames = append(templateNames, mrEmptyTemplate)
-
-					if err := o.io.Select(ctx, &templateName, "Choose a template:", templateNames); err != nil {
-						return fmt.Errorf("could not prompt: %w", err)
-					}
-					switch templateName {
-					case mrWithCommitsTemplate:
-						// templateContents should be filled from commit messages
-						commits, err := git.Commits(o.TargetTrackingBranch, o.SourceBranch)
-						if err != nil {
-							return fmt.Errorf("failed to get commits: %w", err)
-						}
-						templateContents, err = mrutils.GenerateMRCommitListBody(commits, true)
-						if err != nil {
-							return err
-						}
-						if o.signoff {
-							u, _, _ := client.Users.CurrentUser()
-							templateContents += "Signed-off-by: " + u.Name + "<" + u.Email + ">"
-						}
-					case mrEmptyTemplate:
-						// blank merge request was chosen, leave templateContents empty
-						if o.signoff {
-							u, _, _ := client.Users.CurrentUser()
-							templateContents += "Signed-off-by: " + u.Name + "<" + u.Email + ">"
-						}
-					default:
-						templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.MergeRequestTemplate, templateName)
-						if err != nil {
-							return fmt.Errorf("failed to get template contents: %w", err)
-						}
+						return err
 					}
 				}
 			}

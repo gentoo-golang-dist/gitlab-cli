@@ -167,6 +167,32 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	return issueCreateCmd
 }
 
+func (o *options) selectTemplate(ctx context.Context) (string, error) {
+	templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.IssueTemplate)
+	if err != nil {
+		return "", fmt.Errorf("error getting templates: %w", err)
+	}
+
+	const blankIssueOption = "Open a blank issue"
+	templateNames = append(templateNames, blankIssueOption)
+
+	var selectedTemplate string
+	if err := o.io.Select(ctx, &selectedTemplate, "Choose a template", templateNames); err != nil {
+		return "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	if selectedTemplate == blankIssueOption {
+		return "", nil // Return empty string for blank issue
+	}
+
+	templateContents, err := cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, selectedTemplate)
+	if err != nil {
+		return "", fmt.Errorf("failed to get template contents: %w", err)
+	}
+
+	return templateContents, nil
+}
+
 var createRun = func(ctx context.Context, opts *options) error {
 	apiClient, err := opts.gitlabClient()
 	if err != nil {
@@ -178,7 +204,6 @@ var createRun = func(ctx context.Context, opts *options) error {
 		return err
 	}
 
-	var templateName string
 	var templateContents string
 
 	issueCreateOpts := &gitlab.CreateIssueOptions{}
@@ -201,42 +226,20 @@ var createRun = func(ctx context.Context, opts *options) error {
 		}
 	}
 
-	// Handle -d- flag to directly open external editor
-	if opts.Description == "-" {
-		editor, err := cmdutils.GetEditor(opts.config)
-		if err != nil {
-			return err
-		}
-
-		opts.Description = ""
-		err = opts.io.DirectEditor(ctx, &opts.Description, "", editor)
-		if err != nil {
-			return err
-		}
+	// Handle -d- flag: show template selection first, then open editor
+	err = cmdutils.HandleDescriptionEditor(ctx, &opts.Description, opts.io, opts.config, func(ctx context.Context) (string, error) {
+		return opts.selectTemplate(ctx)
+	})
+	if err != nil {
+		return err
 	}
 
 	if opts.needsPrompt {
 		// Step 1: Template selection (if not using --no-editor and description is empty)
 		if opts.Description == "" && !opts.noEditor {
-			templateNames, err := cmdutils.ListGitLabTemplates(cmdutils.IssueTemplate)
+			templateContents, err = opts.selectTemplate(ctx)
 			if err != nil {
-				return fmt.Errorf("error getting templates: %w", err)
-			}
-
-			const blankIssueOption = "Open a blank issue"
-			templateNames = append(templateNames, blankIssueOption)
-
-			var selectedTemplate string
-			if err := opts.io.Select(ctx, &selectedTemplate, "Choose a template", templateNames); err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
-			}
-
-			if selectedTemplate != blankIssueOption {
-				templateName = selectedTemplate
-				templateContents, err = cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, templateName)
-				if err != nil {
-					return fmt.Errorf("failed to get template contents: %w", err)
-				}
+				return err
 			}
 		}
 

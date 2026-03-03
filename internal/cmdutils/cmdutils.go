@@ -27,6 +27,39 @@ const (
 	MergeRequestTemplate = "merge_request_templates"
 )
 
+// TemplateSelectionFunc is a callback function that returns template contents.
+// It allows each command to customize its template selection logic.
+type TemplateSelectionFunc func(ctx context.Context) (string, error)
+
+// HandleDescriptionEditor handles the -d- flag by optionally showing template selection
+// and then opening an external editor with the template contents.
+// If templateSelector is nil, no template selection is shown (empty editor).
+func HandleDescriptionEditor(ctx context.Context, description *string, io *iostreams.IOStreams, cfg func() config.Config, templateSelector TemplateSelectionFunc) error {
+	if *description != "-" {
+		return nil // Not using -d- flag, nothing to do
+	}
+
+	var templateContents string
+	var err error
+
+	// If a template selector is provided, use it to get template contents
+	if templateSelector != nil {
+		templateContents, err = templateSelector(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Get the configured editor
+	editor, err := GetEditor(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Open the editor with template contents
+	return io.DirectEditor(ctx, description, templateContents, editor)
+}
+
 var listLabels = func(client *gitlab.Client, projectID any, opts *gitlab.ListLabelsOptions) ([]*gitlab.Label, error) {
 	labels, _, err := client.Labels.ListLabels(projectID, opts)
 	return labels, err

@@ -217,18 +217,10 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 
 	description, _ := cmd.Flags().GetString("description")
 
-	// Handle -d- flag to directly open external editor
-	if description == "-" {
-		editor, err := cmdutils.GetEditor(f.Config)
-		if err != nil {
-			return err
-		}
-
-		description = ""
-		err = f.IO().DirectEditor(cmd.Context(), &description, "", editor)
-		if err != nil {
-			return err
-		}
+	// Handle -d- flag: open editor without template selection
+	err = cmdutils.HandleDescriptionEditor(cmd.Context(), &description, f.IO(), f.Config, nil)
+	if err != nil {
+		return err
 	}
 
 	if internal, _ := cmd.Flags().GetBool("internal"); internal {

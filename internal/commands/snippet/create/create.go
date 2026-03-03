@@ -144,18 +144,10 @@ func (o *options) validate() error {
 }
 
 func (o *options) run(ctx context.Context) error {
-	// Handle -d- flag to directly open external editor
-	if o.description == "-" {
-		editor, err := cmdutils.GetEditor(o.config)
-		if err != nil {
-			return err
-		}
-
-		o.description = ""
-		err = o.io.DirectEditor(ctx, &o.description, "", editor)
-		if err != nil {
-			return err
-		}
+	// Handle -d- flag: open editor without template selection
+	err := cmdutils.HandleDescriptionEditor(ctx, &o.description, o.io, o.config, nil)
+	if err != nil {
+		return err
 	}
 
 	client, err := o.gitlabClient()
