@@ -14,14 +14,21 @@ Authenticate with a GitLab instance.
 
 ## Synopsis
 
-Authenticate with a GitLab instance.
-You can pass in a token on standard input by using `--stdin`.
-The minimum required scopes for the token are: `api`, `write_repository`.
-Configuration and credentials are stored in the global configuration file (default `~/.config/glab-cli/config.yml`)
+Authenticates with a GitLab instance.
 
-When running in interactive mode inside a Git repository, `glab` will automatically detect
-GitLab instances from your Git remotes and present them as options, saving you from having to
-manually type the hostname.
+Stores your credentials in the global configuration file
+(default `~/.config/glab-cli/config.yml`).
+To store your token in your operating system's keyring instead, use `--use-keyring`.
+After authentication, all `glab` commands use the stored credentials.
+
+If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN`
+are set, they take precedence over the stored credentials.
+These variables are ignored when CI auto-login is enabled with `GLAB_ENABLE_CI_AUTOLOGIN`.
+
+To pass a token on standard input, use `--stdin`.
+
+In interactive mode, `glab` detects GitLab instances from your Git remotes
+and lists them as options, so you do not have to type the hostname manually.
 
 ```plaintext
 glab auth login [flags]

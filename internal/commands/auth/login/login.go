@@ -62,14 +62,21 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Short: "Authenticate with a GitLab instance.",
 		Long: heredoc.Docf(`
-			Authenticate with a GitLab instance.
-			You can pass in a token on standard input by using %[1]s--stdin%[1]s.
-			The minimum required scopes for the token are: %[1]sapi%[1]s, %[1]swrite_repository%[1]s.
-			Configuration and credentials are stored in the global configuration file (default %[1]s~/.config/glab-cli/config.yml%[1]s)
+			Authenticates with a GitLab instance.
 
-			When running in interactive mode inside a Git repository, %[1]sglab%[1]s will automatically detect
-			GitLab instances from your Git remotes and present them as options, saving you from having to
-			manually type the hostname.
+			Stores your credentials in the global configuration file
+			(default %[1]s~/.config/glab-cli/config.yml%[1]s).
+			To store your token in your operating system's keyring instead, use %[1]s--use-keyring%[1]s.
+			After authentication, all %[1]sglab%[1]s commands use the stored credentials.
+			
+			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s
+			are set, they take precedence over the stored credentials.
+			These variables are ignored when CI auto-login is enabled with %[1]sGLAB_ENABLE_CI_AUTOLOGIN%[1]s.
+			
+			To pass a token on standard input, use %[1]s--stdin%[1]s.
+			
+			In interactive mode, %[1]sglab%[1]s detects GitLab instances from your Git remotes
+			and lists them as options, so you do not have to type the hostname manually.
 		`, "`"),
 		Example: heredoc.Docf(`
 			# Start interactive setup
