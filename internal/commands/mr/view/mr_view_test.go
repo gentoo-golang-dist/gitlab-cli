@@ -641,3 +641,139 @@ func Test_printTTYMRPreview_closedMRWithNilClosedBy(t *testing.T) {
 	assert.Contains(t, output, "Closed")
 	assert.NotContains(t, output, "Closed by:")
 }
+
+func Test_filterDiscussionsByResolution(t *testing.T) {
+	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
+
+	tests := []struct {
+		name           string
+		discussions    []*gitlab.Discussion
+		showResolved   bool
+		showUnresolved bool
+		wantCount      int
+		wantIDs        []string
+	}{
+		{
+			name: "filter resolved discussions",
+			discussions: []*gitlab.Discussion{
+				{
+					ID:             "disc1",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 1, Resolvable: true, Resolved: true, CreatedAt: &timer},
+						{ID: 2, Resolvable: true, Resolved: true, CreatedAt: &timer},
+					},
+				},
+				{
+					ID:             "disc2",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 3, Resolvable: true, Resolved: false, CreatedAt: &timer},
+					},
+				},
+				{
+					ID:             "disc3",
+					IndividualNote: true,
+					Notes: []*gitlab.Note{
+						{ID: 4, Resolvable: false, Resolved: false, CreatedAt: &timer},
+					},
+				},
+			},
+			showResolved:   true,
+			showUnresolved: false,
+			wantCount:      1,
+			wantIDs:        []string{"disc1"},
+		},
+		{
+			name: "filter unresolved discussions",
+			discussions: []*gitlab.Discussion{
+				{
+					ID:             "disc1",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 1, Resolvable: true, Resolved: true, CreatedAt: &timer},
+						{ID: 2, Resolvable: true, Resolved: true, CreatedAt: &timer},
+					},
+				},
+				{
+					ID:             "disc2",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 3, Resolvable: true, Resolved: false, CreatedAt: &timer},
+					},
+				},
+				{
+					ID:             "disc3",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 4, Resolvable: true, Resolved: true, CreatedAt: &timer},
+						{ID: 5, Resolvable: true, Resolved: false, CreatedAt: &timer},
+					},
+				},
+			},
+			showResolved:   false,
+			showUnresolved: true,
+			wantCount:      2,
+			wantIDs:        []string{"disc2", "disc3"},
+		},
+		{
+			name: "exclude non-resolvable discussions",
+			discussions: []*gitlab.Discussion{
+				{
+					ID:             "disc1",
+					IndividualNote: true,
+					Notes: []*gitlab.Note{
+						{ID: 1, Resolvable: false, Resolved: false, CreatedAt: &timer},
+					},
+				},
+				{
+					ID:             "disc2",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 2, Resolvable: true, Resolved: true, CreatedAt: &timer},
+					},
+				},
+			},
+			showResolved:   true,
+			showUnresolved: false,
+			wantCount:      1,
+			wantIDs:        []string{"disc2"},
+		},
+		{
+			name: "both flags set returns both resolved and unresolved",
+			discussions: []*gitlab.Discussion{
+				{
+					ID:             "disc1",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 1, Resolvable: true, Resolved: true, CreatedAt: &timer},
+					},
+				},
+				{
+					ID:             "disc2",
+					IndividualNote: false,
+					Notes: []*gitlab.Note{
+						{ID: 2, Resolvable: true, Resolved: false, CreatedAt: &timer},
+					},
+				},
+			},
+			showResolved:   true,
+			showUnresolved: true,
+			wantCount:      2,
+			wantIDs:        []string{"disc1", "disc2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterDiscussionsByResolution(tt.discussions, tt.showResolved, tt.showUnresolved)
+			require.Len(t, got, tt.wantCount)
+
+			gotIDs := []string{}
+			for _, d := range got {
+				gotIDs = append(gotIDs, d.ID)
+			}
+			assert.Equal(t, tt.wantIDs, gotIDs)
+		})
+	}
+}

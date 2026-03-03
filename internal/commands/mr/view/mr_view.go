@@ -52,9 +52,45 @@ var listMRDiscussions = func(client *gitlab.Client, projectID any, mrID int64, o
 	return allDiscussions, nil
 }
 
+// filterDiscussionsByResolution filters discussions based on their resolution status.
+// A discussion is considered resolved if all its resolvable notes are resolved.
+// A discussion is considered unresolved if it has at least one resolvable note that is not resolved.
+func filterDiscussionsByResolution(discussions []*gitlab.Discussion, showResolved, showUnresolved bool) []*gitlab.Discussion {
+	filtered := []*gitlab.Discussion{}
+
+	for _, discussion := range discussions {
+		// Check if discussion has any resolvable notes
+		hasResolvableNotes := false
+		allResolved := true
+
+		for _, note := range discussion.Notes {
+			if note.Resolvable {
+				hasResolvableNotes = true
+				if !note.Resolved {
+					allResolved = false
+				}
+			}
+		}
+
+		// Skip discussions without resolvable notes
+		if !hasResolvableNotes {
+			continue
+		}
+
+		// Include based on filter
+		if (showResolved && allResolved) || (showUnresolved && !allResolved) {
+			filtered = append(filtered, discussion)
+		}
+	}
+
+	return filtered
+}
+
 type options struct {
 	showComments   bool
 	showSystemLogs bool
+	showResolved   bool
+	showUnresolved bool
 	openInBrowser  bool
 	outputFormat   string
 
@@ -93,6 +129,8 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 
 	mrViewCmd.Flags().BoolVarP(&opts.showComments, "comments", "c", false, "Show merge request comments and activities.")
 	mrViewCmd.Flags().BoolVarP(&opts.showSystemLogs, "system-logs", "s", false, "Show system activities and logs.")
+	mrViewCmd.Flags().BoolVar(&opts.showResolved, "resolved", false, "Show only resolved discussions (implies --comments).")
+	mrViewCmd.Flags().BoolVar(&opts.showUnresolved, "unresolved", false, "Show only unresolved discussions (implies --comments).")
 	mrViewCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
 	mrViewCmd.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open merge request in a browser. Uses default browser or browser specified in BROWSER variable.")
 	mrViewCmd.Flags().IntVarP(&opts.commentPageNujmber, "page", "p", 0, "Page number.")
@@ -139,6 +177,11 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 
 	discussions := []*gitlab.Discussion{}
 
+	// --resolved and --unresolved imply --comments
+	if o.showResolved || o.showUnresolved {
+		o.showComments = true
+	}
+
 	if o.showComments {
 		l := &gitlab.ListMergeRequestDiscussionsOptions{
 			ListOptions: gitlab.ListOptions{
@@ -151,6 +194,11 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 		discussions, err = listMRDiscussions(client, baseRepo.FullName(), mr.IID, l)
 		if err != nil {
 			return err
+		}
+
+		// Filter discussions based on resolution status
+		if o.showResolved || o.showUnresolved {
+			discussions = filterDiscussionsByResolution(discussions, o.showResolved, o.showUnresolved)
 		}
 	}
 
@@ -363,7 +411,14 @@ func printTTYMRPreview(opts *options, mr *gitlab.MergeRequest, mrApprovals *gitl
 				}
 			}
 		} else {
-			fmt.Fprintln(out, "This merge request has no comments.")
+			// Provide specific message based on filter flags
+			if opts.showResolved && !opts.showUnresolved {
+				fmt.Fprintln(out, "This merge request has no resolved threads.")
+			} else if opts.showUnresolved && !opts.showResolved {
+				fmt.Fprintln(out, "This merge request has no unresolved threads.")
+			} else {
+				fmt.Fprintln(out, "This merge request has no comments.")
+			}
 		}
 	}
 
