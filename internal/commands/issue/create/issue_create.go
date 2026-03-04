@@ -289,7 +289,12 @@ var createRun = func(ctx context.Context, opts *options) error {
 						EditorExtension(".md")
 
 					if editor != "" {
-						textField = textField.Editor(editor)
+						// Parse editor command to handle arguments properly
+						// huh.Editor() accepts variadic args: Editor(cmd, arg1, arg2, ...)
+						editorParts := utils.ParseEditorCommand(editor)
+						if len(editorParts) > 0 {
+							textField = textField.Editor(editorParts...)
+						}
 					}
 
 					fields = append(fields, textField)

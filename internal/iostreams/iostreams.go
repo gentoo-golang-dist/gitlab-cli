@@ -438,7 +438,11 @@ func (s *IOStreams) Editor(ctx context.Context, result *string, title, descripti
 
 	// Set the editor command if provided
 	if editorCmd != "" {
-		text = text.Editor(editorCmd)
+		// Parse editor command with arguments and pass to huh's variadic Editor method
+		editorParts := utils.ParseEditorCommand(editorCmd)
+		if len(editorParts) > 0 {
+			text = text.Editor(editorParts...)
+		}
 	}
 
 	return s.Run(ctx, text)

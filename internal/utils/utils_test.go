@@ -239,3 +239,62 @@ func TestIsValidURL(t *testing.T) {
 		})
 	}
 }
+
+func TestParseEditorCommand(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		editor   string
+		expected []string
+	}{
+		{
+			name:     "empty string",
+			editor:   "",
+			expected: nil,
+		},
+		{
+			name:     "simple editor",
+			editor:   "vim",
+			expected: []string{"vim"},
+		},
+		{
+			name:     "editor with flags",
+			editor:   "nano -w",
+			expected: []string{"nano", "-w"},
+		},
+		{
+			name:     "emacsclient with flags",
+			editor:   "emacsclient -t -a emacs",
+			expected: []string{"emacsclient", "-t", "-a", "emacs"},
+		},
+		{
+			name:     "emacsclient with quoted fallback",
+			editor:   `emacsclient -t -a "emacs -nw"`,
+			expected: []string{"emacsclient", "-t", "-a", "emacs -nw"},
+		},
+		{
+			name:     "vscode with flags",
+			editor:   `code --wait --new-window`,
+			expected: []string{"code", "--wait", "--new-window"},
+		},
+		{
+			name:     "vim with complex flags",
+			editor:   "vim -c 'set spell'",
+			expected: []string{"vim", "-c", "set spell"},
+		},
+		{
+			name:     "full path editor",
+			editor:   "/usr/local/bin/nvim -u NONE",
+			expected: []string{"/usr/local/bin/nvim", "-u", "NONE"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := ParseEditorCommand(tt.editor)
+			require.Equal(t, tt.expected, got)
+		})
+	}
+}
