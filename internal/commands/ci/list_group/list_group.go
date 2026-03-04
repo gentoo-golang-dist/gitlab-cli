@@ -96,7 +96,9 @@ func NewCmdListGroup(f cmdutils.Factory) *cobra.Command {
 			}
 
 			// 2. Fetch latest pipeline(s) per project concurrently
-			fmt.Fprintf(f.IO().StdErr, "Fetching pipelines for %d projects...\n", len(projects))
+			if format != "json" {
+				fmt.Fprintf(f.IO().StdOut, "Fetching pipelines for %d projects...\n", len(projects))
+			}
 			pipeOpts := &gitlab.ListProjectPipelinesOptions{
 				ListOptions: gitlab.ListOptions{PerPage: int64(perPage)},
 			}
@@ -175,7 +177,9 @@ func NewCmdListGroup(f cmdutils.Factory) *cobra.Command {
 			// 4. Optionally enrich with full pipeline details (duration, user)
 			detail, _ := cmd.Flags().GetBool("detail")
 			if detail && len(rows) > 0 {
-				fmt.Fprintf(f.IO().StdErr, "Fetching details for %d pipelines...\n", len(rows))
+				if format != "json" {
+					fmt.Fprintf(f.IO().StdOut, "Fetching details for %d pipelines...\n", len(rows))
+				}
 				enrichPipelines(client, rows)
 			}
 
@@ -274,8 +278,13 @@ func displayGroupPipelines(ios *iostreams.IOStreams, rows []pipelineRow, detail 
 
 		if detail {
 			duration := ""
-			if r.Detail != nil && r.Detail.Duration > 0 {
-				duration = formatDuration(r.Detail.Duration)
+			if r.Detail != nil {
+				if r.Detail.Duration > 0 {
+					duration = formatDuration(r.Detail.Duration)
+				} else if r.Detail.StartedAt != nil {
+					// still running — show elapsed time
+					duration = formatDuration(int64(time.Since(*r.Detail.StartedAt).Seconds())) + " (running)"
+				}
 			}
 			user := ""
 			if r.Detail != nil && r.Detail.User != nil {
