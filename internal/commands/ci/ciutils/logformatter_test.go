@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFormatLogForLLM(t *testing.T) {
+func TestFormatLogCompact(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -49,32 +49,87 @@ func TestFormatLogForLLM(t *testing.T) {
 			input:    "section_start:123:my_build_step\nsome output\nsection_end:123:my_build_step",
 			expected: "## My build step\nsome output",
 		},
-		{
-			name:     "raw format passthrough",
-			input:    "\033[32mHello\033[0m",
-			expected: "\033[32mHello\033[0m",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.name == "raw format passthrough" {
-				result := FormatLog(tt.input, LogFormatRaw)
-				assert.Equal(t, tt.expected, result)
-				return
-			}
-			result := FormatLogForLLM(tt.input)
+			result := FormatLogCompact(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
 
+func TestFormatLogMinimal(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "collapses boilerplate sections",
+			input:    "section_start:1:prepare_executor\nUsing Docker executor\nPulling image\nsection_end:1:prepare_executor\nsection_start:2:build_script\n$ go build ./...\nERROR: build failed\nsection_end:2:build_script",
+			expected: "[Prepare executor: ok]\n\n## Build script\n$ go build ./...\nERROR: build failed",
+		},
+		{
+			name:     "strips runner metadata before first section",
+			input:    "Running with gitlab-runner 18.4.0 (abc123)\non runner-abc jp7oyWQbz, system ID: r_xyz\nfeature flags: FF_USE_FASTZIP:true\nResolving secrets\nsection_start:1:build_script\n$ make test\nsection_end:1:build_script",
+			expected: "## Build script\n$ make test",
+		},
+		{
+			name:     "removes git remote banners",
+			input:    "section_start:1:build_script\nremote:\nremote: ========\nremote: Maintenance window\nremote: ========\nremote:\nactual output\nsection_end:1:build_script",
+			expected: "## Build script\nactual output",
+		},
+		{
+			name:     "removes curl transfer stats",
+			input:    "section_start:1:build_script\n% Total    % Received\nDload  Upload   Total\n  100  1234    0  1234\nResponse: ok\nsection_end:1:build_script",
+			expected: "## Build script\nResponse: ok",
+		},
+		{
+			name:     "removes shell setup commands",
+			input:    "section_start:1:build_script\n$ export FOO=bar\n$ chmod +x script.sh\n$ cat > file.txt <<'EOF'\n$ printf \"hello\" > out.txt\n$ source /venv/bin/activate\nactual work here\nsection_end:1:build_script",
+			expected: "## Build script\nactual work here",
+		},
+		{
+			name:     "removes secret mapping block",
+			input:    "section_start:1:build_script\n[INFO] SECRETS mapping:\n[INFO]   \"MY_SECRET:MY_SECRET\"\n[INFO]   \"OTHER_KEY:OTHER_KEY\"\nnext real line\nsection_end:1:build_script",
+			expected: "## Build script\nnext real line",
+		},
+		{
+			name:     "removes decorative separator lines",
+			input:    "section_start:1:build_script\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nImportant info\n──────────────────────────────\nsection_end:1:build_script",
+			expected: "## Build script\nImportant info",
+		},
+		{
+			name:     "removes executing stage boilerplate",
+			input:    "section_start:1:step_script\nExecuting \"step_script\" stage of the job script\n$ make build\nDone\nsection_end:1:step_script",
+			expected: "## Step script\n$ make build\nDone",
+		},
+		{
+			name:     "collapses after_script section",
+			input:    "section_start:1:step_script\n$ make build\nDone\nsection_end:1:step_script\nsection_start:2:after_script\nRunning after script\n$ cleanup.sh\nsection_end:2:after_script",
+			expected: "## Step script\n$ make build\nDone\n[After script: ok]",
+		},
+		{
+			name:     "preserves non-boilerplate sections fully",
+			input:    "section_start:1:prepare_executor\nsetup stuff\nsection_end:1:prepare_executor\nsection_start:2:build_script\n$ go test ./...\nFAIL main_test.go:15\nsection_end:2:build_script",
+			expected: "[Prepare executor: ok]\n\n## Build script\n$ go test ./...\nFAIL main_test.go:15",
+		},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatLogMinimal(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
 
 func TestFormatLog(t *testing.T) {
 	raw := "\033[32mHello\033[0m World"
 
 	assert.Equal(t, raw, FormatLog(raw, LogFormatRaw))
 	assert.Equal(t, "Hello World", FormatLog(raw, LogFormatClean))
-	assert.Equal(t, "Hello World", FormatLog(raw, LogFormatLLM))
+	assert.Equal(t, "Hello World", FormatLog(raw, LogFormatMinimal))
+	assert.Equal(t, "Hello World", FormatLog(raw, LogFormatCompact))
 }
