@@ -281,9 +281,15 @@ func displayGroupPipelines(ios *iostreams.IOStreams, rows []pipelineRow, detail 
 			if r.Detail != nil {
 				if r.Detail.Duration > 0 {
 					duration = formatDuration(r.Detail.Duration)
+				} else if r.Detail.StartedAt != nil && r.Detail.FinishedAt != nil {
+					// duration=0 but pipeline ran — compute from timestamps
+					duration = formatDuration(int64(r.Detail.FinishedAt.Sub(*r.Detail.StartedAt).Seconds()))
 				} else if r.Detail.StartedAt != nil {
 					// still running — show elapsed time
 					duration = formatDuration(int64(time.Since(*r.Detail.StartedAt).Seconds())) + " (running)"
+				} else if r.Detail.FinishedAt != nil && r.Detail.CreatedAt != nil {
+					// never properly started (e.g. failed before runner pickup)
+					duration = formatDuration(int64(r.Detail.FinishedAt.Sub(*r.Detail.CreatedAt).Seconds()))
 				}
 			}
 			user := ""
