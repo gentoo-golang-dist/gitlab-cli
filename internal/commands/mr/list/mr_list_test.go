@@ -779,7 +779,7 @@ func TestMergeRequestList_GroupAndAssignee(t *testing.T) {
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 	)
 
-	output, err := exec("--group GROUP --assignee=@me")
+	output, err := exec("--group GROUP --assignee=me")
 	require.NoError(t, err)
 
 	assert.Equal(t, heredoc.Doc(`
