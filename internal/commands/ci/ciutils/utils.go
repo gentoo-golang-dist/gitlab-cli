@@ -184,12 +184,23 @@ func RunTraceSha(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid
 	if err != nil || job == nil {
 		return errors.Wrap(err, "failed to find job")
 	}
-	return runTrace(ctx, apiClient, w, pid, job.ID, true)
+	return runTrace(ctx, apiClient, w, pid, job.ID, true, LogFormatRaw)
 }
 
-func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, jobId int64, follow bool) error {
+func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, jobId int64, follow bool, format LogFormat) error {
 	var once sync.Once
 	var offset int64
+
+	// For non-raw formats without follow, we collect all output and format at the end
+	var collectBuf *strings.Builder
+	if format != LogFormatRaw && format != "" && !follow {
+		collectBuf = &strings.Builder{}
+	}
+
+	traceWriter := w
+	if collectBuf != nil {
+		traceWriter = collectBuf
+	}
 
 	fmt.Fprintln(w, "Getting job trace...")
 	for range time.NewTicker(time.Second * 3).C {
@@ -207,7 +218,6 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 			job.Status == "skipped"
 
 		if !follow && !isFinished {
-			// Without follow mode, only show logs for jobs that are not pending/manual
 			switch job.Status {
 			case "pending":
 				fmt.Fprintf(w, "%s is pending. Use -f/--follow to wait for it to start.\n", job.Name)
@@ -236,13 +246,18 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 			return errors.Wrap(err, "failed to find job")
 		}
 		_, _ = io.CopyN(io.Discard, trace, offset)
-		lenT, err := io.Copy(w, trace)
+		lenT, err := io.Copy(traceWriter, trace)
 		if err != nil {
 			return err
 		}
 		offset += lenT
 
 		if isFinished {
+			// Format and output collected trace for non-raw formats
+			if collectBuf != nil {
+				fmt.Fprint(w, FormatLog(collectBuf.String(), format))
+				fmt.Fprintln(w)
+			}
 			if follow && (job.Status == "failed" || job.Status == "cancelled") {
 				fmt.Fprintf(w, "\nJob %s #%d finished with status: %s\n", job.Name, job.ID, job.Status)
 			}
@@ -250,7 +265,10 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 		}
 
 		if !follow {
-			// Without follow, print what we have and exit
+			if collectBuf != nil {
+				fmt.Fprint(w, FormatLog(collectBuf.String(), format))
+				fmt.Fprintln(w)
+			}
 			fmt.Fprintf(w, "\nJob is still running. Use -f/--follow to stream logs in real time.\n")
 			return nil
 		}
@@ -453,6 +471,7 @@ type JobOptions struct {
 	IO         *iostreams.IOStreams
 	BranchFunc func() (string, error)
 	Follow     bool
+	Format     LogFormat
 }
 
 func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {
@@ -465,7 +484,7 @@ func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {
 		return nil
 	}
 	fmt.Fprintln(opts.IO.StdOut)
-	return runTrace(ctx, opts.Client, opts.IO.StdOut, opts.Repo.FullName(), jobID, opts.Follow)
+	return runTrace(ctx, opts.Client, opts.IO.StdOut, opts.Repo.FullName(), jobID, opts.Follow, opts.Format)
 }
 
 // IDsFromArgs parses list of IDs from space or comma-separated values
