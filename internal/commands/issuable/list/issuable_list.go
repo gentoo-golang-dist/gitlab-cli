@@ -87,7 +87,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 			$ glab %[1]s list --assignee=@me
 			$ glab %[1]s list --milestone release-2.0.0 --opened
 			$ glab %[1]s list --label "bug"
-			$ glab %[1]s list --not-author "username"
+			$ glab %[1]s list --not-author=username
 			$ glab %[1]s list -R "repository-url"
 			$ glab %[1]s list --output json
 		`, issueType)),
