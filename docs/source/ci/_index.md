@@ -43,6 +43,7 @@ pipeline
 - [`get`](get.md)
 - [`lint`](lint.md)
 - [`list`](list.md)
+- [`list-group`](list-group.md)
 - [`retry`](retry.md)
 - [`run`](run.md)
 - [`run-trig`](run-trig.md)

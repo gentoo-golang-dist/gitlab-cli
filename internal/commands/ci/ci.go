@@ -15,6 +15,7 @@ import (
 	legacyCICmd "gitlab.com/gitlab-org/cli/internal/commands/ci/legacyci"
 	ciLintCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/lint"
 	pipeListCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/list"
+	pipeListGroupCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/list_group"
 	pipeRetryCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/retry"
 	pipeRunCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/run"
 	pipeRunTrigCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/run_trig"
@@ -48,6 +49,7 @@ func NewCmdCI(f cmdutils.Factory) *cobra.Command {
 	ciCmd.AddCommand(ciCancelCmd.NewCmdCancel(f))
 	ciCmd.AddCommand(pipeDeleteCmd.NewCmdDelete(f))
 	ciCmd.AddCommand(pipeListCmd.NewCmdList(f))
+	ciCmd.AddCommand(pipeListGroupCmd.NewCmdListGroup(f))
 	ciCmd.AddCommand(pipeStatusCmd.NewCmdStatus(f))
 	ciCmd.AddCommand(pipeRetryCmd.NewCmdRetry(f))
 	ciCmd.AddCommand(pipeRunCmd.NewCmdRun(f))
