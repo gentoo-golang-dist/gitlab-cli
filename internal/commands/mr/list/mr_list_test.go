@@ -734,10 +734,15 @@ func TestMergeRequestList_GroupAndAssignee(t *testing.T) {
 
 	testClient := gitlabtesting.NewTestClient(t)
 
-	// Mock CurrentUser for @me lookup
+	// Mock ListUsers for assignee username "me" lookup
 	testClient.MockUsers.EXPECT().
-		CurrentUser(gomock.Any()).
-		Return(&gitlab.User{ID: 1, Username: "me"}, nil, nil)
+		ListUsers(gomock.Any()).
+		DoAndReturn(func(opts *gitlab.ListUsersOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.User, *gitlab.Response, error) {
+			if opts.Username != nil && *opts.Username == "me" {
+				return []*gitlab.User{{ID: 1, Username: "me"}}, nil, nil
+			}
+			return nil, nil, nil
+		})
 
 	// Mock ListGroupMergeRequests and verify assignee_id is set
 	testClient.MockMergeRequests.EXPECT().
