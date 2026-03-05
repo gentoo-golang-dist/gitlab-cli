@@ -73,10 +73,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	fl := cmd.Flags()
 	fl.BoolVar(&opts.instance, "instance", false, "Add an instance-level scope.")
 	fl.Int64SliceVar(&opts.runnerIDs, "runner", nil, "Add a runner-level scope for the specified runner ID. Multiple IDs can be comma-separated or specified by repeating the flag.")
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	cmd.MarkFlagsMutuallyExclusive("instance", "runner")
 	cmd.MarkFlagsOneRequired("instance", "runner")

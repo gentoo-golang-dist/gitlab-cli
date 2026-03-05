@@ -26,6 +26,12 @@ $ glab label get 1234
 $ glab label get 1234 -R owner/repo
 ```
 
+## Options
+
+```plaintext
+  -F, --output string   Format output as: text, json. (default "text")
+```
+
 ## Options inherited from parent commands
 
 ```plaintext

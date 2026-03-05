@@ -16,6 +16,12 @@ List tokens for an agent.
 glab cluster agent token list <agent-id> [flags]
 ```
 
+## Options
+
+```plaintext
+  -F, --output string   Format output as: text, json. (default "text")
+```
+
 ## Options inherited from parent commands
 
 ```plaintext

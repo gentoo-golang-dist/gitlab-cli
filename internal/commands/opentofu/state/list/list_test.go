@@ -57,3 +57,39 @@ func TestList(t *testing.T) {
 	// THEN
 	assert.Equal(t, expectedOutput, out.OutBuf.String())
 }
+
+func TestOpentofuStateList_JSON(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+	)
+
+	now := time.Now().UTC()
+	tc.MockTerraformStates.EXPECT().
+		List("OWNER/REPO").
+		Return([]gitlab.TerraformState{
+			{
+				Name: "test-state",
+				LatestVersion: gitlab.TerraformStateVersion{
+					Serial: 42,
+				},
+				CreatedAt: now.Add(-1 * time.Hour),
+				UpdatedAt: now,
+				LockedAt:  now.Add(-30 * time.Minute),
+			},
+		}, nil, nil)
+
+	out, err := exec("--output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"name":"test-state"`)
+	assert.Contains(t, out.String(), `"serial":42`)
+	assert.Empty(t, out.Stderr())
+}

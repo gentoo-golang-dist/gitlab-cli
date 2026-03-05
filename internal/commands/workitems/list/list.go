@@ -108,17 +108,12 @@ for group-level work items or -R to specify a different project.
 
 	// Enable -R flag for repo override
 	cmdutils.EnableRepoOverride(cmd, f)
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	// Flags
 	cmd.Flags().StringP("group", "g", "", "List work items for a group or subgroup")
 	cmd.Flags().StringSliceVarP(&opts.types, "type", "t", []string{}, "Filter by work item type (epic, issue, task, etc.) Multiple types can be comma-separated or specified by repeating the flag.")
 
-	cmd.Flags().VarP(
-		cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat),
-		"output",
-		"F",
-		"Format output as: text, json",
-	)
 	cmd.Flags().StringVar(&opts.state, "state", "opened", "Filter by state: opened, closed, all")
 	cmd.Flags().StringVar(&opts.after, "after", "", "Fetch items after this cursor (for pagination)")
 	cmd.Flags().Int64VarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page (max 100)")

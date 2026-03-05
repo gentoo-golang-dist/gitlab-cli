@@ -139,3 +139,44 @@ func TestNewCmdReleaseList(t *testing.T) {
 	getRelease = oldGetRelease
 	listReleases = oldListReleases
 }
+
+func TestReleaseList_JSON(t *testing.T) {
+	t.Parallel()
+
+	oldListReleases := listReleases
+	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
+	listReleases = func(client *gitlab.Client, projectID any, opts *gitlab.ListReleasesOptions) ([]*gitlab.Release, error) {
+		return []*gitlab.Release{
+			{
+				TagName:     "v1.0.0",
+				Name:        "First Release",
+				Description: "Test release description",
+				Author: gitlab.BasicUser{
+					ID:       1,
+					Name:     "John Dev Wick",
+					Username: "jdwick",
+				},
+				CreatedAt: &timer,
+			},
+		}, nil
+	}
+	defer func() { listReleases = oldListReleases }()
+
+	io, _, stdout, stderr := cmdTestUtils.TestIOStreams()
+	f := cmdTestUtils.NewTestFactory(io, cmdTestUtils.WithBaseRepo("cli-automated-testing", "test", ""))
+
+	cmd := NewCmdReleaseList(f)
+	cmdutils.EnableRepoOverride(cmd, f)
+
+	argv, err := shlex.Split("-F json")
+	require.NoError(t, err)
+	cmd.SetArgs(argv)
+	_, err = cmd.ExecuteC()
+	require.NoError(t, err)
+
+	out := stdout.String()
+	assert.Contains(t, out, `"tag_name":"v1.0.0"`)
+	assert.Contains(t, out, `"name":"First Release"`)
+	assert.Contains(t, out, `"description":"Test release description"`)
+	assert.Empty(t, stderr.String())
+}

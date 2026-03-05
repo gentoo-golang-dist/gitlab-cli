@@ -18,6 +18,7 @@ type options struct {
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
+	outputFormat string
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
@@ -39,6 +40,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	return cmd
 }
 
@@ -56,6 +59,10 @@ func (o *options) run() error {
 	states, _, err := client.TerraformStates.List(repo.FullName())
 	if err != nil {
 		return err
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(states)
 	}
 
 	c := o.io.Color()

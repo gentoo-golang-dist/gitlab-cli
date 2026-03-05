@@ -149,3 +149,36 @@ func Test_GetGroupMilestone(t *testing.T) {
 		})
 	}
 }
+
+func TestMilestoneGet_JSON(t *testing.T) {
+	t.Parallel()
+
+	testMilestone := &gitlab.Milestone{
+		ID:          123,
+		ProjectID:   456,
+		Title:       "Milestone title",
+		Description: "Example description",
+		State:       "closed",
+		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockMilestones.EXPECT().
+		GetMilestone("456", int64(123)).
+		Return(testMilestone, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdGet,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+	)
+
+	out, err := exec("123 --project 456 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":123`)
+	assert.Contains(t, out.String(), `"title":"Milestone title"`)
+	assert.Contains(t, out.String(), `"state":"closed"`)
+	assert.Empty(t, out.Stderr())
+}

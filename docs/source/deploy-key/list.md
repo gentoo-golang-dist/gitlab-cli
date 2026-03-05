@@ -26,9 +26,10 @@ glab deploy-key list [flags]
 ## Options
 
 ```plaintext
-  -p, --page int       Page number. (default 1)
-  -P, --per-page int   Number of items to list per page. (default 30)
-      --show-id        Shows IDs of deploy keys.
+  -F, --output string   Format output as: text, json. (default "text")
+  -p, --page int        Page number. (default 1)
+  -P, --per-page int    Number of items to list per page. (default 30)
+      --show-id         Shows IDs of deploy keys.
 ```
 
 ## Options inherited from parent commands

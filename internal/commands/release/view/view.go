@@ -22,6 +22,7 @@ import (
 type options struct {
 	tagName       string
 	openInBrowser bool
+	outputFormat  string
 
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
@@ -63,6 +64,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open the release in the browser.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -119,6 +121,10 @@ func (o *options) run() error {
 
 		browser, _ := cfg.Get(repo.RepoHost(), "browser")
 		return utils.OpenInBrowser(url, browser)
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(release)
 	}
 
 	glamourStyle, _ := cfg.Get(repo.RepoHost(), "glamour_style")

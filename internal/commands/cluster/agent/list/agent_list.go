@@ -20,6 +20,7 @@ type options struct {
 	baseRepo     func() (glrepo.Interface, error)
 
 	page, perPage uint
+	outputFormat  string
 }
 
 func NewCmdAgentList(f cmdutils.Factory) *cobra.Command {
@@ -43,6 +44,7 @@ func NewCmdAgentList(f cmdutils.Factory) *cobra.Command {
 	}
 	agentListCmd.Flags().UintVarP(&opts.page, "page", "p", 1, "Page number.")
 	agentListCmd.Flags().UintVarP(&opts.perPage, "per-page", "P", uint(api.DefaultListLimit), "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(agentListCmd, &opts.outputFormat)
 
 	return agentListCmd
 }
@@ -66,6 +68,10 @@ func (o *options) run() error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(agents)
 	}
 
 	title := utils.NewListTitle("agent")

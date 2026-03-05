@@ -90,3 +90,34 @@ func TestAgentList_Pagination(t *testing.T) {
 	`), output.String())
 	assert.Equal(t, ``, output.Stderr())
 }
+
+func TestAgentList_JSON(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlab_testing.NewTestClient(t)
+	exec := cmdtest.SetupCmdForTest(t, NewCmdAgentList, false, cmdtest.WithGitLabClient(tc.Client))
+
+	tc.MockClusterAgents.EXPECT().
+		ListAgents("OWNER/REPO", &gitlab.ListAgentsOptions{ListOptions: gitlab.ListOptions{Page: 1, PerPage: 30}}).
+		Return([]*gitlab.Agent{
+			{
+				ID:        1,
+				Name:      "local",
+				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+			},
+			{
+				ID:        2,
+				Name:      "prd",
+				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+			},
+		}, &gitlab.Response{}, nil)
+
+	output, err := exec("--output json")
+	assert.NoError(t, err)
+
+	assert.Contains(t, output.String(), `"id":1`)
+	assert.Contains(t, output.String(), `"name":"local"`)
+	assert.Contains(t, output.String(), `"id":2`)
+	assert.Contains(t, output.String(), `"name":"prd"`)
+	assert.Empty(t, output.Stderr())
+}

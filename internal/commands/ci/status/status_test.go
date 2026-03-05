@@ -251,3 +251,39 @@ func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
 	_, err := exec("")
 	require.NoError(t, err)
 }
+
+func TestCiStatus_JSON(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	// Mock a finished pipeline
+	tc.MockPipelines.EXPECT().
+		GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+		Return(&gitlab.Pipeline{ID: 1, Status: "success", Ref: "main"}, nil, nil)
+
+	// Mock job check in GetPipelineWithFallback
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any()).
+		Return([]*gitlab.Job{{ID: 1, Name: "test"}}, nil, nil)
+
+	// Mock jobs for the pipeline with pagination
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Job{
+			{ID: 1, Name: "test", Stage: "test", Status: "success"},
+		}, &gitlab.Response{NextPage: 0}, nil)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdStatus, false,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBranch("main"),
+	)
+
+	out, err := exec("--output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":1`)
+	assert.Contains(t, out.String(), `"status":"success"`)
+	assert.Contains(t, out.String(), `"jobs"`)
+	assert.Empty(t, out.Stderr())
+}

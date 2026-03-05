@@ -68,7 +68,7 @@ $ glab work-items list --type issue -R gitlab-org/cli
 ```plaintext
       --after string      Fetch items after this cursor (for pagination)
   -g, --group string      List work items for a group or subgroup
-  -F, --output string     Format output as: text, json (default "text")
+  -F, --output string     Format output as: text, json. (default "text")
   -P, --per-page int      Number of items to list per page (max 100) (default 20)
   -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
       --state string      Filter by state: opened, closed, all (default "opened")

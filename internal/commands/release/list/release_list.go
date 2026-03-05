@@ -9,6 +9,9 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -27,7 +30,23 @@ var listReleases = func(client *gitlab.Client, projectID any, opts *gitlab.ListR
 	return releases, err
 }
 
+type options struct {
+	outputFormat string
+
+	io           *iostreams.IOStreams
+	gitlabClient func() (*gitlab.Client, error)
+	baseRepo     func() (glrepo.Interface, error)
+	config       func() config.Config
+}
+
 func NewCmdReleaseList(f cmdutils.Factory) *cobra.Command {
+	opts := &options{
+		io:           f.IO(),
+		gitlabClient: f.GitLabClient,
+		baseRepo:     f.BaseRepo,
+		config:       f.Config,
+	}
+
 	releaseListCmd := &cobra.Command{
 		Use:     "list [flags]",
 		Short:   `List releases in a repository.`,
@@ -38,12 +57,13 @@ func NewCmdReleaseList(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(f, cmd)
+			return opts.run(cmd)
 		},
 	}
 
 	releaseListCmd.Flags().IntP("page", "p", 1, "Page number.")
 	releaseListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(releaseListCmd, &opts.outputFormat)
 
 	releaseListCmd.Flags().StringP("tag", "t", "", "Filter releases by tag <name>.")
 	// deprecate in favour of the `release view` command
@@ -56,7 +76,7 @@ func NewCmdReleaseList(f cmdutils.Factory) *cobra.Command {
 	return releaseListCmd
 }
 
-func run(factory cmdutils.Factory, cmd *cobra.Command) error {
+func (o *options) run(cmd *cobra.Command) error {
 	l := &gitlab.ListReleasesOptions{}
 
 	page, _ := cmd.Flags().GetInt("page")
@@ -69,12 +89,12 @@ func run(factory cmdutils.Factory, cmd *cobra.Command) error {
 		return err
 	}
 
-	client, err := factory.GitLabClient()
+	client, err := o.gitlabClient()
 	if err != nil {
 		return err
 	}
 
-	repo, err := factory.BaseRepo()
+	repo, err := o.baseRepo()
 	if err != nil {
 		return err
 	}
@@ -85,17 +105,21 @@ func run(factory cmdutils.Factory, cmd *cobra.Command) error {
 			return err
 		}
 
-		cfg := factory.Config()
-		glamourStyle, _ := cfg.Get(repo.RepoHost(), "glamour_style")
-		factory.IO().ResolveBackgroundColor(glamourStyle)
+		if o.outputFormat == "json" {
+			return o.io.PrintJSON(release)
+		}
 
-		err = factory.IO().StartPager()
+		cfg := o.config()
+		glamourStyle, _ := cfg.Get(repo.RepoHost(), "glamour_style")
+		o.io.ResolveBackgroundColor(glamourStyle)
+
+		err = o.io.StartPager()
 		if err != nil {
 			return err
 		}
-		defer factory.IO().StopPager()
+		defer o.io.StopPager()
 
-		fmt.Fprintln(factory.IO().StdOut, releaseutils.DisplayRelease(factory.IO(), release, repo))
+		fmt.Fprintln(o.io.StdOut, releaseutils.DisplayRelease(o.io, release, repo))
 	} else {
 
 		releases, err := listReleases(client, repo.FullName(), l)
@@ -103,17 +127,21 @@ func run(factory cmdutils.Factory, cmd *cobra.Command) error {
 			return err
 		}
 
+		if o.outputFormat == "json" {
+			return o.io.PrintJSON(releases)
+		}
+
 		title := utils.NewListTitle("release")
 		title.RepoName = repo.FullName()
 		title.Page = 0
 		title.CurrentPageTotal = len(releases)
-		err = factory.IO().StartPager()
+		err = o.io.StartPager()
 		if err != nil {
 			return err
 		}
-		defer factory.IO().StopPager()
+		defer o.io.StopPager()
 
-		fmt.Fprintf(factory.IO().StdOut, "%s\n%s\n", title.Describe(), releaseutils.DisplayAllReleases(factory.IO(), releases, repo.FullName()))
+		fmt.Fprintf(o.io.StdOut, "%s\n%s\n", title.Describe(), releaseutils.DisplayAllReleases(o.io, releases, repo.FullName()))
 	}
 	return nil
 }

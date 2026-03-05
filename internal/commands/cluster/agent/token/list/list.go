@@ -22,7 +22,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepoFunc func() (glrepo.Interface, error)
 
-	agentID int64
+	agentID      int64
+	outputFormat string
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
@@ -47,6 +48,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			return opts.run(cmd.Context())
 		},
 	}
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -74,6 +77,10 @@ func (o *options) run(ctx context.Context) error {
 	tokens, _, err := client.ClusterAgents.ListAgentTokens(baseRepo.FullName(), o.agentID, nil, gitlab.WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("unable to retrieve agent tokens: %w", err)
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(tokens)
 	}
 
 	c := o.io.Color()

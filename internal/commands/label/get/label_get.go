@@ -17,7 +17,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
 
-	labelID int
+	labelID      int
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -48,6 +49,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	return cmd
 }
 
@@ -72,6 +75,10 @@ func (o *options) run(f cmdutils.Factory) error {
 	label, _, err := client.Labels.GetLabel(repo.FullName(), o.labelID)
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to get label")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(label)
 	}
 
 	table := tableprinter.NewTablePrinter()

@@ -22,9 +22,10 @@ type options struct {
 	apiClient func(repoHost string) (*api.Client, error)
 	io        *iostreams.IOStreams
 
-	keyID   int64
-	perPage int
-	page    int
+	keyID        int64
+	perPage      int
+	page         int
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -61,6 +62,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -91,6 +93,10 @@ func (o *options) run() error {
 	key, _, err := client.Users.GetSSHKey(o.keyID)
 	if err != nil {
 		return cmdutils.WrapError(err, "getting SSH key.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(key)
 	}
 
 	o.io.LogInfo(key.Key)

@@ -14,11 +14,29 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
 	"gitlab.com/gitlab-org/cli/internal/dbg"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
+type options struct {
+	outputFormat string
+
+	io           *iostreams.IOStreams
+	gitlabClient func() (*gitlab.Client, error)
+	baseRepo     func() (glrepo.Interface, error)
+	branch       func() (string, error)
+}
+
 func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
+	opts := &options{
+		io:           f.IO(),
+		gitlabClient: f.GitLabClient,
+		baseRepo:     f.BaseRepo,
+		branch:       f.Branch,
+	}
+
 	pipelineStatusCmd := &cobra.Command{
 		Use:     "status [flags]",
 		Short:   `View a running CI/CD pipeline on current or other branch specified.`,
@@ -42,9 +60,9 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			c := f.IO().Color()
+			c := opts.io.Color()
 
-			client, err := f.GitLabClient()
+			client, err := opts.gitlabClient()
 			if err != nil {
 				return err
 			}
@@ -52,7 +70,12 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 			branch, _ := cmd.Flags().GetString("branch")
 			live, _ := cmd.Flags().GetBool("live")
 			compact, _ := cmd.Flags().GetBool("compact")
-			repo, err := f.BaseRepo()
+
+			if opts.outputFormat == "json" && (live || compact) {
+				return fmt.Errorf("--output json cannot be used with --live or --compact flags")
+			}
+
+			repo, err := opts.baseRepo()
 			if err != nil {
 				return err
 			}
@@ -61,16 +84,33 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 			// Get the correct branch name using the utility function
 			branch = ciutils.GetBranch(branch, func() (string, error) {
-				return f.Branch()
+				return opts.branch()
 			}, repo, client)
 			dbg.Debug("Using branch:", branch)
 
 			// Use fallback logic for robust pipeline lookup
-			runningPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, f.IO())
+			runningPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, opts.io)
 			if err != nil {
-				redCheck := c.Red("✘")
-				fmt.Fprintf(f.IO().StdOut, "%s %v\n", redCheck, err)
+				if opts.outputFormat != "json" {
+					redCheck := c.Red("✘")
+					fmt.Fprintf(opts.io.StdOut, "%s %v\n", redCheck, err)
+				}
 				return err
+			}
+
+			// For JSON output, fetch jobs once and return the data
+			if opts.outputFormat == "json" {
+				jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
+					return client.Jobs.ListPipelineJobs(repoName, runningPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+				})
+				if err != nil {
+					return err
+				}
+				output := map[string]any{
+					"pipeline": runningPipeline,
+					"jobs":     jobs,
+				}
+				return opts.io.PrintJSON(output)
 			}
 
 			writer := uilive.New()
@@ -124,7 +164,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 				if (runningPipeline.Status == "pending" || runningPipeline.Status == "running") && live {
 					// Use fallback logic for live updates
-					updatedPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, f.IO())
+					updatedPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, opts.io)
 					if err != nil {
 						// Final fallback: refresh current pipeline by ID
 						updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID)
@@ -133,7 +173,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						}
 					}
 					runningPipeline = updatedPipeline
-				} else if f.IO().IsInteractive() {
+				} else if opts.io.IsInteractive() {
 					var answer string
 					selector := huh.NewSelect[string]().
 						Title("Choose an action:").
@@ -143,7 +183,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 							huh.NewOption("Exit", "Exit"),
 						).
 						Value(&answer)
-					_ = f.IO().Run(cmd.Context(), selector)
+					_ = opts.io.Run(cmd.Context(), selector)
 					switch answer {
 					case "View logs":
 						return ciutils.TraceJob(cmd.Context(), &ciutils.JobInputs{
@@ -151,15 +191,15 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						}, &ciutils.JobOptions{
 							Repo:       repo,
 							Client:     client,
-							IO:         f.IO(),
-							BranchFunc: f.Branch,
+							IO:         opts.io,
+							BranchFunc: opts.branch,
 						})
 					case "Retry":
 						_, _, err := client.Pipelines.RetryPipelineBuild(repoName, runningPipeline.ID)
 						if err != nil {
 							return err
 						}
-						updatedPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, f.IO())
+						updatedPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, opts.io)
 						if err != nil {
 							// Fallback: refresh by pipeline ID if MR lookup fails
 							updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID)
@@ -186,6 +226,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
 	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
 	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
+	cmdutils.EnableJSONOutput(pipelineStatusCmd, &opts.outputFormat, "Format output as: text, json. Note: JSON output is not compatible with --live or --compact flags.")
 
 	return pipelineStatusCmd
 }

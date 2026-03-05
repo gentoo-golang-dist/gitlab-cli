@@ -78,3 +78,32 @@ func TestGPGKeyList(t *testing.T) {
 		})
 	}
 }
+
+func TestGpgKeyList_JSON(t *testing.T) {
+	t.Parallel()
+
+	testKey := &gitlab.GPGKey{
+		ID:        1,
+		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...",
+		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockUsers.EXPECT().
+		ListGPGKeys().
+		Return([]*gitlab.GPGKey{testKey}, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdList,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("--output json")
+	assert.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":1`)
+	assert.Contains(t, out.String(), `"key":"-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF..."`)
+	assert.Empty(t, out.Stderr())
+}

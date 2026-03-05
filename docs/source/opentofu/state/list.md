@@ -16,6 +16,12 @@ List states.
 glab opentofu state list [flags]
 ```
 
+## Options
+
+```plaintext
+  -F, --output string   Format output as: text, json. (default "text")
+```
+
 ## Options inherited from parent commands
 
 ```plaintext

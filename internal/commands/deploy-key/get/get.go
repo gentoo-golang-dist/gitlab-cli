@@ -19,7 +19,8 @@ type options struct {
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 
-	keyID int64
+	keyID        int64
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -47,6 +48,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	return cmd
 }
 
@@ -70,6 +73,10 @@ func (o *options) run() error {
 	key, _, err := client.DeployKeys.GetDeployKey(baseRepo.FullName(), o.keyID, nil)
 	if err != nil {
 		return cmdutils.WrapError(err, "getting deploy key.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(key)
 	}
 
 	if key.ID != 0 {

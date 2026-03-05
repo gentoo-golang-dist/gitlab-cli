@@ -56,6 +56,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.description, "description", "d", "", "Description of the runner controller.")
 	fl.Var(
@@ -67,7 +69,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		"state",
 		"State of the runner controller: disabled, enabled, dry_run.",
 	)
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	cmd.MarkFlagsOneRequired("description", "state")
 

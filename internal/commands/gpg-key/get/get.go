@@ -17,7 +17,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
 
-	keyID int64
+	keyID        int64
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -45,6 +46,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	return cmd
 }
 
@@ -65,6 +68,10 @@ func (o *options) run() error {
 	key, _, err := client.Users.GetGPGKey(o.keyID)
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to get GPG key.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(key)
 	}
 
 	o.io.LogInfof("Showing GPG key with ID %d\n", key.ID)

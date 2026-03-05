@@ -121,3 +121,70 @@ func TestMrApprovers(t *testing.T) {
 		})
 	}
 }
+
+func TestMrApprovers_JSON(t *testing.T) {
+	t.Parallel()
+
+	testMR := &gitlab.MergeRequest{
+		BasicMergeRequest: gitlab.BasicMergeRequest{
+			ID:          123,
+			IID:         123,
+			ProjectID:   3,
+			Title:       "test mr title",
+			Description: "test mr description",
+			State:       "opened",
+		},
+	}
+
+	approvalState := &gitlab.MergeRequestApprovalState{
+		ApprovalRulesOverwritten: true,
+		Rules: []*gitlab.MergeRequestApprovalRule{
+			{
+				ID:       239,
+				Name:     "All Members",
+				RuleType: "any_approver",
+				EligibleApprovers: []*gitlab.BasicUser{
+					{
+						ID:       1,
+						Username: "approver_1",
+						Name:     "Abc Approver",
+						State:    "active",
+					},
+				},
+				ApprovalsRequired: 1,
+				ApprovedBy: []*gitlab.BasicUser{
+					{
+						ID:       1232,
+						Username: "foo_reviewer",
+						Name:     "Foo Reviewer",
+						State:    "active",
+					},
+				},
+				Approved: true,
+			},
+		},
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(123), gomock.Any()).
+		Return(testMR, nil, nil)
+	testClient.MockMergeRequestApprovals.EXPECT().
+		GetApprovalState("OWNER/REPO", int64(123), gomock.Any()).
+		Return(approvalState, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdApprovers,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("123 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"approval_rules_overwritten":true`)
+	assert.Contains(t, out.String(), `"name":"All Members"`)
+	assert.Contains(t, out.String(), `"username":"approver_1"`)
+	assert.Empty(t, out.Stderr())
+}

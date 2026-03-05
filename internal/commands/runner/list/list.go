@@ -72,8 +72,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmdutils.EnableRepoOverride(cmd, f)
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 	fl := cmd.Flags()
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
 	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page.")
 	fl.StringVarP(&opts.group, "group", "g", "", "List runners for a group. Ignored if -R/--repo is set.")

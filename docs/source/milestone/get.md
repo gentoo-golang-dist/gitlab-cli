@@ -34,6 +34,7 @@ $ glab milestone get 123 --group group-name
 
 ```plaintext
       --group string     The ID or URL-encoded path of the group.
+  -F, --output string    Format output as: text, json. (default "text")
       --project string   The ID or URL-encoded path of the project.
 ```
 

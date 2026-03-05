@@ -20,9 +20,10 @@ type options struct {
 	io        *iostreams.IOStreams
 	baseRepo  func() (glrepo.Interface, error)
 
-	projectID   string
-	groupID     string
-	milestoneID int64
+	projectID    string
+	groupID      string
+	milestoneID  int64
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -64,6 +65,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.projectID, "project", "", "The ID or URL-encoded path of the project.")
 	cmd.Flags().StringVar(&opts.groupID, "group", "", "The ID or URL-encoded path of the group.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -81,12 +83,20 @@ func (o *options) run() error {
 			return err
 		}
 
+		if o.outputFormat == "json" {
+			return o.io.PrintJSON(milestone)
+		}
+
 		o.io.LogInfo(fmt.Sprintf("Title: %s\nDescription: %s\nState: %s\nDue Date: %s\n", milestone.Title, milestone.Description, milestone.State, utils.FormatDueDate(milestone.DueDate)))
 		return nil
 	} else if o.groupID != "" { // get group milestone
 		milestone, _, err := client.GroupMilestones.GetGroupMilestone(o.groupID, o.milestoneID)
 		if err != nil {
 			return err
+		}
+
+		if o.outputFormat == "json" {
+			return o.io.PrintJSON(milestone)
 		}
 
 		o.io.LogInfo(fmt.Sprintf("Title: %s\nDescription: %s\nState: %s\nDue Date: %s\n", milestone.Title, milestone.Description, milestone.State, utils.FormatDueDate(milestone.DueDate)))
@@ -98,6 +108,10 @@ func (o *options) run() error {
 	milestone, _, err := client.Milestones.GetMilestone(repo.FullName(), o.milestoneID)
 	if err != nil {
 		return err
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(milestone)
 	}
 
 	o.io.LogInfo(fmt.Sprintf("Title: %s\nDescription: %s\nState: %s\nDue Date: %s\n", milestone.Title, milestone.Description, milestone.State, utils.FormatDueDate(milestone.DueDate)))

@@ -7,7 +7,9 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/acarl005/stripansi"
+	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -93,4 +95,48 @@ func Test_NoScheduleList(t *testing.T) {
 		assert.Contains(t, out, "No schedules available on")
 		assert.Equal(t, "", stderr.String())
 	})
+}
+
+func TestScheduleList_JSON(t *testing.T) {
+	t.Parallel()
+
+	io, _, stdout, stderr := cmdtest.TestIOStreams()
+	f := cmdtest.NewTestFactory(io, cmdtest.WithConfig(config.NewFromString(heredoc.Doc(`
+		hosts:
+		  gitlab.com:
+		    username: monalisa
+		    token: OTOKEN
+	`))))
+
+	getSchedules = func(client *gitlab.Client, l *gitlab.ListPipelineSchedulesOptions, repo string) ([]*gitlab.PipelineSchedule, error) {
+		return []*gitlab.PipelineSchedule{
+			{
+				ID:          1,
+				Description: "foo",
+				Cron:        "* * * * *",
+				Owner: &gitlab.User{
+					ID:       1,
+					Username: "bar",
+				},
+				Active: true,
+			},
+		}, nil
+	}
+
+	cmd := NewCmdList(f)
+	cmdutils.EnableRepoOverride(cmd, f)
+
+	argv, err := shlex.Split("-F json")
+	require.NoError(t, err)
+	cmd.SetArgs(argv)
+
+	_, err = cmd.ExecuteC()
+	require.NoError(t, err)
+
+	out := stdout.String()
+	assert.Contains(t, out, `"id":1`)
+	assert.Contains(t, out, `"description":"foo"`)
+	assert.Contains(t, out, `"cron":"* * * * *"`)
+	assert.Contains(t, out, `"active":true`)
+	assert.Equal(t, "", stderr.String())
 }

@@ -25,6 +25,7 @@ ls
 ## Options
 
 ```plaintext
+  -F, --output string   Format output as: text, json. (default "text")
   -p, --page uint       Page number. (default 1)
   -P, --per-page uint   Number of items to list per page. (default 30)
 ```

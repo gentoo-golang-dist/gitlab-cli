@@ -23,7 +23,8 @@ type options struct {
 	page    int
 	perPage int
 
-	showKeyIDs bool
+	showKeyIDs   bool
+	outputFormat string
 }
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
@@ -51,6 +52,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.showKeyIDs, "show-id", "", false, "Shows IDs of deploy keys.")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -76,6 +78,10 @@ func (o *options) run() error {
 	keys, _, err := client.DeployKeys.ListProjectDeployKeys(baseRepo.FullName(), listProjectDeployKeysOptions)
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to get deploy keys.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(keys)
 	}
 
 	cs := o.io.Color()

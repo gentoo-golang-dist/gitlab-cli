@@ -23,6 +23,12 @@ glab gpg-key get <key-id> [flags]
 $ glab gpg-key get 7750633
 ```
 
+## Options
+
+```plaintext
+  -F, --output string   Format output as: text, json. (default "text")
+```
+
 ## Options inherited from parent commands
 
 ```plaintext

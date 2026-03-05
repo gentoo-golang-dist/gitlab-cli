@@ -27,9 +27,10 @@ type options struct {
 	state            string
 	includeAncestors bool
 
-	groupID   string
-	projectID string
-	showIDs   bool
+	groupID      string
+	projectID    string
+	showIDs      bool
+	outputFormat string
 }
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
@@ -72,6 +73,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
 	cmd.Flags().BoolVar(&opts.showIDs, "show-id", false, "Show IDs in table output.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	cmd.MarkFlagsOneRequired("project", "group")
 
@@ -117,6 +119,10 @@ func (o *options) run(cmd *cobra.Command) error {
 			return err
 		}
 
+		if o.outputFormat == "json" {
+			return o.io.PrintJSON(milestones)
+		}
+
 		if len(milestones) == 0 {
 			o.io.LogInfo("No milestones found.")
 			return nil
@@ -158,6 +164,10 @@ func (o *options) run(cmd *cobra.Command) error {
 		milestones, _, err := client.GroupMilestones.ListGroupMilestones(o.groupID, listMilestonesOptions)
 		if err != nil {
 			return err
+		}
+
+		if o.outputFormat == "json" {
+			return o.io.PrintJSON(milestones)
 		}
 
 		if len(milestones) == 0 {

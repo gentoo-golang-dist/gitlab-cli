@@ -17,10 +17,11 @@ import (
 )
 
 type options struct {
-	orderBy string
-	sort    string
-	perPage int
-	page    int
+	orderBy      string
+	sort         string
+	perPage      int
+	page         int
+	outputFormat string
 
 	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
@@ -59,6 +60,7 @@ func NewCmdContributors(f cmdutils.Factory) *cobra.Command {
 	repoContributorsCmd.Flags().StringVarP(&opts.sort, "sort", "s", "", "Sort direction for --order field: asc or desc.")
 	repoContributorsCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoContributorsCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(repoContributorsCmd, &opts.outputFormat)
 	return repoContributorsCmd
 }
 
@@ -95,6 +97,10 @@ func (o *options) run() error {
 	users, _, err := client.Repositories.Contributors(repo.FullName(), l)
 	if err != nil {
 		return err
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(users)
 	}
 
 	// Title
