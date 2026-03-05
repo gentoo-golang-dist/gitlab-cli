@@ -40,7 +40,7 @@ func Parse(diffText string) []Line {
 	var oldLine, newLine int
 	inHunk := false
 
-	for _, raw := range strings.Split(strings.TrimRight(diffText, "\n"), "\n") {
+	for raw := range strings.SplitSeq(strings.TrimRight(diffText, "\n"), "\n") {
 		if m := hunkRe.FindStringSubmatch(raw); m != nil {
 			oldLine, _ = strconv.Atoi(m[1])
 			newLine, _ = strconv.Atoi(m[2])
@@ -81,7 +81,7 @@ func Parse(diffText string) []Line {
 // FindNewLine looks up a new-side line number in the parsed lines and returns
 // the corresponding old line number and the line type.
 // Returns an error if the line is not found in the diff.
-func FindNewLine(lines []Line, target int) (oldLine int, lt LineType, err error) {
+func FindNewLine(lines []Line, target int) (int, LineType, error) {
 	for _, l := range lines {
 		if l.NewLine == target && l.Type != Removed {
 			return l.OldLine, l.Type, nil
@@ -92,7 +92,7 @@ func FindNewLine(lines []Line, target int) (oldLine int, lt LineType, err error)
 
 // FindOldLine looks up an old-side line number in the parsed lines and returns
 // the corresponding new line number and the line type.
-func FindOldLine(lines []Line, target int) (newLine int, lt LineType, err error) {
+func FindOldLine(lines []Line, target int) (int, LineType, error) {
 	for _, l := range lines {
 		if l.OldLine == target && l.Type != Added {
 			return l.NewLine, l.Type, nil

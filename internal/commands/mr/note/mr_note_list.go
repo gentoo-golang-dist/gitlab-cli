@@ -28,7 +28,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			Each discussion shows its 8-character ID prefix, resolution status,
 			file position (for diff notes), and all notes in the thread.
 
-			With --json, outputs the full discussion objects for scripting.
+			Supports JSON output for scripting.
 		`),
 		Example: heredoc.Doc(`
 			# List all discussions on the current branch's MR

@@ -139,8 +139,10 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "diffnote234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "Diff", Author: gitlab.NoteAuthor{Username: "bob"},
-							Position: &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 5}},
+						{
+							ID: 200, Body: "Diff", Author: gitlab.NoteAuthor{Username: "bob"},
+							Position: &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 5},
+						},
 					},
 				},
 			}, nil, nil)
@@ -173,8 +175,10 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "diffnote234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "Diff", Author: gitlab.NoteAuthor{Username: "bob"},
-							Position: &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 5}},
+						{
+							ID: 200, Body: "Diff", Author: gitlab.NoteAuthor{Username: "bob"},
+							Position: &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 5},
+						},
 					},
 				},
 			}, nil, nil)
@@ -233,15 +237,19 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "resolved234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "Done", Author: gitlab.NoteAuthor{Username: "alice"},
-							Resolvable: true, Resolved: true},
+						{
+							ID: 100, Body: "Done", Author: gitlab.NoteAuthor{Username: "alice"},
+							Resolvable: true, Resolved: true,
+						},
 					},
 				},
 				{
 					ID: "unresolv234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "TODO", Author: gitlab.NoteAuthor{Username: "bob"},
-							Resolvable: true, Resolved: false},
+						{
+							ID: 200, Body: "TODO", Author: gitlab.NoteAuthor{Username: "bob"},
+							Resolvable: true, Resolved: false,
+						},
 					},
 				},
 			}, nil, nil)
@@ -268,15 +276,19 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "resolved234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "Done", Author: gitlab.NoteAuthor{Username: "alice"},
-							Resolvable: true, Resolved: true},
+						{
+							ID: 100, Body: "Done", Author: gitlab.NoteAuthor{Username: "alice"},
+							Resolvable: true, Resolved: true,
+						},
 					},
 				},
 				{
 					ID: "unresolv234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "TODO", Author: gitlab.NoteAuthor{Username: "bob"},
-							Resolvable: true, Resolved: false},
+						{
+							ID: 200, Body: "TODO", Author: gitlab.NoteAuthor{Username: "bob"},
+							Resolvable: true, Resolved: false,
+						},
 					},
 				},
 			}, nil, nil)
@@ -303,15 +315,19 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "filemain234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "Comment on main", Author: gitlab.NoteAuthor{Username: "alice"},
-							Position: &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 10}},
+						{
+							ID: 100, Body: "Comment on main", Author: gitlab.NoteAuthor{Username: "alice"},
+							Position: &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 10},
+						},
 					},
 				},
 				{
 					ID: "fileutil234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "Comment on utils", Author: gitlab.NoteAuthor{Username: "bob"},
-							Position: &gitlab.NotePosition{NewPath: "utils.go", OldPath: "utils.go", NewLine: 5}},
+						{
+							ID: 200, Body: "Comment on utils", Author: gitlab.NoteAuthor{Username: "bob"},
+							Position: &gitlab.NotePosition{NewPath: "utils.go", OldPath: "utils.go", NewLine: 5},
+						},
 					},
 				},
 				{
@@ -353,7 +369,7 @@ func Test_NoteList(t *testing.T) {
 		output, err := exec(`list 1 --json`)
 		require.NoError(t, err)
 
-		var parsed []map[string]interface{}
+		var parsed []map[string]any
 		err = json.Unmarshal([]byte(output.String()), &parsed)
 		require.NoError(t, err)
 		require.Len(t, parsed, 1)
@@ -372,8 +388,10 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "oldline12345678901234567890abcdef12345678",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "Removed line", Author: gitlab.NoteAuthor{Username: "alice"},
-							Position: &gitlab.NotePosition{NewPath: "", OldPath: "old.go", OldLine: 7}},
+						{
+							ID: 100, Body: "Removed line", Author: gitlab.NoteAuthor{Username: "alice"},
+							Position: &gitlab.NotePosition{NewPath: "", OldPath: "old.go", OldLine: 7},
+						},
 					},
 				},
 			}, nil, nil)
@@ -423,10 +441,14 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "thread12345678901234567890abcdef12345678",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "First note", Author: gitlab.NoteAuthor{Username: "alice"},
-							CreatedAt: ts("2025-01-15 10:00:00")},
-						{ID: 101, Body: "Reply", Author: gitlab.NoteAuthor{Username: "bob"},
-							CreatedAt: ts("2025-01-15 10:05:00")},
+						{
+							ID: 100, Body: "First note", Author: gitlab.NoteAuthor{Username: "alice"},
+							CreatedAt: ts("2025-01-15 10:00:00"),
+						},
+						{
+							ID: 101, Body: "Reply", Author: gitlab.NoteAuthor{Username: "bob"},
+							CreatedAt: ts("2025-01-15 10:05:00"),
+						},
 					},
 				},
 			}, nil, nil)
@@ -454,24 +476,30 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "diffresol234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "Resolved diff", Author: gitlab.NoteAuthor{Username: "alice"},
+						{
+							ID: 100, Body: "Resolved diff", Author: gitlab.NoteAuthor{Username: "alice"},
 							Position:   &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 10},
-							Resolvable: true, Resolved: true},
+							Resolvable: true, Resolved: true,
+						},
 					},
 				},
 				{
 					ID: "diffunres234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "Unresolved diff", Author: gitlab.NoteAuthor{Username: "bob"},
+						{
+							ID: 200, Body: "Unresolved diff", Author: gitlab.NoteAuthor{Username: "bob"},
 							Position:   &gitlab.NotePosition{NewPath: "main.go", OldPath: "main.go", NewLine: 20},
-							Resolvable: true, Resolved: false},
+							Resolvable: true, Resolved: false,
+						},
 					},
 				},
 				{
 					ID: "genunres234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 300, Body: "Unresolved general", Author: gitlab.NoteAuthor{Username: "carol"},
-							Resolvable: true, Resolved: false},
+						{
+							ID: 300, Body: "Unresolved general", Author: gitlab.NoteAuthor{Username: "carol"},
+							Resolvable: true, Resolved: false,
+						},
 					},
 				},
 			}, nil, nil)
@@ -483,7 +511,7 @@ func Test_NoteList(t *testing.T) {
 		out := output.String()
 		assert.NotContains(t, out, "#diffreso") // resolved, excluded
 		assert.Contains(t, out, "#diffunre")    // unresolved diff, included
-		assert.NotContains(t, out, "#genunres")  // general, excluded by filter
+		assert.NotContains(t, out, "#genunres") // general, excluded by filter
 	})
 
 	t.Run("non-resolvable excluded from state filter", func(t *testing.T) {
@@ -498,15 +526,19 @@ func Test_NoteList(t *testing.T) {
 				{
 					ID: "nonresol234567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "System note", Author: gitlab.NoteAuthor{Username: "bot"},
-							System: true, Resolvable: false},
+						{
+							ID: 100, Body: "System note", Author: gitlab.NoteAuthor{Username: "bot"},
+							System: true, Resolvable: false,
+						},
 					},
 				},
 				{
 					ID: "resolvabl34567890abcdef1234567890abcdef12",
 					Notes: []*gitlab.Note{
-						{ID: 200, Body: "Unresolved", Author: gitlab.NoteAuthor{Username: "alice"},
-							Resolvable: true, Resolved: false},
+						{
+							ID: 200, Body: "Unresolved", Author: gitlab.NoteAuthor{Username: "alice"},
+							Resolvable: true, Resolved: false,
+						},
 					},
 				},
 			}, nil, nil)

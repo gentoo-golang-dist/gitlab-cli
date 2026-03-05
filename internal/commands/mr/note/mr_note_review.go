@@ -36,12 +36,13 @@ func NewCmdReview(f cmdutils.Factory) *cobra.Command {
 			Designed for programmatic use by editors, AI agents, and scripts.
 
 			JSON array format — each object can have:
-			  body      (string, required)  Note text in Markdown
-			  file      (string)            File path for a diff comment
-			  line      (string or number)   New-side line or range "N:M"; requires file
-			  old_line  (number)            Old-side line; requires file
-			  reply     (string)            Discussion ID or 8+ char prefix
-			  resolve   (bool)              Resolve discussion on publish; requires reply
+
+			- body (string, required): Note text in Markdown
+			- file (string): File path for a diff comment
+			- line (string or number): New-side line or range "N:M"; requires file
+			- old_line (number): Old-side line; requires file
+			- reply (string): Discussion ID or 8+ char prefix
+			- resolve (bool): Resolve discussion on publish; requires reply
 
 			Example JSON:
 			  [
@@ -88,7 +89,7 @@ func NewCmdReview(f cmdutils.Factory) *cobra.Command {
 			}
 
 			project := repo.FullName()
-			mrIID := int64(mr.IID)
+			mrIID := mr.IID
 
 			// Pre-fetch diff version if any entry has a file
 			var version *gitlab.MergeRequestDiffVersion

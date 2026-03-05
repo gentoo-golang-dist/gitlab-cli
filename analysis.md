@@ -43,6 +43,7 @@ The `note` project (`/Users/tomas/workspace/gl/note`) is a standalone CLI (`note
 The GitLab web UI creates discussion threads for user-initiated comments, so `note`'s behavior is correct. Changing `glab mr note` to create threads is a **breaking behavior change** — existing users/scripts relying on flat notes (non-resolvable, no thread) would get different semantics.
 
 **Resolution options:**
+
 - **A)** Change default to discussion (matches web UI), add `--no-thread` flag for legacy flat-note behavior. Breaking change but arguably a bug fix.
 - **B)** Add `--thread` flag, default off (preserve back-compat). Diff notes and replies always create discussions regardless.
 - **C)** Just switch to discussions. Flat notes are rarely intentionally used.
@@ -103,13 +104,13 @@ The GitLab web UI creates discussion threads for user-initiated comments, so `no
 
 ### 9. `int64` page type in resolve pagination
 
-`glab mr note` uses `int64` for the page variable when paginating discussions. The go-gitlab library uses `int` for `ListOptions.Page`. This is a minor bug in the current code (works on 64-bit systems but technically wrong).
+`glab mr note` uses `int64` for the page variable when paginating discussions. The `go-gitlab` library uses `int` for `ListOptions.Page`. This is a minor bug in the current code (works on 64-bit systems but technically wrong).
 
 **Resolution**: Fix during merge.
 
 ## Proposed Command Structure
 
-```
+```shell
 glab mr note [<id>|<branch>] -m "text"              # create general note (→ discussion)
 glab mr note [<id>|<branch>] --file X --line N -m "" # create diff note
 glab mr note [<id>|<branch>] --reply <id> -m ""      # reply to thread
@@ -131,7 +132,8 @@ glab mr note review < comments.json                   # batch review (NEW)
 ```
 
 Alternative: some of these could be separate subcommands under `glab mr` rather than nesting under `note`:
-```
+
+```shell
 glab mr discuss list    # instead of glab mr note list
 glab mr review          # instead of glab mr note review
 ```
@@ -139,23 +141,29 @@ glab mr review          # instead of glab mr note review
 ## Key Modules to Port
 
 ### 1. `internal/diff` — diff parser (REQUIRED)
+
 Self-contained package. Parse unified diffs to build line mappings for diff note position construction. No external dependencies beyond stdlib. **Can be ported directly** into glab's internal packages.
 
 ### 2. Diff position building logic (REQUIRED)
+
 Scattered across `cmd/create.go`, `cmd/draft.go`, `cmd/review.go`. The `buildDiffPosition()` and `buildPositionForReview()` functions fetch MR diff versions, find file diffs, parse lines, and construct `PositionOptions`. This logic needs consolidation into a shared package.
 
 ### 3. Discussion ID prefix resolution (REQUIRED)
+
 `igitlab.ResolveDiscussionID()` — fetches all discussions and prefix-matches. Simple utility, port to glab's API layer or mrutils.
 
 ### 4. `igitlab.FindNoteInDiscussions()` — note lookup
+
 Already partially duplicated in glab's resolve logic. Consolidate.
 
 ### 5. Review/batch JSON input (NEW)
+
 The `reviewEntry` struct and `runReview()` logic. New capability for glab.
 
 ## Dependencies
 
 `note` uses:
+
 - `gitlab.com/gitlab-org/api/client-go` — same as glab ✅
 - `github.com/spf13/cobra` — same as glab ✅
 - `golang.org/x/term` — for TTY detection (glab has its own `iostreams` package)

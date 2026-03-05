@@ -75,7 +75,7 @@ func NewCmdDraftPublish(f cmdutils.Factory) *cobra.Command {
 			}
 
 			if publishAll {
-				_, err := client.DraftNotes.PublishAllDraftNotes(repo.FullName(), int64(mr.IID))
+				_, err := client.DraftNotes.PublishAllDraftNotes(repo.FullName(), mr.IID)
 				if err != nil {
 					return fmt.Errorf("failed to publish all draft notes: %w", err)
 				}
@@ -83,7 +83,7 @@ func NewCmdDraftPublish(f cmdutils.Factory) *cobra.Command {
 				return nil
 			}
 
-			_, err = client.DraftNotes.PublishDraftNote(repo.FullName(), int64(mr.IID), draftID)
+			_, err = client.DraftNotes.PublishDraftNote(repo.FullName(), mr.IID, draftID)
 			if err != nil {
 				return fmt.Errorf("failed to publish draft note: %w", err)
 			}

@@ -82,7 +82,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 
 			updated, _, err := client.Discussions.UpdateMergeRequestDiscussionNote(
 				repo.FullName(),
-				int64(mr.IID),
+				mr.IID,
 				discussionID,
 				noteID,
 				&gitlab.UpdateMergeRequestDiscussionNoteOptions{

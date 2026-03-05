@@ -114,27 +114,26 @@ func BuildDiffPosition(version *gitlab.MergeRequestDiffVersion, fileDiff *gitlab
 
 // ParseLine parses a line flag value like "42" or "10:15" into start and end line numbers.
 // For a single line, start == end.
-func ParseLine(s string) (start, end int, err error) {
+func ParseLine(s string) (int, int, error) {
 	if s == "" {
 		return 0, 0, nil
 	}
 	parts := strings.SplitN(s, ":", 2)
-	start, err = strconv.Atoi(parts[0])
+	start, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid line number %q", s)
 	}
 	if len(parts) == 2 {
-		end, err = strconv.Atoi(parts[1])
+		end, err := strconv.Atoi(parts[1])
 		if err != nil {
 			return 0, 0, fmt.Errorf("invalid line range %q", s)
 		}
 		if end < start {
 			return 0, 0, fmt.Errorf("invalid line range %q: end must be >= start", s)
 		}
-	} else {
-		end = start
+		return start, end, nil
 	}
-	return start, end, nil
+	return start, start, nil
 }
 
 // ResolveDiscussionID resolves a prefix (8+ chars) to a full discussion ID.

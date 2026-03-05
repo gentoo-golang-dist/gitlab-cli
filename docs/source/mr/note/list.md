@@ -19,7 +19,7 @@ Fetch and display all discussions on a merge request.
 Each discussion shows its 8-character ID prefix, resolution status,
 file position (for diff notes), and all notes in the thread.
 
-With --json, outputs the full discussion objects for scripting.
+Supports JSON output for scripting.
 
 ```plaintext
 glab mr note list [<id> | <branch>] [flags]

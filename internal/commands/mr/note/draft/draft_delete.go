@@ -69,7 +69,7 @@ func NewCmdDraftDelete(f cmdutils.Factory) *cobra.Command {
 				}
 			}
 
-			_, err = client.DraftNotes.DeleteDraftNote(repo.FullName(), int64(mr.IID), draftID)
+			_, err = client.DraftNotes.DeleteDraftNote(repo.FullName(), mr.IID, draftID)
 			if err != nil {
 				return fmt.Errorf("failed to delete draft note: %w", err)
 			}

@@ -78,7 +78,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 
 			_, err = client.Discussions.DeleteMergeRequestDiscussionNote(
 				repo.FullName(),
-				int64(mr.IID),
+				mr.IID,
 				discussionID,
 				noteID,
 			)

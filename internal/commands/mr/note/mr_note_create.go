@@ -146,7 +146,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 				note, _, err := client.Discussions.AddMergeRequestDiscussionNote(
 					repo.FullName(),
-					int64(mr.IID),
+					mr.IID,
 					discussionID,
 					&gitlab.AddMergeRequestDiscussionNoteOptions{Body: &body},
 				)
@@ -162,7 +162,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 			// Internal notes use the flat Notes API (Discussions API doesn't support internal)
 			if internal {
-				note, _, err := client.Notes.CreateMergeRequestNote(repo.FullName(), int64(mr.IID), &gitlab.CreateMergeRequestNoteOptions{
+				note, _, err := client.Notes.CreateMergeRequestNote(repo.FullName(), mr.IID, &gitlab.CreateMergeRequestNoteOptions{
 					Body:     &body,
 					Internal: gitlab.Ptr(true),
 				})
@@ -186,7 +186,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 					return err
 				}
 
-				version, err := mrutils.GetLatestDiffVersion(client, repo.FullName(), int64(mr.IID))
+				version, err := mrutils.GetLatestDiffVersion(client, repo.FullName(), mr.IID)
 				if err != nil {
 					return err
 				}

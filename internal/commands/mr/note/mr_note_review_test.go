@@ -32,11 +32,9 @@ func setupReviewExec(t *testing.T, testClient *gitlabtesting.TestClient, stdin s
 	)
 }
 
-func Test_review(t *testing.T) {
-	// Not parallel: some subtests mutate package-level vars (GetLatestDiffVersion, ResolveDiscussionID).
+func Test_review(t *testing.T) { //nolint:tparallel // subtests mutate package-level vars (GetLatestDiffVersion, ResolveDiscussionID)
 
 	t.Run("general comment", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 
@@ -57,7 +55,6 @@ func Test_review(t *testing.T) {
 	})
 
 	t.Run("multiple entries", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 
@@ -85,7 +82,6 @@ func Test_review(t *testing.T) {
 	})
 
 	t.Run("with publish", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 
@@ -169,7 +165,6 @@ func Test_review(t *testing.T) {
 	})
 
 	t.Run("empty body errors", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 
@@ -182,7 +177,6 @@ func Test_review(t *testing.T) {
 	})
 
 	t.Run("empty array errors", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 
@@ -193,7 +187,6 @@ func Test_review(t *testing.T) {
 	})
 
 	t.Run("invalid JSON errors", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 
@@ -204,7 +197,6 @@ func Test_review(t *testing.T) {
 	})
 
 	t.Run("publish API error", func(t *testing.T) {
-		t.Parallel()
 		testClient := gitlabtesting.NewTestClient(t)
 		makeMRMock(t, testClient)
 

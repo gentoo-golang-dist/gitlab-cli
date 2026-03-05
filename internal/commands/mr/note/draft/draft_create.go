@@ -88,7 +88,7 @@ func NewCmdDraftCreate(f cmdutils.Factory) *cobra.Command {
 			// Reply to existing discussion
 			replyTo, _ := cmd.Flags().GetString("reply")
 			if replyTo != "" {
-				discussionID, err := mrutils.ResolveDiscussionID(client, repo.FullName(), int64(mr.IID), replyTo)
+				discussionID, err := mrutils.ResolveDiscussionID(client, repo.FullName(), mr.IID, replyTo)
 				if err != nil {
 					return err
 				}
@@ -111,7 +111,7 @@ func NewCmdDraftCreate(f cmdutils.Factory) *cobra.Command {
 					return err
 				}
 
-				version, err := mrutils.GetLatestDiffVersion(client, repo.FullName(), int64(mr.IID))
+				version, err := mrutils.GetLatestDiffVersion(client, repo.FullName(), mr.IID)
 				if err != nil {
 					return err
 				}
@@ -129,7 +129,7 @@ func NewCmdDraftCreate(f cmdutils.Factory) *cobra.Command {
 				opts.Position = position
 			}
 
-			draft, _, err := client.DraftNotes.CreateDraftNote(repo.FullName(), int64(mr.IID), opts)
+			draft, _, err := client.DraftNotes.CreateDraftNote(repo.FullName(), mr.IID, opts)
 			if err != nil {
 				return fmt.Errorf("failed to create draft note: %w", err)
 			}

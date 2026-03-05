@@ -75,7 +75,7 @@ func NewCmdDraftUpdate(f cmdutils.Factory) *cobra.Command {
 
 			updated, _, err := client.DraftNotes.UpdateDraftNote(
 				repo.FullName(),
-				int64(mr.IID),
+				mr.IID,
 				draftID,
 				&gitlab.UpdateDraftNoteOptions{Note: gitlab.Ptr(body)},
 			)

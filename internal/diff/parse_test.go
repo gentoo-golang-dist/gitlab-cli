@@ -81,10 +81,10 @@ func TestParseBlankContextLines(t *testing.T) {
 
 	expected := []Line{
 		{Unchanged, 10, 10}, // line10
-		{Added, 0, 11},     // added
+		{Added, 0, 11},      // added
 		{Unchanged, 11, 12}, // blank context line (empty in diff)
 		{Unchanged, 12, 13}, // line12
-		{Removed, 13, 0},   // removed
+		{Removed, 13, 0},    // removed
 		{Unchanged, 14, 14}, // line14
 	}
 

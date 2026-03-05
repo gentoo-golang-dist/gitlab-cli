@@ -48,7 +48,7 @@ func NewCmdDraftList(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			drafts, _, err := client.DraftNotes.ListDraftNotes(repo.FullName(), int64(mr.IID), nil)
+			drafts, _, err := client.DraftNotes.ListDraftNotes(repo.FullName(), mr.IID, nil)
 			if err != nil {
 				return fmt.Errorf("failed to list draft notes: %w", err)
 			}
