@@ -237,6 +237,8 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("internal", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("line", "old-line")
 
+	mrCreateNoteCmd.AddCommand(NewCmdList(f))
+
 	return mrCreateNoteCmd
 }
 
