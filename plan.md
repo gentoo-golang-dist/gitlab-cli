@@ -21,6 +21,7 @@ The standalone `note` project has batch reviews — missing from glab.
 - `update` subcommand added (`mr_note_update.go`): `glab mr note update [<mr-id>|<branch>] <note-id> [-m <body>]`. Uses `FindNoteInDiscussions` to locate discussion, then `UpdateMergeRequestDiscussionNote`. Supports `-m` flag and stdin. 8 tests passing.
 - `delete` subcommand added (`mr_note_delete.go`): `glab mr note delete [<mr-id>|<branch>] <note-id> [--yes]`. Uses `FindNoteInDiscussions` then `DeleteMergeRequestDiscussionNote`. Confirmation prompt (skip with `--yes`/`-y`), non-TTY without `--yes` errors. 7 tests passing.
 - `draft` subcommand group added (`internal/commands/mr/note/draft/`): `create`, `list`, `update`, `delete`, `publish`. Uses DraftNotes API. `create` supports `--file`/`--line`/`--old-line` (diff position), `--reply` (discussion reply), `--resolve` (auto-resolve on publish). `list` supports `--json`. `delete` has `--yes` confirmation. `publish` supports single draft or `--all` (submit review). Registered as subcommand of `NewCmdNote()`. 22 tests passing.
+- `review` subcommand added (`mr_note_review.go`): `glab mr note review [<mr-id>|<branch>] [--publish] < comments.json`. Reads JSON array from stdin, batch-creates draft notes. Supports general comments, diff comments (`file`/`line`/`old_line`), replies (`reply`/`resolve`). `--publish` publishes all drafts after creation. Pre-fetches diff version only when needed. 10 tests passing.
 
 ## User-Facing Changes
 
@@ -48,21 +49,11 @@ The existing `--resolve <note-id>` behavior is preserved. New `resolve`/`unresol
 
 ## Migration Steps
 
-### Step 1: Add `review` subcommand
-
-New file: `internal/commands/mr/note/mr_note_review.go`
-
-```
-glab mr note review [<mr-id>|<branch>] [--publish] < comments.json
-```
-
-Port from `note/cmd/review.go`. Reads JSON array from stdin, creates draft notes, optionally bulk-publishes. Key command for AI agent/editor integration.
-
-### Step 2: Tests for all new commands
+### Step 1: Tests for all new commands
 
 Each new file needs tests using glab's `cmdtest` framework with `gitlabtesting.NewTestClient(t)` mock pattern. Port and adapt the diff parser tests directly. All other tests are new (the `note` project has no command-level tests beyond the diff parser).
 
-### Step 3: Documentation
+### Step 2: Documentation
 
 - Update `docs/source/mr/note.md` (auto-generated from command definitions)
 - Run `make gen-docs`

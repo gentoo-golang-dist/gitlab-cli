@@ -243,6 +243,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.AddCommand(NewCmdUnresolve(f))
 	mrCreateNoteCmd.AddCommand(NewCmdUpdate(f))
 	mrCreateNoteCmd.AddCommand(NewCmdDelete(f))
+	mrCreateNoteCmd.AddCommand(NewCmdReview(f))
 	mrCreateNoteCmd.AddCommand(draft.NewCmdDraft(f))
 
 	return mrCreateNoteCmd
