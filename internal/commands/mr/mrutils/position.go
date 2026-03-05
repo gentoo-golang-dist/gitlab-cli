@@ -175,12 +175,29 @@ var ListAllDiscussions = func(client *gitlab.Client, project string, mrIID int64
 			return nil, fmt.Errorf("failed to list discussions: %w", err)
 		}
 		all = append(all, discussions...)
-		if resp.NextPage == 0 {
+		if resp == nil || resp.NextPage == 0 {
 			break
 		}
 		opts.Page = resp.NextPage
 	}
 	return all, nil
+}
+
+// FindNoteInDiscussions finds a note by ID across all MR discussions.
+// Returns the discussion ID and the note itself.
+var FindNoteInDiscussions = func(client *gitlab.Client, project string, mrIID int64, noteID int64) (string, *gitlab.Note, error) {
+	discussions, err := ListAllDiscussions(client, project, mrIID)
+	if err != nil {
+		return "", nil, err
+	}
+	for _, d := range discussions {
+		for _, n := range d.Notes {
+			if n.ID == noteID {
+				return d.ID, n, nil
+			}
+		}
+	}
+	return "", nil, fmt.Errorf("note %d not found in MR !%d", noteID, mrIID)
 }
 
 // lineCode generates a GitLab line_code for multiline ranges.

@@ -365,7 +365,7 @@ func Test_mrNote_resolve(t *testing.T) {
 
 		_, err := exec(`1 --resolve 999`)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "note 999 not found in merge request !1")
+		assert.Contains(t, err.Error(), "note 999 not found in MR !1")
 	})
 }
 

@@ -121,58 +121,17 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 }
 
 func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.MergeRequest, repo glrepo.Interface, noteID int64, resolve bool) error {
-	// List all discussions to find the one containing this note (with pagination)
-	var allDiscussions []*gitlab.Discussion
-	var page int64 = 1
-	for {
-		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(
-			repo.FullName(),
-			mr.IID,
-			&gitlab.ListMergeRequestDiscussionsOptions{
-				ListOptions: gitlab.ListOptions{
-					Page:    page,
-					PerPage: 100,
-				},
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("failed to list discussions: %w", err)
-		}
-		allDiscussions = append(allDiscussions, discussions...)
-		if resp == nil || resp.NextPage == 0 {
-			break
-		}
-		page = resp.NextPage
+	targetDiscussionID, _, err := mrutils.FindNoteInDiscussions(client, repo.FullName(), mr.IID, noteID)
+	if err != nil {
+		return err
 	}
 
-	// Find discussion containing the note
-	var targetDiscussionID string
-	var found bool
-
-	for _, discussion := range allDiscussions {
-		for _, note := range discussion.Notes {
-			if note.ID == noteID {
-				targetDiscussionID = discussion.ID
-				found = true
-				break
-			}
-		}
-		if found {
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
-	}
-
-	// Resolve or unresolve the discussion
 	action := "resolve"
 	if !resolve {
 		action = "unresolve"
 	}
 
-	_, _, err := client.Discussions.ResolveMergeRequestDiscussion(
+	_, _, err = client.Discussions.ResolveMergeRequestDiscussion(
 		repo.FullName(),
 		mr.IID,
 		targetDiscussionID,
