@@ -15,6 +15,7 @@
 - `--file`, `--line`, `--old-line` flags added to `NewCmdNote()` for diff comments — fetches latest diff version, finds file diff, builds position, creates discussion with position. Mutually exclusive with `--resolve`/`--unresolve`. `--line` and `--old-line` are mutually exclusive. Supports single line, range (N:M), old-side lines, and file-level comments (no line). All tests passing.
 - `--reply <discussion-id>` flag added — accepts full 40-char ID or 8+ char prefix, uses `ResolveDiscussionID` then `AddMergeRequestDiscussionNote`. Mutually exclusive with `--file`, `--resolve`, `--unresolve`. All tests passing.
 - `--internal` flag added for confidential notes. Uses flat Notes API (`CreateMergeRequestNote` with `Internal: true`) since Discussions API doesn't support internal. Mutually exclusive with `--file`, `--reply`, `--resolve`, `--unresolve`. All tests passing.
+- Stdin body support: when `-m` is not provided and stdin is not a TTY, body is read from stdin. `-m` flag takes priority over stdin. Interactive editor prompt only shown for TTY. All tests passing.
 
 ## User-Facing Changes
 
@@ -42,23 +43,7 @@ The existing `--resolve <note-id>` behavior is preserved. New `resolve`/`unresol
 
 ## Migration Steps
 
-### Step 1: Add stdin body support
-
-When `-m` is not provided and stdin is not a TTY, read body from stdin instead of opening the editor prompt. Keep the editor prompt for interactive TTY use.
-
-```go
-if strings.TrimSpace(body) == "" {
-    if !f.IO().IsStdinTTY() {
-        // read from stdin
-        data, err := io.ReadAll(f.IO().In)
-        body = strings.TrimSpace(string(data))
-    } else {
-        // existing editor prompt
-    }
-}
-```
-
-### Step 2: Add `list` subcommand
+### Step 1: Add `list` subcommand
 
 New file: `internal/commands/mr/note/mr_note_list.go`
 
@@ -70,7 +55,7 @@ Port filtering logic from `note/cmd/list.go`. Use glab's `tableprinter` or simil
 
 Register as subcommand of `NewCmdNote()`.
 
-### Step 3: Add `resolve`/`unresolve` subcommands
+### Step 2: Add `resolve`/`unresolve` subcommands
 
 New file: `internal/commands/mr/note/mr_note_resolve.go`
 
@@ -81,7 +66,7 @@ glab mr note unresolve [<mr-id>|<branch>] <discussion-id>
 
 Accepts 8+ char prefix with disambiguation error (exit code 3). Keep existing `--resolve`/`--unresolve` flags as aliases for backward compat (these take note IDs, not discussion IDs).
 
-### Step 4: Add `update` subcommand
+### Step 3: Add `update` subcommand
 
 New file: `internal/commands/mr/note/mr_note_update.go`
 
@@ -91,7 +76,7 @@ glab mr note update [<mr-id>|<branch>] <note-id> [-m <body>]
 
 Uses `FindNoteInDiscussions` from `mrutils/position.go` to locate the discussion, then `Discussions.UpdateMergeRequestDiscussionNote()`. Supports `-m` and stdin.
 
-### Step 5: Add `delete` subcommand
+### Step 4: Add `delete` subcommand
 
 New file: `internal/commands/mr/note/mr_note_delete.go`
 
@@ -101,7 +86,7 @@ glab mr note delete [<mr-id>|<branch>] <note-id> [--yes]
 
 Confirmation prompt (skip with `--yes`), uses `FindNoteInDiscussions` then `Discussions.DeleteMergeRequestDiscussionNote()`.
 
-### Step 6: Add `draft` subcommand group
+### Step 5: Add `draft` subcommand group
 
 New directory: `internal/commands/mr/note/draft/`
 
@@ -116,7 +101,7 @@ glab mr note draft publish [<mr-id>|<branch>] --all
 
 Port from `note/cmd/draft.go`. Uses same position-building utilities. Adapt to glab Factory pattern.
 
-### Step 7: Add `review` subcommand
+### Step 6: Add `review` subcommand
 
 New file: `internal/commands/mr/note/mr_note_review.go`
 
@@ -126,11 +111,11 @@ glab mr note review [<mr-id>|<branch>] [--publish] < comments.json
 
 Port from `note/cmd/review.go`. Reads JSON array from stdin, creates draft notes, optionally bulk-publishes. Key command for AI agent/editor integration.
 
-### Step 8: Tests for all new commands
+### Step 7: Tests for all new commands
 
 Each new file needs tests using glab's `cmdtest` framework with `gitlabtesting.NewTestClient(t)` mock pattern. Port and adapt the diff parser tests directly. All other tests are new (the `note` project has no command-level tests beyond the diff parser).
 
-### Step 9: Documentation
+### Step 8: Documentation
 
 - Update `docs/source/mr/note.md` (auto-generated from command definitions)
 - Run `make gen-docs`

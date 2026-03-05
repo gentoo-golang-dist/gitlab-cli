@@ -394,6 +394,127 @@ func Test_mrNoteCreate_no_duplicate_paginated(t *testing.T) {
 	})
 }
 
+func Test_mrNote_stdin(t *testing.T) {
+	t.Parallel()
+
+	t.Run("reads body from stdin when not a TTY", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		// Mock GetMergeRequest
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+			Return(&gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:     1,
+					IID:    1,
+					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+				},
+			}, nil, nil)
+
+		// Mock CreateMergeRequestDiscussion
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Message from stdin", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc-stdin",
+					Notes: []*gitlab.Note{
+						{ID: 700, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false, // not a TTY
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithStdin("Message from stdin\n"),
+		)
+
+		output, err := exec(`1`)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_700\n", output.String())
+	})
+
+	t.Run("empty stdin produces error", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		// Mock GetMergeRequest
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+			Return(&gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:     1,
+					IID:    1,
+					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+				},
+			}, nil, nil)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false, // not a TTY
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithStdin(""),
+		)
+
+		_, err := exec(`1`)
+		require.Error(t, err)
+		assert.Equal(t, "aborted... Note has an empty message.", err.Error())
+	})
+
+	t.Run("-m flag takes priority over stdin", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		// Mock GetMergeRequest
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+			Return(&gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:     1,
+					IID:    1,
+					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+				},
+			}, nil, nil)
+
+		// Mock CreateMergeRequestDiscussion
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "From flag", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc-flag",
+					Notes: []*gitlab.Note{
+						{ID: 701, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false, // not a TTY
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithStdin("From stdin"),
+		)
+
+		output, err := exec(`1 -m "From flag"`)
+		require.NoError(t, err)
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_701\n", output.String())
+	})
+}
+
 func Test_mrNote_resolve(t *testing.T) {
 	t.Parallel()
 

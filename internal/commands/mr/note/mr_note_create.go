@@ -2,6 +2,7 @@ package note
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -30,6 +31,9 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 			# Open your editor to compose a multi-line comment
 			$ glab mr note 123
+
+			# Pipe a comment from stdin
+			$ echo "LGTM" | glab mr note 123
 
 			# Add a diff comment on line 42 of main.go
 			$ glab mr note 123 --file main.go --line 42 -m "Needs refactoring"
@@ -88,14 +92,22 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			body, _ := cmd.Flags().GetString("message")
 
 			if strings.TrimSpace(body) == "" {
-				editor, err := cmdutils.GetEditor(f.Config)
-				if err != nil {
-					return err
-				}
+				if !f.IO().IsInTTY {
+					data, err := io.ReadAll(f.IO().In)
+					if err != nil {
+						return fmt.Errorf("failed to read from stdin: %w", err)
+					}
+					body = strings.TrimSpace(string(data))
+				} else {
+					editor, err := cmdutils.GetEditor(f.Config)
+					if err != nil {
+						return err
+					}
 
-				err = f.IO().Editor(cmd.Context(), &body, "Note message:", "Enter the note message for the merge request.", "", editor)
-				if err != nil {
-					return err
+					err = f.IO().Editor(cmd.Context(), &body, "Note message:", "Enter the note message for the merge request.", "", editor)
+					if err != nil {
+						return err
+					}
 				}
 			}
 			if strings.TrimSpace(body) == "" {
