@@ -15,8 +15,8 @@ import (
 	"github.com/zalando/go-keyring"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -142,7 +142,7 @@ func TestClear_WithRevoke_SkipsExpiredToken(t *testing.T) {
 
 	// no API call expected for expired token
 	tc.MockPersonalAccessTokens.EXPECT().
-		RevokePersonalAccessToken(gomock.Any(), gomock.Any()).
+		RevokePersonalAccessTokenByID(gomock.Any(), gomock.Any()).
 		Times(0)
 
 	out, err := exec("--filesystem --keyring=false --revoke=true")
@@ -164,7 +164,7 @@ func TestClear_WithRevoke_SkipsAlreadyRevokedToken(t *testing.T) {
 
 	// no API call expected for already revoked token
 	tc.MockPersonalAccessTokens.EXPECT().
-		RevokePersonalAccessToken(gomock.Any(), gomock.Any()).
+		RevokePersonalAccessTokenByID(gomock.Any(), gomock.Any()).
 		Times(0)
 
 	out, err := exec("--filesystem --keyring=false --revoke=true")

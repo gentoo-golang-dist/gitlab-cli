@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -57,7 +57,7 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 			}
 			if cmd.Flags().Changed("priority") {
 				if s, err := cmd.Flags().GetInt("priority"); err == nil {
-					l.Priority = gitlab.Ptr(int64(s))
+					l.Priority = gitlab.NewNullableWithValue(int64(s))
 					change += fmt.Sprintf("Updated priority: %d\n", s)
 				} else {
 					return err

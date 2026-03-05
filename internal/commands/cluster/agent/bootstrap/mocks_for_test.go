@@ -12,7 +12,7 @@ package bootstrap
 import (
 	reflect "reflect"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gomock "go.uber.org/mock/gomock"
 )
 

@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -565,9 +565,9 @@ func TestMrListJSON(t *testing.T) {
 			UpdatedAt:                   &updatedAt1,
 			Upvotes:                     0,
 			Downvotes:                   0,
-			Author:                      &gitlab.BasicUser{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", Locked: false, AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"},
-			Assignee:                    &gitlab.BasicUser{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", Locked: false, AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"},
-			Assignees:                   []*gitlab.BasicUser{{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", Locked: false, AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"}},
+			Author:                      &gitlab.BasicUser{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"},
+			Assignee:                    &gitlab.BasicUser{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"},
+			Assignees:                   []*gitlab.BasicUser{{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"}},
 			Reviewers:                   []*gitlab.BasicUser{},
 			SourceProjectID:             29316529,
 			TargetProjectID:             29316529,
@@ -606,7 +606,7 @@ func TestMrListJSON(t *testing.T) {
 			UpdatedAt:                   &updatedAt2,
 			Upvotes:                     0,
 			Downvotes:                   0,
-			Author:                      &gitlab.BasicUser{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", Locked: false, AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"},
+			Author:                      &gitlab.BasicUser{ID: 8814129, Username: "OWNER", Name: "Some User", State: "active", AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png", WebURL: "https://gitlab.com/OWNER"},
 			Assignees:                   []*gitlab.BasicUser{},
 			Reviewers:                   []*gitlab.BasicUser{},
 			SourceProjectID:             29316529,

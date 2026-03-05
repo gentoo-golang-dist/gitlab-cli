@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -101,7 +101,7 @@ func TestLabelListJSON(t *testing.T) {
 			ClosedIssuesCount:      0,
 			OpenMergeRequestsCount: 0,
 			Subscribed:             false,
-			Priority:               0,
+			Priority:               gitlab.NewNullableWithValue(int64(0)),
 			IsProjectLabel:         true,
 		},
 	}

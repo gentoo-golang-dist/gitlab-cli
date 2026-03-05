@@ -3,7 +3,7 @@ package api
 import (
 	"sort"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 func PlayOrRetryJobs(client *gitlab.Client, repo string, jobID int64, status string) (*gitlab.Job, error) {
