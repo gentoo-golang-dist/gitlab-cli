@@ -19,6 +19,7 @@
 - `list` subcommand added (`mr_note_list.go`): `glab mr note list [<id>|<branch>] [--filter all|general|diff|system] [--state all|resolved|unresolved] [--file <path>] [--json]`. Registered as subcommand of `NewCmdNote()`. Filtering by type, resolution state, and file path. Human output with 8-char ID prefix, resolution badge, file position, truncated bodies. JSON output for scripting. 14 tests passing.
 - `resolve`/`unresolve` subcommands added (`mr_note_resolve.go`): `glab mr note resolve [<mr-id>|<branch>] <discussion-id>` and `glab mr note unresolve [<mr-id>|<branch>] <discussion-id>`. Accept 8+ char prefix with disambiguation error. Registered as subcommands of `NewCmdNote()`. Existing `--resolve`/`--unresolve` flags preserved as backward-compat aliases (note ID based). 10 tests passing.
 - `update` subcommand added (`mr_note_update.go`): `glab mr note update [<mr-id>|<branch>] <note-id> [-m <body>]`. Uses `FindNoteInDiscussions` to locate discussion, then `UpdateMergeRequestDiscussionNote`. Supports `-m` flag and stdin. 8 tests passing.
+- `delete` subcommand added (`mr_note_delete.go`): `glab mr note delete [<mr-id>|<branch>] <note-id> [--yes]`. Uses `FindNoteInDiscussions` then `DeleteMergeRequestDiscussionNote`. Confirmation prompt (skip with `--yes`/`-y`), non-TTY without `--yes` errors. 7 tests passing.
 
 ## User-Facing Changes
 
@@ -46,17 +47,7 @@ The existing `--resolve <note-id>` behavior is preserved. New `resolve`/`unresol
 
 ## Migration Steps
 
-### Step 1: Add `delete` subcommand
-
-New file: `internal/commands/mr/note/mr_note_delete.go`
-
-```
-glab mr note delete [<mr-id>|<branch>] <note-id> [--yes]
-```
-
-Confirmation prompt (skip with `--yes`), uses `FindNoteInDiscussions` then `Discussions.DeleteMergeRequestDiscussionNote()`.
-
-### Step 2: Add `draft` subcommand group
+### Step 1: Add `draft` subcommand group
 
 New directory: `internal/commands/mr/note/draft/`
 
