@@ -43,6 +43,9 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			# Add a file-level diff comment (no line specified)
 			$ glab mr note 123 --file main.go -m "General comment on this file"
 
+			# Reply to an existing discussion (full or prefix ID)
+			$ glab mr note 123 --reply abc12345 -m "I agree!"
+
 			# Resolve a discussion by note ID
 			$ glab mr note 123 --resolve 3107030349
 
@@ -74,6 +77,9 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			if unresolveNoteID != 0 {
 				return resolveDiscussion(client, f, mr, repo, unresolveNoteID, false)
 			}
+
+			// Check if we're replying to an existing discussion
+			replyTo, _ := cmd.Flags().GetString("reply")
 
 			// Create note (existing behavior)
 			body, _ := cmd.Flags().GetString("message")
@@ -113,6 +119,27 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 					}
 					opts.Page = resp.NextPage
 				}
+			}
+
+			// Reply to an existing discussion
+			if replyTo != "" {
+				discussionID, err := mrutils.ResolveDiscussionID(client, repo.FullName(), mr.IID, replyTo)
+				if err != nil {
+					return err
+				}
+
+				note, _, err := client.Discussions.AddMergeRequestDiscussionNote(
+					repo.FullName(),
+					int64(mr.IID),
+					discussionID,
+					&gitlab.AddMergeRequestDiscussionNoteOptions{Body: &body},
+				)
+				if err != nil {
+					return fmt.Errorf("failed to add reply: %w", err)
+				}
+
+				fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, note.ID)
+				return nil
 			}
 
 			filePath, _ := cmd.Flags().GetString("file")
@@ -160,6 +187,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.Flags().Bool("unique", false, "Don't create a comment or note if it already exists.")
 	mrCreateNoteCmd.Flags().Int64("resolve", 0, "Resolve the discussion containing the specified note ID.")
 	mrCreateNoteCmd.Flags().Int64("unresolve", 0, "Unresolve the discussion containing the specified note ID.")
+	mrCreateNoteCmd.Flags().String("reply", "", "Reply to an existing discussion by ID (full or 8+ char prefix).")
 	mrCreateNoteCmd.Flags().String("file", "", "File path for a diff comment (targets the latest MR diff version).")
 	mrCreateNoteCmd.Flags().String("line", "", "Line in the new version: a single number or a range N:M.")
 	mrCreateNoteCmd.Flags().Int("old-line", 0, "Line in the old version (for commenting on removed lines).")
@@ -169,6 +197,9 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("file", "resolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("file", "unresolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reply", "file")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reply", "resolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reply", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("line", "old-line")
 
 	return mrCreateNoteCmd
