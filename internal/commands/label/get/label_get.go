@@ -79,7 +79,9 @@ func (o *options) run(f cmdutils.Factory) error {
 	table.AddRow("Name", label.Name)
 	table.AddRow("Description", label.Description)
 	table.AddRow("Color", label.Color)
-	table.AddRow("Priority", label.Priority)
+	if priority, err := label.Priority.Get(); err == nil {
+		table.AddRow("Priority", priority)
+	}
 	o.io.LogInfo(table.String())
 
 	return nil

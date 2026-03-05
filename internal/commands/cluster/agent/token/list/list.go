@@ -95,7 +95,7 @@ func (o *options) run(ctx context.Context) error {
 		}
 
 		if cachedUserID != token.CreatedByUserID {
-			user, _, err := client.Users.GetUser(token.CreatedByUserID, gitlab.GetUsersOptions{}, gitlab.WithContext(ctx))
+			user, _, err := client.Users.GetUser(token.CreatedByUserID, &gitlab.GetUserOptions{}, gitlab.WithContext(ctx))
 			if err != nil {
 				username = fmt.Sprintf("%d", token.CreatedByUserID)
 			} else {

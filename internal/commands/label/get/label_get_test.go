@@ -29,7 +29,7 @@ func Test_GetLabel(t *testing.T) {
 		ID:          123,
 		Name:        "Example label",
 		Description: "Example Description",
-		Priority:    5,
+		Priority:    gitlab.NewNullableWithValue(int64(5)),
 		Color:       "#A1B2C3D4",
 	}
 

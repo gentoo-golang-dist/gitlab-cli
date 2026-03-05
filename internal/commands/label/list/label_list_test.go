@@ -101,7 +101,7 @@ func TestLabelListJSON(t *testing.T) {
 			ClosedIssuesCount:      0,
 			OpenMergeRequestsCount: 0,
 			Subscribed:             false,
-			Priority:               0,
+			Priority:               gitlab.NewNullableWithValue(int64(0)),
 			IsProjectLabel:         true,
 		},
 	}

@@ -18,7 +18,6 @@
       "username": "OWNER",
       "name": "Some User",
       "state": "active",
-      "locked": false,
       "created_at": null,
       "avatar_url": "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
       "web_url": "https://gitlab.com/OWNER"
@@ -28,7 +27,6 @@
       "username": "OWNER",
       "name": "Some User",
       "state": "active",
-      "locked": false,
       "created_at": null,
       "avatar_url": "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
       "web_url": "https://gitlab.com/OWNER"
@@ -39,7 +37,6 @@
         "username": "OWNER",
         "name": "Some User",
         "state": "active",
-        "locked": false,
         "created_at": null,
         "avatar_url": "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
         "web_url": "https://gitlab.com/OWNER"
@@ -111,7 +108,6 @@
       "username": "OWNER",
       "name": "Some User",
       "state": "active",
-      "locked": false,
       "created_at": null,
       "avatar_url": "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
       "web_url": "https://gitlab.com/OWNER"

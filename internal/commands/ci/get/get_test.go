@@ -501,7 +501,6 @@ func TestCIGetJSON(t *testing.T) {
 							Username:  "OWNER",
 							Name:      "Some User",
 							State:     "active",
-							Locked:    false,
 							AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
 							WebURL:    "https://gitlab.com/OWNER",
 						},

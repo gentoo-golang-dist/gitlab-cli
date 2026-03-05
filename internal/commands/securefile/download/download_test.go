@@ -3,6 +3,7 @@
 package download
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -60,7 +61,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -78,7 +79,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -104,7 +105,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 			},
 		},
 		{
@@ -117,7 +118,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -139,7 +140,7 @@ func Test_SecurefileDownload(t *testing.T) {
 			setupMocks: func(testClient *gitlabtesting.TestClient) {
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -171,7 +172,7 @@ func Test_SecurefileDownload(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(2)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(2)).
 					Return(&gitlab.SecureFile{
@@ -203,7 +204,7 @@ func Test_SecurefileDownload(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(2)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(2)).
 					Return(&gitlab.SecureFile{
@@ -234,7 +235,7 @@ func Test_SecurefileDownload(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 			},
 		},
 		{
@@ -260,7 +261,7 @@ func Test_SecurefileDownload(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -391,7 +392,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -402,7 +403,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(2)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(2)).
 					Return(&gitlab.SecureFile{
@@ -435,7 +436,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -446,7 +447,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(2)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(2)).
 					Return(&gitlab.SecureFile{
@@ -477,7 +478,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 			},
 		},
 		{
@@ -503,7 +504,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -577,7 +578,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(1)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(1)).
 					Return(&gitlab.SecureFile{
@@ -588,7 +589,7 @@ func Test_SecurefileDownloadAll(t *testing.T) {
 
 				testClient.MockSecureFiles.EXPECT().
 					DownloadSecureFile(repoName, int64(2)).
-					Return(strings.NewReader(fileContents), nil, nil)
+					Return(io.NopCloser(strings.NewReader(fileContents)), nil, nil)
 				testClient.MockSecureFiles.EXPECT().
 					ShowSecureFileDetails(repoName, int64(2)).
 					Return(&gitlab.SecureFile{
