@@ -31,6 +31,18 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			# Open your editor to compose a multi-line comment
 			$ glab mr note 123
 
+			# Add a diff comment on line 42 of main.go
+			$ glab mr note 123 --file main.go --line 42 -m "Needs refactoring"
+
+			# Add a diff comment on lines 10-15 (multiline range)
+			$ glab mr note 123 --file main.go --line 10:15 -m "Extract this block"
+
+			# Add a diff comment on a removed line (old side)
+			$ glab mr note 123 --file main.go --old-line 7 -m "Why was this removed?"
+
+			# Add a file-level diff comment (no line specified)
+			$ glab mr note 123 --file main.go -m "General comment on this file"
+
 			# Resolve a discussion by note ID
 			$ glab mr note 123 --resolve 3107030349
 
@@ -103,7 +115,38 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 				}
 			}
 
-			disc, _, err := client.Discussions.CreateMergeRequestDiscussion(repo.FullName(), mr.IID, &gitlab.CreateMergeRequestDiscussionOptions{Body: &body})
+			filePath, _ := cmd.Flags().GetString("file")
+
+			createOpts := &gitlab.CreateMergeRequestDiscussionOptions{Body: &body}
+
+			if filePath != "" {
+				lineFlag, _ := cmd.Flags().GetString("line")
+				oldLine, _ := cmd.Flags().GetInt("old-line")
+
+				lineStart, lineEnd, err := mrutils.ParseLine(lineFlag)
+				if err != nil {
+					return err
+				}
+
+				version, err := mrutils.GetLatestDiffVersion(client, repo.FullName(), int64(mr.IID))
+				if err != nil {
+					return err
+				}
+
+				fileDiff, err := mrutils.FindFileDiff(version, filePath)
+				if err != nil {
+					return err
+				}
+
+				position, err := mrutils.BuildDiffPosition(version, fileDiff, lineStart, lineEnd, oldLine)
+				if err != nil {
+					return err
+				}
+
+				createOpts.Position = position
+			}
+
+			disc, _, err := client.Discussions.CreateMergeRequestDiscussion(repo.FullName(), mr.IID, createOpts)
 			if err != nil {
 				return err
 			}
@@ -117,10 +160,16 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.Flags().Bool("unique", false, "Don't create a comment or note if it already exists.")
 	mrCreateNoteCmd.Flags().Int64("resolve", 0, "Resolve the discussion containing the specified note ID.")
 	mrCreateNoteCmd.Flags().Int64("unresolve", 0, "Unresolve the discussion containing the specified note ID.")
+	mrCreateNoteCmd.Flags().String("file", "", "File path for a diff comment (targets the latest MR diff version).")
+	mrCreateNoteCmd.Flags().String("line", "", "Line in the new version: a single number or a range N:M.")
+	mrCreateNoteCmd.Flags().Int("old-line", 0, "Line in the old version (for commenting on removed lines).")
 
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "resolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("file", "resolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("file", "unresolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("line", "old-line")
 
 	return mrCreateNoteCmd
 }

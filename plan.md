@@ -12,6 +12,7 @@
 - Diff parser package ported to `internal/diff/` (parse.go, parse_test.go) — all tests passing
 - Position-building utilities in `internal/commands/mr/mrutils/position.go`: `GetLatestDiffVersion`, `FindFileDiff`, `BuildDiffPosition`, `ParseLine`, `ResolveDiscussionID`, `ListAllDiscussions`, `FindNoteInDiscussions`, `lineCode` — compiles, all tests pass
 - `resolveDiscussion` in `mr_note_create.go` uses `FindNoteInDiscussions` (no more inline pagination/search)
+- `--file`, `--line`, `--old-line` flags added to `NewCmdNote()` for diff comments — fetches latest diff version, finds file diff, builds position, creates discussion with position. Mutually exclusive with `--resolve`/`--unresolve`. `--line` and `--old-line` are mutually exclusive. Supports single line, range (N:M), old-side lines, and file-level comments (no line). All tests passing.
 
 ## User-Facing Changes
 
@@ -39,20 +40,7 @@ The existing `--resolve <note-id>` behavior is preserved. New `resolve`/`unresol
 
 ## Migration Steps
 
-### Step 1: Add `--file`, `--line`, `--old-line` flags for diff notes
-
-Add to `NewCmdNote()`:
-```
---file <path>     File path for a diff comment
---line <N|N:M>    Line in new version (single or range)
---old-line <N>    Line in old version (removed lines)
-```
-
-Mark `--file`/`--line`/`--old-line` mutually exclusive with `--resolve`/`--unresolve`.
-
-Implementation: when `--file` is set, call position-building utilities from `mrutils/position.go`, then create via Discussions API with position.
-
-### Step 2: Add `--reply` flag
+### Step 1: Add `--reply` flag
 
 Add `--reply <discussion-id>` flag. Accepts full 40-char ID or 8+ char prefix.
 
@@ -60,13 +48,13 @@ Uses `ResolveDiscussionID` from `mrutils/position.go`, then `client.Discussions.
 
 Mark mutually exclusive with `--file`, `--resolve`, `--unresolve`.
 
-### Step 3: Add `--internal` flag
+### Step 2: Add `--internal` flag
 
 Add `--internal` flag for confidential notes. Only valid for general notes (no `--file`). Uses `Internal: gl.Ptr(true)` on the Notes API (the Discussions API doesn't support internal, so internal general notes use the flat Notes API — this is a GitLab API limitation).
 
 Mark mutually exclusive with `--file`.
 
-### Step 4: Add stdin body support
+### Step 3: Add stdin body support
 
 When `-m` is not provided and stdin is not a TTY, read body from stdin instead of opening the editor prompt. Keep the editor prompt for interactive TTY use.
 
@@ -82,7 +70,7 @@ if strings.TrimSpace(body) == "" {
 }
 ```
 
-### Step 5: Add `list` subcommand
+### Step 4: Add `list` subcommand
 
 New file: `internal/commands/mr/note/mr_note_list.go`
 
@@ -94,7 +82,7 @@ Port filtering logic from `note/cmd/list.go`. Use glab's `tableprinter` or simil
 
 Register as subcommand of `NewCmdNote()`.
 
-### Step 6: Add `resolve`/`unresolve` subcommands
+### Step 5: Add `resolve`/`unresolve` subcommands
 
 New file: `internal/commands/mr/note/mr_note_resolve.go`
 
@@ -105,7 +93,7 @@ glab mr note unresolve [<mr-id>|<branch>] <discussion-id>
 
 Accepts 8+ char prefix with disambiguation error (exit code 3). Keep existing `--resolve`/`--unresolve` flags as aliases for backward compat (these take note IDs, not discussion IDs).
 
-### Step 7: Add `update` subcommand
+### Step 6: Add `update` subcommand
 
 New file: `internal/commands/mr/note/mr_note_update.go`
 
@@ -115,7 +103,7 @@ glab mr note update [<mr-id>|<branch>] <note-id> [-m <body>]
 
 Uses `FindNoteInDiscussions` from `mrutils/position.go` to locate the discussion, then `Discussions.UpdateMergeRequestDiscussionNote()`. Supports `-m` and stdin.
 
-### Step 8: Add `delete` subcommand
+### Step 7: Add `delete` subcommand
 
 New file: `internal/commands/mr/note/mr_note_delete.go`
 
@@ -125,7 +113,7 @@ glab mr note delete [<mr-id>|<branch>] <note-id> [--yes]
 
 Confirmation prompt (skip with `--yes`), uses `FindNoteInDiscussions` then `Discussions.DeleteMergeRequestDiscussionNote()`.
 
-### Step 9: Add `draft` subcommand group
+### Step 8: Add `draft` subcommand group
 
 New directory: `internal/commands/mr/note/draft/`
 
@@ -140,7 +128,7 @@ glab mr note draft publish [<mr-id>|<branch>] --all
 
 Port from `note/cmd/draft.go`. Uses same position-building utilities. Adapt to glab Factory pattern.
 
-### Step 10: Add `review` subcommand
+### Step 9: Add `review` subcommand
 
 New file: `internal/commands/mr/note/mr_note_review.go`
 
@@ -150,11 +138,11 @@ glab mr note review [<mr-id>|<branch>] [--publish] < comments.json
 
 Port from `note/cmd/review.go`. Reads JSON array from stdin, creates draft notes, optionally bulk-publishes. Key command for AI agent/editor integration.
 
-### Step 11: Tests for all new commands
+### Step 10: Tests for all new commands
 
 Each new file needs tests using glab's `cmdtest` framework with `gitlabtesting.NewTestClient(t)` mock pattern. Port and adapt the diff parser tests directly. All other tests are new (the `note` project has no command-level tests beyond the diff parser).
 
-### Step 12: Documentation
+### Step 11: Documentation
 
 - Update `docs/source/mr/note.md` (auto-generated from command definitions)
 - Run `make gen-docs`

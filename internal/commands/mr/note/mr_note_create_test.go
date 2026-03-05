@@ -557,3 +557,270 @@ func Test_mrNote_unresolve(t *testing.T) {
 		assert.Contains(t, output.String(), "✓ Discussion unresolved (note #300 in !1)")
 	})
 }
+
+func Test_mrNote_diffComment(t *testing.T) {
+	t.Parallel()
+
+	diffContent := `@@ -1,5 +1,6 @@
+ line1
+-old line2
++new line2
++added line3
+ line4
+ line5
+`
+
+	makeMR := func(t *testing.T, testClient *gitlabtesting.TestClient) {
+		t.Helper()
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+			Return(&gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:     1,
+					IID:    1,
+					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+				},
+			}, nil, nil)
+	}
+
+	makeDiffVersion := func(t *testing.T, testClient *gitlabtesting.TestClient, diffStr string) {
+		t.Helper()
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequestDiffVersions("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.MergeRequestDiffVersion{
+				{ID: 10, BaseCommitSHA: "base", HeadCommitSHA: "head", StartCommitSHA: "start"},
+			}, nil, nil)
+
+		testClient.MockMergeRequests.EXPECT().
+			GetSingleMergeRequestDiffVersion("OWNER/REPO", int64(1), int64(10), gomock.Any()).
+			Return(&gitlab.MergeRequestDiffVersion{
+				ID:             10,
+				BaseCommitSHA:  "base",
+				HeadCommitSHA:  "head",
+				StartCommitSHA: "start",
+				Diffs: []*gitlab.Diff{
+					{
+						NewPath: "main.go",
+						OldPath: "main.go",
+						Diff:    diffStr,
+					},
+				},
+			}, nil, nil)
+	}
+
+	t.Run("diff comment on new-side line", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		makeMR(t, testClient)
+		makeDiffVersion(t, testClient, diffContent)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Comment on new line", *opts.Body)
+				require.NotNil(t, opts.Position)
+				assert.Equal(t, "text", *opts.Position.PositionType)
+				assert.Equal(t, "main.go", *opts.Position.NewPath)
+				assert.Equal(t, int64(2), *opts.Position.NewLine)
+				assert.Equal(t, "base", *opts.Position.BaseSHA)
+				assert.Equal(t, "head", *opts.Position.HeadSHA)
+				assert.Equal(t, "start", *opts.Position.StartSHA)
+				return &gitlab.Discussion{
+					ID: "disc-diff-1",
+					Notes: []*gitlab.Note{
+						{ID: 500},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		output, err := exec(`1 --file main.go --line 2 -m "Comment on new line"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_500")
+	})
+
+	t.Run("diff comment on old-side line", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		makeMR(t, testClient)
+		makeDiffVersion(t, testClient, diffContent)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Comment on removed line", *opts.Body)
+				require.NotNil(t, opts.Position)
+				assert.Equal(t, int64(2), *opts.Position.OldLine)
+				return &gitlab.Discussion{
+					ID: "disc-diff-2",
+					Notes: []*gitlab.Note{
+						{ID: 501},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		output, err := exec(`1 --file main.go --old-line 2 -m "Comment on removed line"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_501")
+	})
+
+	t.Run("diff comment with multiline range", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		makeMR(t, testClient)
+		makeDiffVersion(t, testClient, diffContent)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				require.NotNil(t, opts.Position)
+				require.NotNil(t, opts.Position.LineRange)
+				assert.NotNil(t, opts.Position.LineRange.Start)
+				assert.NotNil(t, opts.Position.LineRange.End)
+				return &gitlab.Discussion{
+					ID: "disc-diff-3",
+					Notes: []*gitlab.Note{
+						{ID: 502},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		output, err := exec(`1 --file main.go --line 2:3 -m "Range comment"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_502")
+	})
+
+	t.Run("file-level diff comment (no line)", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		makeMR(t, testClient)
+		makeDiffVersion(t, testClient, diffContent)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				require.NotNil(t, opts.Position)
+				assert.Equal(t, "text", *opts.Position.PositionType)
+				return &gitlab.Discussion{
+					ID: "disc-diff-4",
+					Notes: []*gitlab.Note{
+						{ID: 503},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		output, err := exec(`1 --file main.go -m "File-level comment"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_503")
+	})
+
+	t.Run("file not found in diff", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		makeMR(t, testClient)
+		makeDiffVersion(t, testClient, diffContent)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --file nonexistent.go --line 1 -m "bad file"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found in MR diff")
+	})
+
+	t.Run("--file and --resolve are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --file main.go --resolve 100 -m "test"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "if any flags in the group [file resolve] are set none of the others can be")
+	})
+
+	t.Run("--line and --old-line are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --file main.go --line 5 --old-line 3 -m "test"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "if any flags in the group [line old-line] are set none of the others can be")
+	})
+
+	t.Run("invalid line format", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		makeMR(t, testClient)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --file main.go --line abc -m "bad line"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid line number")
+	})
+}
