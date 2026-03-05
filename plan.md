@@ -2,7 +2,7 @@
 
 ## Problem
 
-`glab mr note` only supports creating flat (non-threaded) notes and resolve/unresolve by note ID. The standalone `note` project has diff comments, replies, drafts, batch reviews, discussion listing, update/delete, and proper diff line mapping — all missing from glab.
+The standalone `note` project has batch reviews — missing from glab.
 
 ## Current State
 
@@ -20,6 +20,7 @@
 - `resolve`/`unresolve` subcommands added (`mr_note_resolve.go`): `glab mr note resolve [<mr-id>|<branch>] <discussion-id>` and `glab mr note unresolve [<mr-id>|<branch>] <discussion-id>`. Accept 8+ char prefix with disambiguation error. Registered as subcommands of `NewCmdNote()`. Existing `--resolve`/`--unresolve` flags preserved as backward-compat aliases (note ID based). 10 tests passing.
 - `update` subcommand added (`mr_note_update.go`): `glab mr note update [<mr-id>|<branch>] <note-id> [-m <body>]`. Uses `FindNoteInDiscussions` to locate discussion, then `UpdateMergeRequestDiscussionNote`. Supports `-m` flag and stdin. 8 tests passing.
 - `delete` subcommand added (`mr_note_delete.go`): `glab mr note delete [<mr-id>|<branch>] <note-id> [--yes]`. Uses `FindNoteInDiscussions` then `DeleteMergeRequestDiscussionNote`. Confirmation prompt (skip with `--yes`/`-y`), non-TTY without `--yes` errors. 7 tests passing.
+- `draft` subcommand group added (`internal/commands/mr/note/draft/`): `create`, `list`, `update`, `delete`, `publish`. Uses DraftNotes API. `create` supports `--file`/`--line`/`--old-line` (diff position), `--reply` (discussion reply), `--resolve` (auto-resolve on publish). `list` supports `--json`. `delete` has `--yes` confirmation. `publish` supports single draft or `--all` (submit review). Registered as subcommand of `NewCmdNote()`. 22 tests passing.
 
 ## User-Facing Changes
 
@@ -47,22 +48,7 @@ The existing `--resolve <note-id>` behavior is preserved. New `resolve`/`unresol
 
 ## Migration Steps
 
-### Step 1: Add `draft` subcommand group
-
-New directory: `internal/commands/mr/note/draft/`
-
-```
-glab mr note draft create [<mr-id>|<branch>] [-m <body>] [--file ...] [--reply ...] [--resolve]
-glab mr note draft list [<mr-id>|<branch>] [--json]
-glab mr note draft update [<mr-id>|<branch>] <draft-id> [-m <body>]
-glab mr note draft delete [<mr-id>|<branch>] <draft-id>
-glab mr note draft publish [<mr-id>|<branch>] <draft-id>
-glab mr note draft publish [<mr-id>|<branch>] --all
-```
-
-Port from `note/cmd/draft.go`. Uses same position-building utilities. Adapt to glab Factory pattern.
-
-### Step 3: Add `review` subcommand
+### Step 1: Add `review` subcommand
 
 New file: `internal/commands/mr/note/mr_note_review.go`
 
@@ -72,11 +58,11 @@ glab mr note review [<mr-id>|<branch>] [--publish] < comments.json
 
 Port from `note/cmd/review.go`. Reads JSON array from stdin, creates draft notes, optionally bulk-publishes. Key command for AI agent/editor integration.
 
-### Step 4: Tests for all new commands
+### Step 2: Tests for all new commands
 
 Each new file needs tests using glab's `cmdtest` framework with `gitlabtesting.NewTestClient(t)` mock pattern. Port and adapt the diff parser tests directly. All other tests are new (the `note` project has no command-level tests beyond the diff parser).
 
-### Step 5: Documentation
+### Step 3: Documentation
 
 - Update `docs/source/mr/note.md` (auto-generated from command definitions)
 - Run `make gen-docs`

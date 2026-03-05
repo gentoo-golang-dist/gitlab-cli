@@ -12,6 +12,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/mr/note/draft"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
@@ -242,6 +243,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.AddCommand(NewCmdUnresolve(f))
 	mrCreateNoteCmd.AddCommand(NewCmdUpdate(f))
 	mrCreateNoteCmd.AddCommand(NewCmdDelete(f))
+	mrCreateNoteCmd.AddCommand(draft.NewCmdDraft(f))
 
 	return mrCreateNoteCmd
 }
