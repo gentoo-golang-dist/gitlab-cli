@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 var sensitiveHeaders = []string{

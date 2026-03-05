@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/cmd/gen-docs/urlwrapper"
 	"gitlab.com/gitlab-org/cli/internal/api"

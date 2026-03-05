@@ -16,7 +16,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/oauth2"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"

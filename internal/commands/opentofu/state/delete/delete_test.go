@@ -10,7 +10,7 @@ import (
 	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"

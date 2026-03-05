@@ -1,6 +1,6 @@
 package api
 
-import gitlab "gitlab.com/gitlab-org/api/client-go"
+import gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 // GetProject returns a single project
 // Attention: this is a global variable and may be overridden in tests.

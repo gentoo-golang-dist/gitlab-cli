@@ -3,7 +3,7 @@ package api
 import (
 	"sort"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 // GetMR returns an MR

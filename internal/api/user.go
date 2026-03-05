@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 func UserByName(client *gitlab.Client, name string) (*gitlab.User, error) {
