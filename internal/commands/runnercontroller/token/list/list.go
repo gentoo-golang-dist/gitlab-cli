@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -103,12 +104,27 @@ func (o *options) run(ctx context.Context) error {
 func (o *options) printTable(tokens []*gitlab.RunnerControllerToken) error {
 	c := o.io.Color()
 	table := tableprinter.NewTablePrinter()
-	table.AddRow(c.Bold("ID"), c.Bold("Description"), c.Bold("Created At"), c.Bold("Updated At"))
+	table.AddRow(c.Bold("ID"), c.Bold("Description"), c.Bold("Last Used At"), c.Bold("Created At"), c.Bold("Updated At"))
 	for _, t := range tokens {
-		table.AddRow(t.ID, formatDescription(t.Description), t.CreatedAt, t.UpdatedAt)
+		table.AddRow(t.ID, formatDescription(t.Description), formatLastUsedAt(c, t.LastUsedAt), t.CreatedAt, t.UpdatedAt)
 	}
 	fmt.Fprint(o.io.StdOut, table.Render())
 	return nil
+}
+
+// tokenActiveTimeout is the duration after which a token is considered inactive.
+// https://gitlab.com/gitlab-org/gitlab/-/blob/master/ee/app/models/ci/runner_controller_token.rb#L14
+const tokenActiveTimeout = time.Hour
+
+func formatLastUsedAt(c *iostreams.ColorPalette, t *time.Time) string {
+	if t == nil {
+		return "-"
+	}
+	s := t.String()
+	if time.Since(*t) > tokenActiveTimeout {
+		return c.Gray(s)
+	}
+	return c.Green(s)
 }
 
 func formatDescription(desc string) string {

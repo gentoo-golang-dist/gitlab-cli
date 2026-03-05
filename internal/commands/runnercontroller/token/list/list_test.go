@@ -3,9 +3,11 @@
 package list
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -30,6 +32,7 @@ func TestList(t *testing.T) {
 	)
 
 	fixedTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	lastUsedAt := time.Date(2025, 1, 15, 9, 0, 0, 0, time.UTC)
 	tc.MockRunnerControllerTokens.EXPECT().
 		ListRunnerControllerTokens(int64(42), gomock.Any(), gomock.Any()).
 		Return([]*gitlab.RunnerControllerToken{
@@ -37,6 +40,7 @@ func TestList(t *testing.T) {
 				ID:                 1,
 				RunnerControllerID: 42,
 				Description:        "Token 1",
+				LastUsedAt:         &lastUsedAt,
 				CreatedAt:          &fixedTime,
 				UpdatedAt:          &fixedTime,
 			},
@@ -51,11 +55,13 @@ func TestList(t *testing.T) {
 
 	out, err := exec("42")
 	require.NoError(t, err)
-	output := out.OutBuf.String()
-	assert.Contains(t, output, "ID")
-	assert.Contains(t, output, "Description")
-	assert.Contains(t, output, "Token 1")
-	assert.Contains(t, output, "-")
+
+	expectedOutput := heredoc.Docf(`
+		ID	Description	Last Used At	Created At	Updated At
+		1	Token 1	%[2]s	%[1]s	%[1]s
+		2	-	-	%[1]s	%[1]s
+	`, fixedTime, lastUsedAt)
+	assert.Equal(t, expectedOutput, out.OutBuf.String())
 }
 
 func TestListJSON(t *testing.T) {
@@ -71,6 +77,7 @@ func TestListJSON(t *testing.T) {
 	)
 
 	fixedTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
+	lastUsedAt := time.Date(2025, 1, 15, 9, 0, 0, 0, time.UTC)
 	tc.MockRunnerControllerTokens.EXPECT().
 		ListRunnerControllerTokens(int64(42), gomock.Any(), gomock.Any()).
 		Return([]*gitlab.RunnerControllerToken{
@@ -78,6 +85,7 @@ func TestListJSON(t *testing.T) {
 				ID:                 1,
 				RunnerControllerID: 42,
 				Description:        "Token 1",
+				LastUsedAt:         &lastUsedAt,
 				CreatedAt:          &fixedTime,
 				UpdatedAt:          &fixedTime,
 			},
@@ -85,8 +93,17 @@ func TestListJSON(t *testing.T) {
 
 	out, err := exec("42 --output json")
 	require.NoError(t, err)
-	assert.Contains(t, out.OutBuf.String(), `"id":1`)
-	assert.Contains(t, out.OutBuf.String(), `"runner_controller_id":42`)
+
+	var result []*gitlab.RunnerControllerToken
+	err = json.Unmarshal(out.OutBuf.Bytes(), &result)
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	assert.Equal(t, int64(1), result[0].ID)
+	assert.Equal(t, int64(42), result[0].RunnerControllerID)
+	assert.Equal(t, "Token 1", result[0].Description)
+	assert.Equal(t, lastUsedAt, *result[0].LastUsedAt)
+	assert.Equal(t, fixedTime, *result[0].CreatedAt)
+	assert.Equal(t, fixedTime, *result[0].UpdatedAt)
 }
 
 func TestListInvalidID(t *testing.T) {
