@@ -98,12 +98,12 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 				}
 			}
 
-			noteInfo, _, err := client.Notes.CreateMergeRequestNote(repo.FullName(), mr.IID, &gitlab.CreateMergeRequestNoteOptions{Body: &body})
+			disc, _, err := client.Discussions.CreateMergeRequestDiscussion(repo.FullName(), mr.IID, &gitlab.CreateMergeRequestDiscussionOptions{Body: &body})
 			if err != nil {
 				return err
 			}
 
-			fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, noteInfo.ID)
+			fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, disc.Notes[0].ID)
 			return nil
 		},
 	}

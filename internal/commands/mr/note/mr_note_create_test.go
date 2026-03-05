@@ -44,16 +44,16 @@ func Test_NewCmdNote(t *testing.T) {
 				},
 			}, nil, nil)
 
-		// Mock CreateMergeRequestNote
-		testClient.MockNotes.EXPECT().
-			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+		// Mock CreateMergeRequestDiscussion
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
 				assert.Equal(t, "Here is my note", *opts.Body)
-				return &gitlab.Note{
-					ID:           301,
-					NoteableID:   1,
-					NoteableType: "MergeRequest",
-					NoteableIID:  1,
+				return &gitlab.Discussion{
+					ID: "disc1",
+					Notes: []*gitlab.Note{
+						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
 				}, nil, nil
 			})
 
@@ -117,12 +117,12 @@ func Test_NewCmdNote_error(t *testing.T) {
 				},
 			}, nil, nil)
 
-		// Mock CreateMergeRequestNote - returns 401
+		// Mock CreateMergeRequestDiscussion - returns 401
 		unauthorizedResp := &gitlab.Response{
 			Response: &http.Response{StatusCode: http.StatusUnauthorized},
 		}
-		testClient.MockNotes.EXPECT().
-			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
 			Return(nil, unauthorizedResp, errors.New("401 Unauthorized"))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
@@ -156,16 +156,16 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 				},
 			}, nil, nil)
 
-		// Mock CreateMergeRequestNote
-		testClient.MockNotes.EXPECT().
-			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+		// Mock CreateMergeRequestDiscussion
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
 				assert.Contains(t, *opts.Body, "some note message")
-				return &gitlab.Note{
-					ID:           301,
-					NoteableID:   1,
-					NoteableType: "MergeRequest",
-					NoteableIID:  1,
+				return &gitlab.Discussion{
+					ID: "disc1",
+					Notes: []*gitlab.Note{
+						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
 				}, nil, nil
 			})
 
