@@ -46,6 +46,9 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			# Reply to an existing discussion (full or prefix ID)
 			$ glab mr note 123 --reply abc12345 -m "I agree!"
 
+			# Add a confidential internal note
+			$ glab mr note 123 --internal -m "Internal feedback for maintainers"
+
 			# Resolve a discussion by note ID
 			$ glab mr note 123 --resolve 3107030349
 
@@ -142,6 +145,21 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 				return nil
 			}
 
+			internal, _ := cmd.Flags().GetBool("internal")
+
+			// Internal notes use the flat Notes API (Discussions API doesn't support internal)
+			if internal {
+				note, _, err := client.Notes.CreateMergeRequestNote(repo.FullName(), int64(mr.IID), &gitlab.CreateMergeRequestNoteOptions{
+					Body:     &body,
+					Internal: gitlab.Ptr(true),
+				})
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, note.ID)
+				return nil
+			}
+
 			filePath, _ := cmd.Flags().GetString("file")
 
 			createOpts := &gitlab.CreateMergeRequestDiscussionOptions{Body: &body}
@@ -188,6 +206,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.Flags().Int64("resolve", 0, "Resolve the discussion containing the specified note ID.")
 	mrCreateNoteCmd.Flags().Int64("unresolve", 0, "Unresolve the discussion containing the specified note ID.")
 	mrCreateNoteCmd.Flags().String("reply", "", "Reply to an existing discussion by ID (full or 8+ char prefix).")
+	mrCreateNoteCmd.Flags().Bool("internal", false, "Create a confidential internal note (uses flat Notes API).")
 	mrCreateNoteCmd.Flags().String("file", "", "File path for a diff comment (targets the latest MR diff version).")
 	mrCreateNoteCmd.Flags().String("line", "", "Line in the new version: a single number or a range N:M.")
 	mrCreateNoteCmd.Flags().Int("old-line", 0, "Line in the old version (for commenting on removed lines).")
@@ -200,6 +219,10 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reply", "file")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reply", "resolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reply", "unresolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("internal", "file")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("internal", "reply")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("internal", "resolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("internal", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("line", "old-line")
 
 	return mrCreateNoteCmd

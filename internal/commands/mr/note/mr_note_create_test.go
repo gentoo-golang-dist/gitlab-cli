@@ -1032,3 +1032,101 @@ func Test_mrNote_diffComment(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid line number")
 	})
 }
+
+func Test_mrNote_internal(t *testing.T) {
+	t.Parallel()
+
+	t.Run("internal note uses flat Notes API", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		// Mock GetMergeRequest
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+			Return(&gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:     1,
+					IID:    1,
+					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+				},
+			}, nil, nil)
+
+		// Mock CreateMergeRequestNote (flat API, not Discussions)
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "Confidential feedback", *opts.Body)
+				require.NotNil(t, opts.Internal)
+				assert.True(t, *opts.Internal)
+				return &gitlab.Note{ID: 600}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		output, err := exec(`1 --internal -m "Confidential feedback"`)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_600\n", output.String())
+	})
+
+	t.Run("--internal and --file are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --internal --file main.go -m "test"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "if any flags in the group [internal file] are set none of the others can be")
+	})
+
+	t.Run("--internal and --reply are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --internal --reply abc12345 -m "test"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "if any flags in the group [internal reply] are set none of the others can be")
+	})
+
+	t.Run("--internal and --resolve are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		_, err := exec(`1 --internal --resolve 100`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "if any flags in the group [internal resolve] are set none of the others can be")
+	})
+}
