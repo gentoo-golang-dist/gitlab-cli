@@ -75,10 +75,10 @@ func NewCmdAsk(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			Generate Git commands from natural language using AI assistance.
 
-			Describe what you want to do in plain language, and GitLab Duo (Classic) suggests the
-			appropriate Git commands. The AI provides both the commands and an explanation.
+			Describe what you want to do in plain language, and GitLab Duo (Classic) suggests
+			the appropriate Git commands. You receive both the commands and an explanation.
 
-			After you receive the suggested commands, you can execute them directly from
+			After you receive the suggested commands, you can run them directly from
 			the CLI. You must confirm each command before it runs.
 
 			Use this command to:
@@ -89,14 +89,14 @@ func NewCmdAsk(f cmdutils.Factory) *cobra.Command {
 			- Reduce context switching during development.
 		`),
 		Example: heredoc.Doc(`
-			$ glab duo ask list last 10 commit titles
-			> A list of Git commands to show the titles of the latest 10 commits with an explanation and an option to execute the commands.
+			# Explain how to display the titles of the last 10 commits
+			$ glab duo ask how to list last 10 commit titles
 
+			# Explain how to undo the last commit
 			$ glab duo ask how do I undo my last commit
-			> Suggestions for undoing the last commit with explanations of different approaches.
 
+			# Explain how to display files changed in the last commit
 			$ glab duo ask show me files changed in the last commit
-			> Commands to display files modified in the most recent commit.
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

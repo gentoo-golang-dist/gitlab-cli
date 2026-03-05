@@ -16,21 +16,25 @@ Run the GitLab Duo CLI (EXPERIMENTAL)
 
 Run the GitLab Duo CLI.
 
-This command provides an AI-powered assistant for your development workflow.
-The Duo CLI binary is automatically downloaded and managed by glab.
+Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
+Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
+on your behalf.
 
-The binary is installed to glab's config directory (respects XDG spec and
-`GLAB_CONFIG_DIR`). Authentication is handled automatically via
-`glab auth credential-helper` with OAuth2 token refresh support.
+When you use the GitLab Duo CLI in the GitLab CLI, `glab` handles
+authentication for you automatically.
+You only need to authenticate once. 
 
-Ensure you are authenticated before running: `glab auth login`
+Prerequisites:
+
+- Authenticate by running `glab auth login`.
+- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
 
 Configuration options:
 
-- `duo_cli_auto_run`: Skip run confirmation prompt
-- `duo_cli_auto_download`: Skip download confirmation prompt
+- `duo_cli_auto_run`: Skip the run confirmation prompt.
+- `duo_cli_auto_download`: Skip the download confirmation prompt.
 
-Note: All arguments and flags are passed through to the Duo CLI binary.
+All arguments and flags are passed through to the GitLab Duo CLI binary.
 Use `--update` to check for and install updates to the binary.
 
 This feature is an experiment and is not ready for production use.
@@ -45,14 +49,11 @@ glab duo cli [command] [flags]
 ## Examples
 
 ```console
-# Run GitLab Duo CLI
+# Run the GitLab Duo CLI
 $ glab duo cli
 
 # Show Duo CLI help
 $ glab duo cli --help
-
-# Run using the alias (glab duo defaults to cli)
-$ glab duo
 
 # Check for and install updates
 $ glab duo cli --update

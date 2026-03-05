@@ -38,32 +38,33 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "Run the GitLab Duo CLI (EXPERIMENTAL)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
-		This command provides an AI-powered assistant for your development workflow.
-		The Duo CLI binary is automatically downloaded and managed by glab.
+		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
+		Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
+		on your behalf.
 
-		The binary is installed to glab's config directory (respects XDG spec and
-		%[1]sGLAB_CONFIG_DIR%[1]s). Authentication is handled automatically via
-		%[1]sglab auth credential-helper%[1]s with OAuth2 token refresh support.
+		When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
+		authentication for you automatically.
+		You only need to authenticate once. 
 
-		Ensure you are authenticated before running: %[1]sglab auth login%[1]s
+		Prerequisites:
+
+		- Authenticate by running %[1]sglab auth login%[1]s.
+		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
 
 		Configuration options:
 
-		- %[1]sduo_cli_auto_run%[1]s: Skip run confirmation prompt
-		- %[1]sduo_cli_auto_download%[1]s: Skip download confirmation prompt
+		- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
+		- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
 
-		Note: All arguments and flags are passed through to the Duo CLI binary.
+		All arguments and flags are passed through to the GitLab Duo CLI binary.
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
 	`, "`") + text.ExperimentalString,
-		Example: heredoc.Doc(`
-		# Run GitLab Duo CLI
+		Example: heredoc.Docf(`
+		# Run the GitLab Duo CLI
 		$ glab duo cli
 
 		# Show Duo CLI help
 		$ glab duo cli --help
-
-		# Run using the alias (glab duo defaults to cli)
-		$ glab duo
 
 		# Check for and install updates
 		$ glab duo cli --update
