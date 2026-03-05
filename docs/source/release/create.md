@@ -48,6 +48,9 @@ $ glab release create v1.0.1 --notes "bugfix release"
 # Use release notes from a file
 $ glab release create v1.0.1 -F changelog.md
 
+# Update an existing release (e.g., change the release date) without modifying notes
+$ glab release create v1.0.1 --released-at "2024-01-15T10:00:00Z"
+
 # Upload a release asset with a display name (type will default to 'other')
 $ glab release create v1.0.1 '/path/to/asset.zip#My display label'
 

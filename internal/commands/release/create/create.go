@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -123,6 +122,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			# Use release notes from a file
 			$ glab release create v1.0.1 -F changelog.md
 
+			# Update an existing release (e.g., change the release date) without modifying notes
+			$ glab release create v1.0.1 --released-at "2024-01-15T10:00:00Z"
+
 			# Upload a release asset with a display name (type will default to 'other')
 			$ glab release create v1.0.1 '/path/to/asset.zip#My display label'
 
@@ -226,13 +228,6 @@ func (o *options) complete(flags *pflag.FlagSet, args []string) error {
 		return err
 	}
 	o.noteProvided = o.notes != ""
-
-	// Validate that we can prompt for notes if they weren't provided
-	if !o.noteProvided && !o.io.IsInteractive() {
-		return &cmdutils.FlagError{
-			Err: errors.New("--notes or --notes-file required for non-interactive mode"),
-		}
-	}
 
 	if !flags.Changed("use-package-registry") {
 		if usePackageRegistry, err := strconv.ParseBool(os.Getenv("GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY")); err != nil {

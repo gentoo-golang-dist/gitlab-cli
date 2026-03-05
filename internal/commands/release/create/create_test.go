@@ -583,6 +583,93 @@ func TestReleaseCreate_MilestoneClosing(t *testing.T) {
 	})
 }
 
+func TestReleaseCreate_WithoutNotes(t *testing.T) {
+	t.Setenv("CI_DEFAULT_BRANCH", "main")
+
+	t.Run("create release without notes in non-interactive mode", func(t *testing.T) {
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(
+			t,
+			NewCmdCreate,
+			false,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+		)
+
+		notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
+
+		// Tag exists
+		testClient.MockTags.EXPECT().GetTag("OWNER/REPO", "0.0.1", gomock.Any()).Return(&gitlab.Tag{Name: "0.0.1"}, nil, nil)
+
+		// Release doesn't exist
+		testClient.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+
+		// Create release without description
+		testClient.MockReleases.EXPECT().CreateRelease("OWNER/REPO", gomock.Any()).
+			DoAndReturn(func(pid any, opts *gitlab.CreateReleaseOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Release, *gitlab.Response, error) {
+				// Description should not be set (or be empty)
+				if opts.Description != nil {
+					assert.Empty(t, *opts.Description)
+				}
+				return &gitlab.Release{
+					Name:    "0.0.1",
+					TagName: "0.0.1",
+					Links:   gitlab.ReleaseLinks{Self: "https://gitlab.com/OWNER/REPO/-/releases/0.0.1"},
+				}, nil, nil
+			})
+
+		output, err := exec("0.0.1")
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "Release created:")
+	})
+
+	t.Run("update release without notes in non-interactive mode", func(t *testing.T) {
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := cmdtest.SetupCmdForTest(
+			t,
+			NewCmdCreate,
+			false,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+		)
+
+		okResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}
+
+		// Tag exists
+		testClient.MockTags.EXPECT().GetTag("OWNER/REPO", "0.0.1", gomock.Any()).Return(&gitlab.Tag{Name: "0.0.1"}, nil, nil)
+
+		// Release exists
+		testClient.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(&gitlab.Release{
+			Name:        "0.0.1",
+			TagName:     "0.0.1",
+			Description: "Original description",
+			Links:       gitlab.ReleaseLinks{Self: "https://gitlab.com/OWNER/REPO/-/releases/0.0.1"},
+		}, okResponse, nil)
+
+		// Update release - verifying we can update without providing description
+		testClient.MockReleases.EXPECT().UpdateRelease("OWNER/REPO", "0.0.1", gomock.Any()).
+			DoAndReturn(func(pid any, tagName string, opts *gitlab.UpdateReleaseOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Release, *gitlab.Response, error) {
+				// Description should not be set (or be empty) since we didn't provide notes
+				if opts.Description != nil {
+					assert.Empty(t, *opts.Description)
+				}
+				return &gitlab.Release{
+					Name:        "0.0.1",
+					TagName:     "0.0.1",
+					Description: "Original description", // Keep original
+					Links:       gitlab.ReleaseLinks{Self: "https://gitlab.com/OWNER/REPO/-/releases/0.0.1"},
+				}, nil, nil
+			})
+
+		// Update without providing notes - just update the name
+		output, err := exec("0.0.1 --name 'Updated Name'")
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "Release updated")
+	})
+}
+
 func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 	t.Setenv("CI_DEFAULT_BRANCH", "")
 
