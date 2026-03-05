@@ -9,7 +9,6 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -85,16 +84,22 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			uniqueNoteEnabled, _ := cmd.Flags().GetBool("unique")
 
 			if uniqueNoteEnabled {
-				opts := &gitlab.ListMergeRequestNotesOptions{ListOptions: gitlab.ListOptions{PerPage: api.DefaultListLimit}}
-				notes, _, err := client.Notes.ListMergeRequestNotes(repo.FullName(), mr.IID, opts)
-				if err != nil {
-					return fmt.Errorf("running merge request note deduplication: %v", err)
-				}
-				for _, noteInfo := range notes {
-					if noteInfo.Body == strings.TrimSpace(body) {
-						fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, noteInfo.ID)
-						return nil
+				opts := &gitlab.ListMergeRequestNotesOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}
+				for {
+					notes, resp, err := client.Notes.ListMergeRequestNotes(repo.FullName(), mr.IID, opts)
+					if err != nil {
+						return fmt.Errorf("running merge request note deduplication: %v", err)
 					}
+					for _, noteInfo := range notes {
+						if noteInfo.Body == strings.TrimSpace(body) {
+							fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, noteInfo.ID)
+							return nil
+						}
+					}
+					if resp == nil || resp.NextPage == 0 {
+						break
+					}
+					opts.Page = resp.NextPage
 				}
 			}
 
