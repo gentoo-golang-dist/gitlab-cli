@@ -301,3 +301,54 @@ func Test_remoteResolverErrors(t *testing.T) {
 		})
 	}
 }
+
+func Test_remoteResolverSplitHostWithSubfolder(t *testing.T) {
+	// This test reproduces Issue #8197: split-host + subfolder bug
+	// where SSH host mapping happens but r.Repo is never updated with the mapped hostname
+	t.Run("SSH remote with split-host config and subfolder", func(t *testing.T) {
+		// Parse SSH URL using git.ParseURL to properly normalize SCP-style format
+		sshURL, err := git.ParseURL("git@git.example.com:owner/repo.git")
+		require.NoError(t, err)
+
+		rr := &remoteResolver{
+			readRemotes: func() (git.RemoteSet, error) {
+				// SSH remote URL using git.example.com
+				return git.RemoteSet{
+					&git.Remote{
+						Name:     "origin",
+						FetchURL: sshURL,
+						PushURL:  sshURL,
+					},
+				}, nil
+			},
+			getConfig: func() config.Config {
+				// Config keyed under api.example.com with ssh_host pointing to git.example.com
+				return config.NewFromString(heredoc.Doc(`
+					hosts:
+					  api.example.com:
+					    token: TEST_TOKEN
+					    ssh_host: git.example.com
+					    subfolder: gitlab
+				`))
+			},
+			defaultHostname: "gitlab.com",
+		}
+
+		resolver := rr.Resolver("")
+		remotes, err := resolver()
+		require.NoError(t, err)
+		require.Equal(t, 1, len(remotes))
+
+		// BUG: The remote should have RepoHost() = "api.example.com" (the config key)
+		// but it actually returns "git.example.com" (the SSH hostname)
+		// This causes downstream code to fail when looking up config (subfolder, token, etc.)
+
+		// This assertion should PASS after the fix:
+		assert.Equal(t, "api.example.com", remotes[0].RepoHost(),
+			"Remote.Repo should be updated to use the config key hostname, not the SSH hostname")
+
+		// Verify the owner/repo are correct
+		assert.Equal(t, "owner", remotes[0].RepoOwner())
+		assert.Equal(t, "repo", remotes[0].RepoName())
+	})
+}

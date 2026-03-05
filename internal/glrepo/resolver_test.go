@@ -15,6 +15,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -655,6 +656,72 @@ func Test_BaseRepo(t *testing.T) {
 		// The fix should ensure we use the git remote host, not the API host
 		assert.Equal(t, "owner/repo", got.FullName())
 		assert.Equal(t, "git.example.com", got.RepoHost()) // Should use git remote host, not API host
+	})
+
+	t.Run("Host mismatch with subfolder: API host differs from git remote host and includes subfolder", func(t *testing.T) {
+		// This test verifies the split-host + subfolder bug (Issue #8197)
+		// where the API returns a different host than the git remote AND includes a subfolder
+		// Git remote uses git.example.com, but API returns api.example.com/gitlab/owner/repo.git
+
+		// Mock config with subfolder - using CORRECT config pattern (API hostname as key)
+		defer config.StubConfig(`---
+hosts:
+  api.example.com:
+    token: TEST_TOKEN
+    ssh_host: git.example.com
+    subfolder: gitlab
+`, "")()
+
+		localRem := &ResolvedRemotes{
+			remotes: Remotes{
+				&Remote{
+					Remote: &git.Remote{
+						Name: "origin",
+					},
+					Repo: NewWithHost("owner", "repo", "git.example.com"), // Git remote uses git host
+				},
+			},
+			apiClient:       &gitlab.Client{},
+			defaultHostname: "gitlab.com",
+			network: []gitlab.Project{
+				{
+					ID:                1,
+					PathWithNamespace: "owner/repo",                                    // API provides correct path WITHOUT subfolder
+					HTTPURLToRepo:     "https://api.example.com/gitlab/owner/repo.git", // URL includes subfolder
+				},
+			},
+		}
+
+		// Override git.SetRemoteResolution so it doesn't mess with the user configs
+		originalSetRemoteResolution := git.SetRemoteResolution
+		defer func() {
+			git.SetRemoteResolution = originalSetRemoteResolution
+		}()
+		git.SetRemoteResolution = func(_, _ string) error {
+			return nil
+		}
+
+		// Override api.GetProject so it doesn't mess with other tests
+		originalGetProject := api.GetProject
+		defer func() {
+			api.GetProject = originalGetProject
+		}()
+		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+			p := &gitlab.Project{
+				PathWithNamespace: "owner/repo", // API returns correct path
+				HTTPURLToRepo:     "https://api.example.com/gitlab/owner/repo.git",
+			}
+			return p, nil
+		}
+
+		ios := iostreams.New(iostreams.WithStdout(nil, true), iostreams.WithStderr(nil, true))
+
+		got, err := localRem.BaseRepo(t.Context(), ios)
+		assert.NoError(t, err)
+
+		// The fix should ensure we get the correct path WITHOUT the subfolder prefix
+		assert.Equal(t, "owner/repo", got.FullName())
+		assert.Equal(t, "git.example.com", got.RepoHost())
 	})
 }
 

@@ -109,13 +109,13 @@ func (rr *remoteResolver) Resolver(hostOverride string) func() (glrepo.Remotes, 
 					// Unknown host - skip this remote
 					continue
 				}
-				// SSH host maps to a config entry — rewrite the remote's repo
-				// so that RepoHost() returns the API hostname (where config/token live)
+				// SSH host maps to a config entry — update both repoHost and r
+				// so that RepoHost() returns the API hostname and filtering works correctly
+				repoHost = configHost
 				r = &glrepo.Remote{
 					Remote: r.Remote,
 					Repo:   glrepo.NewWithHost(r.RepoOwner(), r.RepoName(), configHost),
 				}
-				repoHost = configHost
 			}
 
 			if repoHost != hostname && hostname != "" {
