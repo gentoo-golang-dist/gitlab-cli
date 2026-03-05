@@ -18,8 +18,6 @@ func NewCmdRunner(f cmdutils.Factory) *cobra.Command {
 		Long:  "Manages GitLab CI/CD runners for projects, groups, or the entire instance.\n",
 	}
 
-	cmdutils.EnableRepoOverride(runnerCmd, f)
-
 	runnerCmd.AddCommand(assignCmd.NewCmd(f))
 	runnerCmd.AddCommand(listCmd.NewCmd(f))
 	runnerCmd.AddCommand(updateCmd.NewCmd(f))
