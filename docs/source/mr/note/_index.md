@@ -34,6 +34,27 @@ $ glab mr note -m "LGTM"
 # Open your editor to compose a multi-line comment
 $ glab mr note 123
 
+# Pipe a comment from stdin
+$ echo "LGTM" | glab mr note 123
+
+# Add a diff comment on line 42 of main.go
+$ glab mr note 123 --file main.go --line 42 -m "Needs refactoring"
+
+# Add a diff comment on lines 10-15 (multiline range)
+$ glab mr note 123 --file main.go --line 10:15 -m "Extract this block"
+
+# Add a diff comment on a removed line (old side)
+$ glab mr note 123 --file main.go --old-line 7 -m "Why was this removed?"
+
+# Add a file-level diff comment (no line specified)
+$ glab mr note 123 --file main.go -m "General comment on this file"
+
+# Reply to an existing discussion (full or prefix ID)
+$ glab mr note 123 --reply abc12345 -m "I agree!"
+
+# Add a confidential internal note
+$ glab mr note 123 --internal -m "Internal feedback for maintainers"
+
 # Resolve a discussion by note ID
 $ glab mr note 123 --resolve 3107030349
 
@@ -44,7 +65,12 @@ $ glab mr note 123 --unresolve 3107030349
 ## Options
 
 ```plaintext
+      --file string      File path for a diff comment (targets the latest MR diff version).
+      --internal         Create a confidential internal note (uses flat Notes API).
+      --line string      Line in the new version: a single number or a range N:M.
   -m, --message string   Comment or note message.
+      --old-line int     Line in the old version (for commenting on removed lines).
+      --reply string     Reply to an existing discussion by ID (full or 8+ char prefix).
       --resolve int      Resolve the discussion containing the specified note ID.
       --unique           Don't create a comment or note if it already exists.
       --unresolve int    Unresolve the discussion containing the specified note ID.
@@ -56,3 +82,13 @@ $ glab mr note 123 --unresolve 3107030349
   -h, --help              Show help for this command.
   -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
 ```
+
+## Subcommands
+
+- [`delete`](delete.md)
+- [`draft`](draft/_index.md)
+- [`list`](list.md)
+- [`resolve`](resolve.md)
+- [`review`](review.md)
+- [`unresolve`](unresolve.md)
+- [`update`](update.md)

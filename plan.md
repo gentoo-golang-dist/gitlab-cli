@@ -23,6 +23,7 @@ The standalone `note` project has batch reviews — missing from glab.
 - `draft` subcommand group added (`internal/commands/mr/note/draft/`): `create`, `list`, `update`, `delete`, `publish`. Uses DraftNotes API. `create` supports `--file`/`--line`/`--old-line` (diff position), `--reply` (discussion reply), `--resolve` (auto-resolve on publish). `list` supports `--json`. `delete` has `--yes` confirmation. `publish` supports single draft or `--all` (submit review). Registered as subcommand of `NewCmdNote()`. 22 tests passing.
 - `review` subcommand added (`mr_note_review.go`): `glab mr note review [<mr-id>|<branch>] [--publish] < comments.json`. Reads JSON array from stdin, batch-creates draft notes. Supports general comments, diff comments (`file`/`line`/`old_line`), replies (`reply`/`resolve`). `--publish` publishes all drafts after creation. Pre-fetches diff version only when needed. 10 tests passing.
 - Position utilities (`mrutils/position.go`) fully tested in `position_test.go`: `ParseLine`, `FindFileDiff`, `BuildDiffPosition`, `lineCode`, `ResolveDiscussionID`, `FindNoteInDiscussions` — 26 tests passing.
+- Documentation generated via `make gen-docs`: `docs/source/mr/note/_index.md` with all flags/examples/subcommands, plus individual docs for all subcommands (`list`, `delete`, `resolve`, `unresolve`, `update`, `review`, `draft/*`). Stale flat `docs/source/mr/note.md` removed. Changelog is auto-generated from git history (no manual entries needed).
 
 ## User-Facing Changes
 
@@ -50,8 +51,4 @@ The existing `--resolve <note-id>` behavior is preserved. New `resolve`/`unresol
 
 ## Migration Steps
 
-### Step 1: Documentation
-
-- Update `docs/source/mr/note.md` (auto-generated from command definitions)
-- Run `make gen-docs`
-- Add changelog entries noting the flat→thread and `--unique` pagination behavior changes
+All migration steps complete.
