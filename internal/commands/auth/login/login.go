@@ -41,6 +41,7 @@ type LoginOptions struct {
 	ApiHost     string
 	ApiProtocol string
 	GitProtocol string
+	SSHHostname string
 
 	UseKeyring bool
 }
@@ -297,38 +298,13 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			// Check if user selected "Enter a different hostname"
 			if selectedOption == promptLoginDifferentHostname {
 				// Fall back to manual entry
-				hostname = opts.defaultHostname
-				apiHostname = hostname
-
-				hostnameInput := huh.NewInput().
-					Title("GitLab hostname:").
-					Value(&hostname).
-					Placeholder(opts.defaultHostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err := opts.IO.Run(ctx, hostnameInput)
+				var sshHostname string
+				var err error
+				hostname, apiHostname, sshHostname, err = promptForSelfHostedInstance(ctx, opts)
 				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
+					return err
 				}
-
-				// Set default for API hostname
-				if apiHostname == opts.defaultHostname {
-					apiHostname = hostname
-				}
-
-				apiHostnameInput := huh.NewInput().
-					Title("API hostname:").
-					Description("For instances with a different hostname for the API endpoint.").
-					Value(&apiHostname).
-					Placeholder(hostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err = opts.IO.Run(ctx, apiHostnameInput)
-				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
-				}
+				opts.SSHHostname = sshHostname
 			} else {
 				// User selected a detected host - find it in the list
 				for _, host := range detectedHosts {
@@ -359,38 +335,13 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			isSelfHosted = selectedOption == promptSelfManagedOrDedicatedInstance
 
 			if isSelfHosted {
-				hostname = opts.defaultHostname
-				apiHostname = hostname
-
-				hostnameInput := huh.NewInput().
-					Title("GitLab hostname:").
-					Value(&hostname).
-					Placeholder(opts.defaultHostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err := opts.IO.Run(ctx, hostnameInput)
+				var sshHostname string
+				var err error
+				hostname, apiHostname, sshHostname, err = promptForSelfHostedInstance(ctx, opts)
 				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
+					return err
 				}
-
-				// Set default for API hostname
-				if apiHostname == opts.defaultHostname {
-					apiHostname = hostname
-				}
-
-				apiHostnameInput := huh.NewInput().
-					Title("API hostname:").
-					Description("For instances with a different hostname for the API endpoint.").
-					Value(&apiHostname).
-					Placeholder(hostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err = opts.IO.Run(ctx, apiHostnameInput)
-				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
-				}
+				opts.SSHHostname = sshHostname
 			} else {
 				hostname = selectedOption
 				apiHostname = hostname
@@ -398,6 +349,45 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	} else {
 		isSelfHosted = glinstance.IsSelfHosted(hostname)
+
+		// If interactive and self-hosted, prompt for API hostname and SSH hostname
+		if opts.Interactive && isSelfHosted {
+			// Prompt for API hostname
+			apiHostnameInput := huh.NewInput().
+				Title("API hostname:").
+				Description("For instances with a different hostname for the API endpoint.").
+				Value(&apiHostname).
+				Placeholder(hostname).
+				Validate(func(s string) error {
+					return hostnameValidator(s)
+				})
+			err := opts.IO.Run(ctx, apiHostnameInput)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			// Prompt for SSH hostname (default to main hostname, like API hostname)
+			sshHostname := hostname
+			// Try to detect from git remotes as a suggestion
+			if detectedSSH := detectSSHHost(hostname); detectedSSH != "" {
+				sshHostname = detectedSSH
+			}
+
+			sshHostnameInput := huh.NewInput().
+				Title("SSH hostname:").
+				Description("For instances with a different hostname for SSH git operations.").
+				Value(&sshHostname).
+				Placeholder(hostname).
+				Validate(func(s string) error {
+					return hostnameValidator(s)
+				})
+			err = opts.IO.Run(ctx, sshHostnameInput)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			opts.SSHHostname = sshHostname
+		}
 	}
 
 	fmt.Fprintf(opts.IO.StdErr, "- Signing into %s\n", hostname)
@@ -502,32 +492,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	}
 
-	// Detect and optionally set SSH host
-	sshHost := detectSSHHost(hostname)
-	if sshHost != "" && sshHost != hostname {
-		// Found different SSH host
-		if opts.Interactive {
-			var setSSHHost bool
-			prompt := fmt.Sprintf("Detected SSH hostname: %s. Use this for SSH operations?", sshHost)
-			confirmInput := huh.NewConfirm().
-				Title(prompt).
-				Value(&setSSHHost).
-				Affirmative("Yes").
-				Negative("No")
-			err := opts.IO.Run(ctx, confirmInput)
-			if err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
-			}
-			if setSSHHost {
-				if err := cfg.Set(hostname, "ssh_host", sshHost); err != nil {
-					return err
-				}
-			}
-		} else {
-			// In non-interactive mode, auto-set if detected
-			if err := cfg.Set(hostname, "ssh_host", sshHost); err != nil {
-				return err
-			}
+	// Set SSH hostname if it's different from the main hostname
+	if opts.SSHHostname != "" && opts.SSHHostname != hostname {
+		if err := cfg.Set(hostname, "ssh_host", opts.SSHHostname); err != nil {
+			return err
 		}
 	}
 
@@ -691,6 +659,67 @@ func defaultContainerRegistryDomainsString(hostname string) string {
 
 func setContainerRegistryDomains(cfg config.Config, hostname string, domains string) error {
 	return cfg.Set(hostname, "container_registry_domains", domains)
+}
+
+// promptForSelfHostedInstance prompts the user for hostname, API hostname, and SSH hostname
+// for a self-hosted GitLab instance. Returns (hostname, apiHostname, sshHostname, error).
+func promptForSelfHostedInstance(ctx context.Context, opts *LoginOptions) (string, string, string, error) {
+	hostname := opts.defaultHostname
+	apiHostname := hostname
+
+	// Prompt for GitLab hostname
+	hostnameInput := huh.NewInput().
+		Title("GitLab hostname:").
+		Value(&hostname).
+		Placeholder(opts.defaultHostname).
+		Validate(func(s string) error {
+			return hostnameValidator(s)
+		})
+	err := opts.IO.Run(ctx, hostnameInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	// Set default for API hostname
+	if apiHostname == opts.defaultHostname {
+		apiHostname = hostname
+	}
+
+	// Prompt for API hostname
+	apiHostnameInput := huh.NewInput().
+		Title("API hostname:").
+		Description("For instances with a different hostname for the API endpoint.").
+		Value(&apiHostname).
+		Placeholder(hostname).
+		Validate(func(s string) error {
+			return hostnameValidator(s)
+		})
+	err = opts.IO.Run(ctx, apiHostnameInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	// Prompt for SSH hostname
+	sshHostname := hostname
+	// Try to detect from git remotes as a suggestion
+	if detectedSSH := detectSSHHost(hostname); detectedSSH != "" {
+		sshHostname = detectedSSH
+	}
+
+	sshHostnameInput := huh.NewInput().
+		Title("SSH hostname:").
+		Description("For instances with a different hostname for SSH git operations.").
+		Value(&sshHostname).
+		Placeholder(hostname).
+		Validate(func(s string) error {
+			return hostnameValidator(s)
+		})
+	err = opts.IO.Run(ctx, sshHostnameInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	return hostname, apiHostname, sshHostname, nil
 }
 
 // splitHostnameAndSubfolder splits a hostname that may contain a subfolder path.
