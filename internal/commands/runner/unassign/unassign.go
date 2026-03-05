@@ -33,12 +33,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unassign <runner-id> [flags]",
 		Short: "Unassign a runner from a project.",
-		Long: heredoc.Doc(`
-			Unassigns a project runner from a project.
-			Specify the project with -R (e.g. owner/repo).
-			You cannot unassign a runner from the owner project. Use Delete a runner instead.
-			Requires Maintainer or Owner of the project that you want to unassign the runner.
-		`),
+		Long: heredoc.Docf(`
+			Unassign a runner from a project.
+			You cannot unassign a runner from the owner project.
+			Use %[1]sglab runner delete%[1]s instead.
+
+			Requires the Maintainer or Owner role for the project.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Unassign runner 9 from the current repository
 			$ glab runner unassign 9

@@ -38,9 +38,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   "List GitLab CI/CD runners.",
-		Long:    "List runners for a project (default), group, or instance. Use -R, --repo to list runners for another repository. Instance scope requires administrator access.\n",
+		Use:   "list [flags]",
+		Short: "List runners.",
+		Long: heredoc.Doc(`
+			List runners for a project (default), group, or instance.
+
+			Instance scope requires administrator access.
+		`),
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		Example: heredoc.Doc(`

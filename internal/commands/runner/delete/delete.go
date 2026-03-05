@@ -33,20 +33,19 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "delete <runner-id>",
-		Short: "Delete a GitLab CI/CD runner.",
+		Short: "Delete a runner.",
 		Args:  cobra.ExactArgs(1),
 		Long: heredoc.Doc(`
 			Permanently deletes a runner from the GitLab instance.
-			Uses your access token.
 
-			Required access:
+			Prerequisites:
 			
-			- Maintainer or Owner for project runners.
-			- Owner for group runners.
-			- Administrator for instance runners.
+			- Maintainer or Owner role for project runners.
+			- Owner role for group runners.
+			- Administrator access for instance runners.
 		`),
 		Example: heredoc.Doc(`
-			# Delete a runner (confirmation when interactive)
+			# Delete a runner (prompts for confirmation)
 			$ glab runner delete 6
 
 			# Skip confirmation prompt

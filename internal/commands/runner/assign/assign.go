@@ -34,9 +34,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "assign <runner-id> [flags]",
 		Short: "Assign a runner to a project.",
 		Long: heredoc.Doc(`
-			Assigns an available runner to a project.
-			Specify the project with -R (e.g. owner/repo).
-			Requires Maintainer or Owner of the project.
+			Assigns a runner to a project.
+
+			Requires the Maintainer or Owner role for the project.
 		`),
 		Example: heredoc.Doc(`
 			# Assign runner 9 to the current repository

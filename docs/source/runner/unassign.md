@@ -14,10 +14,11 @@ Unassign a runner from a project.
 
 ## Synopsis
 
-Unassigns a project runner from a project.
-Specify the project with -R (e.g. owner/repo).
-You cannot unassign a runner from the owner project. Use Delete a runner instead.
-Requires Maintainer or Owner of the project that you want to unassign the runner.
+Unassign a runner from a project.
+You cannot unassign a runner from the owner project.
+Use `glab runner delete` instead.
+
+Requires the Maintainer or Owner role for the project.
 
 ```plaintext
 glab runner unassign <runner-id> [flags]

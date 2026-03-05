@@ -34,14 +34,15 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "update <runner-id>",
-		Short: "Update a GitLab CI/CD runner.",
+		Short: "Update a runner.",
 		Args:  cobra.ExactArgs(1),
 		Long: heredoc.Doc(`
 			Updates settings for a GitLab CI/CD runner.
-			Use flags to change the runner's configuration, such as its pause state.
 
-			The following roles and access levels are required:
-			
+			Use flags to update the runner configuration, such as the pause state.
+
+			Prerequisites:
+
 			- Maintainer or Owner role for project runners.
 			- Owner role for group runners.
 			- Administrator access for instance runners.
@@ -53,8 +54,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			# Unpause a runner
 			$ glab runner update <runner-id> --unpause
 
-			# Update on another host
-			$ glab runner update <runner-id> --pause 
+			# Pause a runner in a specific project
+			$ glab runner update <runner-id> --pause -R owner/repo 
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

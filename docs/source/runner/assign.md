@@ -14,9 +14,9 @@ Assign a runner to a project.
 
 ## Synopsis
 
-Assigns an available runner to a project.
-Specify the project with -R (e.g. owner/repo).
-Requires Maintainer or Owner of the project.
+Assigns a runner to a project.
+
+Requires the Maintainer or Owner role for the project.
 
 ```plaintext
 glab runner assign <runner-id> [flags]
