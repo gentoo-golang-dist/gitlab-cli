@@ -38,7 +38,7 @@ $ glab runner update <runner-id> --pause
 $ glab runner update <runner-id> --unpause
 
 # Pause a runner in a specific project
-$ glab runner update <runner-id> --pause -R owner/repo 
+$ glab runner update <runner-id> --pause -R owner/repo
 
 ```
 

@@ -44,7 +44,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
 		authentication for you automatically.
-		You only need to authenticate once. 
+		You only need to authenticate once.
 
 		Prerequisites:
 

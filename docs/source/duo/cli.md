@@ -22,7 +22,7 @@ on your behalf.
 
 When you use the GitLab Duo CLI in the GitLab CLI, `glab` handles
 authentication for you automatically.
-You only need to authenticate once. 
+You only need to authenticate once.
 
 Prerequisites:
 
