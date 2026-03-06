@@ -47,7 +47,7 @@ BUILDLOC ?= ./bin/glab
 
 # Dependency versions
 GOTESTSUM_VERSION = 1.13.0
-GOLANGCI_LINT_VERSION = 2.10.1
+GOLANGCI_LINT_VERSION = 2.11.1
 
 # Add the ability to override some variables
 # Use with care
