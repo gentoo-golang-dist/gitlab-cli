@@ -75,7 +75,7 @@ func NewCmdAsk(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			Generate Git commands from natural language using AI assistance.
 
-			Describe what you want to do in plain language, and GitLab Duo (Classic) suggests
+			Describe what you want to do in plain language, and GitLab Duo suggests
 			the appropriate Git commands. You receive both the commands and an explanation.
 
 			After you receive the suggested commands, you can run them directly from
