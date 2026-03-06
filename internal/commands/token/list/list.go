@@ -27,6 +27,7 @@ type options struct {
 	group        string
 	outputFormat string
 	listActive   bool
+	count        bool
 }
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
@@ -66,6 +67,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 		# Administrators only: list the personal access tokens of another user
 		$ glab token list --user johndoe
+
+		# Print only the count of tokens
+		$ glab token list --count
+		$ glab token list --group group/sub-group --count
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -80,12 +85,16 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmdutils.EnableRepoOverride(cmd, f)
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "List group access tokens. Ignored if a user or repository argument is set.")
-	cmd.Flags().StringVarP(&opts.user, "user", "U", "", "List personal access tokens. Use @me for the current user.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. text provides a readable table, json outputs the tokens with metadata.")
-	cmd.Flags().BoolVarP(&opts.listActive, "active", "a", false, "List only the active tokens.")
-	cmd.MarkFlagsMutuallyExclusive("group", "user")
 
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.group, "group", "g", "", "List group access tokens. Ignored if a user or repository argument is set.")
+	fl.StringVarP(&opts.user, "user", "U", "", "List personal access tokens. Use @me for the current user.")
+	fl.StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json. text provides a readable table, json outputs the tokens with metadata.")
+	fl.BoolVarP(&opts.listActive, "active", "a", false, "List only the active tokens.")
+	fl.BoolVarP(&opts.count, "count", "c", false, "Print only the count of tokens.")
+	cmd.MarkFlagsMutuallyExclusive("group", "user")
+	cmd.MarkFlagsMutuallyExclusive("output", "count")
 	return cmd
 }
 
@@ -248,6 +257,11 @@ func (o *options) run() error {
 				})
 			}
 		}
+	}
+
+	if o.count {
+		o.io.LogInfof("%d\n", len(outputTokens))
+		return nil
 	}
 
 	if o.outputFormat == "json" {
