@@ -72,9 +72,9 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			To store your token in your operating system's keyring instead, use %[1]s--use-keyring%[1]s.
 			After authentication, all %[1]sglab%[1]s commands use the stored credentials.
 			
-			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s
-			are set, they take precedence over the stored credentials.
-			These variables are ignored when CI auto-login is enabled with %[1]sGLAB_ENABLE_CI_AUTOLOGIN%[1]s.
+			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s are set,
+			they take precedence over the stored credentials.
+			When CI auto-login is enabled, these variables also override %[1]sCI_JOB_TOKEN%[1]s.
 			
 			To pass a token on standard input, use %[1]s--stdin%[1]s.
 			

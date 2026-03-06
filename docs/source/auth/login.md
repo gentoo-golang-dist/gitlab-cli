@@ -21,9 +21,9 @@ Stores your credentials in the global configuration file
 To store your token in your operating system's keyring instead, use `--use-keyring`.
 After authentication, all `glab` commands use the stored credentials.
 
-If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN`
-are set, they take precedence over the stored credentials.
-These variables are ignored when CI auto-login is enabled with `GLAB_ENABLE_CI_AUTOLOGIN`.
+If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN` are set,
+they take precedence over the stored credentials.
+When CI auto-login is enabled, these variables also override `CI_JOB_TOKEN`.
 
 To pass a token on standard input, use `--stdin`.
 

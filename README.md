@@ -247,16 +247,13 @@ The token is automatically provided by the GitLab Runner via the `CI_JOB_TOKEN` 
 Endpoints allowing the use of the CI job token are listed in the
 [GitLab documentation](https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access).
 
-#### Auto-Login [EXPERIMENTAL]
+#### Auto-login
 
-There is an experimental CI auto-login feature that can be enabled by setting the `GLAB_ENABLE_CI_AUTOLOGIN` variable
-to `true`. This feature automatically detects if `glab` is running in GitLab CI and, if so, uses the predefined
-CI/CD variables to sign in.
-
-Example:
+To enable CI auto-login, set `GLAB_ENABLE_CI_AUTOLOGIN=true`. When enabled, `glab` automatically
+detects if it's running in a GitLab CI job and uses the predefined CI/CD variables to sign in.
 
 ```shell
-GLAB_ENABLE_CI_AUTLOGIN=true glab release list -R $CI_PROJECT_PATH
+GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 ```
 
 #### Manual login
