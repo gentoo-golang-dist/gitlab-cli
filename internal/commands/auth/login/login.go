@@ -499,7 +499,11 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	}
 
+	// Smart default: use SSH if user configured a custom SSH host
 	gitProtocol := "https"
+	if opts.SSHHostname != "" && opts.SSHHostname != hostname {
+		gitProtocol = "ssh"
+	}
 	apiProtocol := "https"
 
 	glabExecutable := "glab"
@@ -510,7 +514,12 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 
 	if opts.Interactive {
 		gitProtocolOptions := []string{promptProtocolSSH, promptProtocolHTTPS, promptProtocolHTTP}
-		gitProtocol = promptProtocolHTTPS // Set default
+		// Use smart default based on SSH hostname configuration
+		defaultProtocol := promptProtocolHTTPS
+		if gitProtocol == "ssh" {
+			defaultProtocol = promptProtocolSSH
+		}
+		gitProtocol = defaultProtocol
 		err = opts.IO.Select(ctx, &gitProtocol, "Choose default Git protocol:", gitProtocolOptions)
 		if err != nil {
 			return fmt.Errorf("could not prompt: %w", err)
@@ -761,26 +770,14 @@ func detectSSHHost(httpHostname string) string {
 	}
 
 	// Look for SSH remotes and extract hostname
+	// Note: git.ParseURL() already normalizes SCP-style URLs (git@host:path)
+	// to SSH URLs (ssh://host/path) when remotes are loaded, so the Scheme=="ssh"
+	// check below catches all SSH remotes regardless of original URL format.
 	for _, remote := range remotes {
 		if remote.FetchURL != nil && remote.FetchURL.Scheme == "ssh" {
 			sshHost := remote.FetchURL.Hostname()
 			if sshHost != "" && sshHost != httpHostname {
 				return sshHost
-			}
-		}
-		// Also check SCP-style URLs (git@host:path)
-		if remote.FetchURL != nil {
-			// Try to parse as SCP-style: git@hostname:path
-			urlStr := remote.FetchURL.String()
-			if strings.Contains(urlStr, "@") && strings.Contains(urlStr, ":") && !strings.Contains(urlStr, "://") {
-				// This looks like SCP-style
-				parts := strings.SplitN(urlStr, "@", 2)
-				if len(parts) == 2 {
-					hostParts := strings.SplitN(parts[1], ":", 2)
-					if len(hostParts) == 2 && hostParts[0] != httpHostname {
-						return hostParts[0]
-					}
-				}
 			}
 		}
 	}
