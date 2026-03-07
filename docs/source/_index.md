@@ -85,6 +85,7 @@ in the main README.
 - [`glab completion`](completion/_index.md)
 - [`glab config`](config/_index.md)
 - [`glab deploy-key`](deploy-key/_index.md)
+- [`glab deploy-token`](deploy-token/_index.md)
 - [`glab duo`](duo/_index.md)
 - [`glab gpg-key`](gpg-key/_index.md)
 - [`glab incident`](incident/_index.md)
