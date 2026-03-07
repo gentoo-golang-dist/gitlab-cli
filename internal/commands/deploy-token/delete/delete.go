@@ -24,7 +24,7 @@ type options struct {
 	group   string
 }
 
-func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io:           f.IO(),
 		gitlabClient: f.GitLabClient,

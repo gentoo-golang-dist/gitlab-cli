@@ -27,7 +27,7 @@ type options struct {
 	group     string
 }
 
-func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io:           f.IO(),
 		gitlabClient: f.GitLabClient,
@@ -44,7 +44,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
+			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.name == "" {
@@ -57,11 +57,12 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.name, "name", "n", "", "Name of the deploy token.")
-	cmd.Flags().StringSliceVarP(&opts.scopes, "scopes", "s", nil, "Scopes for the deploy token. Options: read_repository, read_registry, write_registry, read_package_registry, write_package_registry.")
-	cmd.Flags().StringVarP(&opts.expiresAt, "expires-at", "e", "", "Expiration date of the deploy token (ISO 8601 format, e.g. 2025-12-31).")
-	cmd.Flags().StringVarP(&opts.username, "username", "u", "", "Username for the deploy token. Defaults to gitlab+deploy-token-{n}.")
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Create deploy token for a group.")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.name, "name", "n", "", "Name of the deploy token.")
+	fl.StringSliceVarP(&opts.scopes, "scopes", "s", nil, "Scopes for the deploy token. Options: read_repository, read_registry, write_registry, read_package_registry, write_package_registry.")
+	fl.StringVarP(&opts.expiresAt, "expires-at", "e", "", "Expiration date of the deploy token (ISO 8601 format, e.g. 2025-12-31).")
+	fl.StringVarP(&opts.username, "username", "u", "", "Username for the deploy token. Defaults to gitlab+deploy-token-{n}.")
+	fl.StringVarP(&opts.group, "group", "g", "", "Create deploy token for a group.")
 
 	return cmd
 }

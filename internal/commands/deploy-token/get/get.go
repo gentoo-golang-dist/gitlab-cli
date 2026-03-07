@@ -25,7 +25,7 @@ type options struct {
 	outputFormat string
 }
 
-func NewCmdGet(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io:           f.IO(),
 		gitlabClient: f.GitLabClient,

@@ -26,7 +26,7 @@ type options struct {
 	outputFormat string
 }
 
-func NewCmdList(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io:           f.IO(),
 		gitlabClient: f.GitLabClient,
@@ -46,6 +46,12 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.page < 1 {
+				return cmdutils.FlagError{Err: fmt.Errorf("--page must be >= 1")}
+			}
+			if opts.perPage < 1 {
+				return cmdutils.FlagError{Err: fmt.Errorf("--per-page must be >= 1")}
+			}
 			return opts.run()
 		},
 	}
