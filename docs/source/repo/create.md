@@ -60,6 +60,7 @@ $ glab repo create <host>/path/to/repository
       --remoteName origin      Remote name for the Git repository you're in. Defaults to origin if not provided. (default "origin")
   -s, --skipGitInit            Skip run 'git init'.
   -t, --tag stringArray        The list of tags for the project.
+  -y, --yes                    Skip interactive prompts and use defaults.
 ```
 
 ## Options inherited from parent commands
