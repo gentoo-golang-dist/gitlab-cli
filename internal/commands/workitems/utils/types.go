@@ -2,7 +2,11 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 	"strings"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 )
 
 // IssueType enum values from GitLab GraphQL API
@@ -38,6 +42,20 @@ var AllKnownTypes = []string{
 	TypeTestCase,
 }
 
+// WorkItemTypeIDs contains the current default work item type IDs
+// NOTE: This list will become outdated when work items become customizable.
+var WorkItemTypeIDs = map[string]gitlab.WorkItemTypeID{
+	"epic":        gitlab.WorkItemTypeEpic,
+	"issue":       gitlab.WorkItemTypeIssue,
+	"task":        gitlab.WorkItemTypeTask,
+	"incident":    gitlab.WorkItemTypeIncident,
+	"ticket":      gitlab.WorkItemTypeTicket,
+	"requirement": gitlab.WorkItemTypeRequirement,
+	"test_case":   gitlab.WorkItemTypeTestCase,
+	"objective":   gitlab.WorkItemTypeObjective,
+	"key_result":  gitlab.WorkItemTypeKeyResult,
+}
+
 // ValidateTypes performs minimal format validation on work item types.
 // Only checks that types are non-empty and non-whitespace.
 // The GraphQL API is responsible for validating actual type names.
@@ -48,4 +66,29 @@ func ValidateTypes(types []string) error {
 		}
 	}
 	return nil
+}
+
+// ResolveTypeID will resolve the work item ID based on the type provided
+func ResolveTypeID(t string) (gitlab.WorkItemTypeID, error) {
+	if t == "" {
+		return "", fmt.Errorf("work item type is required")
+	}
+	wiType := strings.ToLower(strings.TrimSpace(t))
+
+	v, ok := WorkItemTypeIDs[wiType]
+	if !ok {
+		return "", cmdutils.FlagError{Err: fmt.Errorf("--type must be one of %s", strings.Join(ValidTypeNames(), ", "))}
+	}
+	return v, nil
+}
+
+// ValidTypeNames provides a list of the available type names as needed
+func ValidTypeNames() []string {
+	types := make([]string, 0, len(WorkItemTypeIDs))
+	for i := range WorkItemTypeIDs {
+		types = append(types, i)
+	}
+
+	sort.Strings(types)
+	return types
 }
