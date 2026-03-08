@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
-
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 )
 
 // IssueType enum values from GitLab GraphQL API
@@ -75,7 +73,7 @@ func ResolveTypeID(t string) (gitlab.WorkItemTypeID, error) {
 
 	v, ok := workItemTypeIDs[wiType]
 	if !ok {
-		return "", cmdutils.FlagError{Err: fmt.Errorf("--type must be one of %s", strings.Join(ValidTypeNames(), ", "))}
+		return "", fmt.Errorf("--type must be one of %s", strings.Join(ValidTypeNames(), ", "))	
 	}
 	return v, nil
 }
