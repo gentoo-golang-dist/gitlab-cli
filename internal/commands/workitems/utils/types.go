@@ -70,9 +70,6 @@ func ValidateTypes(types []string) error {
 
 // ResolveTypeID will resolve the work item ID based on the type provided
 func ResolveTypeID(t string) (gitlab.WorkItemTypeID, error) {
-	if t == "" {
-		return "", fmt.Errorf("work item type is required")
-	}
 	wiType := strings.ToLower(strings.TrimSpace(t))
 
 	v, ok := workItemTypeIDs[wiType]

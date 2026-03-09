@@ -85,3 +85,29 @@ Use --group flag for group-level work items or -R to specify a different project
 
 	return cmd
 }
+
+func (opts *options) complete(cmd *cobra.Command) error {
+	group, err := cmdutils.GroupOverride(cmd)
+	if err != nil {
+		return err
+	}
+	opts.group = group
+	opts.needsPrompt = !cmd.Flags().Changed("title")
+	return nil
+}
+
+func (opts *options) validate() error {
+	if opts.workItemType == "" {
+		return cmdutils.FlagError{Err: fmt.Errorf("--type is required")}
+	}
+
+	if _, err := utils.ResolveTypeID(opts.workItemType); err != nil {
+		return err
+	}
+
+	if opts.needsPrompt && !opts.io.IsInteractive() {
+		return cmdutils.FlagError{Err: fmt.Errorf("--title required for non-interactive mode")}
+	}
+
+	return nil
+}
