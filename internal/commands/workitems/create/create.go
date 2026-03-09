@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -110,4 +109,49 @@ func (opts *options) validate() error {
 	}
 
 	return nil
+}
+
+func (opts *options) run(ctx context.Context) error {
+	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
+	if err != nil {
+		return err
+	}
+
+	client, err := opts.gitlabClient()
+	if err != nil {
+		return fmt.Errorf("failed to get GitLab client: %w", err)
+	}
+
+	typeID, err := utils.ResolveTypeID(opts.workItemType)
+	if err != nil {
+		return err
+	}
+
+	createOpts := &gitlab.CreateWorkItemOptions{
+		Title: opts.title,
+	}
+
+	if opts.description != "" {
+		createOpts.Description = gitlab.Ptr(opts.description)
+	}
+
+	if opts.confidential {
+		createOpts.Confidential = gitlab.Ptr(true)
+	}
+
+	fmt.Fprintln(opts.io.StdErr, "- Creating work item in", scope.Path)
+
+	wi, _, err := client.WorkItems.CreateWorkItem(scope.Path, typeID, createOpts)
+	if err != nil {
+		return err
+	}
+
+	if opts.io.IsaTTY {
+		fmt.Fprintf(opts.io.StdOut, "#%d %s\n%s\n", wi.IID, wi.Title, wi.WebURL)
+	} else {
+		fmt.Fprintln(opts.io.StdOut, wi.WebURL)
+	}
+
+	return nil
+
 }
