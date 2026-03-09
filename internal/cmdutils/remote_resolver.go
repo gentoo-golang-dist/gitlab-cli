@@ -75,9 +75,19 @@ func (rr *remoteResolver) Resolver(hostOverride string) func() (glrepo.Remotes, 
 
 		if hostOverride != "" {
 			for _, r := range resolvedRemotes {
-				if strings.EqualFold(r.RepoHost(), hostOverride) {
-					cachedRemotes = append(cachedRemotes, r)
+				repoHost := r.RepoHost()
+				if !strings.EqualFold(repoHost, hostOverride) {
+					// Check if this is an SSH host that maps to the override
+					if configHost, found := sshHostMapping[repoHost]; found && strings.EqualFold(configHost, hostOverride) {
+						r = &glrepo.Remote{
+							Remote: r.Remote,
+							Repo:   glrepo.NewWithHost(r.RepoOwner(), r.RepoName(), configHost),
+						}
+					} else {
+						continue
+					}
 				}
+				cachedRemotes = append(cachedRemotes, r)
 			}
 
 			if len(cachedRemotes) == 0 {
@@ -99,7 +109,12 @@ func (rr *remoteResolver) Resolver(hostOverride string) func() (glrepo.Remotes, 
 					// Unknown host - skip this remote
 					continue
 				}
-				// SSH host that maps to a config entry
+				// SSH host maps to a config entry — rewrite the remote's repo
+				// so that RepoHost() returns the API hostname (where config/token live)
+				r = &glrepo.Remote{
+					Remote: r.Remote,
+					Repo:   glrepo.NewWithHost(r.RepoOwner(), r.RepoName(), configHost),
+				}
 				repoHost = configHost
 			}
 

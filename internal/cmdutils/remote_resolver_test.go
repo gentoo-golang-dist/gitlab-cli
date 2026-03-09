@@ -66,6 +66,183 @@ func Test_remoteResolverOverride(t *testing.T) {
 	assert.Equal(t, "origin", remotes[0].Name)
 }
 
+func Test_remoteResolverSSHHostMapping(t *testing.T) {
+	rr := &remoteResolver{
+		readRemotes: func() (git.RemoteSet, error) {
+			return git.RemoteSet{
+				git.NewRemote("origin", "ssh://git@ssh.gitlab.example.com/owner/repo.git"),
+			}, nil
+		},
+		getConfig: func() config.Config {
+			return config.NewFromString(heredoc.Doc(`
+				hosts:
+				  gitlab.example.com:
+				    oauth_token: OTOKEN
+				    ssh_host: ssh.gitlab.example.com
+			`))
+		},
+	}
+
+	resolver := rr.Resolver("")
+	remotes, err := resolver()
+	require.NoError(t, err)
+	require.Equal(t, 1, len(remotes))
+
+	assert.Equal(t, "origin", remotes[0].Name)
+	// The remote's RepoHost should be rewritten to the API hostname
+	assert.Equal(t, "gitlab.example.com", remotes[0].RepoHost())
+	assert.Equal(t, "owner", remotes[0].RepoOwner())
+	assert.Equal(t, "repo", remotes[0].RepoName())
+}
+
+func Test_remoteResolverSSHHostMappingEdgeCases(t *testing.T) {
+	tests := []struct {
+		name          string
+		remotes       git.RemoteSet
+		config        string
+		hostOverride  string
+		expectedCount int
+		expectedHost  string
+		expectedName  string
+		expectedError string
+	}{
+		{
+			name: "SSH and HTTPS remotes coexist, same project",
+			remotes: git.RemoteSet{
+				git.NewRemote("origin", "ssh://git@ssh.gitlab.example.com/owner/repo.git"),
+				git.NewRemote("https-origin", "https://gitlab.example.com/owner/repo.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  gitlab.example.com:
+				    oauth_token: OTOKEN
+				    ssh_host: ssh.gitlab.example.com
+			`),
+			expectedCount: 2,
+			expectedHost:  "gitlab.example.com",
+			expectedName:  "origin",
+		},
+		{
+			name: "SSH host matches but no ssh_host config — remote skipped",
+			remotes: git.RemoteSet{
+				git.NewRemote("origin", "ssh://git@ssh.gitlab.example.com/owner/repo.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  gitlab.example.com:
+				    oauth_token: OTOKEN
+			`),
+			expectedError: "none of the git remotes configured for this repository point to a known GitLab host",
+		},
+		{
+			name: "Standard setup without ssh_host — no change in behavior",
+			remotes: git.RemoteSet{
+				git.NewRemote("origin", "https://gitlab.com/owner/repo.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  gitlab.com:
+				    oauth_token: OTOKEN
+			`),
+			expectedCount: 1,
+			expectedHost:  "gitlab.com",
+			expectedName:  "origin",
+		},
+		{
+			name: "Self-managed with matching SSH and API hostname — no rewrite needed",
+			remotes: git.RemoteSet{
+				git.NewRemote("origin", "ssh://git@gitlab.corp.com/owner/repo.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  gitlab.corp.com:
+				    oauth_token: OTOKEN
+			`),
+			expectedCount: 1,
+			expectedHost:  "gitlab.corp.com",
+			expectedName:  "origin",
+		},
+		{
+			name: "SSH host mapping with host override matching API host",
+			remotes: git.RemoteSet{
+				git.NewRemote("origin", "ssh://git@ssh.gitlab.example.com/owner/repo.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  gitlab.example.com:
+				    oauth_token: OTOKEN
+				    ssh_host: ssh.gitlab.example.com
+			`),
+			hostOverride:  "gitlab.example.com",
+			expectedCount: 1,
+			expectedHost:  "gitlab.example.com",
+			expectedName:  "origin",
+		},
+		{
+			name: "SSH host mapping with host override matching SSH host — matches raw remote",
+			remotes: git.RemoteSet{
+				git.NewRemote("origin", "ssh://git@ssh.gitlab.example.com/owner/repo.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  gitlab.example.com:
+				    oauth_token: OTOKEN
+				    ssh_host: ssh.gitlab.example.com
+			`),
+			hostOverride:  "ssh.gitlab.example.com",
+			expectedCount: 1,
+			expectedHost:  "ssh.gitlab.example.com",
+			expectedName:  "origin",
+		},
+		{
+			name: "Multiple hosts, SSH mapping only for one",
+			remotes: git.RemoteSet{
+				git.NewRemote("corp", "ssh://git@ssh.corp.example.com/team/project.git"),
+				git.NewRemote("community", "https://gitlab.com/team/project.git"),
+			},
+			config: heredoc.Doc(`
+				hosts:
+				  corp.example.com:
+				    oauth_token: CORPTOKEN
+				    ssh_host: ssh.corp.example.com
+				  gitlab.com:
+				    oauth_token: COMTOKEN
+			`),
+			// First match wins (sorted by remote name priority)
+			expectedCount: 1,
+			expectedHost:  "corp.example.com",
+			expectedName:  "corp",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rr := &remoteResolver{
+				readRemotes: func() (git.RemoteSet, error) {
+					return tt.remotes, nil
+				},
+				getConfig: func() config.Config {
+					return config.NewFromString(tt.config)
+				},
+			}
+
+			resolver := rr.Resolver(tt.hostOverride)
+			remotes, err := resolver()
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedCount, len(remotes))
+			assert.Equal(t, tt.expectedName, remotes[0].Name)
+			assert.Equal(t, tt.expectedHost, remotes[0].RepoHost())
+		})
+	}
+}
+
 func Test_remoteResolverErrors(t *testing.T) {
 	testRemotes := git.RemoteSet{
 		git.NewRemote("origin", "https://example3.org/owner/fork.git"),
