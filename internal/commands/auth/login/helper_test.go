@@ -39,12 +39,11 @@ func Test_helperRun(t *testing.T) {
 	t.Setenv("USER", "")
 
 	oauth2SuccessExpiryTime := time.Now().Add(10 * time.Minute)
-	// Expiry time resolution is down to minutes only. Purging second in expiry time.
-	expiryOffset := time.Duration(
-		(1_000_000_000*oauth2SuccessExpiryTime.Second() +
-			oauth2SuccessExpiryTime.Nanosecond()) * -1,
-	)
-	oauth2SuccessExpiryTime = oauth2SuccessExpiryTime.Add(expiryOffset)
+	// Expiry time resolution is down to minutes only. Truncate to minute
+	// boundary to avoid architecture-dependent integer overflow when
+	// computing the offset manually (int is 32-bit on i686, and
+	// 1e9*seconds overflows MaxInt32).
+	oauth2SuccessExpiryTime = oauth2SuccessExpiryTime.Truncate(time.Minute)
 
 	oauth2ApiClient := func(config config.Config, responseFunc roundTripFunc) func(repoHost string) (*api.Client, error) {
 		return func(repoHost string) (*api.Client, error) {
