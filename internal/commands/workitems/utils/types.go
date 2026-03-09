@@ -44,7 +44,7 @@ var AllKnownTypes = []string{
 
 // WorkItemTypeIDs contains the current default work item type IDs
 // NOTE: This list will become outdated when work items become customizable.
-var WorkItemTypeIDs = map[string]gitlab.WorkItemTypeID{
+var workItemTypeIDs = map[string]gitlab.WorkItemTypeID{
 	"epic":        gitlab.WorkItemTypeEpic,
 	"issue":       gitlab.WorkItemTypeIssue,
 	"task":        gitlab.WorkItemTypeTask,
@@ -75,7 +75,7 @@ func ResolveTypeID(t string) (gitlab.WorkItemTypeID, error) {
 	}
 	wiType := strings.ToLower(strings.TrimSpace(t))
 
-	v, ok := WorkItemTypeIDs[wiType]
+	v, ok := workItemTypeIDs[wiType]
 	if !ok {
 		return "", cmdutils.FlagError{Err: fmt.Errorf("--type must be one of %s", strings.Join(ValidTypeNames(), ", "))}
 	}
@@ -84,8 +84,8 @@ func ResolveTypeID(t string) (gitlab.WorkItemTypeID, error) {
 
 // ValidTypeNames provides a list of the available type names as needed
 func ValidTypeNames() []string {
-	types := make([]string, 0, len(WorkItemTypeIDs))
-	for i := range WorkItemTypeIDs {
+	types := make([]string, 0, len(workItemTypeIDs))
+	for i := range workItemTypeIDs {
 		types = append(types, i)
 	}
 
