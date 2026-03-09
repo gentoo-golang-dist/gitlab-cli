@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"strconv"
@@ -292,7 +294,13 @@ func resolveNotesFileOrText(opts *options) (string, error) {
 
 	f, err := root.Open(opts.experimentalNotesTextOrFile)
 	if err != nil {
-		return opts.experimentalNotesTextOrFile, nil
+		// If the file simply doesn't exist, treat the value as text.
+		// For any other error (e.g., permission denied), report it so
+		// the user knows the file was found but couldn't be read.
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
+			return opts.experimentalNotesTextOrFile, nil
+		}
+		return "", fmt.Errorf("could not open file %q: %w", opts.experimentalNotesTextOrFile, err)
 	}
 	defer func() {
 		cerr := f.Close()
@@ -303,8 +311,7 @@ func resolveNotesFileOrText(opts *options) (string, error) {
 
 	b, err := io.ReadAll(f)
 	if err != nil {
-		// Rule 3: fallback to using the value as text
-		return opts.experimentalNotesTextOrFile, nil
+		return "", fmt.Errorf("could not read file %q: %w", opts.experimentalNotesTextOrFile, err)
 	}
 
 	return string(b), nil
