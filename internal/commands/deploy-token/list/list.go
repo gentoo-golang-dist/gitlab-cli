@@ -8,6 +8,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -16,98 +17,131 @@ import (
 )
 
 type options struct {
-	gitlabClient func() (*gitlab.Client, error)
-	io           *iostreams.IOStreams
-	baseRepo     func() (glrepo.Interface, error)
+	io        *iostreams.IOStreams
+	apiClient func(repoHost string) (*api.Client, error)
+	baseRepo  func() (glrepo.Interface, error)
 
-	page         int
-	perPage      int
+	page         int64
+	perPage      int64
 	group        string
 	outputFormat string
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
-		io:           f.IO(),
-		gitlabClient: f.GitLabClient,
-		baseRepo:     f.BaseRepo,
+		io:        f.IO(),
+		apiClient: f.ApiClient,
+		baseRepo:  f.BaseRepo,
 	}
+
 	cmd := &cobra.Command{
-		Use:     "list",
+		Use:     "list [flags]",
 		Short:   "List deploy tokens for a project or group.",
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
 		  $ glab deploy-token list
 		  $ glab deploy-token list -g mygroup
 		  $ glab deploy-token list --per-page 50 --page 2
+		  $ glab deploy-token list --output json
 		`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.page < 1 {
-				return cmdutils.FlagError{Err: fmt.Errorf("--page must be >= 1")}
-			}
-			if opts.perPage < 1 {
-				return cmdutils.FlagError{Err: fmt.Errorf("--per-page must be >= 1")}
+			if err := opts.complete(cmd); err != nil {
+				return err
 			}
 			return opts.run()
 		},
 	}
 
-	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items per page.")
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "List deploy tokens for a group.")
+	cmdutils.EnableRepoOverride(cmd, f)
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
+	fl := cmd.Flags()
+	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
+	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page.")
+	fl.StringVarP(&opts.group, "group", "g", "", "List deploy tokens for a group. Ignored if -R/--repo is set.")
+
+	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
 
-func (o *options) run() error {
-	client, err := o.gitlabClient()
+func (o *options) complete(cmd *cobra.Command) error {
+	if o.page < 1 {
+		return cmdutils.FlagError{Err: fmt.Errorf("--page must be >= 1")}
+	}
+	if o.perPage < 1 {
+		return cmdutils.FlagError{Err: fmt.Errorf("--per-page must be >= 1")}
+	}
+
+	group, err := cmdutils.GroupOverride(cmd)
 	if err != nil {
 		return err
+	}
+	o.group = group
+
+	return nil
+}
+
+func (o *options) run() error {
+	repo, repoErr := o.baseRepo()
+	var repoHost string
+	if repoErr == nil {
+		repoHost = repo.RepoHost()
+	}
+	apiClient, err := o.apiClient(repoHost)
+	if err != nil {
+		return err
+	}
+	client := apiClient.Lab()
+
+	listOptsBase := gitlab.ListOptions{
+		Page:    o.page,
+		PerPage: o.perPage,
 	}
 
 	var tokens []*gitlab.DeployToken
 
-	if o.group != "" {
-		groupOpts := &gitlab.ListGroupDeployTokensOptions{
-			ListOptions: gitlab.ListOptions{
-				Page:    int64(o.page),
-				PerPage: int64(o.perPage),
-			},
+	switch {
+	case o.group != "":
+		tokens, _, err = client.DeployTokens.ListGroupDeployTokens(o.group, &gitlab.ListGroupDeployTokensOptions{
+			ListOptions: listOptsBase,
+		})
+		if err != nil {
+			return cmdutils.WrapError(err, "failed to list group deploy tokens")
 		}
-		tokens, _, err = client.DeployTokens.ListGroupDeployTokens(o.group, groupOpts)
-	} else {
-		baseRepo, repoErr := o.baseRepo()
+	default:
 		if repoErr != nil {
 			return repoErr
 		}
-		listOpts := &gitlab.ListProjectDeployTokensOptions{
-			ListOptions: gitlab.ListOptions{
-				Page:    int64(o.page),
-				PerPage: int64(o.perPage),
-			},
+		tokens, _, err = client.DeployTokens.ListProjectDeployTokens(repo.FullName(), &gitlab.ListProjectDeployTokensOptions{
+			ListOptions: listOptsBase,
+		})
+		if err != nil {
+			return cmdutils.WrapError(err, "failed to list project deploy tokens")
 		}
-		tokens, _, err = client.DeployTokens.ListProjectDeployTokens(baseRepo.FullName(), listOpts)
-	}
-	if err != nil {
-		return cmdutils.WrapError(err, "failed to list deploy tokens")
 	}
 
-	if o.outputFormat == "json" {
+	switch o.outputFormat {
+	case "json":
 		return o.io.PrintJSON(tokens)
+	default:
+		return o.printTable(tokens)
 	}
+}
 
+func (o *options) printTable(tokens []*gitlab.DeployToken) error {
 	if len(tokens) == 0 {
 		o.io.LogInfo("No deploy tokens found.\n")
 		return nil
 	}
 
+	c := o.io.Color()
 	table := tableprinter.NewTablePrinter()
-	table.AddRow("ID", "Name", "Username", "Scopes", "Expires At", "Revoked", "Expired")
+	table.AddRow(c.Bold("ID"), c.Bold("Name"), c.Bold("Username"), c.Bold("Scopes"), c.Bold("Expires At"), c.Bold("Revoked"), c.Bold("Expired"))
 	for _, t := range tokens {
 		expires := "Never"
 		if t.ExpiresAt != nil {

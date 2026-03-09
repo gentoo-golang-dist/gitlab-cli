@@ -28,16 +28,18 @@ ls
 $ glab deploy-token list
 $ glab deploy-token list -g mygroup
 $ glab deploy-token list --per-page 50 --page 2
+$ glab deploy-token list --output json
 
 ```
 
 ## Options
 
 ```plaintext
-  -g, --group string    List deploy tokens for a group.
-  -F, --output string   Format output as: text, json. (default "text")
-  -p, --page int        Page number. (default 1)
-  -P, --per-page int    Number of items per page. (default 30)
+  -g, --group string      List deploy tokens for a group. Ignored if -R/--repo is set.
+  -F, --output string     Format output as: text, json. (default "text")
+  -p, --page int          Page number. (default 1)
+  -P, --per-page int      Number of items to list per page. (default 30)
+  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
 ```
 
 ## Options inherited from parent commands

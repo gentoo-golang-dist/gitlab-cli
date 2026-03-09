@@ -9,16 +9,18 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
 type options struct {
-	gitlabClient func() (*gitlab.Client, error)
-	io           *iostreams.IOStreams
-	baseRepo     func() (glrepo.Interface, error)
+	io        *iostreams.IOStreams
+	apiClient func(repoHost string) (*api.Client, error)
+	baseRepo  func() (glrepo.Interface, error)
 
 	tokenID      int
 	group        string
@@ -27,79 +29,121 @@ type options struct {
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
-		io:           f.IO(),
-		gitlabClient: f.GitLabClient,
-		baseRepo:     f.BaseRepo,
+		io:        f.IO(),
+		apiClient: f.ApiClient,
+		baseRepo:  f.BaseRepo,
 	}
+
 	cmd := &cobra.Command{
-		Use:   "get <token-id>",
+		Use:   "get <token-id> [flags]",
 		Short: "Get a deploy token by ID.",
 		Example: heredoc.Doc(`
 		  $ glab deploy-token get 42
 		  $ glab deploy-token get 42 -g mygroup
+		  $ glab deploy-token get 42 --output json
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid token ID %q: %w", args[0], err)
+			if err := opts.complete(cmd, args); err != nil {
+				return err
 			}
-			opts.tokenID = id
 			return opts.run()
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Get deploy token for a group.")
+	cmdutils.EnableRepoOverride(cmd, f)
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.group, "group", "g", "", "Get deploy token for a group. Ignored if -R/--repo is set.")
+
+	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
 
-func (o *options) run() error {
-	client, err := o.gitlabClient()
+func (o *options) complete(cmd *cobra.Command, args []string) error {
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return cmdutils.FlagError{Err: fmt.Errorf("invalid token ID %q: %w", args[0], err)}
+	}
+	o.tokenID = id
+
+	group, err := cmdutils.GroupOverride(cmd)
 	if err != nil {
 		return err
 	}
+	o.group = group
+
+	return nil
+}
+
+func (o *options) run() error {
+	repo, repoErr := o.baseRepo()
+	var repoHost string
+	if repoErr == nil {
+		repoHost = repo.RepoHost()
+	}
+	apiClient, err := o.apiClient(repoHost)
+	if err != nil {
+		return err
+	}
+	client := apiClient.Lab()
 
 	var token *gitlab.DeployToken
 
-	if o.group != "" {
+	switch {
+	case o.group != "":
 		token, _, err = client.DeployTokens.GetGroupDeployToken(o.group, int64(o.tokenID))
-	} else {
-		baseRepo, repoErr := o.baseRepo()
+		if err != nil {
+			return cmdutils.WrapError(err, "failed to get group deploy token")
+		}
+	default:
 		if repoErr != nil {
 			return repoErr
 		}
-		token, _, err = client.DeployTokens.GetProjectDeployToken(baseRepo.FullName(), int64(o.tokenID))
-	}
-	if err != nil {
-		return cmdutils.WrapError(err, "failed to get deploy token")
+		token, _, err = client.DeployTokens.GetProjectDeployToken(repo.FullName(), int64(o.tokenID))
+		if err != nil {
+			return cmdutils.WrapError(err, "failed to get project deploy token")
+		}
 	}
 
-	if o.outputFormat == "json" {
+	switch o.outputFormat {
+	case "json":
 		return o.io.PrintJSON(token)
+	default:
+		return o.printDetails(token)
 	}
+}
 
-	cs := o.io.Color()
-	fmt.Fprintf(o.io.StdOut, "ID:\t\t%d\n", token.ID)
-	fmt.Fprintf(o.io.StdOut, "Name:\t\t%s\n", token.Name)
-	fmt.Fprintf(o.io.StdOut, "Username:\t%s\n", token.Username)
-	fmt.Fprintf(o.io.StdOut, "Scopes:\t\t%v\n", token.Scopes)
+func (o *options) printDetails(token *gitlab.DeployToken) error {
+	c := o.io.Color()
+	table := tableprinter.NewTablePrinter()
+	table.AddRow(c.Bold("ID"), token.ID)
+	table.AddRow(c.Bold("Name"), token.Name)
+	table.AddRow(c.Bold("Username"), token.Username)
+	table.AddRow(c.Bold("Scopes"), fmt.Sprintf("%v", token.Scopes))
+
 	if token.ExpiresAt != nil {
-		fmt.Fprintf(o.io.StdOut, "Expires At:\t%s\n", token.ExpiresAt.String())
+		table.AddRow(c.Bold("Expires At"), token.ExpiresAt.String())
 	} else {
-		fmt.Fprintf(o.io.StdOut, "Expires At:\tNever\n")
-	}
-	if token.Revoked {
-		fmt.Fprintf(o.io.StdOut, "Status:\t\t%s\n", cs.Yellow("Revoked"))
-	} else if token.Expired {
-		fmt.Fprintf(o.io.StdOut, "Status:\t\t%s\n", cs.Red("Expired"))
-	} else {
-		fmt.Fprintf(o.io.StdOut, "Status:\t\t%s\n", cs.Green("Active"))
+		table.AddRow(c.Bold("Expires At"), "Never")
 	}
 
+	var status string
+	switch {
+	case token.Revoked:
+		status = c.Yellow("Revoked")
+	case token.Expired:
+		status = c.Red("Expired")
+	default:
+		status = c.Green("Active")
+	}
+	table.AddRow(c.Bold("Status"), status)
+
+	fmt.Fprint(o.io.StdOut, table.Render())
 	return nil
 }

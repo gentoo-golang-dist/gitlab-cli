@@ -29,13 +29,15 @@ remove
 ```console
 $ glab deploy-token delete 42
 $ glab deploy-token delete 42 -g mygroup
+$ glab deploy-token delete 42 -R owner/repo
 
 ```
 
 ## Options
 
 ```plaintext
-  -g, --group string   Delete deploy token for a group.
+  -g, --group string      Delete deploy token for a group. Ignored if -R/--repo is set.
+  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
 ```
 
 ## Options inherited from parent commands

@@ -21,14 +21,16 @@ glab deploy-token get <token-id> [flags]
 ```console
 $ glab deploy-token get 42
 $ glab deploy-token get 42 -g mygroup
+$ glab deploy-token get 42 --output json
 
 ```
 
 ## Options
 
 ```plaintext
-  -g, --group string    Get deploy token for a group.
-  -F, --output string   Format output as: text, json. (default "text")
+  -g, --group string      Get deploy token for a group. Ignored if -R/--repo is set.
+  -F, --output string     Format output as: text, json. (default "text")
+  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
 ```
 
 ## Options inherited from parent commands
