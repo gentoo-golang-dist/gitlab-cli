@@ -3,14 +3,35 @@ package help
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
 	"charm.land/glamour/v2"
+	"charm.land/glamour/v2/styles"
+	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
+
+// glamourStyle returns the glamour style to use, replicating glamour v1's
+// auto-detection logic that was removed in v2. It checks the GLAMOUR_STYLE
+// environment variable first, then falls back to notty for non-TTY output
+// or dark/light based on terminal background color.
+func glamourStyle() string {
+	if s := os.Getenv("GLAMOUR_STYLE"); s != "" {
+		return s
+	}
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return styles.NoTTYStyle
+	}
+	if termenv.HasDarkBackground() {
+		return styles.DarkStyle
+	}
+	return styles.LightStyle
+}
 
 // renderWithGlamour renders markdown text using Glamour
 func renderWithGlamour(text string) string {
@@ -19,7 +40,7 @@ func renderWithGlamour(text string) string {
 	}
 
 	renderer, err := glamour.NewTermRenderer(
-		glamour.WithEnvironmentConfig(),
+		glamour.WithStandardStyle(glamourStyle()),
 		glamour.WithWordWrap(120),
 		glamour.WithPreservedNewLines(),
 	)
