@@ -19,6 +19,7 @@ This command is experimental.
 Unresolve a discussion on a merge request by discussion ID or note ID.
 
 The identifier can be:
+
 - A discussion ID: full 40-character hex string or an 8+ character prefix.
 - A note ID: integer note ID (looks up the parent discussion automatically).
 
