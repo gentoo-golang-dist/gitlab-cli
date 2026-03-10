@@ -45,9 +45,9 @@ $ glab mr note 123 --reopen 3107030349
 
 ```plaintext
   -m, --message string   Comment or note message.
+      --reopen int       Reopen the discussion containing the specified note ID.
       --resolve int      Resolve the discussion containing the specified note ID.
       --unique           Don't create a comment or note if it already exists.
-      --reopen int       Reopen the discussion containing the specified note ID.
 ```
 
 ## Options inherited from parent commands
