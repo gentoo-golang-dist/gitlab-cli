@@ -16,14 +16,17 @@ Resolve a discussion on a merge request (EXPERIMENTAL)
 
 This command is experimental.
 
-Resolve a discussion on a merge request by discussion ID.
+Resolve a discussion on a merge request by discussion ID or note ID.
 
-The discussion ID can be the full 40-character hex string or an 8+ character
-prefix. If the prefix matches multiple discussions, an error is returned with
+The identifier can be:
+- A discussion ID: full 40-character hex string or an 8+ character prefix.
+- A note ID: integer note ID (looks up the parent discussion automatically).
+
+If a prefix matches multiple discussions, an error is returned with
 the ambiguous matches.
 
 ```plaintext
-glab mr note resolve [<mr-id> | <branch>] <discussion-id> [flags]
+glab mr note resolve [<id> | <branch>] <discussion-id> [flags]
 ```
 
 ## Examples
@@ -34,6 +37,9 @@ $ glab mr note resolve abc12345deadbeef1234567890abcdef12345678
 
 # Resolve a discussion by prefix (8+ chars)
 $ glab mr note resolve abc12345
+
+# Resolve a discussion by note ID
+$ glab mr note resolve 3107030349
 
 # Resolve a discussion on MR 123
 $ glab mr note resolve 123 abc12345
