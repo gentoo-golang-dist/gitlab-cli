@@ -230,6 +230,20 @@ lint_commit:
     - if: '$CI_MERGE_REQUEST_IID && $CI_PROJECT_VISIBILITY == "public"' # lint.js script makes an API call without authentication
       when: always
 
+check_go_version:
+  stage: test
+  needs: []
+  image: ${GITLAB_DEPENDENCY_PROXY}alpine:3
+  before_script:
+    - apk add --no-cache bash
+  script:
+    - scripts/check-go-version.sh
+  rules:
+    - changes:
+        - go.mod
+        - .tool-versions
+        - .gitlab-ci.yml
+
 lint:
   extends:
     - .go-cache
