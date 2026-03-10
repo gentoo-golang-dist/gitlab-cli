@@ -26,28 +26,28 @@ comment
 
 ```console
 # Add a comment to merge request with ID 123
-glab mr note 123 -m "Looks good to me!"
+$ glab mr note 123 -m "Looks good to me!"
 
 # Add a comment to the merge request for the current branch
-glab mr note -m "LGTM"
+$ glab mr note -m "LGTM"
 
 # Open your editor to compose a multi-line comment
-glab mr note 123
+$ glab mr note 123
 
 # Resolve a discussion by note ID
-glab mr note 123 --resolve 3107030349
+$ glab mr note 123 --resolve 3107030349
 
 # Unresolve a discussion by note ID
-glab mr note 123 --unresolve 3107030349
+$ glab mr note 123 --unresolve 3107030349
 ```
 
 ## Options
 
 ```plaintext
   -m, --message string   Comment or note message.
-      --resolve int      Resolve the discussion containing the specified note ID.
+      --resolve int      Resolve the discussion containing the specified note ID. (DEPRECATED: use `glab mr note resolve` instead.)
       --unique           Don't create a comment or note if it already exists.
-      --unresolve int    Unresolve the discussion containing the specified note ID.
+      --unresolve int    Unresolve the discussion containing the specified note ID. (DEPRECATED: use `glab mr note unresolve` instead.)
 ```
 
 ## Options inherited from parent commands
@@ -60,3 +60,5 @@ glab mr note 123 --unresolve 3107030349
 ## Subcommands
 
 - [`list`](list.md)
+- [`resolve`](resolve.md)
+- [`unresolve`](unresolve.md)
