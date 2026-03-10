@@ -369,10 +369,10 @@ func Test_mrNote_resolve(t *testing.T) {
 	})
 }
 
-func Test_mrNote_unresolve(t *testing.T) {
+func Test_mrNote_reopen(t *testing.T) {
 	t.Parallel()
 
-	t.Run("unresolve discussion by note ID", func(t *testing.T) {
+	t.Run("reopen discussion by note ID", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := gitlabtesting.NewTestClient(t)
@@ -423,7 +423,7 @@ func Test_mrNote_unresolve(t *testing.T) {
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
-		output, err := exec(`1 --unresolve 300`)
+		output, err := exec(`1 --reopen 300`)
 		require.NoError(t, err)
 		assert.Empty(t, output.Stderr())
 		assert.Contains(t, output.String(), "✓ Discussion unresolved (note #300 in !1)")

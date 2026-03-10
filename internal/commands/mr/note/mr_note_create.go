@@ -20,7 +20,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd := &cobra.Command{
 		Use:     "note [<id> | <branch>]",
 		Aliases: []string{"comment"},
-		Short:   "Add a comment or note to a merge request, or resolve/unresolve discussions.",
+		Short:   "Add a comment or note to a merge request, or resolve/reopen discussions.",
 		Long:    ``,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request with ID 123
@@ -35,8 +35,8 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			# Resolve a discussion by note ID
 			$ glab mr note 123 --resolve 3107030349
 
-			# Unresolve a discussion by note ID
-			$ glab mr note 123 --unresolve 3107030349`),
+			# Reopen a discussion by note ID
+			$ glab mr note 123 --reopen 3107030349`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -54,7 +54,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 			// Check if we're resolving or unresolving
 			resolveNoteID, _ := cmd.Flags().GetInt64("resolve")
-			unresolveNoteID, _ := cmd.Flags().GetInt64("unresolve")
+			unresolveNoteID, _ := cmd.Flags().GetInt64("reopen")
 
 			if resolveNoteID != 0 {
 				return resolveDiscussion(client, f, mr, repo, resolveNoteID, true)
@@ -111,11 +111,11 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.Flags().StringP("message", "m", "", "Comment or note message.")
 	mrCreateNoteCmd.Flags().Bool("unique", false, "Don't create a comment or note if it already exists.")
 	mrCreateNoteCmd.Flags().Int64("resolve", 0, "Resolve the discussion containing the specified note ID.")
-	mrCreateNoteCmd.Flags().Int64("unresolve", 0, "Unresolve the discussion containing the specified note ID.")
+	mrCreateNoteCmd.Flags().Int64("reopen", 0, "Reopen the discussion containing the specified note ID.")
 
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "resolve")
-	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "unresolve")
-	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "reopen")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "reopen")
 
 	return mrCreateNoteCmd
 }
