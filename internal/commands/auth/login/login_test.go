@@ -118,22 +118,53 @@ func Test_NewCmdLogin(t *testing.T) {
 			stdinTTY: true,
 		},
 		{
-			name:     "api-host in interactive mode",
-			cli:      "--hostname gl.io --api-host api.gitlab.com",
-			wantsErr: true,
-			err:      "api-host, api-protocol, and git-protocol can only be used in non-interactive mode",
+			name: "api-host with token",
+			cli:  "--hostname gl.io --api-host api.gitlab.com --token foo",
+			wants: LoginOptions{
+				Hostname: "gl.io",
+				Token:    "foo",
+				ApiHost:  "api.gitlab.com",
+			},
+			stdinTTY: true,
 		},
 		{
-			name:     "api-protocol in interactive mode",
-			cli:      "--hostname gl.io --api-protocol http",
-			wantsErr: true,
-			err:      "api-host, api-protocol, and git-protocol can only be used in non-interactive mode",
+			name: "api-protocol with token",
+			cli:  "--hostname gl.io --api-protocol http --token foo",
+			wants: LoginOptions{
+				Hostname:    "gl.io",
+				Token:       "foo",
+				ApiProtocol: "http",
+			},
+			stdinTTY: true,
 		},
 		{
-			name:     "git-protocol in interactive mode",
-			cli:      "--hostname gl.io --git-protocol ssh",
+			name: "git-protocol with token",
+			cli:  "--hostname gl.io --git-protocol ssh --token foo",
+			wants: LoginOptions{
+				Hostname:    "gl.io",
+				Token:       "foo",
+				GitProtocol: "ssh",
+			},
+			stdinTTY: true,
+		},
+		{
+			name:     "web with token",
+			cli:      "--hostname gl.io --web --token foo",
 			wantsErr: true,
-			err:      "api-host, api-protocol, and git-protocol can only be used in non-interactive mode",
+			err:      "'--web' cannot be combined with '--token', '--stdin', or '--job-token'",
+		},
+		{
+			name:     "web with stdin",
+			cli:      "--hostname gl.io --web --stdin",
+			stdin:    "abc123\n",
+			wantsErr: true,
+			err:      "'--web' cannot be combined with '--token', '--stdin', or '--job-token'",
+		},
+		{
+			name:     "web with job-token",
+			cli:      "--hostname gl.io --web --job-token foo",
+			wantsErr: true,
+			err:      "'--web' cannot be combined with '--token', '--stdin', or '--job-token'",
 		},
 		// TODO: how to test survey
 		//{
@@ -200,6 +231,35 @@ func Test_NewCmdLogin(t *testing.T) {
 				GitProtocol: "ssh",
 			},
 		},
+		{
+			name: "container-registry-domains flag",
+			cli:  "--hostname gl.io --token foo --container-registry-domains a.com,b.com",
+			wants: LoginOptions{
+				Hostname:                 "gl.io",
+				Token:                    "foo",
+				ContainerRegistryDomains: "a.com,b.com",
+			},
+		},
+		{
+			name: "ssh-hostname flag",
+			cli:  "--hostname gl.io --token foo --ssh-hostname ssh.gl.io",
+			wants: LoginOptions{
+				Hostname:    "gl.io",
+				Token:       "foo",
+				SSHHostname: "ssh.gl.io",
+			},
+		},
+		{
+			name: "all new flags combined with token",
+			cli:  "--hostname gl.io --token foo --ssh-hostname ssh.gl.io --container-registry-domains a.com,b.com --git-protocol ssh",
+			wants: LoginOptions{
+				Hostname:                 "gl.io",
+				Token:                    "foo",
+				SSHHostname:              "ssh.gl.io",
+				ContainerRegistryDomains: "a.com,b.com",
+				GitProtocol:              "ssh",
+			},
+		},
 	}
 
 	// Enable keyring mocking, so no changes are made to it accidentally and to prevent failing in some environments
@@ -245,6 +305,9 @@ func Test_NewCmdLogin(t *testing.T) {
 			assert.Equal(t, tt.wants.ApiHost, opts.ApiHost)
 			assert.Equal(t, tt.wants.ApiProtocol, opts.ApiProtocol)
 			assert.Equal(t, tt.wants.GitProtocol, opts.GitProtocol)
+			assert.Equal(t, tt.wants.WebLogin, opts.WebLogin)
+			assert.Equal(t, tt.wants.SSHHostname, opts.SSHHostname)
+			assert.Equal(t, tt.wants.ContainerRegistryDomains, opts.ContainerRegistryDomains)
 		})
 	}
 }

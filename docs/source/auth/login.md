@@ -53,6 +53,9 @@ $ glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host git
 # Non-interactive setup reading token from a file
 $ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
 
+# Semi-interactive OAuth login, skipping all prompts except browser auth
+$ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
+
 # Non-interactive CI/CD setup
 $ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 
@@ -61,14 +64,17 @@ $ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 ## Options
 
 ```plaintext
-  -a, --api-host string       API host url.
-  -p, --api-protocol string   API protocol: https, http
-  -g, --git-protocol string   Git protocol: ssh, https, http
-      --hostname string       The hostname of the GitLab instance to authenticate with.
-  -j, --job-token string      CI job token.
-      --stdin                 Read token from standard input.
-  -t, --token string          Your GitLab access token.
-      --use-keyring           Store token in your operating system's keyring.
+  -a, --api-host string                     API host url.
+  -p, --api-protocol string                 API protocol: https, http
+      --container-registry-domains string   Container registry and image dependency proxy domains (comma-separated).
+  -g, --git-protocol string                 Git protocol: ssh, https, http
+      --hostname string                     The hostname of the GitLab instance to authenticate with.
+  -j, --job-token string                    CI job token.
+      --ssh-hostname string                 SSH hostname for instances with a different SSH endpoint.
+      --stdin                               Read token from standard input.
+  -t, --token string                        Your GitLab access token.
+      --use-keyring                         Store token in your operating system's keyring.
+      --web                                 Skip the login type prompt and use web/OAuth login.
 ```
 
 ## Options inherited from parent commands

@@ -38,11 +38,13 @@ type LoginOptions struct {
 	Token    string
 	JobToken string
 
-	ApiHost     string
-	ApiProtocol string
-	GitProtocol string
-	SSHHostname string
+	ApiHost                  string
+	ApiProtocol              string
+	GitProtocol              string
+	SSHHostname              string
+	ContainerRegistryDomains string
 
+	WebLogin   bool
 	UseKeyring bool
 }
 
@@ -96,6 +98,9 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			# Non-interactive setup reading token from a file
 			$ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
 
+			# Semi-interactive OAuth login, skipping all prompts except browser auth
+			$ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
+
 			# Non-interactive CI/CD setup
 			$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 		`, "`"),
@@ -103,8 +108,8 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" {
-				return &cmdutils.FlagError{Err: errors.New("'--stdin', '--token', or '--job-token' required when not running interactively.")}
+			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" && !opts.WebLogin {
+				return &cmdutils.FlagError{Err: errors.New("'--stdin', '--token', '--job-token', or '--web' required when not running interactively.")}
 			}
 
 			if opts.JobToken != "" && (opts.Token != "" || tokenStdin) {
@@ -113,6 +118,10 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 
 			if opts.Token != "" && tokenStdin {
 				return &cmdutils.FlagError{Err: errors.New("specify one of '--token' or '--stdin'. You cannot use both flags at the same time.")}
+			}
+
+			if opts.WebLogin && (opts.Token != "" || tokenStdin || opts.JobToken != "") {
+				return &cmdutils.FlagError{Err: errors.New("'--web' cannot be combined with '--token', '--stdin', or '--job-token'.")}
 			}
 
 			if tokenStdin {
@@ -138,9 +147,9 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 				opts.Hostname = glinstance.DefaultHostname
 			}
 
-			if opts.Interactive && (opts.ApiHost != "" || opts.ApiProtocol != "" || opts.GitProtocol != "") {
-				return &cmdutils.FlagError{Err: errors.New("api-host, api-protocol, and git-protocol can only be used in non-interactive mode.")}
-			}
+			// Note: --api-host, --api-protocol, --git-protocol are now allowed
+			// in interactive mode. When set, they skip the corresponding prompts
+			// instead of erroring. This enables semi-interactive login flows.
 
 			if err := loginRun(cmd.Context(), opts); err != nil {
 				return cmdutils.WrapError(err, "Could not sign in!")
@@ -155,9 +164,12 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.JobToken, "job-token", "j", "", "CI job token.")
 	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read token from standard input.")
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
+	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
 	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "API host url.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
+	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint.")
+	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
 
 	return cmd
 }
@@ -430,21 +442,32 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	)
 
 	if opts.Interactive {
-		loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb}
-		err := opts.IO.Select(ctx, &loginType, "How would you like to sign in?", loginTypeOptions)
-		if err != nil {
-			return fmt.Errorf("could not get sign-in type: %w", err)
+		if opts.WebLogin {
+			loginType = promptLoginTypeWeb
+		} else {
+			loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb}
+			err := opts.IO.Select(ctx, &loginType, "How would you like to sign in?", loginTypeOptions)
+			if err != nil {
+				return fmt.Errorf("could not get sign-in type: %w", err)
+			}
 		}
 
-		containerRegistryDomains = defaultContainerRegistryDomainsString(hostname)
-		containerRegistryInput := huh.NewInput().
-			Title("What domains does this host use for the container registry and image dependency proxy?").
-			Value(&containerRegistryDomains).
-			Placeholder(defaultContainerRegistryDomainsString(hostname))
-		err = opts.IO.Run(ctx, containerRegistryInput)
-		if err != nil {
-			return fmt.Errorf("could not get container registry domains: %w", err)
+		if opts.ContainerRegistryDomains != "" {
+			containerRegistryDomains = opts.ContainerRegistryDomains
+		} else {
+			containerRegistryDomains = defaultContainerRegistryDomainsString(hostname)
+			containerRegistryInput := huh.NewInput().
+				Title("What domains does this host use for the container registry and image dependency proxy?").
+				Value(&containerRegistryDomains).
+				Placeholder(defaultContainerRegistryDomainsString(hostname))
+			err := opts.IO.Run(ctx, containerRegistryInput)
+			if err != nil {
+				return fmt.Errorf("could not get container registry domains: %w", err)
+			}
 		}
+	} else if opts.WebLogin {
+		// Non-interactive web login: go straight to OAuth
+		loginType = promptLoginTypeWeb
 	}
 
 	var token string
@@ -513,34 +536,43 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	credentialFlow := &authutils.GitCredentialFlow{Executable: glabExecutable}
 
 	if opts.Interactive {
-		gitProtocolOptions := []string{promptProtocolSSH, promptProtocolHTTPS, promptProtocolHTTP}
-		// Use smart default based on SSH hostname configuration
-		defaultProtocol := promptProtocolHTTPS
-		if gitProtocol == "ssh" {
-			defaultProtocol = promptProtocolSSH
-		}
-		gitProtocol = defaultProtocol
-		err = opts.IO.Select(ctx, &gitProtocol, "Choose default Git protocol:", gitProtocolOptions)
-		if err != nil {
-			return fmt.Errorf("could not prompt: %w", err)
+		if opts.GitProtocol != "" {
+			gitProtocol = strings.ToLower(opts.GitProtocol)
+		} else {
+			gitProtocolOptions := []string{promptProtocolSSH, promptProtocolHTTPS, promptProtocolHTTP}
+			// Use smart default based on SSH hostname configuration
+			defaultProtocol := promptProtocolHTTPS
+			if gitProtocol == "ssh" {
+				defaultProtocol = promptProtocolSSH
+			}
+			gitProtocol = defaultProtocol
+			err = opts.IO.Select(ctx, &gitProtocol, "Choose default Git protocol:", gitProtocolOptions)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			gitProtocol = strings.ToLower(gitProtocol)
 		}
 
-		gitProtocol = strings.ToLower(gitProtocol)
-		if opts.Interactive && gitProtocol != "ssh" {
+		if gitProtocol != "ssh" {
 			if err := credentialFlow.Prompt(ctx, opts.IO, hostname, gitProtocol); err != nil {
 				return err
 			}
 		}
 
 		if isSelfHosted {
-			apiProtocolOptions := []string{promptProtocolHTTPS, promptProtocolHTTP}
-			apiProtocol = promptProtocolHTTPS // Set default
-			err = opts.IO.Select(ctx, &apiProtocol, "Choose host API protocol:", apiProtocolOptions)
-			if err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
-			}
+			if opts.ApiProtocol != "" {
+				apiProtocol = strings.ToLower(opts.ApiProtocol)
+			} else {
+				apiProtocolOptions := []string{promptProtocolHTTPS, promptProtocolHTTP}
+				apiProtocol = promptProtocolHTTPS // Set default
+				err = opts.IO.Select(ctx, &apiProtocol, "Choose host API protocol:", apiProtocolOptions)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
 
-			apiProtocol = strings.ToLower(apiProtocol)
+				apiProtocol = strings.ToLower(apiProtocol)
+			}
 		}
 
 		fmt.Fprintf(opts.IO.StdErr, "- glab config set -h %s git_protocol %s\n", hostname, gitProtocol)
