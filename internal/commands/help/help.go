@@ -16,11 +16,11 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
-// glamourStyle returns the glamour style to use, replicating glamour v1's
+// getGlamourStyle returns the glamour style to use, replicating glamour v1's
 // auto-detection logic that was removed in v2. It checks the GLAMOUR_STYLE
 // environment variable first, then falls back to notty for non-TTY output
 // or dark/light based on terminal background color.
-func glamourStyle() string {
+func getGlamourStyle() string {
 	if s := os.Getenv("GLAMOUR_STYLE"); s != "" {
 		return s
 	}
@@ -40,7 +40,7 @@ func renderWithGlamour(text string) string {
 	}
 
 	renderer, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle(glamourStyle()),
+		glamour.WithStandardStyle(getGlamourStyle()),
 		glamour.WithWordWrap(120),
 		glamour.WithPreservedNewLines(),
 	)
