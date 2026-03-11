@@ -7,7 +7,9 @@ import (
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/utils"
 	"gitlab.com/gitlab-org/cli/internal/config"
@@ -112,6 +114,10 @@ func (opts *options) validate() error {
 }
 
 func (opts *options) run(ctx context.Context) error {
+	if err := cmdutils.HandleDescriptionEditor(ctx, &opts.description, opts.io, opts.config, nil); err != nil {
+		return err
+	}
+
 	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
 	if err != nil {
 		return err
@@ -153,5 +159,4 @@ func (opts *options) run(ctx context.Context) error {
 	}
 
 	return nil
-
 }

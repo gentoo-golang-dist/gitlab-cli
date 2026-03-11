@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 )
 
