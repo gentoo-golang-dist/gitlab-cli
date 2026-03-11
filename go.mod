@@ -10,7 +10,7 @@ replace github.com/survivorbat/huhtest => github.com/timofurrer/huhtest v0.0.0-2
 
 require (
 	charm.land/glamour/v2 v2.0.0
-	charm.land/lipgloss/v2 v2.0.0
+	charm.land/lipgloss/v2 v2.0.2
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/adrg/xdg v0.5.3
@@ -159,7 +159,7 @@ require (
 	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6 // indirect
 	golang.org/x/image v0.20.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
