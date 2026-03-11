@@ -93,6 +93,7 @@ func genWebDocs(glabCli *cobra.Command, basePath string) error {
 // Top-level commands always get their own folder with _index.md
 // Non-top-level commands with subcommands get their own folder with _index.md
 // Non-top-level commands without subcommands get a .md file in their parent's directory
+// and do not create their own directory
 func genCommandDocs(cmd *cobra.Command, basePath string, parentPath []string) error {
 	// Skip help commands and unavailable commands (hidden/deprecated)
 	if cmd.Name() == "help" || !cmd.IsAvailableCommand() {
@@ -105,9 +106,11 @@ func genCommandDocs(cmd *cobra.Command, basePath string, parentPath []string) er
 
 	fmt.Println("Generating docs for " + strings.Join(currentPath, " "))
 
-	// Create directory for this command
-	if err := os.MkdirAll(fullPath, 0o750); err != nil {
-		return err
+	// Only create directory if this command has subcommands or is top-level
+	if cmd.HasAvailableSubCommands() || len(parentPath) == 0 {
+		if err := os.MkdirAll(fullPath, 0o750); err != nil {
+			return err
+		}
 	}
 
 	// Generate the command documentation
