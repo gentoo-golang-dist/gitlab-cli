@@ -54,20 +54,15 @@ default:
     - "saas-linux-medium-amd64"
 
 stages:
-  - .pre
   - documentation
   - test
   - build
   - release
 
 include:
-  # remove the `.latest` from the following templates after 16.0 GitLab release
-  # the `.latest` indicates the "nightly" version of the job definition
-  # when we remove the `.latest`, we'll be using the stable job definition
-  # https://gitlab.com/gitlab-org/cli/-/merge_requests/1100#note_1186302003
-  - template: Jobs/SAST.latest.gitlab-ci.yml
-  - template: Jobs/Dependency-Scanning.latest.gitlab-ci.yml
-  - template: Jobs/Secret-Detection.latest.gitlab-ci.yml
+  - template: Jobs/SAST.gitlab-ci.yml
+  - template: Jobs/Dependency-Scanning.gitlab-ci.yml
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
   - component: ${CI_SERVER_FQDN}/gitlab-org/components/danger-review/danger-review@2.1.0
   - component: ${CI_SERVER_FQDN}/components/code-intelligence/golang-code-intel@v0.0.3
     inputs:
@@ -93,19 +88,12 @@ include:
         - go.sum
     policy: pull-push
 
-prepare_go_cache:
-  extends: .go-cache
-  stage: .pre
-  cache:
-    key:
-      prefix: prepare
-  script:
-    - go mod download
-
 .documentation:
   stage: documentation
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  needs: []
+  dependencies: []
 
 .test:
   stage: test
@@ -144,8 +132,6 @@ check_docs_markdown:
 docs hugo_build:
   image: registry.gitlab.com/gitlab-org/technical-writing/docs-gitlab-com/docs-gitlab-com-builder:hugo-0.150.1
   extends: .documentation
-  needs: []
-  dependencies: []
   variables:
     DOCS_BRANCH: "main"
   before_script:
@@ -197,9 +183,6 @@ check_go_generated_code:
   extends:
     - .go-cache
     - .test
-  needs:
-    - job: prepare_go_cache
-      optional: true
   cache:
     key:
       prefix: check-generated
@@ -248,9 +231,6 @@ lint:
   extends:
     - .go-cache
     - .test
-  needs:
-    - job: prepare_go_cache
-      optional: true
   image: ${GITLAB_DEPENDENCY_PROXY}golangci/golangci-lint:v2.11.1-alpine
   cache:
     key:
@@ -271,9 +251,6 @@ tests:unit:
   extends:
     - .go-cache
     - .test
-  needs:
-    - job: prepare_go_cache
-      optional: true
   # We currently only test on the latest version of Go which we also build against.
   # If we need to introduce testing for future versions of compatibility reasons
   # uncomment the below lines and adjust the `GO_VERSION` to included versions to test.
@@ -456,9 +433,6 @@ windows_installer:
 build_windows:
   extends: .go-cache
   stage: build
-  needs:
-    - job: prepare_go_cache
-      optional: true
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"
@@ -565,10 +539,6 @@ snapcraft_release_edge:
     - snapcraft whoami
     - snapcraft upload *.snap --release=latest/edge
     - snapcraft logout
-  # NOTE: this is allowed to fail because of manual snap package reviews.
-  # See https://gitlab.com/gitlab-org/cli/-/work_items/8116.
-  # It should be removed once we no longer require manual reviews.
-  allow_failure: true
 
 secret_detection:
   dependencies: [] # Don't download artifacts, especially `./public/`
