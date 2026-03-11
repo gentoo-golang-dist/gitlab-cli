@@ -21,6 +21,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -108,9 +109,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestMRView(t *testing.T) {
-	oldListMrDiscussions := listMRDiscussions
+	oldListAllDiscussions := mrutils.ListAllDiscussions
 	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
-	listMRDiscussions = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
+	mrutils.ListAllDiscussions = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
 		if projectID == "PROJECT_MR_WITH_EMPTY_NOTE" {
 			return []*gitlab.Discussion{}, nil
 		}
@@ -220,7 +221,7 @@ func TestMRView(t *testing.T) {
 			}
 		}
 	})
-	listMRDiscussions = oldListMrDiscussions
+	mrutils.ListAllDiscussions = oldListAllDiscussions
 }
 
 func Test_rawMRPreview(t *testing.T) {
@@ -526,86 +527,6 @@ func TestMrViewJSON(t *testing.T) {
 	assert.Empty(t, output.Stderr())
 }
 
-func TestPrintCommentFileContext(t *testing.T) {
-	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
-	t.Setenv("NO_COLOR", "true")
-
-	ioStr, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
-	c := ioStr.Color()
-
-	tests := []struct {
-		name     string
-		note     *gitlab.Note
-		expected string
-	}{
-		{
-			name: "single line comment on new file",
-			note: &gitlab.Note{
-				Position: &gitlab.NotePosition{
-					NewPath: "internal/commands/mr/view/mr_view.go",
-					NewLine: 42,
-				},
-			},
-			expected: " on internal/commands/mr/view/mr_view.go:42\n",
-		},
-		{
-			name: "single line comment on old file",
-			note: &gitlab.Note{
-				Position: &gitlab.NotePosition{
-					OldPath: "internal/commands/mr/view/mr_view.go",
-					OldLine: 35,
-				},
-			},
-			expected: " on internal/commands/mr/view/mr_view.go:35\n",
-		},
-		{
-			name: "multi-line comment",
-			note: &gitlab.Note{
-				Position: &gitlab.NotePosition{
-					NewPath: "internal/gateway/mcp/tools/get_coin_open_interest.go",
-					LineRange: &gitlab.LineRange{
-						StartRange: &gitlab.LinePosition{NewLine: 63},
-						EndRange:   &gitlab.LinePosition{NewLine: 68},
-					},
-				},
-			},
-			expected: " on internal/gateway/mcp/tools/get_coin_open_interest.go:63-68\n",
-		},
-		{
-			name: "single line range (same start and end)",
-			note: &gitlab.Note{
-				Position: &gitlab.NotePosition{
-					NewPath: "main.go",
-					LineRange: &gitlab.LineRange{
-						StartRange: &gitlab.LinePosition{NewLine: 10},
-						EndRange:   &gitlab.LinePosition{NewLine: 10},
-					},
-				},
-			},
-			expected: " on main.go:10\n",
-		},
-		{
-			name: "position with no line numbers",
-			note: &gitlab.Note{
-				Position: &gitlab.NotePosition{
-					NewPath: "file.go",
-					NewLine: 0,
-				},
-			},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			printCommentFileContext(&buf, c, tt.note.Position)
-			got := buf.String()
-			assert.Equal(t, tt.expected, got)
-		})
-	}
-}
-
 func Test_printTTYMRPreview_closedMRWithNilClosedBy(t *testing.T) {
 	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
 	t.Setenv("NO_COLOR", "true")
@@ -646,12 +567,11 @@ func Test_filterDiscussionsByResolution(t *testing.T) {
 	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
 
 	tests := []struct {
-		name           string
-		discussions    []*gitlab.Discussion
-		showResolved   bool
-		showUnresolved bool
-		wantCount      int
-		wantIDs        []string
+		name        string
+		discussions []*gitlab.Discussion
+		state       string
+		wantCount   int
+		wantIDs     []string
 	}{
 		{
 			name: "filter resolved discussions",
@@ -679,10 +599,9 @@ func Test_filterDiscussionsByResolution(t *testing.T) {
 					},
 				},
 			},
-			showResolved:   true,
-			showUnresolved: false,
-			wantCount:      1,
-			wantIDs:        []string{"disc1"},
+			state:     "resolved",
+			wantCount: 1,
+			wantIDs:   []string{"disc1"},
 		},
 		{
 			name: "filter unresolved discussions",
@@ -711,10 +630,9 @@ func Test_filterDiscussionsByResolution(t *testing.T) {
 					},
 				},
 			},
-			showResolved:   false,
-			showUnresolved: true,
-			wantCount:      2,
-			wantIDs:        []string{"disc2", "disc3"},
+			state:     "unresolved",
+			wantCount: 2,
+			wantIDs:   []string{"disc2", "disc3"},
 		},
 		{
 			name: "exclude non-resolvable discussions",
@@ -734,39 +652,15 @@ func Test_filterDiscussionsByResolution(t *testing.T) {
 					},
 				},
 			},
-			showResolved:   true,
-			showUnresolved: false,
-			wantCount:      1,
-			wantIDs:        []string{"disc2"},
-		},
-		{
-			name: "both flags set returns both resolved and unresolved",
-			discussions: []*gitlab.Discussion{
-				{
-					ID:             "disc1",
-					IndividualNote: false,
-					Notes: []*gitlab.Note{
-						{ID: 1, Resolvable: true, Resolved: true, CreatedAt: &timer},
-					},
-				},
-				{
-					ID:             "disc2",
-					IndividualNote: false,
-					Notes: []*gitlab.Note{
-						{ID: 2, Resolvable: true, Resolved: false, CreatedAt: &timer},
-					},
-				},
-			},
-			showResolved:   true,
-			showUnresolved: true,
-			wantCount:      2,
-			wantIDs:        []string{"disc1", "disc2"},
+			state:     "resolved",
+			wantCount: 1,
+			wantIDs:   []string{"disc2"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := filterDiscussionsByResolution(tt.discussions, tt.showResolved, tt.showUnresolved)
+			got := mrutils.FilterDiscussions(tt.discussions, mrutils.FilterOpts{State: tt.state})
 			require.Len(t, got, tt.wantCount)
 
 			gotIDs := []string{}
