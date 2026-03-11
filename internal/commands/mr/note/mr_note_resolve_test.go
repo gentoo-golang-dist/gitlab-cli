@@ -238,7 +238,7 @@ func Test_resolve_subcommand(t *testing.T) {
 
 		_, err := exec(`resolve 1 abc12345`)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "matches 2 discussions")
+		assert.Contains(t, err.Error(), "matches 2 discussions: abc12345")
 	})
 }
 

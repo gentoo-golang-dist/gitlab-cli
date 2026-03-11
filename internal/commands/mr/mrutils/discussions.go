@@ -2,6 +2,7 @@ package mrutils
 
 import (
 	"fmt"
+	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -160,8 +161,20 @@ var ResolveDiscussionID = func(client *gitlab.Client, projectID any, mrIID int64
 	case 1:
 		return matches[0], nil
 	default:
-		return "", fmt.Errorf("prefix %q matches %d discussions: %s, %s", prefix, len(matches), matches[0], matches[1])
+		return "", fmt.Errorf("prefix %q matches %d discussions: %s", prefix, len(matches), formatMatches(matches))
 	}
+}
+
+// formatMatches formats discussion IDs for display, truncating each to 8 chars.
+func formatMatches(matches []string) string {
+	truncated := make([]string, len(matches))
+	for i, m := range matches {
+		if len(m) > 8 {
+			m = m[:8] + "…"
+		}
+		truncated[i] = m
+	}
+	return strings.Join(truncated, ", ")
 }
 
 // FindDiscussionByNoteID finds the discussion containing a specific note ID.
