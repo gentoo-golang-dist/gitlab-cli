@@ -284,6 +284,7 @@ func (s *IOStreams) ResolveBackgroundColor(style string) string {
 	// if we aren't using env vars we use the value from the config
 	if styleEnvVar == "" && deprecatedStyleEnvVar == "" {
 		s.backgroundColor = style
+		return style
 	}
 
 	if (!s.ColorEnabled()) || (s.pagerProcess != nil) {
