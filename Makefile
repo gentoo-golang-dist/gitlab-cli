@@ -124,6 +124,15 @@ test: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test: bin/gotestsum ## Run tests
 	$(GOTEST) --no-summary=skipped --format-hide-empty-pkg --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
 
+.PHONY: test-changed
+test-changed: bin/gotestsum ## Run tests on packages changed vs origin/main (including reverse dependencies)
+	$(eval CHANGED_PKGS := $(shell ./scripts/changed-test-pkgs.sh))
+	@if [ -z "$(CHANGED_PKGS)" ]; then \
+		echo "No Go packages changed vs origin/main — skipping tests"; \
+	else \
+		$(MAKE) test TEST_PKGS="$(CHANGED_PKGS)"; \
+	fi
+
 .PHONY: test-race
 test-race: TEST_FORMAT ?= short
 test-race: SHELL = /bin/bash # set environment variables to ensure consistent test behavior

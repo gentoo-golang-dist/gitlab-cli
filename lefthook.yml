@@ -98,6 +98,46 @@ commit-msg:
 pre-push:
   parallel: true
   commands:
+    # Build the project
+    build:
+      tags: backend
+      run: make build
+
+    # Lint Go code (only changes vs main)
+    go-lint:
+      tags: backend lint
+      run: |
+        if ! command -v golangci-lint > /dev/null 2>&1; then
+          echo "⚠️  golangci-lint not found. Run 'make bootstrap' to install tools."
+          echo "   Skipping Go linting..."
+          exit 0
+        fi
+        golangci-lint run --new-from-rev=origin/main
+
+    # Run unit tests on changed packages and their reverse dependencies
+    go-test:
+      tags: backend test
+      run: make test-changed
+
+    # Check generated docs and Go code. Chained into one command because both
+    # mutate the working tree and check git diff — running them in parallel
+    # would cause false positives.
+    check-generated:
+      tags: backend docs
+      run: |
+        make gen-docs > /dev/null 2>&1
+        if ! git diff --quiet docs/; then
+          echo "✖ Generated docs are out of date. Run 'make gen-docs' and commit."
+          exit 1
+        fi
+        echo "✔ Documentation is up to date."
+        make generate > /dev/null 2>&1
+        if ! git diff --quiet; then
+          echo "✖ Generated Go code is out of date. Run 'make generate' and commit."
+          exit 1
+        fi
+        echo "✔ Generated code is up to date."
+
     # Lint markdown files
     markdownlint:
       tags: docs lint
