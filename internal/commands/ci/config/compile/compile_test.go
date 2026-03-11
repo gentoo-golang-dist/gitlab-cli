@@ -23,7 +23,7 @@ func Test_compileRun(t *testing.T) {
 	tests := []struct {
 		name                 string
 		testFile             string
-		StdOut               string
+		stdOut               string
 		wantErr              bool
 		errMsg               string
 		expectedLintResponse *gitlab.ProjectLintResult
@@ -32,7 +32,7 @@ func Test_compileRun(t *testing.T) {
 		{
 			name:             "with invalid path specified",
 			testFile:         "WRONG_PATH",
-			StdOut:           "",
+			stdOut:           "",
 			wantErr:          true,
 			errMsg:           "WRONG_PATH: no such file or directory",
 			showHaveBaseRepo: true,
@@ -40,20 +40,21 @@ func Test_compileRun(t *testing.T) {
 		{
 			name:             "without base repo",
 			testFile:         ".gitlab.ci.yml",
-			StdOut:           "",
+			stdOut:           "",
 			wantErr:          true,
-			errMsg:           "You must be in a GitLab project repository for this action: no base repository present",
+			errMsg:           "You must be in a GitLab project repository for this action.\nError: no base repository present",
 			showHaveBaseRepo: false,
 		},
 		{
 			name:             "when a valid path is specified and yaml is valid",
 			testFile:         ".gitlab-ci.yml",
-			StdOut:           "",
+			stdOut:           "merged-yaml\n",
 			wantErr:          false,
 			errMsg:           "",
 			showHaveBaseRepo: true,
 			expectedLintResponse: &gitlab.ProjectLintResult{
-				Valid: true,
+				Valid:      true,
+				MergedYaml: "merged-yaml\n",
 			},
 		},
 	}
@@ -80,7 +81,7 @@ func Test_compileRun(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.StdOut, out.OutBuf.String())
+			assert.Equal(t, tt.stdOut, out.OutBuf.String())
 		})
 	}
 }

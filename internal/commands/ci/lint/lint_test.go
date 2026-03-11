@@ -32,6 +32,26 @@ func Test_lintRun(t *testing.T) {
 		setupMock        func(tc *gitlabtesting.TestClient)
 	}
 
+	assertLintOptions := func(t *testing.T, opt *gitlab.ProjectNamespaceLintOptions, dryRun bool, ref string) {
+		t.Helper()
+
+		require.NotNil(t, opt)
+		require.NotNil(t, opt.Content)
+		require.NotEmpty(t, *opt.Content)
+		require.NotNil(t, opt.DryRun)
+		assert.Equal(t, dryRun, *opt.DryRun)
+		require.NotNil(t, opt.IncludeJobs)
+		assert.False(t, *opt.IncludeJobs)
+
+		if ref == "" {
+			assert.Nil(t, opt.Ref)
+			return
+		}
+
+		require.NotNil(t, opt.Ref)
+		assert.Equal(t, ref, *opt.Ref)
+	}
+
 	tests := []testCase{
 		{
 			name:             "with invalid path specified",
@@ -95,9 +115,12 @@ func Test_lintRun(t *testing.T) {
 					}, nil, nil)
 				tc.MockValidate.EXPECT().
 					ProjectNamespaceLint(int64(123), gomock.Any()).
-					Return(&gitlab.ProjectLintResult{
-						Valid: true,
-					}, nil, nil)
+					DoAndReturn(func(pid any, opt *gitlab.ProjectNamespaceLintOptions, options ...gitlab.RequestOptionFunc) (*gitlab.ProjectLintResult, *gitlab.Response, error) {
+						assertLintOptions(t, opt, true, "")
+						return &gitlab.ProjectLintResult{
+							Valid: true,
+						}, nil, nil
+					})
 			},
 		},
 		{
@@ -116,9 +139,37 @@ func Test_lintRun(t *testing.T) {
 					}, nil, nil)
 				tc.MockValidate.EXPECT().
 					ProjectNamespaceLint(int64(123), gomock.Any()).
-					Return(&gitlab.ProjectLintResult{
-						Valid: true,
+					DoAndReturn(func(pid any, opt *gitlab.ProjectNamespaceLintOptions, options ...gitlab.RequestOptionFunc) (*gitlab.ProjectLintResult, *gitlab.Response, error) {
+						assertLintOptions(t, opt, true, "main")
+						return &gitlab.ProjectLintResult{
+							Valid: true,
+						}, nil, nil
+					})
+			},
+		},
+		{
+			name:             "when --include-merged-yaml is used",
+			testFile:         ".gitlab-ci.yaml",
+			cliArgs:          "--include-merged-yaml",
+			StdOut:           "merged-yaml\n",
+			wantErr:          false,
+			errMsg:           "",
+			showHaveBaseRepo: true,
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockProjects.EXPECT().
+					GetProject("OWNER/REPO", gomock.Any()).
+					Return(&gitlab.Project{
+						ID: 123,
 					}, nil, nil)
+				tc.MockValidate.EXPECT().
+					ProjectNamespaceLint(int64(123), gomock.Any()).
+					DoAndReturn(func(pid any, opt *gitlab.ProjectNamespaceLintOptions, options ...gitlab.RequestOptionFunc) (*gitlab.ProjectLintResult, *gitlab.Response, error) {
+						assertLintOptions(t, opt, false, "")
+						return &gitlab.ProjectLintResult{
+							Valid:      true,
+							MergedYaml: "merged-yaml\n",
+						}, nil, nil
+					})
 			},
 		},
 	}

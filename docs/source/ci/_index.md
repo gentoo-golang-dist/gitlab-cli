@@ -38,7 +38,6 @@ pipeline
 ## Subcommands
 
 - [`cancel`](cancel/_index.md)
-- [`config`](config/_index.md)
 - [`delete`](delete.md)
 - [`get`](get.md)
 - [`lint`](lint.md)

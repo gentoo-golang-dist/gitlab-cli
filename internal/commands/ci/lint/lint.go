@@ -24,18 +24,15 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
 
-	path        string
-	ref         string
-	dryRun      bool
-	includeJobs bool
+	path              string
+	ref               string
+	dryRun            bool
+	includeJobs       bool
+	includeMergedYAML bool
 }
 
 func NewCmdLint(f cmdutils.Factory) *cobra.Command {
-	opts := options{
-		io:           f.IO(),
-		gitlabClient: f.GitLabClient,
-		baseRepo:     f.BaseRepo,
-	}
+	opts := newOptions(f)
 	pipelineCILintCmd := &cobra.Command{
 		Use:   "lint",
 		Short: "Checks if your `.gitlab-ci.yml` file is valid.",
@@ -44,7 +41,10 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 			# Uses .gitlab-ci.yml in the current directory
 			glab ci lint
 			glab ci lint .gitlab-ci.yml
-			glab ci lint path/to/.gitlab-ci.yml`),
+			glab ci lint path/to/.gitlab-ci.yml
+
+			# Output the fully expanded CI/CD configuration
+			glab ci lint --include-merged-yaml --dry-run --ref scratch`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -56,9 +56,27 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 
 	pipelineCILintCmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Run pipeline creation simulation.")
 	pipelineCILintCmd.Flags().BoolVarP(&opts.includeJobs, "include-jobs", "", false, "Response includes the list of jobs that would exist in a static check or pipeline simulation.")
+	pipelineCILintCmd.Flags().BoolVar(&opts.includeMergedYAML, "include-merged-yaml", false, "Output the fully expanded CI/CD configuration instead of the validation summary.")
 	pipelineCILintCmd.Flags().StringVar(&opts.ref, "ref", "", "When 'dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.")
 
 	return pipelineCILintCmd
+}
+
+func newOptions(f cmdutils.Factory) options {
+	return options{
+		io:           f.IO(),
+		gitlabClient: f.GitLabClient,
+		baseRepo:     f.BaseRepo,
+	}
+}
+
+// RunMergedYAML reuses ci lint to print the merged YAML response for a local CI file.
+func RunMergedYAML(f cmdutils.Factory, path string) error {
+	opts := newOptions(f)
+	opts.path = path
+	opts.includeMergedYAML = true
+
+	return opts.run()
 }
 
 func (o *options) complete(args []string) {
@@ -70,78 +88,96 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) run() error {
-	var err error
 	out := o.io.StdOut
-	c := o.io.Color()
+	if !o.includeMergedYAML {
+		fmt.Fprintln(out, "Validating...")
+	}
 
-	client, err := o.gitlabClient()
+	lintResult, err := o.lint()
 	if err != nil {
 		return err
 	}
 
+	if !lintResult.Valid {
+		fmt.Fprintln(out, o.io.Color().Red(o.path+" is invalid."))
+		for i, err := range lintResult.Errors {
+			i++
+			fmt.Fprintln(out, i, err)
+		}
+		return cmdutils.SilentError
+	}
+
+	if o.includeMergedYAML {
+		_, err = fmt.Fprint(out, lintResult.MergedYaml)
+		return err
+	}
+
+	fmt.Fprintln(out, o.io.Color().GreenCheck(), "CI/CD YAML is valid!")
+	return nil
+}
+
+func (o *options) lint() (*gitlab.ProjectLintResult, error) {
+	client, err := o.gitlabClient()
+	if err != nil {
+		return nil, err
+	}
+
 	repo, err := o.baseRepo()
 	if err != nil {
-		return fmt.Errorf("You must be in a GitLab project repository for this action.\nError: %s", err)
+		return nil, fmt.Errorf("You must be in a GitLab project repository for this action.\nError: %s", err)
 	}
 
 	project, err := repo.Project(client)
 	if err != nil {
-		return fmt.Errorf("You must be in a GitLab project repository for this action.\nError: %s", err)
+		return nil, fmt.Errorf("You must be in a GitLab project repository for this action.\nError: %s", err)
 	}
 
-	projectID := project.ID
-
-	var content []byte
-	var stdout bytes.Buffer
-
-	if git.IsValidURL(o.path) {
-		resp, err := http.Get(o.path)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(&stdout, resp.Body)
-		if err != nil {
-			return err
-		}
-		content = stdout.Bytes()
-	} else {
-		content, err = os.ReadFile(o.path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("%s: no such file or directory.", o.path)
-			}
-			return err
-		}
+	content, err := o.loadContent()
+	if err != nil {
+		return nil, err
 	}
-
-	fmt.Fprintln(o.io.StdOut, "Validating...")
 
 	lintOpts := &gitlab.ProjectNamespaceLintOptions{
 		Content:     new(string(content)),
 		DryRun:      new(o.dryRun),
 		IncludeJobs: new(o.includeJobs),
 	}
-	// Only include Ref if it was explicitly set by the user
 	if o.ref != "" {
 		lintOpts.Ref = new(o.ref)
 	}
 
-	lint, _, err := client.Validate.ProjectNamespaceLint(
-		projectID,
-		lintOpts,
-	)
+	lintResult, _, err := client.Validate.ProjectNamespaceLint(project.ID, lintOpts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if !lint.Valid {
-		fmt.Fprintln(out, c.Red(o.path+" is invalid."))
-		for i, err := range lint.Errors {
-			i++
-			fmt.Fprintln(out, i, err)
+	return lintResult, nil
+}
+
+func (o *options) loadContent() ([]byte, error) {
+	if git.IsValidURL(o.path) {
+		resp, err := http.Get(o.path)
+		if err != nil {
+			return nil, err
 		}
-		return cmdutils.SilentError
+		defer resp.Body.Close()
+
+		var stdout bytes.Buffer
+		_, err = io.Copy(&stdout, resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return stdout.Bytes(), nil
 	}
-	fmt.Fprintln(out, c.GreenCheck(), "CI/CD YAML is valid!")
-	return nil
+
+	content, err := os.ReadFile(o.path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%s: no such file or directory.", o.path)
+		}
+		return nil, err
+	}
+
+	return content, nil
 }
