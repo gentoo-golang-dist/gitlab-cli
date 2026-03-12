@@ -135,6 +135,29 @@ func TestCreateCookieJar_FileNotFound(t *testing.T) {
 	assert.Error(t, err, "expected error for non-existent cookie file")
 }
 
+func TestCreateCookieJar_AllCookiesExpired(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+	cookieFile := filepath.Join(tmpDir, "cookies.txt")
+
+	// All cookies have timestamps in the past
+	cookieContent := `.example.com	TRUE	/	TRUE	1000000000	old_session	expired1
+.example.com	TRUE	/	TRUE	1000000001	old_token	expired2
+`
+	err := os.WriteFile(cookieFile, []byte(cookieContent), 0o600)
+	require.NoError(t, err)
+
+	client := &Client{
+		baseURL:    "https://example.com/api/v4",
+		cookieFile: cookieFile,
+	}
+
+	_, err = client.createCookieJar()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no valid cookies")
+	assert.Contains(t, err.Error(), cookieFile)
+}
+
 // cookieNames is a helper function to extract cookie names for error messages
 func cookieNames(cookies []*http.Cookie) []string {
 	names := make([]string, len(cookies))

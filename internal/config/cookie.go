@@ -25,6 +25,15 @@ func LoadCookieFile(path string) ([]*http.Cookie, error) {
 		return nil, fmt.Errorf("failed to expand cookie file path: %w", err)
 	}
 
+	// Validate file permissions (similar to how ssh treats identity files)
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat cookie file: %w", err)
+	}
+	if err := validateCookieFilePermissions(expandedPath, fileInfo); err != nil {
+		return nil, err
+	}
+
 	file, err := os.Open(expandedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open cookie file: %w", err)
@@ -60,6 +69,12 @@ func LoadCookieFile(path string) ([]*http.Cookie, error) {
 		if err != nil {
 			// Log malformed entries for debugging but continue processing
 			dbg.Debugf("cookie file %s:%d: skipping malformed entry: %v", expandedPath, lineNum, err)
+			continue
+		}
+
+		// Skip expired cookies (session cookies with zero expiration are always included)
+		if !cookie.Expires.IsZero() && cookie.Expires.Before(time.Now()) {
+			dbg.Debugf("cookie file %s:%d: skipping expired cookie %q (expired %s)", expandedPath, lineNum, cookie.Name, cookie.Expires)
 			continue
 		}
 
