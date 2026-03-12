@@ -21,7 +21,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/dbg"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/oauth2"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -48,7 +47,7 @@ type Client struct {
 	// client certificate files
 	clientCertFile string
 	clientKeyFile  string
-	// cookie file for IdP/SSO authentication
+	// cookieFile is the cookie file for IdP/SSO authentication
 	cookieFile string
 	// ssoAllowedDomains are pre-approved SSO domains (loaded from config)
 	ssoAllowedDomains map[string]struct{}
@@ -410,14 +409,7 @@ func getConfigValue(cfg config.Config, host, key string) string {
 }
 
 // NewClientFromConfig initializes the global api with the config data.
-// Deprecated: Use NewClientFromConfigWithIO.
 func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, userAgent string) (*Client, error) {
-	return NewClientFromConfigWithIO(repoHost, cfg, isGraphQL, userAgent, nil)
-}
-
-// NewClientFromConfigWithIO initializes the api client with config data.
-// The io parameter is reserved for future use and currently unused.
-func NewClientFromConfigWithIO(repoHost string, cfg config.Config, isGraphQL bool, userAgent string, _ *iostreams.IOStreams) (*Client, error) {
 	apiHost := getConfigValue(cfg, repoHost, "api_host")
 	if apiHost == "" {
 		apiHost = repoHost
@@ -442,7 +434,7 @@ func NewClientFromConfigWithIO(repoHost string, cfg config.Config, isGraphQL boo
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve proxy function: %w", err)
 	}
-	cookieFile := getConfigValue(cfg, repoHost, "cookie_file")
+	cookieFile := getConfigValue(cfg, repoHost, "sso_cookie_file")
 
 	// Build options based on configuration
 	options := []ClientOption{
@@ -525,7 +517,6 @@ func NewClientFromConfigWithIO(repoHost string, cfg config.Config, isGraphQL boo
 		if ssoDomain != "" {
 			options = append(options, WithSSOAllowedDomains(map[string]struct{}{ssoDomain: {}}))
 		}
-
 	}
 
 	return NewClient(newAuthSource, options...)

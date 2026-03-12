@@ -82,7 +82,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			In interactive mode, %[1]sglab%[1]s detects GitLab instances from your Git remotes
 			and lists them as options, so you do not have to type the hostname manually.
 
-			For GitLab instances protected by SSO or Identity Providers (IdP), use the %[1]s--cookie-file%[1]s
+			For GitLab instances protected by SSO or Identity Providers (IdP), use the %[1]s--sso-cookie-file%[1]s
 			flag to provide browser session cookies for authentication. The cookie file must be in
 			Netscape/Mozilla format (supports %[1]s#HttpOnly_%[1]s prefix). This requires a token for GitLab
 			API authentication, while cookies handle the SSO/IdP layer.
@@ -111,7 +111,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 
 			# Authenticate with SSO/IdP protected GitLab using cookies
-			$ glab auth login --hostname gitlab.example.org --token glpat-xxx --cookie-file ~/cookies.txt
+			$ glab auth login --hostname gitlab.example.org --token glpat-xxx --sso-cookie-file ~/cookies.txt
 		`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
@@ -242,7 +242,7 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 
 		if opts.CookieFile != "" {
-			err := cfg.Set(hostname, "cookie_file", opts.CookieFile)
+			err := cfg.Set(hostname, "sso_cookie_file", opts.CookieFile)
 			if err != nil {
 				return err
 			}
@@ -293,7 +293,7 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 
 		if opts.CookieFile != "" {
-			err := cfg.Set(hostname, "cookie_file", opts.CookieFile)
+			err := cfg.Set(hostname, "sso_cookie_file", opts.CookieFile)
 			if err != nil {
 				return err
 			}
@@ -629,7 +629,7 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	}
 
 	if opts.CookieFile != "" {
-		err = cfg.Set(hostname, "cookie_file", opts.CookieFile)
+		err = cfg.Set(hostname, "sso_cookie_file", opts.CookieFile)
 		if err != nil {
 			return err
 		}

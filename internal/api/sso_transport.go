@@ -400,6 +400,9 @@ func (t *ssoTransport) handleSSORedirect(req *http.Request, resp *http.Response,
 		currentURL = redirectURL
 	}
 
+	// Close the last response body to prevent resource leaks
+	_, _ = io.Copy(io.Discard, currentResp.Body)
+	currentResp.Body.Close()
 	return nil, fmt.Errorf("stopped after %d redirects during retry", maxRedirects)
 }
 
@@ -490,6 +493,9 @@ func (t *ssoTransport) handleSameHostRedirect(req *http.Request, resp *http.Resp
 		currentURL = redirectURL
 	}
 
+	// Close the last response body to prevent resource leaks
+	_, _ = io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 	return nil, fmt.Errorf("stopped after %d redirects", maxRedirects)
 }
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -27,7 +28,7 @@ func TestLoadCookieFile(t *testing.T) {
 			name: "valid cookie file",
 			content: `# Netscape HTTP Cookie File
 # https://curl.se/docs/http-cookies.html
-.example.com	TRUE	/	TRUE	1735689600	session_id	abc123
+.example.com	TRUE	/	TRUE	4102444800	session_id	abc123
 `,
 			expectedLen: 1,
 			checkCookie: func(t *testing.T, cookies []*http.Cookie) {
@@ -41,8 +42,8 @@ func TestLoadCookieFile(t *testing.T) {
 		{
 			name: "multiple cookies",
 			content: `# Comment line
-.gitlab.com	TRUE	/	TRUE	1735689600	_gitlab_session	sess123
-.gitlab.com	TRUE	/	FALSE	1735689600	known_sign_in	true
+.gitlab.com	TRUE	/	TRUE	4102444800	_gitlab_session	sess123
+.gitlab.com	TRUE	/	FALSE	4102444800	known_sign_in	true
 gitlab.com	FALSE	/api	TRUE	0	api_token	token456
 `,
 			expectedLen: 3,
@@ -63,15 +64,15 @@ gitlab.com	FALSE	/api	TRUE	0	api_token	token456
 		},
 		{
 			name:        "file with empty lines",
-			content:     "\n\n.example.com\tTRUE\t/\tTRUE\t1735689600\ttest\tvalue\n\n",
+			content:     "\n\n.example.com\tTRUE\t/\tTRUE\t4102444800\ttest\tvalue\n\n",
 			expectedLen: 1,
 		},
 		{
 			name: "skip malformed lines",
 			content: `# Header
-.example.com	TRUE	/	TRUE	1735689600	valid	cookie
+.example.com	TRUE	/	TRUE	4102444800	valid	cookie
 malformed line without enough fields
-.example.com	TRUE	/	TRUE	1735689600	another	valid
+.example.com	TRUE	/	TRUE	4102444800	another	valid
 `,
 			expectedLen: 2,
 		},
@@ -86,8 +87,21 @@ malformed line without enough fields
 			},
 		},
 		{
+			name: "expired cookies are skipped",
+			content: `.example.com	TRUE	/	TRUE	1609459200	expired	old_value
+.example.com	TRUE	/	TRUE	4102444800	valid	new_value
+.example.com	TRUE	/	TRUE	0	session	sess_value
+`,
+			expectedLen: 2,
+			checkCookie: func(t *testing.T, cookies []*http.Cookie) {
+				t.Helper()
+				assert.Equal(t, "valid", cookies[0].Name)
+				assert.Equal(t, "session", cookies[1].Name)
+			},
+		},
+		{
 			name: "cookie value with special characters",
-			content: `.example.com	TRUE	/	TRUE	1735689600	encoded	val%20ue%3D%26test
+			content: `.example.com	TRUE	/	TRUE	4102444800	encoded	val%20ue%3D%26test
 `,
 			expectedLen: 1,
 			checkCookie: func(t *testing.T, cookies []*http.Cookie) {
@@ -98,8 +112,8 @@ malformed line without enough fields
 		{
 			name: "httponly cookie with #HttpOnly_ prefix",
 			content: `# Netscape HTTP Cookie File
-#HttpOnly_.example.com	TRUE	/	TRUE	1735689600	session_id	abc123
-.example.com	TRUE	/	TRUE	1735689600	regular_cookie	def456
+#HttpOnly_.example.com	TRUE	/	TRUE	4102444800	session_id	abc123
+.example.com	TRUE	/	TRUE	4102444800	regular_cookie	def456
 `,
 			expectedLen: 2,
 			checkCookie: func(t *testing.T, cookies []*http.Cookie) {
@@ -116,9 +130,9 @@ malformed line without enough fields
 		{
 			name: "httponly cookies for multiple domains",
 			content: `# Netscape HTTP Cookie File
-#HttpOnly_.gitlab.example.com	TRUE	/	TRUE	1735689600	_gitlab_session	sess123
-#HttpOnly_.idp.example.com	TRUE	/	TRUE	1735689600	sso_token	idp456
-.gitlab.example.com	TRUE	/	TRUE	1735689600	known_sign_in	true
+#HttpOnly_.gitlab.example.com	TRUE	/	TRUE	4102444800	_gitlab_session	sess123
+#HttpOnly_.idp.example.com	TRUE	/	TRUE	4102444800	sso_token	idp456
+.gitlab.example.com	TRUE	/	TRUE	4102444800	known_sign_in	true
 `,
 			expectedLen: 3,
 			checkCookie: func(t *testing.T, cookies []*http.Cookie) {
@@ -160,6 +174,63 @@ func TestLoadCookieFile_NonExistent(t *testing.T) {
 	t.Parallel()
 	_, err := LoadCookieFile("/nonexistent/path/cookies.txt")
 	assert.Error(t, err, "expected error for non-existent file")
+}
+
+func TestLoadCookieFile_InsecurePermissions(t *testing.T) {
+	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("permission checks are not enforced on Windows")
+	}
+
+	validContent := ".example.com\tTRUE\t/\tTRUE\t4102444800\tsession_id\tabc123\n"
+
+	tests := []struct {
+		name    string
+		perm    os.FileMode
+		wantErr string
+	}{
+		{
+			name:    "rejects file with 0644 permissions",
+			perm:    0o644,
+			wantErr: "permissions 0644, expected 0600",
+		},
+		{
+			name:    "rejects file with 0666 permissions",
+			perm:    0o666,
+			wantErr: "permissions 0666, expected 0600",
+		},
+		{
+			name:    "rejects file with 0755 permissions",
+			perm:    0o755,
+			wantErr: "permissions 0755, expected 0600",
+		},
+		{
+			name: "accepts file with 0600 permissions",
+			perm: 0o600,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tmpDir := t.TempDir()
+			cookieFile := filepath.Join(tmpDir, "cookies.txt")
+			err := os.WriteFile(cookieFile, []byte(validContent), 0o600)
+			require.NoError(t, err)
+			require.NoError(t, os.Chmod(cookieFile, tt.perm))
+
+			cookies, err := LoadCookieFile(cookieFile)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				assert.Contains(t, err.Error(), "chmod 600")
+				assert.Nil(t, cookies)
+			} else {
+				require.NoError(t, err)
+				assert.Len(t, cookies, 1)
+			}
+		})
+	}
 }
 
 func Test_expandPath(t *testing.T) {
@@ -214,7 +285,7 @@ func TestParseCookieLine(t *testing.T) {
 	}{
 		{
 			name:     "standard cookie",
-			line:     ".example.com\tTRUE\t/\tTRUE\t1735689600\tsession\tvalue",
+			line:     ".example.com\tTRUE\t/\tTRUE\t4102444800\tsession\tvalue",
 			httpOnly: false,
 			want: &http.Cookie{
 				Name:     "session",
@@ -223,12 +294,12 @@ func TestParseCookieLine(t *testing.T) {
 				Path:     "/",
 				Secure:   true,
 				HttpOnly: false,
-				Expires:  time.Unix(1735689600, 0),
+				Expires:  time.Unix(4102444800, 0),
 			},
 		},
 		{
 			name:     "httponly cookie",
-			line:     ".example.com\tTRUE\t/\tTRUE\t1735689600\tsession\tvalue",
+			line:     ".example.com\tTRUE\t/\tTRUE\t4102444800\tsession\tvalue",
 			httpOnly: true,
 			want: &http.Cookie{
 				Name:     "session",
@@ -237,12 +308,12 @@ func TestParseCookieLine(t *testing.T) {
 				Path:     "/",
 				Secure:   true,
 				HttpOnly: true,
-				Expires:  time.Unix(1735689600, 0),
+				Expires:  time.Unix(4102444800, 0),
 			},
 		},
 		{
 			name:     "insecure cookie",
-			line:     "example.com\tFALSE\t/path\tFALSE\t1735689600\tname\tval",
+			line:     "example.com\tFALSE\t/path\tFALSE\t4102444800\tname\tval",
 			httpOnly: false,
 			want: &http.Cookie{
 				Name:     "name",
@@ -251,12 +322,12 @@ func TestParseCookieLine(t *testing.T) {
 				Path:     "/path",
 				Secure:   false,
 				HttpOnly: false,
-				Expires:  time.Unix(1735689600, 0),
+				Expires:  time.Unix(4102444800, 0),
 			},
 		},
 		{
 			name:    "too few fields",
-			line:    "example.com\tTRUE\t/\tTRUE\t1735689600",
+			line:    "example.com\tTRUE\t/\tTRUE\t4102444800",
 			wantErr: true,
 		},
 		{

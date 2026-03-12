@@ -30,7 +30,7 @@ To pass a token on standard input, use `--stdin`.
 In interactive mode, `glab` detects GitLab instances from your Git remotes
 and lists them as options, so you do not have to type the hostname manually.
 
-For GitLab instances protected by SSO or Identity Providers (IdP), use the `--cookie-file`
+For GitLab instances protected by SSO or Identity Providers (IdP), use the `--sso-cookie-file`
 flag to provide browser session cookies for authentication. The cookie file must be in
 Netscape/Mozilla format (supports `#HttpOnly_` prefix). This requires a token for GitLab
 API authentication, while cookies handle the SSO/IdP layer.
@@ -62,22 +62,22 @@ $ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:34
 $ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 
 # Authenticate with SSO/IdP protected GitLab using cookies
-$ glab auth login --hostname gitlab.example.org --token glpat-xxx --cookie-file ~/cookies.txt
+$ glab auth login --hostname gitlab.example.org --token glpat-xxx --sso-cookie-file ~/cookies.txt
 
 ```
 
 ## Options
 
 ```plaintext
-  -a, --api-host string       API host url.
-  -p, --api-protocol string   API protocol: https, http
-      --cookie-file string    Path to a Netscape/Mozilla format cookie file for IdP/SSO authentication.
-  -g, --git-protocol string   Git protocol: ssh, https, http
-      --hostname string       The hostname of the GitLab instance to authenticate with.
-  -j, --job-token string      CI job token.
-      --stdin                 Read token from standard input.
-  -t, --token string          Your GitLab access token.
-      --use-keyring           Store token in your operating system's keyring.
+  -a, --api-host string          API host url.
+  -p, --api-protocol string      API protocol: https, http
+  -g, --git-protocol string      Git protocol: ssh, https, http
+      --hostname string          The hostname of the GitLab instance to authenticate with.
+  -j, --job-token string         CI job token.
+      --sso-cookie-file string   Path to a Netscape/Mozilla format cookie file for IdP/SSO authentication.
+      --stdin                    Read token from standard input.
+  -t, --token string             Your GitLab access token.
+      --use-keyring              Store token in your operating system's keyring.
 ```
 
 ## Options inherited from parent commands

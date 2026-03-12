@@ -708,7 +708,7 @@ func TestSSOTransport_307Redirect_NotIntercepted(t *testing.T) {
 }
 
 // TestRegression_MergeRequestNotesEndpoint_PreservesPostMethod is a regression test
-// for issue #14: POST to merge_requests/notes was returning GET response (array)
+// verifying that POST to merge_requests/notes does not return a GET response (array)
 // instead of creating a note. The root cause was that same-host 302 redirects
 // were being handled by Go's default HTTP client which converts POST to GET.
 func TestRegression_MergeRequestNotesEndpoint_PreservesPostMethod(t *testing.T) {
@@ -758,7 +758,7 @@ func TestRegression_MergeRequestNotesEndpoint_PreservesPostMethod(t *testing.T) 
 	err = client.initializeHTTPClient()
 	require.NoError(t, err, "failed to initialize HTTP client")
 
-	// POST to notes endpoint - this is the exact scenario from issue #14
+	// POST to notes endpoint - this is the exact scenario where POST was converted to GET
 	body := `{"body": "Test comment"}`
 	req, _ := http.NewRequest(http.MethodPost,
 		server.URL+"/api/v4/projects/456/merge_requests/332/notes",
