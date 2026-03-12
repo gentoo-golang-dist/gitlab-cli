@@ -96,7 +96,7 @@ func TestWorkItemsCreate_FlagValidation(t *testing.T) {
 		{
 			name:    "missing work item type",
 			args:    "",
-			wantErr: "--type is required",
+			wantErr: "required flag(s) \"type\" not set",
 		},
 		{
 			name:    "unknown type",

@@ -11,6 +11,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/workitems/api"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/utils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -35,6 +36,7 @@ type options struct {
 
 	// Internal state
 	needsPrompt bool
+	scope       *api.ScopeInfo
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
@@ -63,13 +65,13 @@ Use --group flag for group-level work items or -R to specify a different project
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.complete(cmd); err != nil {
+			if err := opts.complete(cmd.Context(), cmd); err != nil {
 				return err
 			}
 			if err := opts.validate(); err != nil {
 				return err
 			}
-			return opts.run(cmd.Context())
+			return opts.run()
 		},
 	}
 
@@ -77,31 +79,40 @@ Use --group flag for group-level work items or -R to specify a different project
 	cmdutils.EnableRepoOverride(cmd, f)
 
 	// Flags
-	cmd.Flags().StringP("group", "g", "", "Create work items for a group or subgroup")
+	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Create work items for a group or subgroup")
 	cmd.Flags().StringVarP(&opts.workItemType, "type", "T", "", "Type of work item ("+strings.Join(utils.ValidTypeNames(), ", ")+").")
 
 	cmd.Flags().StringVarP(&opts.title, "title", "t", "", "Add title for work item")
 	cmd.Flags().StringVarP(&opts.description, "description", "d", "", "Description of the work item. Set to \"-\" to open an editor.")
 	cmd.Flags().BoolVarP(&opts.confidential, "confidential", "c", false, "Mark work item confidential.")
 
+	_ = cmd.MarkFlagRequired("type")
+
 	return cmd
 }
 
-func (opts *options) complete(cmd *cobra.Command) error {
+func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error {
 	group, err := cmdutils.GroupOverride(cmd)
 	if err != nil {
 		return err
 	}
 	opts.group = group
 	opts.needsPrompt = !cmd.Flags().Changed("title")
+
+	if err := cmdutils.HandleDescriptionEditor(ctx, &opts.description, opts.io, opts.config, nil); err != nil {
+		return err
+	}
+
+	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
+	if err != nil {
+		return err
+	}
+	opts.scope = scope
+
 	return nil
 }
 
 func (opts *options) validate() error {
-	if opts.workItemType == "" {
-		return cmdutils.FlagError{Err: fmt.Errorf("--type is required")}
-	}
-
 	if _, err := utils.ResolveTypeID(opts.workItemType); err != nil {
 		return err
 	}
@@ -113,16 +124,7 @@ func (opts *options) validate() error {
 	return nil
 }
 
-func (opts *options) run(ctx context.Context) error {
-	if err := cmdutils.HandleDescriptionEditor(ctx, &opts.description, opts.io, opts.config, nil); err != nil {
-		return err
-	}
-
-	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
-	if err != nil {
-		return err
-	}
-
+func (opts *options) run() error {
 	client, err := opts.gitlabClient()
 	if err != nil {
 		return fmt.Errorf("failed to get GitLab client: %w", err)
@@ -145,9 +147,9 @@ func (opts *options) run(ctx context.Context) error {
 		createOpts.Confidential = gitlab.Ptr(true)
 	}
 
-	fmt.Fprintln(opts.io.StdErr, "- Creating work item in", scope.Path)
+	fmt.Fprintln(opts.io.StdErr, "- Creating work item in", opts.scope.Path)
 
-	wi, _, err := client.WorkItems.CreateWorkItem(scope.Path, typeID, createOpts)
+	wi, _, err := client.WorkItems.CreateWorkItem(opts.scope.Path, typeID, createOpts)
 	if err != nil {
 		return err
 	}
