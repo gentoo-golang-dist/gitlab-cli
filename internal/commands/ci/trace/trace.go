@@ -22,6 +22,21 @@ func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 
 			# Trace job with the name 'lint'
 			$ glab ci trace lint
+
+			# Follow a running job's log output (like tail -f)
+			$ glab ci trace lint -f
+
+			# Follow a job by ID
+			$ glab ci trace 224356863 --follow
+
+			# Output job log with aggressive noise filtering
+			$ glab ci trace lint --format minimal
+
+			# Compact output with section headings and compressed repeats
+			$ glab ci trace lint --format compact
+
+			# Clean output without ANSI codes
+			$ glab ci trace lint --format clean
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -42,6 +57,8 @@ func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 			}
 			branch, _ := cmd.Flags().GetString("branch")
 			pipelineId, _ := cmd.Flags().GetInt("pipeline-id")
+			follow, _ := cmd.Flags().GetBool("follow")
+			format, _ := cmd.Flags().GetString("format")
 
 			return ciutils.TraceJob(cmd.Context(), &ciutils.JobInputs{
 				JobName:    jobName,
@@ -52,11 +69,15 @@ func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 				IO:         f.IO(),
 				Repo:       repo,
 				BranchFunc: f.Branch,
+				Follow:     follow,
+				Format:     ciutils.LogFormat(format),
 			})
 		},
 	}
 
 	pipelineCITraceCmd.Flags().StringP("branch", "b", "", "The branch to search for the job. (default current branch)")
 	pipelineCITraceCmd.Flags().IntP("pipeline-id", "p", 0, "The pipeline ID to search for the job.")
+	pipelineCITraceCmd.Flags().BoolP("follow", "f", false, "Follow job log output as it runs, similar to 'tail -f'.")
+	pipelineCITraceCmd.Flags().String("format", "raw", "Output format: raw (default), clean (no ANSI codes), compact (structured with headings), minimal (aggressively filtered).")
 	return pipelineCITraceCmd
 }

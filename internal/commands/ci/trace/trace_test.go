@@ -55,6 +55,56 @@ func TestCiTrace(t *testing.T) {
 			},
 		},
 		{
+			name:        "when follow flag is used with finished job",
+			args:        "1122 -f",
+			expectedOut: "\nGetting job trace...\nShowing logs for lint job #1122.\nLorem ipsum",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockJobs.EXPECT().
+					GetJob("OWNER/REPO", int64(1122), gomock.Any()).
+					Return(&gitlab.Job{
+						ID:     1122,
+						Name:   "lint",
+						Status: "success",
+					}, nil, nil)
+
+				tc.MockJobs.EXPECT().
+					GetTraceFile("OWNER/REPO", int64(1122), gomock.Any()).
+					Return(bytes.NewReader([]byte("Lorem ipsum")), nil, nil)
+			},
+		},
+		{
+			name:        "when follow flag is used with failed job",
+			args:        "1122 -f",
+			expectedOut: "\nGetting job trace...\nShowing logs for lint job #1122.\nLorem ipsum\nJob lint #1122 finished with status: failed\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockJobs.EXPECT().
+					GetJob("OWNER/REPO", int64(1122), gomock.Any()).
+					Return(&gitlab.Job{
+						ID:     1122,
+						Name:   "lint",
+						Status: "failed",
+					}, nil, nil)
+
+				tc.MockJobs.EXPECT().
+					GetTraceFile("OWNER/REPO", int64(1122), gomock.Any()).
+					Return(bytes.NewReader([]byte("Lorem ipsum")), nil, nil)
+			},
+		},
+		{
+			name:        "when pending job without follow shows hint",
+			args:        "1122",
+			expectedOut: "\nGetting job trace...\nlint is pending. Use -f/--follow to wait for it to start.\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockJobs.EXPECT().
+					GetJob("OWNER/REPO", int64(1122), gomock.Any()).
+					Return(&gitlab.Job{
+						ID:     1122,
+						Name:   "lint",
+						Status: "pending",
+					}, nil, nil)
+			},
+		},
+		{
 			name:          "when trace for job-id is requested and getTrace throws error",
 			args:          "1122",
 			expectedError: "failed to find job",

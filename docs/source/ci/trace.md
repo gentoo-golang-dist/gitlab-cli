@@ -28,12 +28,29 @@ $ glab ci trace 224356863
 # Trace job with the name 'lint'
 $ glab ci trace lint
 
+# Follow a running job's log output (like tail -f)
+$ glab ci trace lint -f
+
+# Follow a job by ID
+$ glab ci trace 224356863 --follow
+
+# Output job log with aggressive noise filtering
+$ glab ci trace lint --format minimal
+
+# Compact output with section headings and compressed repeats
+$ glab ci trace lint --format compact
+
+# Clean output without ANSI codes
+$ glab ci trace lint --format clean
+
 ```
 
 ## Options
 
 ```plaintext
   -b, --branch string     The branch to search for the job. (default current branch)
+  -f, --follow            Follow job log output as it runs, similar to 'tail -f'.
+      --format string     Output format: raw (default), clean (no ANSI codes), compact (structured with headings), minimal (aggressively filtered). (default "raw")
   -p, --pipeline-id int   The pipeline ID to search for the job.
 ```
 

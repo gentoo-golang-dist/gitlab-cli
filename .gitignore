@@ -33,6 +33,9 @@
 # test
 _test
 
+# Kiro
+.kiro/
+
 # VsCode
 .vscode/
 !.vscode/launch.json
