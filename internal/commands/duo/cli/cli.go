@@ -58,6 +58,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
+
+		Environment variables:
+
+		- %[1]sDEV_DUO_CLI_PATH%[1]s: Use a local binary instead of the managed one.
+		  Skips download, version checks, and updates.
 	`, "`") + text.ExperimentalString,
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
@@ -95,6 +100,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 // shouldForceUpdateCheck returns true if update checks should ignore the 24h delay.
 func shouldForceUpdateCheck() bool {
 	return os.Getenv("GLAB_DUO_CLI_CHECK_UPDATE") == "true"
+}
+
+// devDuoCLIPath returns the path from DEV_DUO_CLI_PATH if set.
+// When non-empty, all binary management (download, version checks) is skipped.
+func devDuoCLIPath() string {
+	return os.Getenv("DEV_DUO_CLI_PATH")
 }
 
 // updateCheckResult contains the result of an update check.
@@ -149,6 +160,15 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) run(ctx context.Context) error {
+	if customPath := devDuoCLIPath(); customPath != "" {
+		color := o.io.Color()
+		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), customPath)
+		if err := o.checkAutoRun(ctx); err != nil {
+			return err
+		}
+		return o.executeDuoCLI(ctx, customPath, o.args)
+	}
+
 	if o.update {
 		return o.handleUpdate(ctx)
 	}

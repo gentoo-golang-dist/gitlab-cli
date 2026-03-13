@@ -37,6 +37,11 @@ Configuration options:
 All arguments and flags are passed through to the GitLab Duo CLI binary.
 Use `--update` to check for and install updates to the binary.
 
+Environment variables:
+
+- `DEV_DUO_CLI_PATH`: Use a local binary instead of the managed one.
+  Skips download, version checks, and updates.
+
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
