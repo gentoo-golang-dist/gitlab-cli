@@ -31,6 +31,32 @@ func TestNewCmd_Help(t *testing.T) {
 	assert.NotNil(t, cmd.RunE, "RunE should be set to handle flag transformation")
 }
 
+func TestDevDuoCLIPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		expected string
+	}{
+		{
+			name:     "env var set to a path",
+			envValue: "/usr/local/bin/duo",
+			expected: "/usr/local/bin/duo",
+		},
+		{
+			name:     "env var empty",
+			envValue: "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("DEV_DUO_CLI_PATH", tt.envValue)
+			assert.Equal(t, tt.expected, devDuoCLIPath())
+		})
+	}
+}
+
 func TestShouldForceUpdateCheck(t *testing.T) {
 	tests := []struct {
 		name     string
