@@ -54,8 +54,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "create [flags]",
 		Short: "Create work items in a project or group. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`Create work items in a project or group.
-							
-						The command uses your repository context to detect scope automatically.
+
+		The command uses your repository context to detect scope automatically.
 		`) + text.ExperimentalString,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`

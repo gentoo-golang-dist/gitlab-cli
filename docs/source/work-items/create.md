@@ -15,7 +15,7 @@ Create work items in a project or group. (EXPERIMENTAL)
 ## Synopsis
 
 Create work items in a project or group.
-	
+
 The command uses your repository context to detect scope automatically.
 
 This feature is an experiment and is not ready for production use.
