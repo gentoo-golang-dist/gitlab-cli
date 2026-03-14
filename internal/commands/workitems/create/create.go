@@ -37,6 +37,9 @@ type options struct {
 	// Internal state
 	needsPrompt bool
 	scope       *api.ScopeInfo
+
+	// Output
+	outputFormat string
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
@@ -51,14 +54,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "create [flags]",
 		Short: "Create work items in a project or group. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`Create work items in a project or group.
-
-Automatically detects scope from repository context. 
-Use --group flag for group-level work items or -R to specify a different project.
-`) + text.ExperimentalString,
+							
+						The command uses your repository context to detect scope automatically.
+		`) + text.ExperimentalString,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-										# Create work item in current project
-										glab work-items create --type issue
+				# Create work item in current project
+				$ glab work-items create --type issue
+
+				# Create a work item in a group
+				$ glab work-items create --type epic --group my-group
 		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -77,6 +82,8 @@ Use --group flag for group-level work items or -R to specify a different project
 
 	// Enable -R flag for repo override
 	cmdutils.EnableRepoOverride(cmd, f)
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	// Flags
 	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Create work items for a group or subgroup")
@@ -147,17 +154,22 @@ func (opts *options) run() error {
 		createOpts.Confidential = gitlab.Ptr(true)
 	}
 
-	fmt.Fprintln(opts.io.StdErr, "- Creating work item in", opts.scope.Path)
-
 	wi, _, err := client.WorkItems.CreateWorkItem(opts.scope.Path, typeID, createOpts)
 	if err != nil {
 		return err
 	}
 
-	if opts.io.IsaTTY {
-		fmt.Fprintf(opts.io.StdOut, "#%d %s\n%s\n", wi.IID, wi.Title, wi.WebURL)
-	} else {
-		fmt.Fprintln(opts.io.StdOut, wi.WebURL)
+	switch opts.outputFormat {
+	case "json":
+		return opts.io.PrintJSON(wi)
+	default:
+		fmt.Fprintln(opts.io.StdOut, "- Creating work item in", opts.scope.Path)
+
+		if opts.io.IsaTTY {
+			fmt.Fprintf(opts.io.StdOut, "#%d %s\n%s\n", wi.IID, wi.Title, wi.WebURL)
+		} else {
+			fmt.Fprintln(opts.io.StdOut, wi.WebURL)
+		}
 	}
 
 	return nil
