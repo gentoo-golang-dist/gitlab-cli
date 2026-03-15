@@ -48,4 +48,11 @@ func TestLoadContent(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "WRONG_PATH: no such file or directory")
 	})
+
+	t.Run("returns url fetch errors", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := loadURLContent("://bad-url")
+		require.Error(t, err)
+	})
 }
