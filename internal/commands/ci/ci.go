@@ -44,7 +44,7 @@ func NewCmdCI(f cmdutils.Factory) *cobra.Command {
 	ciCmd.AddCommand(legacyCICmd.NewCmdCI(f))
 	ciCmd.AddCommand(ciTraceCmd.NewCmdTrace(f))
 	ciCmd.AddCommand(ciViewCmd.NewCmdView(f))
-	ciCmd.AddCommand(ciConfigCmd.NewCmdConfig(f))
+	ciCmd.AddCommand(ciConfigCmd.NewDeprecatedConfigCompileCmd(f))
 	ciCmd.AddCommand(ciLintCmd.NewCmdLint(f))
 	ciCmd.AddCommand(ciCancelCmd.NewCmdCancel(f))
 	ciCmd.AddCommand(pipeDeleteCmd.NewCmdDelete(f))
