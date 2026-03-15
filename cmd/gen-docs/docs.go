@@ -96,7 +96,7 @@ func genWebDocs(glabCli *cobra.Command, basePath string) error {
 // and do not create their own directory
 func genCommandDocs(cmd *cobra.Command, basePath string, parentPath []string) error {
 	// Skip help commands and unavailable commands (hidden/deprecated)
-	if cmd.Name() == "help" || !cmd.IsAvailableCommand() {
+	if cmd.Name() == "help" || cmd.Hidden || !cmd.IsAvailableCommand() {
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func genCommandDocs(cmd *cobra.Command, basePath string, parentPath []string) er
 
 	// Recursively generate docs for all subcommands
 	for _, subCmd := range cmd.Commands() {
-		if subCmd.Name() != "help" && subCmd.IsAvailableCommand() {
+		if subCmd.Name() != "help" && !subCmd.Hidden && subCmd.IsAvailableCommand() {
 			if err := genCommandDocs(subCmd, basePath, currentPath); err != nil {
 				return err
 			}

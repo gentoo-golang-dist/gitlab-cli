@@ -33,9 +33,7 @@ func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 	}
 
 	configCompileCmd.SetHelpFunc(func(command *cobra.Command, strings []string) {
-		// Hide "repo"-flag for this command, because it cannot be used on repositories but only on gitlab-ci files
 		_ = configCompileCmd.Flags().MarkHidden("repo")
-
 		configCompileCmd.Parent().HelpFunc()(command, strings)
 	})
 

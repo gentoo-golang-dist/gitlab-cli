@@ -3,85 +3,48 @@
 package compile
 
 import (
-	"errors"
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
-
-	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func Test_compileRun(t *testing.T) {
+func TestNewCmdConfigCompile_hiddenAndMinimal(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewCmdConfigCompile(cmdtest.NewTestFactory(nil))
+	assert.True(t, cmd.Hidden)
+	assert.Empty(t, cmd.Example)
+}
+
+func TestPrintDeprecationWarning_warnsOnlyOnTTY(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name                 string
-		testFile             string
-		stdOut               string
-		wantErr              bool
-		errMsg               string
-		expectedLintResponse *gitlab.ProjectLintResult
-		showHaveBaseRepo     bool
+		name    string
+		isTTY   bool
+		wantErr string
 	}{
 		{
-			name:             "with invalid path specified",
-			testFile:         "WRONG_PATH",
-			stdOut:           "",
-			wantErr:          true,
-			errMsg:           "WRONG_PATH: no such file or directory",
-			showHaveBaseRepo: true,
+			name:    "without tty",
+			isTTY:   false,
+			wantErr: "",
 		},
 		{
-			name:             "without base repo",
-			testFile:         ".gitlab.ci.yml",
-			stdOut:           "",
-			wantErr:          true,
-			errMsg:           "You must be in a GitLab project repository for this action.\nError: no base repository present",
-			showHaveBaseRepo: false,
-		},
-		{
-			name:             "when a valid path is specified and yaml is valid",
-			testFile:         ".gitlab-ci.yml",
-			stdOut:           "merged-yaml\n",
-			wantErr:          false,
-			errMsg:           "",
-			showHaveBaseRepo: true,
-			expectedLintResponse: &gitlab.ProjectLintResult{
-				Valid:      true,
-				MergedYaml: "merged-yaml\n",
-			},
+			name:    "with tty",
+			isTTY:   true,
+			wantErr: "Command \"compile\" is deprecated. Use 'glab ci lint --include-merged-yaml' instead.\n",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tc := gitlabtesting.NewTestClient(t)
-			gomock.InOrder(
-				tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(&gitlab.Project{ID: int64(123)}, nil, nil).MaxTimes(1),
-				tc.MockValidate.EXPECT().ProjectNamespaceLint(int64(123), gomock.Any()).Return(tt.expectedLintResponse, nil, nil).MaxTimes(1),
-			)
-			options := []cmdtest.FactoryOption{cmdtest.WithGitLabClient(tc.Client)}
-			if !tt.showHaveBaseRepo {
-				options = append(options, cmdtest.WithBaseRepoError(errors.New("no base repository present")))
-			}
-			exec := cmdtest.SetupCmdForTest(t, NewCmdConfigCompile, false, options...)
-
-			args := path.Join(cmdtest.ProjectPath, "test/testdata", tt.testFile)
-			out, err := exec(args)
-			if tt.wantErr {
-				require.Contains(t, err.Error(), tt.errMsg)
-				return
-			}
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.stdOut, out.OutBuf.String())
+			ios, _, _, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(tt.isTTY))
+			printDeprecationWarning(ios)
+			assert.Equal(t, tt.wantErr, stderr.String())
 		})
 	}
 }
