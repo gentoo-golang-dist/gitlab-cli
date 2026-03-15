@@ -131,6 +131,8 @@ func TestEnrichErrorIfNoGit(t *testing.T) {
 		{name: "leaves api error unchanged otherwise", userRef: "scratch", want: "api failed"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			err := (&options{userRef: tt.userRef}).enrichErrorIfNoGit(apiErr, errors.New("no tag"), errors.New("no branch"))
 			require.Error(t, err)
 			assert.ErrorIs(t, err, apiErr)
