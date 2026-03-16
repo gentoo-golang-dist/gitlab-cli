@@ -272,7 +272,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 	name := cmd.CommandPath()
 	// GitLab Specific Docs Metadata
 	buf.WriteString("---" + "\n")
-	buf.WriteString("title: " + name + "\n")
+	buf.WriteString("title: '`" + name + "`'\n")
 	buf.WriteString("stage: Create" + "\n")
 	buf.WriteString("group: Code Review" + "\n")
 	buf.WriteString("info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>" + "\n")
