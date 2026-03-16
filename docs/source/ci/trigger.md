@@ -28,13 +28,24 @@ $ glab ci trigger 224356863
 # Trigger manual job with name lint
 $ glab ci trigger lint
 
+# Trigger manual job with variables
+$ glab ci trigger 224356863 --variables DEBUG:true
+$ glab ci trigger lint --variables KEY1:value1 --variables KEY2:value2
+
+# Trigger job with variables from a JSON file
+$ glab ci trigger lint -f variables.json
+
 ```
 
 ## Options
 
 ```plaintext
-  -b, --branch string     The branch to search for the job. (default current branch)
-  -p, --pipeline-id int   The pipeline ID to search for the job.
+  -b, --branch string            The branch to search for the job. (default current branch)
+  -p, --pipeline-id int          The pipeline ID to search for the job.
+      --variables strings        Pass variables to job in format <key>:<value>.
+      --variables-env strings    Pass variables to job in format <key>:<value>.
+      --variables-file strings   Pass file contents as a file variable to job in format <key>:<filename>.
+  -f, --variables-from string    JSON file with variables for job execution. Expects array of hashes, each with at least 'key' and 'value'.
 ```
 
 ## Options inherited from parent commands

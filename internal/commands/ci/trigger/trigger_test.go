@@ -211,6 +211,95 @@ func TestCiTrigger(t *testing.T) {
 					}, nil, nil)
 			},
 		},
+		{
+			name:        "when trigger with single variable",
+			args:        "1122 --variables DEBUG:true",
+			expectedOut: "Triggered job (ID: 1123), status: pending, ref: branch-name, weburl: https://gitlab.com/OWNER/REPO/-/jobs/1123\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockJobs.EXPECT().
+					PlayJob("OWNER/REPO", int64(1122), gomock.Any()).
+					DoAndReturn(func(pid any, jobID int64, opt *gitlab.PlayJobOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Job, *gitlab.Response, error) {
+						// Verify variables are passed
+						require.NotNil(t, opt.JobVariablesAttributes)
+						require.Len(t, *opt.JobVariablesAttributes, 1)
+						assert.Equal(t, "DEBUG", *(*opt.JobVariablesAttributes)[0].Key)
+						assert.Equal(t, "true", *(*opt.JobVariablesAttributes)[0].Value)
+						return &gitlab.Job{
+							ID:           1123,
+							Status:       "pending",
+							Stage:        "build",
+							Name:         "build-job",
+							Ref:          "branch-name",
+							Tag:          false,
+							AllowFailure: false,
+							CreatedAt:    &createdAt,
+							WebURL:       "https://gitlab.com/OWNER/REPO/-/jobs/1123",
+						}, nil, nil
+					})
+			},
+		},
+		{
+			name:        "when trigger with multiple variables",
+			args:        "1122 --variables FOO:bar --variables BAZ:qux",
+			expectedOut: "Triggered job (ID: 1123), status: pending, ref: branch-name, weburl: https://gitlab.com/OWNER/REPO/-/jobs/1123\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockJobs.EXPECT().
+					PlayJob("OWNER/REPO", int64(1122), gomock.Any()).
+					DoAndReturn(func(pid any, jobID int64, opt *gitlab.PlayJobOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Job, *gitlab.Response, error) {
+						// Verify multiple variables are passed
+						require.NotNil(t, opt.JobVariablesAttributes)
+						require.Len(t, *opt.JobVariablesAttributes, 2)
+						assert.Equal(t, "FOO", *(*opt.JobVariablesAttributes)[0].Key)
+						assert.Equal(t, "bar", *(*opt.JobVariablesAttributes)[0].Value)
+						assert.Equal(t, "BAZ", *(*opt.JobVariablesAttributes)[1].Key)
+						assert.Equal(t, "qux", *(*opt.JobVariablesAttributes)[1].Value)
+						return &gitlab.Job{
+							ID:           1123,
+							Status:       "pending",
+							Stage:        "build",
+							Name:         "build-job",
+							Ref:          "branch-name",
+							Tag:          false,
+							AllowFailure: false,
+							CreatedAt:    &createdAt,
+							WebURL:       "https://gitlab.com/OWNER/REPO/-/jobs/1123",
+						}, nil, nil
+					})
+			},
+		},
+		{
+			name:        "when trigger with variables-env flag",
+			args:        "1122 --variables-env KEY:value",
+			expectedOut: "Triggered job (ID: 1123), status: pending, ref: branch-name, weburl: https://gitlab.com/OWNER/REPO/-/jobs/1123\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockJobs.EXPECT().
+					PlayJob("OWNER/REPO", int64(1122), gomock.Any()).
+					DoAndReturn(func(pid any, jobID int64, opt *gitlab.PlayJobOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Job, *gitlab.Response, error) {
+						// Verify variables are passed
+						require.NotNil(t, opt.JobVariablesAttributes)
+						require.Len(t, *opt.JobVariablesAttributes, 1)
+						assert.Equal(t, "KEY", *(*opt.JobVariablesAttributes)[0].Key)
+						assert.Equal(t, "value", *(*opt.JobVariablesAttributes)[0].Value)
+						return &gitlab.Job{
+							ID:           1123,
+							Status:       "pending",
+							Stage:        "build",
+							Name:         "build-job",
+							Ref:          "branch-name",
+							Tag:          false,
+							AllowFailure: false,
+							CreatedAt:    &createdAt,
+							WebURL:       "https://gitlab.com/OWNER/REPO/-/jobs/1123",
+						}, nil, nil
+					})
+			},
+		},
+		{
+			name:          "when trigger with invalid variable format",
+			args:          "1122 --variables invalid",
+			expectedError: "parsing job variable. Expected format KEY:VALUE",
+			setupMock:     func(tc *gitlabtesting.TestClient) {},
+		},
 	}
 
 	for _, tc := range tests {
