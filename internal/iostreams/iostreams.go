@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/huh/v2"
 	"github.com/briandowns/spinner"
-	"github.com/charmbracelet/huh"
 	"github.com/google/shlex"
 	"github.com/muesli/termenv"
 
