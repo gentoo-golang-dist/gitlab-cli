@@ -45,7 +45,7 @@ $ glab mr note -m "needs to do X before it can be merged" branch-foo
 - [`issues`](issues.md)
 - [`list`](list.md)
 - [`merge`](merge.md)
-- [`note`](note.md)
+- [`note`](note/_index.md)
 - [`rebase`](rebase.md)
 - [`reopen`](reopen.md)
 - [`revoke`](revoke.md)
