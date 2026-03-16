@@ -16,7 +16,7 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/avast/retry-go/v5 v5.0.0
 	github.com/briandowns/spinner v1.23.2
-	github.com/charmbracelet/huh v0.8.0
+	github.com/charmbracelet/huh/v2 v2.0.3
 	github.com/coder/websocket v1.8.14
 	github.com/docker/cli v29.3.0+incompatible
 	github.com/docker/docker-credential-helpers v0.9.5
