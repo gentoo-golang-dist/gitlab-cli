@@ -351,4 +351,53 @@ func Test_remoteResolverSplitHostWithSubfolder(t *testing.T) {
 		assert.Equal(t, "owner", remotes[0].RepoOwner())
 		assert.Equal(t, "repo", remotes[0].RepoName())
 	})
+
+	t.Run("SSH + HTTPS remotes with split-host: filtering bug in MR #2924", func(t *testing.T) {
+		// This test exposes the filtering bug in MR #2924:
+		// When both SSH (split-host) and HTTPS remotes exist,
+		// MR #2924 incorrectly filters out the HTTPS remote
+
+		sshURL, err := git.ParseURL("git@git.example.com:owner/repo.git")
+		require.NoError(t, err)
+
+		httpsURL, err := git.ParseURL("https://api.example.com/owner/upstream.git")
+		require.NoError(t, err)
+
+		rr := &remoteResolver{
+			readRemotes: func() (git.RemoteSet, error) {
+				return git.RemoteSet{
+					&git.Remote{Name: "origin", FetchURL: sshURL, PushURL: sshURL},
+					&git.Remote{Name: "upstream", FetchURL: httpsURL, PushURL: httpsURL},
+				}, nil
+			},
+			getConfig: func() config.Config {
+				return config.NewFromString(heredoc.Doc(`
+					hosts:
+					  api.example.com:
+					    token: TEST_TOKEN
+					    ssh_host: git.example.com
+					    subfolder: gitlab
+				`))
+			},
+			defaultHostname: "gitlab.com",
+		}
+
+		resolver := rr.Resolver("")
+		remotes, err := resolver()
+		require.NoError(t, err)
+
+		// CRITICAL: Both remotes should be returned
+		// MR #2924 bug: Only returns 1 remote (filters out upstream)
+		// Our fix: Returns 2 remotes correctly
+		assert.Equal(t, 2, len(remotes), "Both SSH and HTTPS remotes should be included")
+
+		// Verify both remotes use the correct API hostname
+		assert.Equal(t, "api.example.com", remotes[0].RepoHost())
+		assert.Equal(t, "api.example.com", remotes[1].RepoHost())
+
+		// Verify both remote names are present (order may vary due to sorting)
+		names := []string{remotes[0].Name, remotes[1].Name}
+		assert.Contains(t, names, "origin")
+		assert.Contains(t, names, "upstream")
+	})
 }
