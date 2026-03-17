@@ -133,7 +133,11 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					// Determine what title will be applied
 					var proposedTitle string
 					if cmd.Flags().Changed("title") {
-						proposedTitle, _ = cmd.Flags().GetString("title")
+						var err error
+						proposedTitle, err = cmd.Flags().GetString("title")
+						if err != nil {
+							return err
+						}
 					} else {
 						proposedTitle = title // from autofill
 					}
@@ -144,7 +148,15 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					// Determine what description will be applied
 					var proposedDescription string
 					if cmd.Flags().Changed("description") {
-						proposedDescription, _ = cmd.Flags().GetString("description")
+						var err error
+						proposedDescription, err = cmd.Flags().GetString("description")
+						if err != nil {
+							return err
+						}
+						// Special case for editor mode
+						if proposedDescription == "-" {
+							proposedDescription = "(from editor)"
+						}
 					} else {
 						proposedDescription = body // from autofill
 					}
