@@ -128,7 +128,8 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 
 				// Show preview and ask for confirmation unless --yes is provided
 				if !skipConfirmation {
-					fmt.Fprintf(f.IO().StdOut, "\nProposed changes:\n")
+					out := f.IO().StdOut
+					fmt.Fprintf(out, "\nProposed changes:\n")
 
 					// Determine what title will be applied
 					var proposedTitle string
@@ -142,7 +143,12 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						proposedTitle = title // from autofill
 					}
 					if proposedTitle != "" {
-						fmt.Fprintf(f.IO().StdOut, "  Title: %s\n", proposedTitle)
+						// Handle multi-line titles by indenting continuation lines
+						lines := strings.Split(proposedTitle, "\n")
+						fmt.Fprintf(out, "  Title: %s\n", lines[0])
+						for _, line := range lines[1:] {
+							fmt.Fprintf(out, "         %s\n", line)
+						}
 					}
 
 					// Determine what description will be applied
@@ -161,10 +167,15 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						proposedDescription = body // from autofill
 					}
 					if proposedDescription != "" {
-						fmt.Fprintf(f.IO().StdOut, "  Description: %s\n", proposedDescription)
+						// Handle multi-line descriptions by indenting continuation lines
+						lines := strings.Split(proposedDescription, "\n")
+						fmt.Fprintf(out, "  Description: %s\n", lines[0])
+						for _, line := range lines[1:] {
+							fmt.Fprintf(out, "              %s\n", line)
+						}
 					}
 
-					fmt.Fprintf(f.IO().StdOut, "\n")
+					fmt.Fprintf(out, "\n")
 
 					action, err := confirmUpdateSurvey(cmd.Context(), f)
 					if err != nil {
