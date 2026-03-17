@@ -129,12 +129,29 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				// Show preview and ask for confirmation unless --yes is provided
 				if !skipConfirmation {
 					fmt.Fprintf(f.IO().StdOut, "\nProposed changes:\n")
-					if !cmd.Flags().Changed("title") {
-						fmt.Fprintf(f.IO().StdOut, "  Title: %s\n", title)
+
+					// Determine what title will be applied
+					var proposedTitle string
+					if cmd.Flags().Changed("title") {
+						proposedTitle, _ = cmd.Flags().GetString("title")
+					} else {
+						proposedTitle = title // from autofill
 					}
-					if !cmd.Flags().Changed("description") {
-						fmt.Fprintf(f.IO().StdOut, "  Description: %s\n", body)
+					if proposedTitle != "" {
+						fmt.Fprintf(f.IO().StdOut, "  Title: %s\n", proposedTitle)
 					}
+
+					// Determine what description will be applied
+					var proposedDescription string
+					if cmd.Flags().Changed("description") {
+						proposedDescription, _ = cmd.Flags().GetString("description")
+					} else {
+						proposedDescription = body // from autofill
+					}
+					if proposedDescription != "" {
+						fmt.Fprintf(f.IO().StdOut, "  Description: %s\n", proposedDescription)
+					}
+
 					fmt.Fprintf(f.IO().StdOut, "\n")
 
 					action, err := confirmUpdateSurvey(cmd.Context(), f)
