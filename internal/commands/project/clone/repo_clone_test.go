@@ -96,7 +96,8 @@ func TestNewCmdClone(t *testing.T) {
 			wantCtxOpts: ContextOpts{
 				Repo: "",
 			},
-		}, {
+		},
+		{
 			name: "group clone with directory argument and preserve namespace",
 			args: "-p -g NAMESPACE/REPO mydir",
 			wantOpts: options{
