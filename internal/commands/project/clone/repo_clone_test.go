@@ -77,9 +77,9 @@ func TestNewCmdClone(t *testing.T) {
 			name: "group clone with directory argument",
 			args: "-g NAMESPACE/REPO mydir",
 			wantOpts: options{
-				gitFlags: []string{},
+				gitFlags:  []string{},
 				groupName: "NAMESPACE/REPO",
-				dir:      "mydir",
+				dir:       "mydir",
 			},
 			wantCtxOpts: ContextOpts{
 				Repo: "",
@@ -89,20 +89,20 @@ func TestNewCmdClone(t *testing.T) {
 			name: "nested group clone with directory argument",
 			args: "-g NAMESPACE/NESTED/SUBGROUP mydir",
 			wantOpts: options{
-				gitFlags: []string{},
+				gitFlags:  []string{},
 				groupName: "NAMESPACE/NESTED/SUBGROUP",
-				dir:      "mydir",
+				dir:       "mydir",
 			},
 			wantCtxOpts: ContextOpts{
 				Repo: "",
 			},
-		},		{
+		}, {
 			name: "group clone with directory argument and preserve namespace",
 			args: "-p -g NAMESPACE/REPO mydir",
 			wantOpts: options{
-				gitFlags: []string{},
+				gitFlags:  []string{},
 				groupName: "NAMESPACE/REPO",
-				dir:      "mydir",
+				dir:       "mydir",
 			},
 			wantCtxOpts: ContextOpts{
 				Repo: "",
@@ -112,9 +112,9 @@ func TestNewCmdClone(t *testing.T) {
 			name: "nested group clone with directory argument and preserve namespace",
 			args: "-p -g NAMESPACE/NESTED/SUBGROUP mydir",
 			wantOpts: options{
-				gitFlags: []string{},
+				gitFlags:  []string{},
 				groupName: "NAMESPACE/NESTED/SUBGROUP",
-				dir:      "mydir",
+				dir:       "mydir",
 			},
 			wantCtxOpts: ContextOpts{
 				Repo: "",
