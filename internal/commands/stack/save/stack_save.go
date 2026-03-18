@@ -77,7 +77,7 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 				currentRef, err := git.CurrentStackRefFromCurrentBranch(title)
 				if err == nil && !currentRef.Empty() && !currentRef.IsLast() {
 					color := f.IO().Color()
-					fmt.Fprintf(f.IO().StdErr, "%s warning: you are not on the last entry of the stack. Consider using 'glab stack amend' to modify the current entry. New changes will be appended to the end of the stack.\n", color.WarnIcon())
+					f.IO().LogErrorf("%s warning: you are not on the last entry of the stack. Consider using 'glab stack amend' to modify the current entry. New changes will be appended to the end of the stack.\n", color.WarnIcon())
 				}
 			}
 
