@@ -258,17 +258,7 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 		ctxOpt := *ctxOpts
 		ctxOpt.Project = project
 		ctxOpt.Repo = project.PathWithNamespace
-		opt := *opts
-		if opts.dir != "" {
-			if opts.preserveNamespace {
-				namespacedDir := project.PathWithNamespace
-				opt.dir = opts.dir + "/" + namespacedDir
-				opt.preserveNamespace = false
-			} else {
-				opt.dir = opts.dir + "/" + path.Base(project.PathWithNamespace)
-			}
-		}
-		err = cloneRun(&opt, &ctxOpt)
+		err = cloneRun(opts, &ctxOpt)
 		if err != nil {
 			finalOutput = append(finalOutput, fmt.Sprintf("%s %s - Error: %q", c.RedCheck(), project.PathWithNamespace, err.Error()))
 		} else {
@@ -306,12 +296,17 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 	} else if !strings.HasSuffix(ctxOpts.Repo, ".git") {
 		ctxOpts.Repo += ".git"
 	}
-	// To preserve namespaces, we deep copy gitFlags for group clones
-	if opts.preserveNamespace {
-		namespacedDir := ctxOpts.Project.PathWithNamespace
-		opts.dir = namespacedDir
+	localDir := opts.dir
+	if opts.dir != "" && opts.groupName != "" {
+		if opts.preserveNamespace {
+			localDir = opts.dir + "/" + ctxOpts.Project.PathWithNamespace
+		} else {
+			localDir = opts.dir + "/" + path.Base(ctxOpts.Project.PathWithNamespace)
+		}
+	} else if opts.preserveNamespace {
+		localDir = ctxOpts.Project.PathWithNamespace
 	}
-	_, err := git.RunClone(ctxOpts.Repo, opts.dir, opts.gitFlags)
+	_, err := git.RunClone(ctxOpts.Repo, localDir, opts.gitFlags)
 	if err != nil {
 		return err
 	}
@@ -320,15 +315,15 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 	// to forked repo's ssh/https url depending on the users preferred protocol
 	if ctxOpts.Project != nil {
 		if ctxOpts.Project.ForkedFromProject != nil && strings.Contains(ctxOpts.Project.PathWithNamespace, opts.currentUser.Username) {
-			if opts.dir == "" {
-				opts.dir = "./" + ctxOpts.Project.Path
+			if localDir == "" {
+				localDir = "./" + ctxOpts.Project.Path
 			}
 			fProject, err := api.GetProject(opts.apiClient.Lab(), ctxOpts.Project.ForkedFromProject.PathWithNamespace)
 			if err != nil {
 				return err
 			}
 			repoURL := glrepo.RemoteURL(fProject, opts.protocol)
-			err = git.AddUpstreamRemote(repoURL, opts.dir)
+			err = git.AddUpstreamRemote(repoURL, localDir)
 			if err != nil {
 				return err
 			}
