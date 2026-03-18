@@ -73,7 +73,7 @@ func ResolveTypeID(t string) (gitlab.WorkItemTypeID, error) {
 
 	v, ok := workItemTypeIDs[wiType]
 	if !ok {
-		return "", fmt.Errorf("--type must be one of %s", strings.Join(ValidTypeNames(), ", "))	
+		return "", fmt.Errorf("--type must be one of %s", strings.Join(ValidTypeNames(), ", "))
 	}
 	return v, nil
 }
