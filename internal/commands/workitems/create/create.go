@@ -57,13 +57,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		The command uses your repository context to detect scope automatically.
 		`) + text.ExperimentalString,
-		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-				# Create work item in current project
-				$ glab work-items create --type issue
+			# Create work item in current project
+			$ glab work-items create --type issue
 
-				# Create a work item in a group
-				$ glab work-items create --type epic --group my-group
+			# Create a work item in a group
+			$ glab work-items create --type epic --group my-group
 		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -121,7 +120,7 @@ func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error {
 
 func (opts *options) validate() error {
 	if _, err := utils.ResolveTypeID(opts.workItemType); err != nil {
-		return err
+		return cmdutils.FlagError{Err: err}
 	}
 
 	if opts.needsPrompt && !opts.io.IsInteractive() {
