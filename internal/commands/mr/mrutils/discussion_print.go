@@ -12,6 +12,24 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
+// noteUsername returns the note author's username, falling back to "unknown"
+// if the username is empty (e.g. redacted users or system-generated notes).
+func noteUsername(n *gitlab.Note) string {
+	if n.Author.Username != "" {
+		return n.Author.Username
+	}
+	return "unknown"
+}
+
+// noteTimeAgo returns a human-readable "time ago" string for the note's
+// creation time, or an empty string if CreatedAt is nil.
+func noteTimeAgo(n *gitlab.Note) string {
+	if n.CreatedAt != nil {
+		return utils.TimeToPrettyTimeAgo(*n.CreatedAt)
+	}
+	return ""
+}
+
 // PrintDiscussionsTTY renders discussions in TTY format to the given writer.
 func PrintDiscussionsTTY(out io.Writer, ios *iostreams.IOStreams, discussions []*gitlab.Discussion, showSystemLogs bool) {
 	c := ios.Color()
@@ -44,8 +62,8 @@ func PrintDiscussionsTTY(out io.Writer, ios *iostreams.IOStreams, discussions []
 			fmt.Fprintln(out)
 
 			// Print first note
-			createdAt := utils.TimeToPrettyTimeAgo(*firstNote.CreatedAt)
-			fmt.Fprintf(out, "  @%s commented ", firstNote.Author.Username)
+			createdAt := noteTimeAgo(firstNote)
+			fmt.Fprintf(out, "  @%s commented ", noteUsername(firstNote))
 			fmt.Fprintln(out, c.Gray(createdAt))
 
 			if firstNote.Position != nil {
@@ -61,8 +79,8 @@ func PrintDiscussionsTTY(out io.Writer, ios *iostreams.IOStreams, discussions []
 				if note.System && !showSystemLogs {
 					continue
 				}
-				replyTime := utils.TimeToPrettyTimeAgo(*note.CreatedAt)
-				fmt.Fprintf(out, "    @%s replied ", note.Author.Username)
+				replyTime := noteTimeAgo(note)
+				fmt.Fprintf(out, "    @%s replied ", noteUsername(note))
 				fmt.Fprintln(out, c.Gray(replyTime))
 
 				replyBody, _ := utils.RenderMarkdown(note.Body, ios.BackgroundColor())
@@ -75,8 +93,8 @@ func PrintDiscussionsTTY(out io.Writer, ios *iostreams.IOStreams, discussions []
 		} else {
 			// Individual note (not a thread)
 			note := firstNote
-			createdAt := utils.TimeToPrettyTimeAgo(*note.CreatedAt)
-			fmt.Fprint(out, "@", note.Author.Username)
+			createdAt := noteTimeAgo(note)
+			fmt.Fprint(out, "@", noteUsername(note))
 			if note.System {
 				fmt.Fprintf(out, " %s ", note.Body)
 				fmt.Fprintln(out, c.Gray(createdAt))
@@ -108,8 +126,14 @@ func PrintDiscussionsRaw(out io.Writer, discussions []*gitlab.Discussion, showSy
 		}
 	}
 
-	// Sort notes chronologically by creation time
+	// Sort notes chronologically by creation time (nil CreatedAt sorts first)
 	sort.Slice(notes, func(i, j int) bool {
+		if notes[i].CreatedAt == nil {
+			return true
+		}
+		if notes[j].CreatedAt == nil {
+			return false
+		}
 		return notes[i].CreatedAt.Before(*notes[j].CreatedAt)
 	})
 

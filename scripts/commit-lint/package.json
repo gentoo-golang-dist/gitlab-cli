@@ -6,9 +6,9 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "@commitlint/cli": "^20.4.4",
+    "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.4.2",
-    "@commitlint/format": "^20.4.4",
+    "@commitlint/format": "^20.5.0",
     "@commitlint/lint": "^20.2.0",
     "@commitlint/read": "^20.4.0"
   }

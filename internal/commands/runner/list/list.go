@@ -192,9 +192,9 @@ func formatStatus(c *iostreams.ColorPalette, status string) string {
 	case "offline":
 		return c.Gray(status)
 	case "stale":
-		return c.Yellow(status)
+		return c.Magenta(status)
 	case "never_contacted":
-		return c.Gray(status)
+		return c.Yellow(status)
 	case "paused":
 		return c.Yellow(status)
 	default:

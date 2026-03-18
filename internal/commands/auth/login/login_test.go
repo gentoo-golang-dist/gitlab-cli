@@ -398,9 +398,10 @@ func Test_hostnameValidator(t *testing.T) {
 }
 
 func Test_keyringLogin(t *testing.T) {
-	t.Parallel()
-
 	keyring.MockInit()
+
+	d := t.TempDir()
+	t.Setenv("GLAB_CONFIG_DIR", d)
 
 	token, err := keyring.Get("glab:gitlab.com:token", "")
 	assert.Error(t, err)

@@ -20,7 +20,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd := &cobra.Command{
 		Use:     "note [<id> | <branch>]",
 		Aliases: []string{"comment"},
-		Short:   "Add a comment or note to a merge request, or resolve/unresolve discussions.",
+		Short:   "Manage comments and discussions on a merge request.",
 		Long:    ``,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request with ID 123
@@ -116,6 +116,8 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "resolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
+
+	mrCreateNoteCmd.AddCommand(NewCmdList(f))
 
 	return mrCreateNoteCmd
 }
