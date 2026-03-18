@@ -51,41 +51,40 @@ bs
 
 ```console
 # Bootstrap "my-agent" to the root of the Git project in CWD, and trigger reconciliation
-$ glab cluster agent bootstrap my-agent
+glab cluster agent bootstrap my-agent
 
 # Bootstrap "my-agent" to "manifests/" of the Git project in CWD, and trigger reconciliation
 # Especially useful when "flux bootstrap gitlab --path manifests/" is used.
 # Make sure that the "--path" from the "flux bootstrap gitlab" command matches
 # the "--manifest-path" of the "glab cluster agent bootstrap" command.
-$ glab cluster agent bootstrap my-agent --manifest-path manifests/
+glab cluster agent bootstrap my-agent --manifest-path manifests/
 
 # Bootstrap "my-agent" to "manifests/" of the Git project in CWD, and do not manually trigger a reconilication
-$ glab cluster agent bootstrap my-agent --manifest-path manifests/ --no-reconcile
+glab cluster agent bootstrap my-agent --manifest-path manifests/ --no-reconcile
 
 # Bootstrap "my-agent" without configuring an environment
-$ glab cluster agent bootstrap my-agent --create-environment=false
+glab cluster agent bootstrap my-agent --create-environment=false
 
 # Bootstrap "my-agent" and configure an environment with custom name and Kubernetes namespace
-$ glab cluster agent bootstrap my-agent --environment-name production --environment-namespace default
+glab cluster agent bootstrap my-agent --environment-name production --environment-namespace default
 
 # Bootstrap "my-agent" without configuring a FluxCD environment
-$ glab cluster agent bootstrap my-agent --create-flux-environment=false
+glab cluster agent bootstrap my-agent --create-flux-environment=false
 
 # Bootstrap "my-agent" and configure a FluxCD environment with custom name and Kubernetes namespace
-$ glab cluster agent bootstrap my-agent --flux-environment-name production-flux --flux-environment-namespace flux-system
+glab cluster agent bootstrap my-agent --flux-environment-name production-flux --flux-environment-namespace flux-system
 
 # Bootstrap "my-agent" and pass additional GitLab Helm Chart values from a local file
-$ glab cluster agent bootstrap my-agent --helm-release-values values.yaml
+glab cluster agent bootstrap my-agent --helm-release-values values.yaml
 
 # Bootstrap "my-agent" and pass additional GitLab Helm Chart values from a Kubernetes ConfigMap
-$ glab cluster agent bootstrap my-agent --helm-release-values-from ConfigMap/agent-config
+glab cluster agent bootstrap my-agent --helm-release-values-from ConfigMap/agent-config
 
 # Bootstrap "my-agent" and commit with custom user
-$ glab cluster agent bootstrap my-agent --commit-author-name="Tanuki" --commit-author-email="tanuki@example.com"
+glab cluster agent bootstrap my-agent --commit-author-name="Tanuki" --commit-author-email="tanuki@example.com"
 
 # Bootstrap "my-agent" with authenticated API user
-$ glab cluster agent bootstrap my-agent --use-api-commit-author
-
+glab cluster agent bootstrap my-agent --use-api-commit-author
 ```
 
 ## Options

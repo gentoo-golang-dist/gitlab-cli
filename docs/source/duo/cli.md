@@ -50,14 +50,13 @@ glab duo cli [command] [flags]
 
 ```console
 # Run the GitLab Duo CLI
-$ glab duo cli
+glab duo cli
 
 # Show Duo CLI help
-$ glab duo cli --help
+glab duo cli --help
 
 # Check for and install updates
-$ glab duo cli --update
-
+glab duo cli --update
 ```
 
 ## Options inherited from parent commands

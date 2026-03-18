@@ -45,14 +45,13 @@ func NewCmdAdd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Read deploy key from stdin and upload.
-			$ glab deploy-key add -t "my title"
+			glab deploy-key add -t "my title"
 
 			# Read deploy key from specified key file and upload
-			$ cat ~/.ssh/id_ed25519.pub | glab deploy-key add --title='test' -
+			cat ~/.ssh/id_ed25519.pub | glab deploy-key add --title='test' -
 
 			# Read deploy key from specified key file, upload and set "can push" attribute.
-			$ glab deploy-key add ~/.ssh/id_ed25519.pub -t "my title" --can-push true
-		`),
+			glab deploy-key add ~/.ssh/id_ed25519.pub -t "my title" --can-push true`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

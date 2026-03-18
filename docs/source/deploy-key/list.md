@@ -19,8 +19,7 @@ glab deploy-key list [flags]
 ## Examples
 
 ```console
-- glab deploy-key list
-
+glab deploy-key list
 ```
 
 ## Options

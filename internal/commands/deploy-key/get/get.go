@@ -35,8 +35,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get deploy key with ID as argument
-			$ glab deploy-key get 1234
-		`),
+			glab deploy-key get 1234`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

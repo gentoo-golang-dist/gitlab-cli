@@ -20,7 +20,7 @@ glab deploy-key delete <key-id> [flags]
 
 ```console
 # Delete SSH key with ID as argument
-$ glab deploy-key delete 1234
+glab deploy-key delete 1234
 ```
 
 ## Options inherited from parent commands

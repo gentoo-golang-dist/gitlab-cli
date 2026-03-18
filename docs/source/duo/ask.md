@@ -37,14 +37,13 @@ glab duo ask <prompt> [flags]
 
 ```console
 # Explain how to display the titles of the last 10 commits
-$ glab duo ask how to list last 10 commit titles
+glab duo ask how to list last 10 commit titles
 
 # Explain how to undo the last commit
-$ glab duo ask how do I undo my last commit
+glab duo ask how do I undo my last commit
 
 # Explain how to display files changed in the last commit
-$ glab duo ask show me files changed in the last commit
-
+glab duo ask show me files changed in the last commit
 ```
 
 ## Options
