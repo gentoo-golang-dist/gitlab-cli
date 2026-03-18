@@ -27,12 +27,6 @@ For more information, see
 glab work-items create [flags]
 ```
 
-## Aliases
-
-```plaintext
-new
-```
-
 ## Examples
 
 ```console
