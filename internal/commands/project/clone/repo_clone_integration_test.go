@@ -88,22 +88,36 @@ func Test_repoClone_Integration(t *testing.T) {
 func Test_repoClone_group_Integration(t *testing.T) {
 	names := []string{"cli-automated-testing/test", "cli-automated-testing/homebrew-testing"}
 	urls := []string{"git@gitlab.com:cli-automated-testing/test.git", "git@gitlab.com:cli-automated-testing/homebrew-testing.git"}
-	repoCloneTest(t, names, urls, 0, false)
+	repoCloneTest(t, names, urls, 0, false, "")
 }
 
 func Test_repoClone_group_single_Integration(t *testing.T) {
 	names := []string{"cli-automated-testing/test"}
 	urls := []string{"git@gitlab.com:cli-automated-testing/test.git"}
-	repoCloneTest(t, names, urls, 1, false)
+	repoCloneTest(t, names, urls, 1, false, "")
 }
 
 func Test_repoClone_group_paginate_Integration(t *testing.T) {
 	names := []string{"cli-automated-testing/test", "cli-automated-testing/homebrew-testing"}
 	urls := []string{"git@gitlab.com:cli-automated-testing/test.git", "git@gitlab.com:cli-automated-testing/homebrew-testing.git"}
-	repoCloneTest(t, names, urls, 1, true)
+	repoCloneTest(t, names, urls, 1, true, "")
 }
 
-func repoCloneTest(t *testing.T, expectedRepoNames []string, expectedRepoUrls []string, perPage int, paginate bool) {
+func Test_repoClone_group_dir_Integration(t *testing.T) {
+	names := []string{"cli-automated-testing/test", "cli-automated-testing/homebrew-testing"}
+	urls := []string{"git@gitlab.com:cli-automated-testing/test.git ./tmp/test", "git@gitlab.com:cli-automated-testing/homebrew-testing.git ./tmp/homebrew-testing"}
+	additionalCli := "./tmp"
+	repoCloneTest(t, names, urls, 0, false, additionalCli)
+}
+
+func Test_repoClone_group_dir_preserve_Integration(t *testing.T) {
+	names := []string{"cli-automated-testing/test", "cli-automated-testing/homebrew-testing"}
+	urls := []string{"git@gitlab.com:cli-automated-testing/test.git ./tmp/cli-automated-testing/test", "git@gitlab.com:cli-automated-testing/homebrew-testing.git ./tmp/cli-automated-testing/homebrew-testing"}
+	additionalCli := "-p ./tmp"
+	repoCloneTest(t, names, urls, 0, false, additionalCli)
+}
+
+func repoCloneTest(t *testing.T, expectedRepoNames []string, expectedRepoUrls []string, perPage int, paginate bool, additionalCli string) {
 	t.Helper()
 
 	assert.Equal(t, len(expectedRepoNames), len(expectedRepoUrls))
@@ -135,6 +149,7 @@ func repoCloneTest(t *testing.T, expectedRepoNames []string, expectedRepoUrls []
 	if paginate {
 		cli += " --paginate"
 	}
+	cli += " " + additionalCli
 
 	// TODO: stub api.ListGroupProjects endpoint
 	out, err := runCommand(cmd, cli, stdin, stdout, stderr)
