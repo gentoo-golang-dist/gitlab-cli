@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -1095,66 +1096,112 @@ func TestSSOTransport_StoresCookiesFromRedirectResponse(t *testing.T) {
 		"oauth_state cookie from redirect response not stored in jar; cookies in jar: %v", jarCookies)
 }
 
-func TestSSOTransport_PreApprovedDomain(t *testing.T) {
+func TestSSOTransport_CallbackRedirect(t *testing.T) {
 	t.Parallel()
-	var idpRequestCount int32
 
-	// Create IdP server
-	idpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&idpRequestCount, 1)
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("SSO complete"))
-	}))
-	defer idpServer.Close()
-
-	// Extract the IdP hostname for pre-approval (without port)
-	// The consent check uses url.Hostname() which excludes the port
-	idpHost := "127.0.0.1" // httptest servers always use 127.0.0.1
-
-	// Create GitLab server
-	var gitlabRequestCount int32
-	gitlabServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count := atomic.AddInt32(&gitlabRequestCount, 1)
-		if count == 1 {
-			http.Redirect(w, r, idpServer.URL+"/oauth/authorize", http.StatusFound)
-			return
-		}
-		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id": 123}`))
-	}))
-	defer gitlabServer.Close()
-
-	// Create a temporary directory for the test cookie file
-	tmpDir := t.TempDir()
-	cookieFile := filepath.Join(tmpDir, "cookies.txt")
-
-	futureTimestamp := time.Now().AddDate(1, 0, 0).Unix()
-	cookieContent := fmt.Sprintf(`localhost	FALSE	/	FALSE	%d	session	value1
-`, futureTimestamp)
-
-	err := os.WriteFile(cookieFile, []byte(cookieContent), 0o600)
-	require.NoError(t, err, "failed to create test cookie file")
-
-	// Client with pre-approved domain
-	client := &Client{
-		baseURL:           gitlabServer.URL,
-		cookieFile:        cookieFile,
-		ssoAllowedDomains: map[string]struct{}{idpHost: {}},
+	tests := []struct {
+		name          string
+		callbackPath  string
+		callbackQuery string
+		idpPath       string
+		finalRedirect string
+	}{
+		{
+			name:          "OAuth callback redirects to API path",
+			callbackPath:  "/oauth2/idpresponse",
+			callbackQuery: "code=abc&state=xyz",
+			idpPath:       "/oauth/authorize",
+		},
+		{
+			name:          "SAML callback redirects to dashboard",
+			callbackPath:  "/users/auth/saml/callback",
+			callbackQuery: "SAMLResponse=token",
+			idpPath:       "/saml/auth",
+			finalRedirect: "/dashboard",
+		},
 	}
 
-	err = client.initializeHTTPClient()
-	require.NoError(t, err, "failed to initialize HTTP client")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var idpRequestCount int32
+			requestBody := `{"access_level": 30}`
+			apiPath := "/api/v4/projects/foo%2Fbar/protected_branches"
 
-	// Make a POST request that triggers SSO redirect
-	body := `{"name": "test-project"}`
-	req, _ := http.NewRequest(http.MethodPost, gitlabServer.URL+"/api/v4/projects", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
+			var gitlabServer *httptest.Server
+			var idpServer *httptest.Server
 
-	resp, err := client.httpClient.Do(req)
-	require.NoError(t, err, "request failed")
-	resp.Body.Close()
+			idpServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				count := atomic.AddInt32(&idpRequestCount, 1)
+				assert.Equal(t, http.MethodGet, r.Method, "IdP should only receive GET requests")
+				if count == 1 {
+					http.Redirect(w, r, gitlabServer.URL+tc.callbackPath+"?"+tc.callbackQuery, http.StatusFound)
+					return
+				}
+				w.WriteHeader(561)
+			}))
+			defer idpServer.Close()
 
-	// Verify SSO flow completed (IdP was reached)
-	assert.Equal(t, int32(1), atomic.LoadInt32(&idpRequestCount), "expected 1 IdP request")
-	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+			var gitlabAPIHits int32
+			gitlabServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case tc.callbackPath:
+					http.SetCookie(w, &http.Cookie{Name: "_gitlab_session", Value: "authenticated", Path: "/"})
+					dest := gitlabServer.URL + apiPath
+					if tc.finalRedirect != "" {
+						dest = gitlabServer.URL + tc.finalRedirect
+					}
+					http.Redirect(w, r, dest, http.StatusFound)
+				default:
+					count := atomic.AddInt32(&gitlabAPIHits, 1)
+					if tc.finalRedirect != "" && r.URL.Path == tc.finalRedirect {
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+					if count == 1 {
+						http.Redirect(w, r, idpServer.URL+tc.idpPath, http.StatusFound)
+						return
+					}
+					assert.Equal(t, http.MethodPost, r.Method, "retried request should preserve POST method")
+					b, _ := io.ReadAll(r.Body)
+					assert.Equal(t, requestBody, string(b), "retried request should preserve body")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(`{"id": 1}`))
+				}
+			}))
+			defer gitlabServer.Close()
+
+			tmpDir := t.TempDir()
+			cookieFile := filepath.Join(tmpDir, "cookies.txt")
+			futureTimestamp := time.Now().AddDate(1, 0, 0).Unix()
+			cookieContent := fmt.Sprintf("127.0.0.1\tFALSE\t/\tFALSE\t%d\tsession\tvalue1\n", futureTimestamp)
+			err := os.WriteFile(cookieFile, []byte(cookieContent), 0o600)
+			require.NoError(t, err)
+
+			jar, _ := cookiejar.New(nil)
+			client := &Client{
+				baseURL:           gitlabServer.URL,
+				cookieFile:        cookieFile,
+				ssoAllowedDomains: map[string]struct{}{"127.0.0.1": {}},
+			}
+
+			err = client.initializeHTTPClient()
+			require.NoError(t, err)
+
+			// Override the jar so cookies from test setup are used
+			client.httpClient.Jar = jar
+
+			req, _ := http.NewRequest(http.MethodPost,
+				gitlabServer.URL+apiPath,
+				strings.NewReader(requestBody))
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := client.httpClient.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.Equal(t, int32(1), atomic.LoadInt32(&idpRequestCount), "IdP should be visited exactly once")
+		})
+	}
 }

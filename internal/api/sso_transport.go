@@ -225,23 +225,22 @@ func (t *ssoTransport) handleSSORedirect(req *http.Request, resp *http.Response,
 		return nil, fmt.Errorf("failed to create SSO request: %w", err)
 	}
 
-	// Create a client that follows all SSO redirects, including the OAuth callback on GitLab.
-	// We only stop when the redirect target matches the original API request URL.
-	// This ensures the OAuth callback (/oauth2/idpresponse) is called and sets the session cookie.
+	// Follow SSO redirects until the SSO flow completes. The flow typically goes:
+	//   API (original host) → IdP → ... → original host (OAuth/SAML callback) → original host (final)
+	// We allow the FIRST redirect back to the original host (the OAuth/SAML callback that
+	// sets session cookies) and stop on the SECOND (session is now established).
 	originalHost := normalizeHost(req.URL.Host, req.URL.Scheme)
-	originalPath := req.URL.Path
+	var returnedToHost bool
 	ssoFlowClient := &http.Client{
 		Transport: t.ssoClient.Transport,
 		Jar:       t.ssoClient.Jar,
 		Timeout:   t.ssoClient.Timeout,
 		CheckRedirect: func(r *http.Request, via []*http.Request) error {
-			redirectHost := normalizeHost(r.URL.Host, r.URL.Scheme)
-
-			// Stop if we're being redirected to the exact original API path on the original host.
-			// This happens after the OAuth callback completes and GitLab redirects to the original URL.
-			if redirectHost == originalHost && r.URL.Path == originalPath {
-				dbg.Debugf("ssoTransport: SSO flow complete, stopping redirect to original API path %s", originalPath)
-				return http.ErrUseLastResponse
+			if normalizeHost(r.URL.Host, r.URL.Scheme) == originalHost {
+				if returnedToHost {
+					return http.ErrUseLastResponse
+				}
+				returnedToHost = true
 			}
 
 			// Continue following other redirects (OAuth callback, etc.)
