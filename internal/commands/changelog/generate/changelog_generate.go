@@ -22,8 +22,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Generate a changelog
-			$ glab changelog generate
-		`),
+			glab changelog generate`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

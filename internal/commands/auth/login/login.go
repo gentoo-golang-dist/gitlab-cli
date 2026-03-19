@@ -84,26 +84,25 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Docf(`
 			# Start interactive setup
 			# (If in a Git repository, glab will detect and suggest GitLab instances from remotes)
-			$ glab auth login
+			glab auth login
 
 			# Authenticate against %[1]sgitlab.com%[1]s by reading the token from a file
-			$ glab auth login --stdin < myaccesstoken.txt
+			glab auth login --stdin < myaccesstoken.txt
 
 			# Authenticate with GitLab Self-Managed or GitLab Dedicated
-			$ glab auth login --hostname salsa.debian.org
+			glab auth login --hostname salsa.debian.org
 
 			# Non-interactive setup
-			$ glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
+			glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
 
 			# Non-interactive setup reading token from a file
-			$ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+			glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
 
 			# Semi-interactive OAuth login, skipping all prompts except browser auth
-			$ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
+			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
 			# Non-interactive CI/CD setup
-			$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
-		`, "`"),
+			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},

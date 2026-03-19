@@ -20,8 +20,7 @@ glab changelog generate [flags]
 
 ```console
 # Generate a changelog
-$ glab changelog generate
-
+glab changelog generate
 ```
 
 ## Options

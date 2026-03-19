@@ -19,11 +19,10 @@ glab ci cancel job <id> [flags]
 ## Examples
 
 ```console
-$ glab ci cancel job 1504182795
-$ glab ci cancel job 1504182795,1504182795
-$ glab ci cancel job "1504182795 1504182795"
-$ glab ci cancel job 1504182795,1504182795 --dry-run
-
+glab ci cancel job 1504182795
+glab ci cancel job 1504182795,1504182795
+glab ci cancel job "1504182795 1504182795"
+glab ci cancel job 1504182795,1504182795 --dry-run
 ```
 
 ## Options
