@@ -49,14 +49,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Pause a runner
-			$ glab runner update <runner-id> --pause
+			glab runner update <runner-id> --pause
 
 			# Unpause a runner
-			$ glab runner update <runner-id> --unpause
+			glab runner update <runner-id> --unpause
 
 			# Pause a runner in a specific project
-			$ glab runner update <runner-id> --pause -R owner/repo
-		`),
+			glab runner update <runner-id> --pause -R owner/repo`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

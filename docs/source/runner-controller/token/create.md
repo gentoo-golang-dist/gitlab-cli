@@ -20,14 +20,13 @@ glab runner-controller token create <controller-id> [flags]
 
 ```console
 # Create a token for runner controller 42
-$ glab runner-controller token create 42
+glab runner-controller token create 42
 
 # Create a token with a description
-$ glab runner-controller token create 42 --description "production"
+glab runner-controller token create 42 --description "production"
 
 # Create a token and output as JSON
-$ glab runner-controller token create 42 --output json
-
+glab runner-controller token create 42 --output json
 ```
 
 ## Options

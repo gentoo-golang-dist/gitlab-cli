@@ -20,11 +20,10 @@ glab runner-controller token list <controller-id> [flags]
 
 ```console
 # List all tokens for runner controller 42
-$ glab runner-controller token list 42
+glab runner-controller token list 42
 
 # List tokens as JSON
-$ glab runner-controller token list 42 --output json
-
+glab runner-controller token list 42 --output json
 ```
 
 ## Options

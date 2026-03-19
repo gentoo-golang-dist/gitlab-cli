@@ -20,14 +20,13 @@ glab runner-controller update <id> [flags]
 
 ```console
 # Update a runner controller's description
-$ glab runner-controller update 42 --description "Updated description"
+glab runner-controller update 42 --description "Updated description"
 
 # Update a runner controller's state
-$ glab runner-controller update 42 --state enabled
+glab runner-controller update 42 --state enabled
 
 # Update both description and state
-$ glab runner-controller update 42 --description "Production" --state enabled
-
+glab runner-controller update 42 --description "Production" --state enabled
 ```
 
 ## Options

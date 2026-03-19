@@ -20,14 +20,13 @@ glab runner-controller token rotate <controller-id> <token-id> [flags]
 
 ```console
 # Rotate token 1 for runner controller 42 (with confirmation prompt)
-$ glab runner-controller token rotate 42 1
+glab runner-controller token rotate 42 1
 
 # Rotate without confirmation
-$ glab runner-controller token rotate 42 1 --force
+glab runner-controller token rotate 42 1 --force
 
 # Rotate and output as JSON
-$ glab runner-controller token rotate 42 1 --force --output json
-
+glab runner-controller token rotate 42 1 --force --output json
 ```
 
 ## Options

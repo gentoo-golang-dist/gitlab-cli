@@ -42,11 +42,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Unassign runner 9 from the current repository
-			$ glab runner unassign 9
+			glab runner unassign 9
 
 			# Unassign runner 9 from a specific repository
-			$ glab runner unassign 9 -R owner/repo
-		`),
+			glab runner unassign 9 -R owner/repo`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

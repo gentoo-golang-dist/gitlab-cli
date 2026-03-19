@@ -26,11 +26,10 @@ glab runner assign <runner-id> [flags]
 
 ```console
 # Assign runner 9 to the current repository
-$ glab runner assign 9
+glab runner assign 9
 
 # Assign runner 9 to a specific repository
-$ glab runner assign 9 -R owner/repo
-
+glab runner assign 9 -R owner/repo
 ```
 
 ## Options

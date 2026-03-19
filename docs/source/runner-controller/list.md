@@ -20,11 +20,10 @@ glab runner-controller list [flags]
 
 ```console
 # List all runner controllers
-$ glab runner-controller list
+glab runner-controller list
 
 # List runner controllers as JSON
-$ glab runner-controller list --output json
-
+glab runner-controller list --output json
 ```
 
 ## Options

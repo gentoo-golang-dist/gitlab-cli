@@ -24,11 +24,10 @@ glab runner managers <runner-id> [flags]
 
 ```console
 # List managers for runner 1
-$ glab runner managers 1
+glab runner managers 1
 
 # List managers as JSON
-$ glab runner managers 1 --output json
-
+glab runner managers 1 --output json
 ```
 
 ## Options

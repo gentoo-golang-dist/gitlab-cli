@@ -20,14 +20,13 @@ glab runner-controller create [flags]
 
 ```console
 # Create a runner controller with default settings
-$ glab runner-controller create
+glab runner-controller create
 
 # Create a runner controller with a description
-$ glab runner-controller create --description "My controller"
+glab runner-controller create --description "My controller"
 
 # Create an enabled runner controller
-$ glab runner-controller create --description "Production" --state enabled
-
+glab runner-controller create --description "Production" --state enabled
 ```
 
 ## Options

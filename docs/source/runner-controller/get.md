@@ -30,11 +30,10 @@ glab runner-controller get <controller-id> [flags]
 
 ```console
 # Get runner controller with ID 42
-$ glab runner-controller get 42
+glab runner-controller get 42
 
 # Get runner controller as JSON
-$ glab runner-controller get 42 --output json
-
+glab runner-controller get 42 --output json
 ```
 
 ## Options

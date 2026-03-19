@@ -20,11 +20,10 @@ glab runner-controller delete <id> [flags]
 
 ```console
 # Delete a runner controller (with confirmation prompt)
-$ glab runner-controller delete 42
+glab runner-controller delete 42
 
 # Delete a runner controller without confirmation
-$ glab runner-controller delete 42 --force
-
+glab runner-controller delete 42 --force
 ```
 
 ## Options
