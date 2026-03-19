@@ -20,7 +20,7 @@ glab gpg-key get <key-id> [flags]
 
 ```console
 # Get GPG key with ID as argument
-$ glab gpg-key get 7750633
+glab gpg-key get 7750633
 ```
 
 ## Options

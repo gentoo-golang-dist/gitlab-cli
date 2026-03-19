@@ -25,10 +25,9 @@ del
 ## Examples
 
 ```console
-$ glab issue delete 123
-$ glab issue del 123
-$ glab issue delete https://gitlab.com/profclems/glab/-/issues/123
-
+glab issue delete 123
+glab issue del 123
+glab issue delete https://gitlab.com/profclems/glab/-/issues/123
 ```
 
 ## Options inherited from parent commands

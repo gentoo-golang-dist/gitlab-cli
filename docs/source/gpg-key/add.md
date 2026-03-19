@@ -24,11 +24,10 @@ glab gpg-key add [key-file] [flags]
 
 ```console
 # Read GPG key from stdin and upload.
-$ glab gpg-key add
+glab gpg-key add
 
 # Read GPG key from specified key file and upload.
-$ glab gpg-key add ~/.gnupg/pubkey.asc
-
+glab gpg-key add ~/.gnupg/pubkey.asc
 ```
 
 ## Options inherited from parent commands

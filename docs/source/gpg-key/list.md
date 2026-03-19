@@ -19,8 +19,7 @@ glab gpg-key list [flags]
 ## Examples
 
 ```console
-$ glab gpg-key list
-
+glab gpg-key list
 ```
 
 ## Options

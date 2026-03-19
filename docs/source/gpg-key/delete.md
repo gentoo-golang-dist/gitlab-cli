@@ -20,7 +20,7 @@ glab gpg-key delete <key-id> [flags]
 
 ```console
 # Delete GPG key with ID as argument
-$ glab gpg-key delete 7750633
+glab gpg-key delete 7750633
 ```
 
 ## Options inherited from parent commands

@@ -40,9 +40,8 @@ func NewCmdClose(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comman
 		Long:    ``,
 		Aliases: aliases,
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s close 123
-			$ glab %[1]s close https://gitlab.com/NAMESPACE/REPO/-/%s
-		`, issueType, examplePath)),
+			glab %[1]s close 123
+			glab %[1]s close https://gitlab.com/NAMESPACE/REPO/-/%s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

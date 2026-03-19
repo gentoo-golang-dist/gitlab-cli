@@ -25,10 +25,9 @@ unsub
 ## Examples
 
 ```console
-$ glab issue unsubscribe 123
-$ glab issue unsub 123
-$ glab issue unsubscribe https://gitlab.com/OWNER/REPO/-/issues/123
-
+glab issue unsubscribe 123
+glab issue unsub 123
+glab issue unsubscribe https://gitlab.com/OWNER/REPO/-/issues/123
 ```
 
 ## Options inherited from parent commands

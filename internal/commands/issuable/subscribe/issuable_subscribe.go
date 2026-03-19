@@ -37,10 +37,9 @@ func NewCmdSubscribe(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Co
 		Long:    ``,
 		Aliases: []string{"sub"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s subscribe 123
-			$ glab %[1]s sub 123
-			$ glab %[1]s subscribe https://gitlab.com/OWNER/REPO/-/%[2]s
-		`, issueType, examplePath)),
+			glab %[1]s subscribe 123
+			glab %[1]s sub 123
+			glab %[1]s subscribe https://gitlab.com/OWNER/REPO/-/%[2]s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

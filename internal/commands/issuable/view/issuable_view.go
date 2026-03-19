@@ -78,12 +78,11 @@ func NewCmdView(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Command
 		Long:    ``,
 		Aliases: []string{"show"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s view 123
-			$ glab %[1]s show 123
-			$ glab %[1]s view --web 123
-			$ glab %[1]s view --comments 123
-			$ glab %[1]s view https://gitlab.com/NAMESPACE/REPO/-/%s
-		`, issueType, examplePath)),
+			glab %[1]s view 123
+			glab %[1]s show 123
+			glab %[1]s view --web 123
+			glab %[1]s view --comments 123
+			glab %[1]s view https://gitlab.com/NAMESPACE/REPO/-/%s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

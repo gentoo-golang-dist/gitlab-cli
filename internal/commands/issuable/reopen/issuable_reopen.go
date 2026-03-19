@@ -45,10 +45,9 @@ func NewCmdReopen(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comma
 		Long:    ``,
 		Aliases: []string{"open"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s reopen 123
-			$ glab %[1]s open 123
-			$ glab %[1]s reopen https://gitlab.com/NAMESPACE/REPO/-/%s
-		`, issueType, examplePath)),
+			glab %[1]s reopen 123
+			glab %[1]s open 123
+			glab %[1]s reopen https://gitlab.com/NAMESPACE/REPO/-/%s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
