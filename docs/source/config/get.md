@@ -20,11 +20,10 @@ glab config get <key> [flags]
 
 ```console
 $ glab config get editor
-> vim
+vim
 
 $ glab config get glamour_style
-> notty
-
+notty
 ```
 
 ## Options

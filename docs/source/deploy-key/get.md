@@ -20,8 +20,7 @@ glab deploy-key get <key-id> [flags]
 
 ```console
 # Get deploy key with ID as argument
-$ glab deploy-key get 1234
-
+glab deploy-key get 1234
 ```
 
 ## Options
