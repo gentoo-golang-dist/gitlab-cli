@@ -25,8 +25,7 @@ ls
 ## Examples
 
 ```console
-$ glab repo list
-
+glab repo list
 ```
 
 ## Options

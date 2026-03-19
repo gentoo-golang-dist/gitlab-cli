@@ -26,11 +26,10 @@ users
 
 ```console
 # List contributors for the current repository
-$ glab repo contributors
+glab repo contributors
 
 # List contributors for a specific repository
-$ glab repo contributors -R gitlab-com/www-gitlab-com
-
+glab repo contributors -R gitlab-com/www-gitlab-com
 ```
 
 ## Options

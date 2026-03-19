@@ -62,10 +62,9 @@ func NewCmdFork(f cmdutils.Factory) *cobra.Command {
 		Use:   "fork <repo>",
 		Short: "Fork a GitLab repository.",
 		Example: heredoc.Doc(`
-			$ glab repo fork
-			$ glab repo fork namespace/repo
-			$ glab repo fork namespace/repo --clone
-		`),
+			glab repo fork
+			glab repo fork namespace/repo
+			glab repo fork namespace/repo --clone`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

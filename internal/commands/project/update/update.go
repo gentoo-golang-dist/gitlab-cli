@@ -51,18 +51,17 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Update the description for my-project.
-			$ glab repo update my-project --description "This project is cool."
+			glab repo update my-project --description "This project is cool."
 
 			# Update the default branch for my-project.
-			$ glab repo update my-project --defaultBranch main
+			glab repo update my-project --defaultBranch main
 
 			# Archive my-project.
-			$ glab repo update my-project --archive
-			$ glab repo update my-project --archive=true
+			glab repo update my-project --archive
+			glab repo update my-project --archive=true
 
 			# Unarchive my-project.
-			$ glab repo update my-project --archive=false
-	  `),
+			glab repo update my-project --archive=false`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

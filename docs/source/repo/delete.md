@@ -34,13 +34,12 @@ glab repo delete [<NAMESPACE>/]<NAME> [flags]
 
 ```console
 # Delete a personal project.
-$ glab repo delete dotfiles
+glab repo delete dotfiles
 
 # Delete a project in a GitLab group, or another project
 # you have write access to:
-$ glab repo delete mygroup/dotfiles
-$ glab repo delete myorg/mynamespace/dotfiles
-
+glab repo delete mygroup/dotfiles
+glab repo delete myorg/mynamespace/dotfiles
 ```
 
 ## Options
