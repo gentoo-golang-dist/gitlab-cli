@@ -51,12 +51,17 @@ $ glab token list --user @me
 # Administrators only: list the personal access tokens of another user
 $ glab token list --user johndoe
 
+# Print only the count of tokens
+$ glab token list --count
+$ glab token list --group group/sub-group --count
+
 ```
 
 ## Options
 
 ```plaintext
   -a, --active            List only the active tokens.
+  -c, --count             Print only the count of tokens.
   -g, --group string      List group access tokens. Ignored if a user or repository argument is set.
   -F, --output string     Format output as: text, json. text provides a readable table, json outputs the tokens with metadata. (default "text")
   -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.

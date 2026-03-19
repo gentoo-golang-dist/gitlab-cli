@@ -73,6 +73,16 @@ func TestListProjectAccessToken(t *testing.T) {
 					Return([]*gitlab.ProjectAccessToken{testProjectToken}, noMorePages(), nil)
 			},
 		},
+		{
+			name:        "list project access token count",
+			cli:         "--count",
+			expectedOut: "1\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockProjectAccessTokens.EXPECT().
+					ListProjectAccessTokens("OWNER/REPO", gomock.Any(), gomock.Any()).
+					Return([]*gitlab.ProjectAccessToken{testProjectToken}, noMorePages(), nil)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -151,6 +161,16 @@ func TestListGroupAccessToken(t *testing.T) {
 		{
 			name: "list group access token as json",
 			cli:  "--group GROUP --output json",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockGroupAccessTokens.EXPECT().
+					ListGroupAccessTokens("GROUP", gomock.Any(), gomock.Any()).
+					Return([]*gitlab.GroupAccessToken{testGroupToken}, noMorePages(), nil)
+			},
+		},
+		{
+			name:        "list group access token count",
+			cli:         "--group GROUP --count",
+			expectedOut: "1\n",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockGroupAccessTokens.EXPECT().
 					ListGroupAccessTokens("GROUP", gomock.Any(), gomock.Any()).
@@ -293,6 +313,32 @@ func TestListPersonalAccessToken(t *testing.T) {
 		{
 			name: "list active personal access tokens as json",
 			cli:  "--user @me --active --output json",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(testUser, nil, nil)
+				tc.MockPersonalAccessTokens.EXPECT().
+					ListPersonalAccessTokens(gomock.Any(), gomock.Any()).
+					Return(testPATs, noMorePages(), nil)
+			},
+		},
+		{
+			name:        "list personal access token count",
+			cli:         "--user @me --count",
+			expectedOut: "3\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(testUser, nil, nil)
+				tc.MockPersonalAccessTokens.EXPECT().
+					ListPersonalAccessTokens(gomock.Any(), gomock.Any()).
+					Return(testPATs, noMorePages(), nil)
+			},
+		},
+		{
+			name:        "list active personal access token count",
+			cli:         "--user @me --active --count",
+			expectedOut: "1\n",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockUsers.EXPECT().
 					CurrentUser(gomock.Any()).
