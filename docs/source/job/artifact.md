@@ -33,11 +33,10 @@ push
 ## Examples
 
 ```console
-$ glab job artifact main build
-$ glab job artifact main deploy --path="artifacts/"
-$ glab job artifact main deploy --list-paths
-$ glab job artifact refs/merge-requests/123/head build
-
+glab job artifact main build
+glab job artifact main deploy --path="artifacts/"
+glab job artifact main deploy --list-paths
+glab job artifact refs/merge-requests/123/head build
 ```
 
 ## Options

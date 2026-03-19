@@ -19,9 +19,8 @@ glab label edit [flags]
 ## Examples
 
 ```console
-$ glab label edit
-$ glab label edit -R owner/repo
-
+glab label edit
+glab label edit -R owner/repo
 ```
 
 ## Options

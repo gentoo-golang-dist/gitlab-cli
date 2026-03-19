@@ -36,14 +36,13 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Long:  "",
 		Example: heredoc.Doc(`
 			# Delete milestone for the current project
-			$ glab milestone delete 123
+			glab milestone delete 123
 
 			# Delete milestone for the specified project
-			$ glab milestone delete 123 --project project-name
+			glab milestone delete 123 --project project-name
 
 			# Delete milestone for the specified group
-			$ glab milestone delete 123 --group group-name
-		`),
+			glab milestone delete 123 --group group-name`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",

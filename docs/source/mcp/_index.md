@@ -28,8 +28,7 @@ For more information, see
 ## Examples
 
 ```console
-$ glab mcp serve
-
+glab mcp serve
 ```
 
 ## Options inherited from parent commands

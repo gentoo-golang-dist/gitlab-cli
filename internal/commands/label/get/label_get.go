@@ -32,10 +32,10 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get label info using label 1234 as argument
-			$ glab label get 1234
-			
+			glab label get 1234
+
 			# Get info about a label in another project
-			$ glab label get 1234 -R owner/repo`),
+			glab label get 1234 -R owner/repo`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

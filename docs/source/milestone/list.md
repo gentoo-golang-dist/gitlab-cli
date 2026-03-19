@@ -20,15 +20,14 @@ glab milestone list [flags]
 
 ```console
  # List milestones for a given project
-$ glab milestone list --project 123
-$ glab milestone list --project example-group/project-path
+glab milestone list --project 123
+glab milestone list --project example-group/project-path
 
 # List milestones for a group
-$ glab milestone list --group example-group
+glab milestone list --group example-group
 
 # List only active milestones for a given group
-$ glab milestone list --group example-group --state active
-
+glab milestone list --group example-group --state active
 ```
 
 ## Options

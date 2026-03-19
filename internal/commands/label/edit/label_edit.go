@@ -20,9 +20,8 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 		Short: `Edit group or project label.`,
 		Long:  ``,
 		Example: heredoc.Doc(`
-			$ glab label edit
-			$ glab label edit -R owner/repo
-		`),
+			glab label edit
+			glab label edit -R owner/repo`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

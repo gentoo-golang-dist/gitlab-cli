@@ -38,14 +38,13 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  "",
 		Example: heredoc.Doc(`
 		  # Get milestone for the current project
-			$ glab milestone get 123
+			glab milestone get 123
 
 			# Get milestone for the specified project
-			$ glab milestone get 123 --project project-name
+			glab milestone get 123 --project project-name
 
 			# Get milestone for the specified group
-			$ glab milestone get 123 --group group-name
-		`),
+			glab milestone get 123 --group group-name`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

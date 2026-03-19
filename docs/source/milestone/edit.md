@@ -20,14 +20,13 @@ glab milestone edit [flags]
 
 ```console
 # Edit milestone for the current project
-$ glab milestone edit 123 --title='Example title' --due-date='2025-12-16'
+glab milestone edit 123 --title='Example title' --due-date='2025-12-16'
 
 # Edit milestone for the specified project
-$ glab milestone edit 123 --title='Example group milestone' --due-date='2025-12-16' --project example-path/project-path
+glab milestone edit 123 --title='Example group milestone' --due-date='2025-12-16' --project example-path/project-path
 
 # Edit milestone for the specified group
-$ glab milestone edit 123 --title='Example group milestone' --due-date='2025-12-16' --group 789
-
+glab milestone edit 123 --title='Example group milestone' --due-date='2025-12-16' --group 789
 ```
 
 ## Options
