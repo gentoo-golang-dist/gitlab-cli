@@ -37,17 +37,16 @@ glab ci view [branch/tag] [flags]
 
 ```console
 # Uses current branch
-$ glab pipeline ci view
+glab pipeline ci view
 
 # Get latest pipeline on main branch
-$ glab pipeline ci view main
+glab pipeline ci view main
 
 # Just like the second example
-$ glab pipeline ci view -b main
+glab pipeline ci view -b main
 
 # Get latest pipeline on main branch of myusername/glab repo
-$ glab pipeline ci view -b main -R myusername/glab
-
+glab pipeline ci view -b main -R myusername/glab
 ```
 
 ## Options

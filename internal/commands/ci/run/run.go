@@ -203,21 +203,21 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 		Short:   `Create or run a new CI/CD pipeline.`,
 		Aliases: []string{"create"},
 		Example: heredoc.Doc(`
-			$ glab ci run
-			$ glab ci run --variables \"key1:value,with,comma\"
-			$ glab ci run -b main
-			$ glab ci run --web
-			$ glab ci run --mr
+			glab ci run
+			glab ci run --variables \"key1:value,with,comma\"
+			glab ci run -b main
+			glab ci run --web
+			glab ci run --mr
 
 			# Specify CI variables
-			$ glab ci run -b main --variables-env key1:val1
-			$ glab ci run -b main --variables-env key1:val1,key2:val2
-			$ glab ci run -b main --variables-env key1:val1 --variables-env key2:val2
-			$ glab ci run -b main --variables-file MYKEY:file1 --variables KEY2:some_value
+			glab ci run -b main --variables-env key1:val1
+			glab ci run -b main --variables-env key1:val1,key2:val2
+			glab ci run -b main --variables-env key1:val1 --variables-env key2:val2
+			glab ci run -b main --variables-file MYKEY:file1 --variables KEY2:some_value
 
 			# Specify CI inputs
-			$ glab ci run -b main --input key1:val1 --input key2:val2
-			$ glab ci run -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
+			glab ci run -b main --input key1:val1 --input key2:val2
+			glab ci run -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
 
 			# Load variables from JSON file
 			# Create variables.json with this format:
@@ -232,8 +232,7 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 			#     "value": "production"
 			#   }
 			# ]
-			$ glab ci run -b main --variables-from variables.json
-			`),
+			glab ci run -b main --variables-from variables.json`),
 
 		Long: "The `--branch` " + `option is available for all pipeline types.
 

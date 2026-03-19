@@ -50,18 +50,17 @@ run-trig
 ## Examples
 
 ```console
-$ glab ci run-trig -t xxxx
-$ glab ci run-trig -t xxxx -b main
+glab ci run-trig -t xxxx
+glab ci run-trig -t xxxx -b main
 
 # Specify CI variables
-$ glab ci run-trig -t xxxx -b main --variables key1:val1
-$ glab ci run-trig -t xxxx -b main --variables key1:val1,key2:val2
-$ glab ci run-trig -t xxxx -b main --variables key1:val1 --variables key2:val2
+glab ci run-trig -t xxxx -b main --variables key1:val1
+glab ci run-trig -t xxxx -b main --variables key1:val1,key2:val2
+glab ci run-trig -t xxxx -b main --variables key1:val1 --variables key2:val2
 
 # Specify CI inputs
-$ glab ci run-trig -t xxxx -b main --input key1:val1 --input key2:val2
-$ glab ci run-trig -t xxxx -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
-
+glab ci run-trig -t xxxx -b main --input key1:val1 --input key2:val2
+glab ci run-trig -t xxxx -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
 ```
 
 ## Options

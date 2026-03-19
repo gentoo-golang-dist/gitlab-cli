@@ -20,10 +20,9 @@ glab ci lint [flags]
 
 ```console
 # Uses .gitlab-ci.yml in the current directory
-$ glab ci lint
-$ glab ci lint .gitlab-ci.yml
-$ glab ci lint path/to/.gitlab-ci.yml
-
+glab ci lint
+glab ci lint .gitlab-ci.yml
+glab ci lint path/to/.gitlab-ci.yml
 ```
 
 ## Options

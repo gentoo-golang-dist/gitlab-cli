@@ -19,9 +19,8 @@ glab ci list [flags]
 ## Examples
 
 ```console
-$ glab ci list
-$ glab ci list --status=failed
-
+glab ci list
+glab ci list --status=failed
 ```
 
 ## Options

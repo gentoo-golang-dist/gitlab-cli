@@ -20,14 +20,13 @@ glab ci trigger <job-id> [flags]
 
 ```console
 # Interactively select a job to trigger
-$ glab ci trigger
+glab ci trigger
 
 # Trigger manual job with id 224356863
-$ glab ci trigger 224356863
+glab ci trigger 224356863
 
 # Trigger manual job with name lint
-$ glab ci trigger lint
-
+glab ci trigger lint
 ```
 
 ## Options
