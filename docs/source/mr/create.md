@@ -38,6 +38,7 @@ $ glab mr create --fill --fill-commit-body --yes
 ```plaintext
       --allow-collaboration    Allow commits from other members. Set to true/false to override project defaults, or omit to use project settings.
   -a, --assignee usernames     Assign merge request to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+      --auto-merge             Set the merge request to merge when all merge checks pass.
       --copy-issue-labels      Copy labels from issue to the merge request. Used with --related-issue.
       --create-source-branch   Create a source branch if it does not exist.
   -d, --description string     Supply a description for the merge request. Set to "-" to open an editor.
