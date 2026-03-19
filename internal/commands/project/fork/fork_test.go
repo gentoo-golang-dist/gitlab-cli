@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -144,15 +144,10 @@ func TestProjectFork(t *testing.T) {
 
 			// Set up prompt stub if needed
 			if tt.expectClonePrompt {
-				responder := huhtest.NewResponder()
-				// FIXME: there is a bug in huhtest (I've created https://github.com/survivorbat/huhtest/issues/2)
-				// which leads to wrong answers when the Confirm has an affirmative default.
-				// Therefore, we need to invert our actual answer.
-				responder = responder.
-					AddConfirm("Would you like to clone the fork?", huhtest.ConfirmNegative).
-					AddConfirm("Would you like to add a remote for the fork?", huhtest.ConfirmNegative).
-					AddConfirm("Would you like to add this repository as a remote instead?", huhtest.ConfirmNegative)
-				opts = append(opts, cmdtest.WithResponder(t, responder))
+				c := ugh.New(t)
+				c.Expect(ugh.Confirm("Would you like to clone the fork?")).
+					Do(ugh.Affirm)
+				opts = append(opts, cmdtest.WithConsole(t, c))
 			}
 
 			exec := cmdtest.SetupCmdForTest(
@@ -336,23 +331,11 @@ func TestProjectForkExistingRepo(t *testing.T) {
 				},
 			}
 			// Set up prompt stub if needed
-			if !tt.addRemoteFlag {
-				responder := huhtest.NewResponder()
-				// FIXME: there is a bug in huhtest (I've created https://github.com/survivorbat/huhtest/issues/2)
-				// which leads to wrong answers when the Confirm has an affirmative default.
-				// Therefore, we need to invert our actual answer.
-				if !tt.promptResponse {
-					responder = responder.Debug().
-						AddConfirm("Would you like to clone the fork?", huhtest.ConfirmAffirm).
-						AddConfirm("Would you like to add a remote for the fork?", huhtest.ConfirmAffirm).
-						AddConfirm("Would you like to add this repository as a remote instead?", huhtest.ConfirmAffirm)
-				} else {
-					responder = responder.Debug().
-						AddConfirm("Would you like to clone the fork?", huhtest.ConfirmNegative).
-						AddConfirm("Would you like to add a remote for the fork?", huhtest.ConfirmNegative).
-						AddConfirm("Would you like to add this repository as a remote instead?", huhtest.ConfirmNegative)
-				}
-				opts = append(opts, cmdtest.WithResponder(t, responder))
+			if tt.promptResponse {
+				c := ugh.New(t)
+				c.Expect(ugh.Confirm("Would you like to add this repository as a remote instead?")).
+					Do(ugh.Affirm)
+				opts = append(opts, cmdtest.WithConsole(t, c))
 			}
 
 			exec := cmdtest.SetupCmdForTest(

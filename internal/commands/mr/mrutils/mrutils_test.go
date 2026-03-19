@@ -7,10 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
-	"github.com/survivorbat/huhtest"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -502,12 +501,12 @@ func Test_getMRForBranchPrompt(t *testing.T) {
 		}, nil
 	}
 
-	stdin, stdout, cancel := huhtest.NewResponder().
-		AddSelect(multipleMRSelectQuestion, 0).
-		Start(t, 1*time.Hour)
-	t.Cleanup(cancel)
+	c := ugh.New(t)
+	c.Expect(ugh.Select(multipleMRSelectQuestion)).
+		Do(ugh.SelectIndex(0))
 
-	ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true))
+	ios, cleanup := cmdtest.TestIOStreamsWithConsole(t, c)
+	t.Cleanup(cleanup)
 
 	got, err := GetMRForBranch(t.Context(), ios, &gitlab.Client{}, MrOptions{baseRepo, "foo", "opened", true})
 	assert.NoError(t, err)

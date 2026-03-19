@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -220,8 +220,9 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 					}, nil, nil
 				})
 
-			responder := huhtest.NewResponder()
-			responder.AddResponse("Message:", "some note message")
+			c := ugh.New(t)
+			c.Expect(ugh.Input("Message:")).
+				Do(ugh.Type("some note message"))
 
 			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 				return NewCmdNote(f, cc.issueType)
@@ -229,7 +230,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 				cmdtest.WithGitLabClient(testClient.Client),
 				cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 				cmdtest.WithConfig(config.NewFromString("editor: vi")),
-				cmdtest.WithResponder(t, responder),
+				cmdtest.WithConsole(t, c),
 			)
 
 			output, err := exec(`1`)
@@ -261,8 +262,9 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 						WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 					}, nil, nil)
 
-				responder := huhtest.NewResponder()
-				responder.AddResponse("Message:", tt.message)
+				c := ugh.New(t)
+				c.Expect(ugh.Input("Message:")).
+					Do(ugh.Type(tt.message))
 
 				exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 					return NewCmdNote(f, cc.issueType)
@@ -270,7 +272,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 					cmdtest.WithGitLabClient(testClient.Client),
 					cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 					cmdtest.WithConfig(config.NewFromString("editor: vi")),
-					cmdtest.WithResponder(t, responder),
+					cmdtest.WithConsole(t, c),
 				)
 
 				_, err := exec(`1`)
