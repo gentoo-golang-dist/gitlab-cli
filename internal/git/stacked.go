@@ -30,6 +30,11 @@ func (gitc StandardGitCommand) Git(args ...string) (string, error) {
 
 	output, err := run.PrepareCmd(cmd).Output()
 	if err != nil {
+		// Include stdout in the error, as git hooks may write output to stdout
+		// that is helpful for debugging failures (e.g., pre-push hook output)
+		if len(output) > 0 {
+			return "", fmt.Errorf("%s%w", string(output), err)
+		}
 		return "", err
 	}
 

@@ -319,3 +319,34 @@ func TestStandardGitCommand_Git_SetsLocale(t *testing.T) {
 		require.NotEmpty(t, output, "Git command should produce output")
 	})
 }
+
+func TestStandardGitCommand_Git_IncludesStdoutInError(t *testing.T) {
+	// This test verifies that when a Git command fails, any stdout output
+	// is included in the error message. This is important for debugging
+	// failures from hooks (e.g., pre-push hooks) that may write output to stdout.
+	InitGitRepo(t)
+
+	gitCmd := StandardGitCommand{}
+
+	t.Run("stdout is included in error for failing command", func(t *testing.T) {
+		// Run a git command that will output something to stdout before failing
+		// 'git log --oneline nonexistent' will produce output about not finding the ref
+		_, err := gitCmd.Git("rev-parse", "nonexistent-ref-that-does-not-exist")
+		require.Error(t, err)
+
+		// The error message should be present
+		errorMessage := err.Error()
+		require.NotEmpty(t, errorMessage, "Error should have a message")
+	})
+
+	t.Run("error includes stderr from failed command", func(t *testing.T) {
+		// Running git log on a non-existent revision should fail with stderr
+		_, err := gitCmd.Git("log", "nonexistent-branch-xyz")
+		require.Error(t, err)
+
+		// The error should contain the stderr output
+		errorMessage := err.Error()
+		require.Contains(t, errorMessage, "nonexistent-branch-xyz",
+			"Error message should contain reference to the invalid branch from stderr")
+	})
+}
