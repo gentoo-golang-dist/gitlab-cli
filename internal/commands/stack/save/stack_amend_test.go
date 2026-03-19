@@ -109,6 +109,21 @@ func Test_stackAmendCmd(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 				require.Equal(t, tc.expected, output)
+
+				// Verify that the stack reference file description was updated
+				stack, err := git.GatherStackRefs("cool-test-feature")
+				require.Nil(t, err)
+				require.False(t, stack.Empty())
+
+				// Get the current ref and verify description was updated
+				ref, err := git.CurrentStackRefFromCurrentBranch("cool-test-feature")
+				require.Nil(t, err)
+
+				expectedDesc := tc.description
+				if tc.description == "" {
+					expectedDesc = tc.editorMessage
+				}
+				require.Equal(t, expectedDesc, ref.Description)
 			}
 		})
 	}
