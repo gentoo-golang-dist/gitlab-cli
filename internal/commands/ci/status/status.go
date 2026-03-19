@@ -2,8 +2,6 @@ package status
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -116,9 +114,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 			writer := uilive.New()
 
-			// Set up signal handling for graceful exit on Ctrl+C
-			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
-			defer stop()
+			ctx := cmd.Context()
 
 			// Set up ticker for live updates if needed
 			var ticker *time.Ticker
@@ -130,20 +126,14 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 			// start listening for updates and render
 			writer.Start()
 			defer writer.Stop()
+		loop:
 			for {
-				// Check if context was cancelled (Ctrl+C pressed)
-				select {
-				case <-ctx.Done():
-					goto exitLoop
-				default:
-				}
 				jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
 					return client.Jobs.ListPipelineJobs(repoName, runningPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(ctx))
 				})
 				if err != nil {
-					// If cancelled via Ctrl+C, exit gracefully
 					if ctx.Err() != nil {
-						goto exitLoop
+						break
 					}
 					return err
 				}
@@ -191,9 +181,8 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						// Final fallback: refresh current pipeline by ID
 						updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID, gitlab.WithContext(ctx))
 						if err != nil {
-							// If cancelled via Ctrl+C, exit gracefully
 							if ctx.Err() != nil {
-								goto exitLoop
+								break loop
 							}
 							return err
 						}
@@ -203,9 +192,8 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 					// Wait between updates, but allow cancellation
 					select {
 					case <-ctx.Done():
-						goto exitLoop
+						break loop
 					case <-ticker.C:
-						// Continue to next iteration
 					}
 				} else if opts.io.IsInteractive() {
 					var answer string
@@ -218,9 +206,8 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						).
 						Value(&answer)
 					if err := opts.io.Run(ctx, selector); err != nil {
-						// Context was cancelled (Ctrl+C during prompt)
 						if ctx.Err() != nil {
-							goto exitLoop
+							break
 						}
 						return err
 					}
@@ -237,9 +224,8 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 					case "Retry":
 						_, _, err := client.Pipelines.RetryPipelineBuild(repoName, runningPipeline.ID)
 						if err != nil {
-							// If cancelled via Ctrl+C, exit gracefully
 							if ctx.Err() != nil {
-								goto exitLoop
+								break loop
 							}
 							return err
 						}
@@ -248,22 +234,20 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 							// Fallback: refresh by pipeline ID if MR lookup fails
 							updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID, gitlab.WithContext(ctx))
 							if err != nil {
-								// If cancelled via Ctrl+C, exit gracefully
 								if ctx.Err() != nil {
-									goto exitLoop
+									break loop
 								}
 								return err
 							}
 						}
 						runningPipeline = updatedPipeline
 					default:
-						goto exitLoop
+						break loop
 					}
 				} else {
 					break
 				}
 			}
-		exitLoop:
 			// Only show "Exiting..." message if cancelled via Ctrl+C
 			if ctx.Err() != nil {
 				fmt.Fprintln(writer.Newline(), "Exiting...")
