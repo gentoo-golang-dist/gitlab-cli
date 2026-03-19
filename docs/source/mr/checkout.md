@@ -19,15 +19,14 @@ glab mr checkout [<id> | <branch> | <url>] [flags]
 ## Examples
 
 ```console
-$ glab mr checkout 1
-$ glab mr checkout branch
-$ glab mr checkout 12 --branch todo-fix
-$ glab mr checkout new-feature --set-upstream-to=upstream/main
-$ glab mr checkout https://gitlab.com/gitlab-org/cli/-/merge_requests/1234
+glab mr checkout 1
+glab mr checkout branch
+glab mr checkout 12 --branch todo-fix
+glab mr checkout new-feature --set-upstream-to=upstream/main
+glab mr checkout https://gitlab.com/gitlab-org/cli/-/merge_requests/1234
 
 # Uses the checked-out branch
-$ glab mr checkout
-
+glab mr checkout
 ```
 
 ## Options

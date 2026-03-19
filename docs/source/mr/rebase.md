@@ -24,15 +24,14 @@ glab mr rebase [<id> | <branch>] [flags]
 
 ```console
 # Rebase merge request 123
-$ glab mr rebase 123
+glab mr rebase 123
 
 # Rebase current branch
-$ glab mr rebase
+glab mr rebase
 
 # Rebase merge request from branch
-$ glab mr rebase branch
-$ glab mr rebase branch --skip-ci
-
+glab mr rebase branch
+glab mr rebase branch --skip-ci
 ```
 
 ## Options

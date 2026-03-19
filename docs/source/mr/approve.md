@@ -19,14 +19,13 @@ glab mr approve {<id> | <branch>} [flags]
 ## Examples
 
 ```console
-$ glab mr approve 235
-$ glab mr approve 123 345
-$ glab mr approve branch-1
-$ glab mr approve branch-2 branch-3
+glab mr approve 235
+glab mr approve 123 345
+glab mr approve branch-1
+glab mr approve branch-2 branch-3
 
 # Finds open merge request from current branch and approves it
-$ glab mr approve
-
+glab mr approve
 ```
 
 ## Options

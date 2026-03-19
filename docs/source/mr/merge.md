@@ -26,12 +26,11 @@ accept
 
 ```console
 # Merge a merge request
-$ glab mr merge 235
-$ glab mr accept 235
+glab mr merge 235
+glab mr accept 235
 
 # Finds open merge request from current branch
-$ glab mr merge
-
+glab mr merge
 ```
 
 ## Options

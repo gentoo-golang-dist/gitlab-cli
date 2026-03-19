@@ -43,23 +43,22 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# List all discussions on the current branch's MR
-			$ glab mr note list
+			glab mr note list
 
 			# List diff comments only
-			$ glab mr note list --type diff
+			glab mr note list --type diff
 
 			# List unresolved discussions
-			$ glab mr note list --state unresolved
+			glab mr note list --state unresolved
 
 			# List discussions on a specific file
-			$ glab mr note list --file src/main.go
+			glab mr note list --file src/main.go
 
 			# JSON output for scripting
-			$ glab mr note list -F json | jq '.[].notes[].body'
+			glab mr note list -F json | jq '.[].notes[].body'
 
 			# List discussions on MR 123
-			$ glab mr note list 123
-		`),
+			glab mr note list 123`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)

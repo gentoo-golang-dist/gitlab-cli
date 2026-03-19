@@ -19,18 +19,17 @@ glab mr close [<id> | <branch>] [flags]
 ## Examples
 
 ```console
-$ glab mr close 1
+glab mr close 1
 
 # Close multiple merge requests at once
-$ glab mr close 1 2 3 4
+glab mr close 1 2 3 4
 
 # Use the checked-out branch
-$ glab mr close
+glab mr close
 
-$ glab mr close branch
-$ glab mr close username:branch
-$ glab mr close branch -R another/repo
-
+glab mr close branch
+glab mr close username:branch
+glab mr close branch -R another/repo
 ```
 
 ## Options inherited from parent commands
