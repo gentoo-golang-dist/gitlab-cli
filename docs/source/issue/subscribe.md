@@ -25,10 +25,9 @@ sub
 ## Examples
 
 ```console
-$ glab issue subscribe 123
-$ glab issue sub 123
-$ glab issue subscribe https://gitlab.com/OWNER/REPO/-/issues/123
-
+glab issue subscribe 123
+glab issue sub 123
+glab issue subscribe https://gitlab.com/OWNER/REPO/-/issues/123
 ```
 
 ## Options inherited from parent commands

@@ -32,7 +32,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get GPG key with ID as argument
-			$ glab gpg-key get 7750633`),
+			glab gpg-key get 7750633`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
