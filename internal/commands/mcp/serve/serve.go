@@ -43,8 +43,7 @@ func NewCmdServe(_ cmdutils.Factory) *cobra.Command {
 			%[1]s
 		`, "```") + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab mcp serve
-		`),
+			glab mcp serve`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

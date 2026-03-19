@@ -52,8 +52,7 @@ glab mcp serve [flags]
 ## Examples
 
 ```console
-$ glab mcp serve
-
+glab mcp serve
 ```
 
 ## Options inherited from parent commands

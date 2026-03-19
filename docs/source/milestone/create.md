@@ -20,14 +20,13 @@ glab milestone create [flags]
 
 ```console
  # Create milestone for the current project
-$ glab milestone create --title='Example title' --due-date='2025-12-16'
+glab milestone create --title='Example title' --due-date='2025-12-16'
 
 # Create milestone for the specified project
-$ glab milestone create --title='Example group milestone' --due-date='2025-12-16' --project 123
+glab milestone create --title='Example group milestone' --due-date='2025-12-16' --project 123
 
 # Create milestone for the specified group
-$ glab milestone create --title='Example group milestone' --due-date='2025-12-16' --group 456
-
+glab milestone create --title='Example group milestone' --due-date='2025-12-16' --group 456
 ```
 
 ## Options

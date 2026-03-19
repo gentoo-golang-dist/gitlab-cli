@@ -41,11 +41,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
-			- glab iteration list
-			- glab iteration ls
-			- glab iteration list -R owner/repository
-			- glab iteration list -g mygroup
-		`),
+			glab iteration list
+			glab iteration ls
+			glab iteration list -R owner/repository
+			glab iteration list -g mygroup`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

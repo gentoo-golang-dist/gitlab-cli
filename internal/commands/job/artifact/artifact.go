@@ -14,11 +14,10 @@ func NewCmdArtifact(f cmdutils.Factory) *cobra.Command {
 		Short:   `Download all artifacts from the most recent pipeline.`,
 		Aliases: []string{"push"},
 		Example: heredoc.Doc(`
-		$ glab job artifact main build
-		$ glab job artifact main deploy --path="artifacts/"
-		$ glab job artifact main deploy --list-paths
-		$ glab job artifact refs/merge-requests/123/head build
-	`),
+		glab job artifact main build
+		glab job artifact main deploy --path="artifacts/"
+		glab job artifact main deploy --list-paths
+		glab job artifact refs/merge-requests/123/head build`),
 		Long: heredoc.Docf(`
 		Downloads all artifacts from the most recent successful pipeline.
 

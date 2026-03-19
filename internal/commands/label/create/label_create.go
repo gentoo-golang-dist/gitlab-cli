@@ -17,10 +17,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-			$ glab label create
-			$ glab label new
-			$ glab label create -R owner/repo
-		`),
+			glab label create
+			glab label new
+			glab label create -R owner/repo`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

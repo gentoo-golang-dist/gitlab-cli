@@ -25,11 +25,10 @@ ls
 ## Examples
 
 ```console
-- glab iteration list
-- glab iteration ls
-- glab iteration list -R owner/repository
-- glab iteration list -g mygroup
-
+glab iteration list
+glab iteration ls
+glab iteration list -R owner/repository
+glab iteration list -g mygroup
 ```
 
 ## Options

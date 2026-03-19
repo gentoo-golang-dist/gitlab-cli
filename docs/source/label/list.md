@@ -25,11 +25,10 @@ ls
 ## Examples
 
 ```console
-$ glab label list
-$ glab label ls
-$ glab label list -R owner/repository
-$ glab label list -g mygroup
-
+glab label list
+glab label ls
+glab label list -R owner/repository
+glab label list -g mygroup
 ```
 
 ## Options
