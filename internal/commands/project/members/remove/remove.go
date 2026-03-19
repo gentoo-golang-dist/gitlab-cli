@@ -43,11 +43,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Remove a user by username
-			$ glab repo members remove --username=john.doe
+			glab repo members remove --username=john.doe
 
 			# Remove a user by ID
-			$ glab repo members remove --user-id=123
-		`),
+			glab repo members remove --user-id=123`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",

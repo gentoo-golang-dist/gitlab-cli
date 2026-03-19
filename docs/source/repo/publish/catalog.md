@@ -40,8 +40,7 @@ glab repo publish catalog <tag-name> [flags]
 ## Examples
 
 ```console
-- glab repo publish catalog v1.2.3
-
+glab repo publish catalog v1.2.3
 ```
 
 ## Options inherited from parent commands

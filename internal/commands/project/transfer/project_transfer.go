@@ -20,8 +20,7 @@ func NewCmdTransfer(f cmdutils.Factory) *cobra.Command {
 		Use:   "transfer [repo] [flags]",
 		Short: `Transfer a repository to a new namespace.`,
 		Example: heredoc.Doc(`
-			$ glab repo transfer profclems/glab --target-namespace notprofclems
-		`),
+			glab repo transfer profclems/glab --target-namespace notprofclems`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

@@ -39,11 +39,10 @@ func NewCmdContributors(f cmdutils.Factory) *cobra.Command {
 		Short: `Get repository contributors list.`,
 		Example: heredoc.Doc(`
 			# List contributors for the current repository
-			$ glab repo contributors
+			glab repo contributors
 
 			# List contributors for a specific repository
-			$ glab repo contributors -R gitlab-com/www-gitlab-com
-		`),
+			glab repo contributors -R gitlab-com/www-gitlab-com`),
 		Args:    cobra.ExactArgs(0),
 		Aliases: []string{"users"},
 		Annotations: map[string]string{

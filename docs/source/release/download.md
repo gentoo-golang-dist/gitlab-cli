@@ -28,14 +28,13 @@ glab release download <tag> [flags]
 
 ```console
 # Download all assets from the latest release
-$ glab release download
+glab release download
 
 # Download all assets from the specified release tag
-$ glab release download v1.1.0
+glab release download v1.1.0
 
 # Download assets with names matching the glob pattern
-$ glab release download v1.10.1 --asset-name="*.tar.gz"
-
+glab release download v1.10.1 --asset-name="*.tar.gz"
 ```
 
 ## Options

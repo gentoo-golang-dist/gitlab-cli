@@ -24,11 +24,10 @@ glab repo members remove [flags]
 
 ```console
 # Remove a user by username
-$ glab repo members remove --username=john.doe
+glab repo members remove --username=john.doe
 
 # Remove a user by ID
-$ glab repo members remove --user-id=123
-
+glab repo members remove --user-id=123
 ```
 
 ## Options

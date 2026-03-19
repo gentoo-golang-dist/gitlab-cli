@@ -27,28 +27,27 @@ glab release upload <tag> [<files>...] [flags]
 
 ```console
 # Upload a release asset with a display name. 'Type' defaults to 'other'.
-$ glab release upload v1.0.1 '/path/to/asset.zip#My display label'
+glab release upload v1.0.1 '/path/to/asset.zip#My display label'
 
 # Upload a release asset with a display name and type.
-$ glab release upload v1.0.1 '/path/to/asset.png#My display label#image'
+glab release upload v1.0.1 '/path/to/asset.png#My display label#image'
 
 # Upload all assets in a specified folder. 'Type' defaults to 'other'.
-$ glab release upload v1.0.1 ./dist/*
+glab release upload v1.0.1 ./dist/*
 
 # Upload all tarballs in a specified folder. 'Type' defaults to 'other'.
-$ glab release upload v1.0.1 ./dist/*.tar.gz
+glab release upload v1.0.1 ./dist/*.tar.gz
 
 # Upload release assets links specified as JSON string
-$ glab release upload v1.0.1 --assets-links='
-  [
-    {
-      "name": "Asset1",
-      "url":"https://<domain>/some/location/1",
-      "link_type": "other",
-      "direct_asset_path": "path/to/file"
-    }
-  ]'
-
+glab release upload v1.0.1 --assets-links='
+[
+  {
+    "name": "Asset1",
+    "url":"https://<domain>/some/location/1",
+    "link_type": "other",
+    "direct_asset_path": "path/to/file"
+  }
+]'
 ```
 
 ## Options

@@ -20,11 +20,10 @@ glab opentofu state download <state> [<serial>] [flags]
 
 ```console
 # Download the latest serial of the state production
-$ glab opentofu state download production
+glab opentofu state download production
 
 # Download the serial 42 of the state production
-$ glab opentofu state download production 42
-
+glab opentofu state download production 42
 ```
 
 ## Options inherited from parent commands

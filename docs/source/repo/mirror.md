@@ -37,21 +37,20 @@ glab repo mirror [ID | URL | PATH] [flags]
 
 ```console
 # Create a project, then configure pull mirroring
-$ glab repo create mygroup/myproject --public
-$ glab repo mirror mygroup/myproject --direction=pull --url="https://gitlab.example.com/org/repo"
+glab repo create mygroup/myproject --public
+glab repo mirror mygroup/myproject --direction=pull --url="https://gitlab.example.com/org/repo"
 
 # Configure pull mirroring from a private repository
-$ glab repo mirror mygroup/myproject --direction=pull --url="https://username:token@gitlab.example.com/org/private-repo"
+glab repo mirror mygroup/myproject --direction=pull --url="https://username:token@gitlab.example.com/org/private-repo"
 
 # Configure pull mirroring for protected branches only
-$ glab repo mirror mygroup/myproject --direction=pull --url="https://gitlab.example.com/org/repo" --protected-branches-only
+glab repo mirror mygroup/myproject --direction=pull --url="https://gitlab.example.com/org/repo" --protected-branches-only
 
 # Configure push mirroring to another GitLab instance
-$ glab repo mirror mygroup/myproject --direction=push --url="https://gitlab-backup.example.com/backup/myproject"
+glab repo mirror mygroup/myproject --direction=push --url="https://gitlab-backup.example.com/backup/myproject"
 
 # Configure push mirroring and allow divergent refs
-$ glab repo mirror mygroup/myproject --direction=push --url="https://gitlab-backup.example.com/backup/repo" --allow-divergence
-
+glab repo mirror mygroup/myproject --direction=push --url="https://gitlab-backup.example.com/backup/repo" --allow-divergence
 ```
 
 ## Options
