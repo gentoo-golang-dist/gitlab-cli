@@ -20,11 +20,10 @@ glab runner-controller scope list <controller-id> [flags]
 
 ```console
 # List all scopes for runner controller 42
-$ glab runner-controller scope list 42
+glab runner-controller scope list 42
 
 # List scopes as JSON
-$ glab runner-controller scope list 42 --output json
-
+glab runner-controller scope list 42 --output json
 ```
 
 ## Options

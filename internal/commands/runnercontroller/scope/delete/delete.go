@@ -50,18 +50,17 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Remove an instance-level scope from runner controller 42 (with confirmation)
-			$ glab runner-controller scope delete 42 --instance
+			glab runner-controller scope delete 42 --instance
 
 			# Remove an instance-level scope without confirmation
-			$ glab runner-controller scope delete 42 --instance --force
+			glab runner-controller scope delete 42 --instance --force
 
 			# Remove a runner-level scope for runner 5 from runner controller 42
-			$ glab runner-controller scope delete 42 --runner 5 --force
+			glab runner-controller scope delete 42 --runner 5 --force
 
 			# Remove runner-level scopes for multiple runners
-			$ glab runner-controller scope delete 42 --runner 5 --runner 10 --force
-			$ glab runner-controller scope delete 42 --runner 5,10 --force
-		`),
+			glab runner-controller scope delete 42 --runner 5 --runner 10 --force
+			glab runner-controller scope delete 42 --runner 5,10 --force`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

@@ -32,17 +32,16 @@ ls
 
 ```console
 # List runners for the current project
-$ glab runner list
+glab runner list
 
 # List runners for a specific project
-$ glab runner list -R owner/repo
+glab runner list -R owner/repo
 
 # List runners for a group
-$ glab runner list --group mygroup
+glab runner list --group mygroup
 
 # List runners as JSON
-$ glab runner list --output json
-
+glab runner list --output json
 ```
 
 ## Options

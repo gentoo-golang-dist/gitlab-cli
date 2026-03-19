@@ -40,11 +40,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Assign runner 9 to the current repository
-			$ glab runner assign 9
+			glab runner assign 9
 
 			# Assign runner 9 to a specific repository
-			$ glab runner assign 9 -R owner/repo
-		`),
+			glab runner assign 9 -R owner/repo`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",

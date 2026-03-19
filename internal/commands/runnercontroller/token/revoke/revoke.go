@@ -38,11 +38,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# Revoke token 1 from runner controller 42 (with confirmation prompt)
-			$ glab runner-controller token revoke 42 1
+			glab runner-controller token revoke 42 1
 
 			# Revoke without confirmation
-			$ glab runner-controller token revoke 42 1 --force
-		`),
+			glab runner-controller token revoke 42 1 --force`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

@@ -28,11 +28,10 @@ glab runner unassign <runner-id> [flags]
 
 ```console
 # Unassign runner 9 from the current repository
-$ glab runner unassign 9
+glab runner unassign 9
 
 # Unassign runner 9 from a specific repository
-$ glab runner unassign 9 -R owner/repo
-
+glab runner unassign 9 -R owner/repo
 ```
 
 ## Options

@@ -50,18 +50,17 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Add an instance-level scope to runner controller 42
-			$ glab runner-controller scope create 42 --instance
+			glab runner-controller scope create 42 --instance
 
 			# Add a runner-level scope for runner 5 to runner controller 42
-			$ glab runner-controller scope create 42 --runner 5
+			glab runner-controller scope create 42 --runner 5
 
 			# Add runner-level scopes for multiple runners
-			$ glab runner-controller scope create 42 --runner 5 --runner 10
-			$ glab runner-controller scope create 42 --runner 5,10
+			glab runner-controller scope create 42 --runner 5 --runner 10
+			glab runner-controller scope create 42 --runner 5,10
 
 			# Add a runner-level scope and output as JSON
-			$ glab runner-controller scope create 42 --runner 5 --output json
-		`),
+			glab runner-controller scope create 42 --runner 5 --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
