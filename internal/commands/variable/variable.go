@@ -7,6 +7,7 @@ import (
 	deleteCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/delete"
 	exportCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/export"
 	getCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/get"
+	importCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/import"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/list"
 	setCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/set"
 	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/variable/update"
@@ -27,5 +28,6 @@ func NewVariableCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.AddCommand(updateCmd.NewCmdUpdate(f, nil))
 	cmd.AddCommand(getCmd.NewCmdGet(f, nil))
 	cmd.AddCommand(exportCmd.NewCmdExport(f, nil))
+	cmd.AddCommand(importCmd.NewCmdImport(f, nil))
 	return cmd
 }
