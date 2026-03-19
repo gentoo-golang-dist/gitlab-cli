@@ -3,6 +3,8 @@
 package save
 
 import (
+	"os"
+	"path"
 	"strings"
 	"testing"
 
@@ -23,6 +25,7 @@ func Test_stackAmendCmd(t *testing.T) {
 		args          []string
 		files         []string
 		amendedFiles  []string
+		modifyFiles   []string // Files to modify (not create new) for testing -u behavior
 		description   string
 		expected      string
 		wantErr       bool
@@ -63,6 +66,15 @@ func Test_stackAmendCmd(t *testing.T) {
 			expected:     "Could not find stack ref for branch",
 			wantErr:      true,
 		},
+		{
+			desc:         "amend without arguments should not add untracked files",
+			args:         []string{},
+			files:        []string{"trackedfile"},
+			modifyFiles:  []string{"trackedfile"},
+			amendedFiles: []string{"untrackedfile"},
+			description:  "amend only tracked changes",
+			expected:     "Amended stack item with description: \"amend only tracked changes\".\n",
+		},
 	}
 
 	for _, tc := range tests {
@@ -76,10 +88,13 @@ func Test_stackAmendCmd(t *testing.T) {
 
 			createTemporaryFiles(t, dir, tc.files)
 
+			// Use tc.files or tc.args for save args, but only if tc.files is not empty
 			var saveArgs []string
 			saveArgs = append(saveArgs, "-m")
 			saveArgs = append(saveArgs, "\"original save message\"")
-			saveArgs = append(saveArgs, tc.args...)
+			if len(tc.files) > 0 {
+				saveArgs = append(saveArgs, tc.files...)
+			}
 
 			getText := getMockEditor(tc.editorMessage, &[]string{})
 
@@ -94,6 +109,14 @@ func Test_stackAmendCmd(t *testing.T) {
 			_, err = exec(strings.Join(saveArgs, " "))
 			require.Nil(t, err)
 
+			// Modify tracked files if specified (for testing git add -u behavior)
+			for _, file := range tc.modifyFiles {
+				filePath := path.Join(dir, file)
+				err := os.WriteFile(filePath, []byte("modified content"), 0644)
+				require.Nil(t, err)
+			}
+
+			// Create new untracked files
 			createTemporaryFiles(t, dir, tc.amendedFiles)
 			if tc.desc == "not on a stack branch" {
 				checkout := git.GitCommand("checkout", "-b", "randobranch")
