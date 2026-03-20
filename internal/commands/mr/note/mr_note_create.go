@@ -121,7 +121,10 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "resolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "reopen")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "reopen")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
+	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("reopen", "unresolve")
 
 	return mrCreateNoteCmd
 }
