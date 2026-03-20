@@ -119,11 +119,11 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
 
 	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("resolve", "use `glab mr note resolve` instead."))
-	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("unresolve", "use `glab mr note unresolve` instead."))
+	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("unresolve", "use `glab mr note reopen` instead."))
 
 	mrCreateNoteCmd.AddCommand(NewCmdList(f))
 	mrCreateNoteCmd.AddCommand(NewCmdResolve(f))
-	mrCreateNoteCmd.AddCommand(NewCmdUnresolve(f))
+	mrCreateNoteCmd.AddCommand(NewCmdReopen(f))
 
 	return mrCreateNoteCmd
 }

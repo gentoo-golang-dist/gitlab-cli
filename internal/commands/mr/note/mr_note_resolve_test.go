@@ -240,10 +240,10 @@ func Test_resolve_subcommand(t *testing.T) {
 	})
 }
 
-func Test_unresolve_subcommand(t *testing.T) {
+func Test_reopen_subcommand(t *testing.T) {
 	t.Parallel()
 
-	t.Run("unresolve by prefix", func(t *testing.T) {
+	t.Run("reopen by prefix", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := gitlabtesting.NewTestClient(t)
@@ -268,12 +268,12 @@ func Test_unresolve_subcommand(t *testing.T) {
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
-		output, err := exec(`unresolve 1 def67890`)
+		output, err := exec(`reopen 1 def67890`)
 		require.NoError(t, err)
-		assert.Contains(t, output.String(), "✓ Discussion unresolved (def67890… in !1)")
+		assert.Contains(t, output.String(), "✓ Discussion reopened (def67890… in !1)")
 	})
 
-	t.Run("unresolve API error", func(t *testing.T) {
+	t.Run("reopen API error", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := gitlabtesting.NewTestClient(t)
@@ -295,9 +295,9 @@ func Test_unresolve_subcommand(t *testing.T) {
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
-		_, err := exec(`unresolve 1 abc12345`)
+		_, err := exec(`reopen 1 abc12345`)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unresolve discussion")
+		assert.Contains(t, err.Error(), "failed to reopen discussion")
 	})
 
 	t.Run("too many args", func(t *testing.T) {
@@ -313,7 +313,7 @@ func Test_unresolve_subcommand(t *testing.T) {
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
-		_, err := exec(`unresolve 1 abc12345 extra`)
+		_, err := exec(`reopen 1 abc12345 extra`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "accepts between 1 and 2 arg(s)")
 	})
@@ -331,7 +331,7 @@ func Test_unresolve_subcommand(t *testing.T) {
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
-		_, err := exec(`unresolve`)
+		_, err := exec(`reopen`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "accepts between 1 and 2 arg(s)")
 	})

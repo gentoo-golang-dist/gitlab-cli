@@ -23,6 +23,7 @@ type resolveOptions struct {
 	factory cmdutils.Factory
 	resolve bool
 	action  string
+	past    string
 
 	// Parsed from args in validate.
 	mrArgs           []string
@@ -39,14 +40,16 @@ func NewCmdResolve(f cmdutils.Factory) *cobra.Command {
 	return newResolveCmd(f, true)
 }
 
-func NewCmdUnresolve(f cmdutils.Factory) *cobra.Command {
+func NewCmdReopen(f cmdutils.Factory) *cobra.Command {
 	return newResolveCmd(f, false)
 }
 
 func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 	action := "resolve"
+	past := "resolved"
 	if !resolve {
-		action = "unresolve"
+		action = "reopen"
+		past = "reopened"
 	}
 
 	opts := &resolveOptions{
@@ -54,6 +57,7 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 		factory: f,
 		resolve: resolve,
 		action:  action,
+		past:    past,
 	}
 
 	cmd := &cobra.Command{
@@ -156,7 +160,7 @@ func (o *resolveOptions) run(ctx context.Context) error {
 	if len(prefix) > 8 {
 		prefix = prefix[:8] + "…"
 	}
-	fmt.Fprintf(o.io.StdOut, "✓ Discussion %sd (%s in !%d)\n", o.action, prefix, o.mr.IID)
+	fmt.Fprintf(o.io.StdOut, "✓ Discussion %s (%s in !%d)\n", o.past, prefix, o.mr.IID)
 	return nil
 }
 
