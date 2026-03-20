@@ -1,6 +1,7 @@
 package note
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,8 +13,27 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
+
+type resolveOptions struct {
+	io      *iostreams.IOStreams
+	factory cmdutils.Factory
+	resolve bool
+	action  string
+
+	// Parsed from args in validate.
+	mrArgs           []string
+	discussionPrefix string
+
+	// Populated in complete.
+	client       *gitlab.Client
+	mr           *gitlab.MergeRequest
+	repo         glrepo.Interface
+	discussionID string
+}
 
 func NewCmdResolve(f cmdutils.Factory) *cobra.Command {
 	return newResolveCmd(f, true)
@@ -27,6 +47,13 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 	action := "resolve"
 	if !resolve {
 		action = "unresolve"
+	}
+
+	opts := &resolveOptions{
+		io:      f.IO(),
+		factory: f,
+		resolve: resolve,
+		action:  action,
 	}
 
 	cmd := &cobra.Command{
@@ -57,66 +84,80 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 		`, capitalize(action), action, capitalize(action), action, capitalize(action), action, capitalize(action), action),
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := f.GitLabClient()
-			if err != nil {
+			opts.validate(args)
+
+			if err := opts.complete(cmd.Context()); err != nil {
 				return err
 			}
 
-			// Last arg is always the discussion ID; preceding arg (if any) is MR ref.
-			var mrArgs []string
-			discussionPrefix := args[len(args)-1]
-			if len(args) == 2 {
-				mrArgs = args[:1]
-			}
-
-			mr, repo, err := mrutils.MRFromArgs(cmd.Context(), f, mrArgs, "any")
-			if err != nil {
-				return err
-			}
-
-			ctx := cmd.Context()
-
-			var discussionID string
-			// Check if the identifier is an integer note ID.
-			if noteID, parseErr := strconv.ParseInt(discussionPrefix, 10, 64); parseErr == nil {
-				discussions, listErr := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
-				if listErr != nil {
-					return fmt.Errorf("failed to list discussions: %w", listErr)
-				}
-				discussionID, err = mrutils.FindDiscussionByNoteID(discussions, noteID)
-				if err != nil {
-					return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
-				}
-			} else {
-				discussionID, err = mrutils.ResolveDiscussionID(ctx, client, repo.FullName(), mr.IID, discussionPrefix)
-				if err != nil {
-					return err
-				}
-			}
-
-			_, _, err = client.Discussions.ResolveMergeRequestDiscussion(
-				repo.FullName(),
-				mr.IID,
-				discussionID,
-				&gitlab.ResolveMergeRequestDiscussionOptions{
-					Resolved: &resolve,
-				},
-				gitlab.WithContext(ctx),
-			)
-			if err != nil {
-				return fmt.Errorf("failed to %s discussion: %w", action, err)
-			}
-
-			prefix := discussionID
-			if len(prefix) > 8 {
-				prefix = prefix[:8] + "…"
-			}
-			fmt.Fprintf(f.IO().StdOut, "✓ Discussion %sd (%s in !%d)\n", action, prefix, mr.IID)
-			return nil
+			return opts.run(cmd.Context())
 		},
 	}
 
 	return cmd
+}
+
+func (o *resolveOptions) validate(args []string) {
+	o.discussionPrefix = args[len(args)-1]
+	if len(args) == 2 {
+		o.mrArgs = args[:1]
+	}
+}
+
+func (o *resolveOptions) complete(ctx context.Context) error {
+	client, err := o.factory.GitLabClient()
+	if err != nil {
+		return err
+	}
+	o.client = client
+
+	mr, repo, err := mrutils.MRFromArgs(ctx, o.factory, o.mrArgs, "any")
+	if err != nil {
+		return err
+	}
+	o.mr = mr
+	o.repo = repo
+
+	// Resolve the discussion ID from the prefix or note ID.
+	if noteID, parseErr := strconv.ParseInt(o.discussionPrefix, 10, 64); parseErr == nil {
+		discussions, listErr := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
+		if listErr != nil {
+			return fmt.Errorf("failed to list discussions: %w", listErr)
+		}
+		o.discussionID, err = mrutils.FindDiscussionByNoteID(discussions, noteID)
+		if err != nil {
+			return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
+		}
+	} else {
+		o.discussionID, err = mrutils.ResolveDiscussionID(ctx, client, repo.FullName(), mr.IID, o.discussionPrefix)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o *resolveOptions) run(ctx context.Context) error {
+	_, _, err := o.client.Discussions.ResolveMergeRequestDiscussion(
+		o.repo.FullName(),
+		o.mr.IID,
+		o.discussionID,
+		&gitlab.ResolveMergeRequestDiscussionOptions{
+			Resolved: &o.resolve,
+		},
+		gitlab.WithContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to %s discussion: %w", o.action, err)
+	}
+
+	prefix := o.discussionID
+	if len(prefix) > 8 {
+		prefix = prefix[:8] + "…"
+	}
+	fmt.Fprintf(o.io.StdOut, "✓ Discussion %sd (%s in !%d)\n", o.action, prefix, o.mr.IID)
+	return nil
 }
 
 func capitalize(s string) string {
