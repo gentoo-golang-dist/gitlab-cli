@@ -75,16 +75,16 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 		`, capitalize(action)) + text.ExperimentalString,
 		Example: heredoc.Docf(`
 			# %s a discussion on MR 123 by prefix
-			$ glab mr note %s 123 abc12345
+			glab mr note %s 123 abc12345
 
 			# %s a discussion by note ID
-			$ glab mr note %s 3107030349
+			glab mr note %s 3107030349
 
 			# %s a discussion by prefix (8+ chars, auto-detects MR from branch)
-			$ glab mr note %s abc12345
+			glab mr note %s abc12345
 
 			# %s a discussion by full ID
-			$ glab mr note %s abc12345deadbeef1234567890abcdef12345678
+			glab mr note %s abc12345deadbeef1234567890abcdef12345678
 		`, capitalize(action), action, capitalize(action), action, capitalize(action), action, capitalize(action), action),
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {

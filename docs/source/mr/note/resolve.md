@@ -36,16 +36,16 @@ glab mr note resolve [<id> | <branch>] <discussion-id> [flags]
 
 ```console
 # Resolve a discussion on MR 123 by prefix
-$ glab mr note resolve 123 abc12345
+glab mr note resolve 123 abc12345
 
 # Resolve a discussion by note ID
-$ glab mr note resolve 3107030349
+glab mr note resolve 3107030349
 
 # Resolve a discussion by prefix (8+ chars, auto-detects MR from branch)
-$ glab mr note resolve abc12345
+glab mr note resolve abc12345
 
 # Resolve a discussion by full ID
-$ glab mr note resolve abc12345deadbeef1234567890abcdef12345678
+glab mr note resolve abc12345deadbeef1234567890abcdef12345678
 
 ```
 
