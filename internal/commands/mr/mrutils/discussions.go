@@ -142,7 +142,7 @@ func matchesType(discussion *gitlab.Discussion, typ string) bool {
 
 // ResolveDiscussionID resolves a prefix (8+ chars) to a full discussion ID.
 // Returns an error if the prefix is ambiguous or not found.
-var ResolveDiscussionID = func(ctx context.Context, client *gitlab.Client, projectID any, mrIID int64, prefix string) (string, error) {
+func ResolveDiscussionID(ctx context.Context, client *gitlab.Client, projectID any, mrIID int64, prefix string) (string, error) {
 	prefixLen := len(prefix)
 	if prefixLen < 8 {
 		return "", fmt.Errorf("discussion ID prefix must be at least 8 characters, got %d", len(prefix))
