@@ -33,28 +33,27 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 		Use:   fmt.Sprintf("%s [<id> | <branch>] <discussion-id>", action),
 		Short: fmt.Sprintf("%s a discussion on a merge request. (EXPERIMENTAL)", capitalize(action)),
 		Long: heredoc.Docf(`
-			%s a discussion on a merge request by discussion ID or note ID.
+			%s a discussion on a merge request.
 
-			The identifier can be:
+			The identifier can be one of the following:
 
-			- A discussion ID: full 40-character hex string or an 8+ character prefix.
-			- A note ID: integer note ID (looks up the parent discussion automatically).
+			- Discussion ID: full 40-character hex string or an 8+ character prefix
+			- Note ID: integer note ID (looks up the parent discussion automatically)
 
-			If a prefix matches multiple discussions, an error is returned with
-			the ambiguous matches.
+			If a prefix matches multiple discussions, an error is returned with the ambiguous matches.
 		`, capitalize(action)) + text.ExperimentalString,
 		Example: heredoc.Docf(`
-			# %s a discussion by full ID
-			$ glab mr note %s abc12345deadbeef1234567890abcdef12345678
-
-			# %s a discussion by prefix (8+ chars)
-			$ glab mr note %s abc12345
+			# %s a discussion on MR 123
+			$ glab mr note %s 123 abc12345
 
 			# %s a discussion by note ID
 			$ glab mr note %s 3107030349
 
-			# %s a discussion on MR 123
-			$ glab mr note %s 123 abc12345
+			# %s a discussion by prefix (8+ chars)
+			$ glab mr note %s abc12345
+
+			# %s a discussion by full ID
+			$ glab mr note %s abc12345deadbeef1234567890abcdef12345678
 		`, capitalize(action), action, capitalize(action), action, capitalize(action), action, capitalize(action), action),
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {

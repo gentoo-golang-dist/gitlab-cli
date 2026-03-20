@@ -14,15 +14,14 @@ Resolve a discussion on a merge request. (EXPERIMENTAL)
 
 ## Synopsis
 
-Resolve a discussion on a merge request by discussion ID or note ID.
+Resolve a discussion on a merge request.
 
-The identifier can be:
+The identifier can be one of the following:
 
-- A discussion ID: full 40-character hex string or an 8+ character prefix.
-- A note ID: integer note ID (looks up the parent discussion automatically).
+- Discussion ID: full 40-character hex string or an 8+ character prefix
+- Note ID: integer note ID (looks up the parent discussion automatically)
 
-If a prefix matches multiple discussions, an error is returned with
-the ambiguous matches.
+If a prefix matches multiple discussions, an error is returned with the ambiguous matches.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -36,17 +35,17 @@ glab mr note resolve [<id> | <branch>] <discussion-id> [flags]
 ## Examples
 
 ```console
-# Resolve a discussion by full ID
-$ glab mr note resolve abc12345deadbeef1234567890abcdef12345678
-
-# Resolve a discussion by prefix (8+ chars)
-$ glab mr note resolve abc12345
+# Resolve a discussion on MR 123
+$ glab mr note resolve 123 abc12345
 
 # Resolve a discussion by note ID
 $ glab mr note resolve 3107030349
 
-# Resolve a discussion on MR 123
-$ glab mr note resolve 123 abc12345
+# Resolve a discussion by prefix (8+ chars)
+$ glab mr note resolve abc12345
+
+# Resolve a discussion by full ID
+$ glab mr note resolve abc12345deadbeef1234567890abcdef12345678
 
 ```
 

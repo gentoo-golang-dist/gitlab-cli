@@ -14,15 +14,14 @@ Unresolve a discussion on a merge request. (EXPERIMENTAL)
 
 ## Synopsis
 
-Unresolve a discussion on a merge request by discussion ID or note ID.
+Unresolve a discussion on a merge request.
 
-The identifier can be:
+The identifier can be one of the following:
 
-- A discussion ID: full 40-character hex string or an 8+ character prefix.
-- A note ID: integer note ID (looks up the parent discussion automatically).
+- Discussion ID: full 40-character hex string or an 8+ character prefix
+- Note ID: integer note ID (looks up the parent discussion automatically)
 
-If a prefix matches multiple discussions, an error is returned with
-the ambiguous matches.
+If a prefix matches multiple discussions, an error is returned with the ambiguous matches.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -36,17 +35,17 @@ glab mr note unresolve [<id> | <branch>] <discussion-id> [flags]
 ## Examples
 
 ```console
-# Unresolve a discussion by full ID
-$ glab mr note unresolve abc12345deadbeef1234567890abcdef12345678
-
-# Unresolve a discussion by prefix (8+ chars)
-$ glab mr note unresolve abc12345
+# Unresolve a discussion on MR 123
+$ glab mr note unresolve 123 abc12345
 
 # Unresolve a discussion by note ID
 $ glab mr note unresolve 3107030349
 
-# Unresolve a discussion on MR 123
-$ glab mr note unresolve 123 abc12345
+# Unresolve a discussion by prefix (8+ chars)
+$ glab mr note unresolve abc12345
+
+# Unresolve a discussion by full ID
+$ glab mr note unresolve abc12345deadbeef1234567890abcdef12345678
 
 ```
 
