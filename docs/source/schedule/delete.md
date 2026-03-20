@@ -21,8 +21,7 @@ glab schedule delete <id> [flags]
 ```console
 # Delete a scheduled pipeline with ID 10
 $ glab schedule delete 10
-> Deleted schedule with ID 10
-
+Deleted schedule with ID 10
 ```
 
 ## Options inherited from parent commands

@@ -43,8 +43,7 @@ func NewCmdReorderStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.G
 		Short: "Reorder a stack of merge requests. (EXPERIMENTAL)",
 		Long:  "Reorder how the current stack's merge requests are merged." + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab stack reorder
-		`),
+			glab stack reorder`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

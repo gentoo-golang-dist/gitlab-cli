@@ -20,14 +20,13 @@ glab ssh-key get <key-id> [flags]
 
 ```console
 # Get ssh key with ID as argument
-$ glab ssh-key get 7750633
+glab ssh-key get 7750633
 
 # Interactive
-$ glab ssh-key get
+glab ssh-key get
 
 # Interactive, with pagination
-$ glab ssh-key get -P 50 -p 2
-
+glab ssh-key get -P 50 -p 2
 ```
 
 ## Options

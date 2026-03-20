@@ -27,30 +27,29 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 		Short: `Download a secure file for a project.`,
 		Example: heredoc.Doc(`
 		    # Download a project's secure file using the file's ID by argument or flag.
-		    $ glab securefile download 1
-		    $ glab securefile download --id 1
+		    glab securefile download 1
+		    glab securefile download --id 1
 
 		    # Download a project's secure file using the file's ID to a given path.
-		    $ glab securefile download 1 --path="securefiles/file.txt"
+		    glab securefile download 1 --path="securefiles/file.txt"
 
 		    # Download a project's secure file without verifying its checksum.
-		    $ glab securefile download 1 --no-verify
+		    glab securefile download 1 --no-verify
 
 		    # Download a project's secure file even if checksum verification fails.
-		    $ glab securefile download 1 --force-download
+		    glab securefile download 1 --force-download
 
 		    # Download a project's secure file using the file's name to the current directory.
-		    $ glab securefile download --name my-secure-file.pem
+		    glab securefile download --name my-secure-file.pem
 
 		    # Download a project's secure file using the file's name to a given path.
-		    $ glab securefile download --name my-secure-file.pem --path=securefiles/some-other-name.pem
+		    glab securefile download --name my-secure-file.pem --path=securefiles/some-other-name.pem
 
 		    # Download all (limit 100) of a project's secure files.
-		    $ glab securefile download --all
+		    glab securefile download --all
 
 		    # Download all (limit 100) of a project's secure files to a given directory.
-		    $ glab securefile download --all --output-dir secure_files/
-		`),
+		    glab securefile download --all --output-dir secure_files/`),
 		Long: ``,
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{

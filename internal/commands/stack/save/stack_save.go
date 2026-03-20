@@ -29,9 +29,9 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 		Long: `Save your current progress with a diff on the stack.
 ` + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab stack save added_file
-			$ glab stack save . -m "added a function"
-			$ glab stack save -m "added a function"`),
+			glab stack save added_file
+			glab stack save . -m "added a function"
+			glab stack save -m "added a function"`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

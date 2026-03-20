@@ -34,8 +34,7 @@ ls
 ## Examples
 
 ```console
-$ glab stack list
-
+glab stack list
 ```
 
 ## Options inherited from parent commands

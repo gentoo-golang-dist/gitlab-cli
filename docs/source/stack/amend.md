@@ -28,9 +28,9 @@ glab stack amend [flags]
 ## Examples
 
 ```console
-$ glab stack amend modifiedfile
-$ glab stack amend . -m "fixed a function"
-$ glab stack amend newfile -d "forgot to add this"
+glab stack amend modifiedfile
+glab stack amend . -m "fixed a function"
+glab stack amend newfile -d "forgot to add this"
 ```
 
 ## Options

@@ -21,8 +21,7 @@ glab schedule run <id> [flags]
 ```console
 # Run a scheduled pipeline with ID 1
 $ glab schedule run 1
-> Started schedule with ID 1
-
+Started schedule with ID 1
 ```
 
 ## Options inherited from parent commands

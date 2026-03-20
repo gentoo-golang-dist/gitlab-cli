@@ -36,10 +36,9 @@ glab stack sync [flags]
 ## Examples
 
 ```console
-$ glab stack sync
-$ glab stack sync --no-verify
-$ glab stack sync --update-base
-
+glab stack sync
+glab stack sync --no-verify
+glab stack sync --update-base
 ```
 
 ## Options

@@ -19,8 +19,7 @@ glab ssh-key list [flags]
 ## Examples
 
 ```console
-$ glab ssh-key list
-
+glab ssh-key list
 ```
 
 ## Options

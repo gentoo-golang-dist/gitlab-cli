@@ -30,9 +30,8 @@ stacks
 ## Examples
 
 ```console
-$ glab stack create cool-new-feature
-$ glab stack sync
-
+glab stack create cool-new-feature
+glab stack sync
 ```
 
 ## Options

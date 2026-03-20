@@ -22,8 +22,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			# Create a scheduled pipeline that runs every hour
 			$ glab schedule create --cron "0 * * * *" --description "Describe your pipeline here" --ref "main" --variable "foo:bar" --variable "baz:baz"
-			> Created schedule
-		`),
+			Created schedule`),
 		Long: ``,
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

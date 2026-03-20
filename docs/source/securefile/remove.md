@@ -26,18 +26,17 @@ delete
 ## Examples
 
 ```console
-Remove a project's secure file using the file's ID.
-- glab securefile remove 1
+# Remove a project's secure file using the file's ID.
+glab securefile remove 1
 
-Skip the confirmation prompt and force delete.
-- glab securefile remove 1 -y
+# Skip the confirmation prompt and force delete.
+glab securefile remove 1 -y
 
-Remove a project's secure file with 'rm' alias.
-- glab securefile rm 1
+# Remove a project's secure file with 'rm' alias.
+glab securefile rm 1
 
-Remove a project's secure file with 'delete' alias.
-- glab securefile delete 1
-
+# Remove a project's secure file with 'delete' alias.
+glab securefile delete 1
 ```
 
 ## Options

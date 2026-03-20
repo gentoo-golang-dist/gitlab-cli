@@ -23,9 +23,9 @@ func NewCmdAmendStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.Get
 		Long: `Add more changes to an existing stacked diff.
 ` + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab stack amend modifiedfile
-			$ glab stack amend . -m "fixed a function"
-			$ glab stack amend newfile -d "forgot to add this"`),
+			glab stack amend modifiedfile
+			glab stack amend . -m "fixed a function"
+			glab stack amend newfile -d "forgot to add this"`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

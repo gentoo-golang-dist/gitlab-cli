@@ -27,8 +27,7 @@ glab stack reorder [flags]
 ## Examples
 
 ```console
-$ glab stack reorder
-
+glab stack reorder
 ```
 
 ## Options inherited from parent commands

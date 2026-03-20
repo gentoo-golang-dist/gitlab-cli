@@ -29,7 +29,7 @@ glab stack switch <stack-name> [flags]
 ## Examples
 
 ```console
-$ glab stack switch <stack-name>
+glab stack switch <stack-name>
 ```
 
 ## Options inherited from parent commands
