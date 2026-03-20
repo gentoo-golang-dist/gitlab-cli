@@ -21,7 +21,8 @@ func NewCmdStackSwitch(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 				"To see the list of all stacks, check the `.git/stacked/` directory.\n" +
 				text.ExperimentalString,
 		),
-		Example: "$ glab stack switch <stack-name>",
+		Example: heredoc.Doc(
+			`glab stack switch <stack-name>`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

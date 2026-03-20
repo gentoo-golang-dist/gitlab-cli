@@ -25,18 +25,17 @@ ls
 ## Examples
 
 ```console
-List all secure files.
-- glab securefile list
+# List all secure files.
+glab securefile list
 
-List all secure files with 'cmd' alias.
-- glab securefile ls
+# List all secure files with 'cmd' alias.
+glab securefile ls
 
-List a specific page of secure files.
-- glab securefile list --page 2
+# List a specific page of secure files.
+glab securefile list --page 2
 
-List a specific page of secure files, with a custom page size.
-- glab securefile list --page 2 --per-page 10
-
+# List a specific page of secure files, with a custom page size.
+glab securefile list --page 2 --per-page 10
 ```
 
 ## Options

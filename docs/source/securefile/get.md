@@ -26,11 +26,10 @@ show
 
 ```console
 # Get details of a project's secure file using the file ID.
-$ glab securefile get 1
+glab securefile get 1
 
 # Get details of a project's secure file using the 'show' alias.
-$ glab securefile show 1
-
+glab securefile show 1
 ```
 
 ## Options inherited from parent commands

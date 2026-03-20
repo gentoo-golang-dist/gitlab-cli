@@ -68,10 +68,9 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 1. Removes any branches that were already merged, or with a closed merge request.
 ` + text.ExperimentalString),
 		Example: heredoc.Doc(`
-			$ glab stack sync
-			$ glab stack sync --no-verify
-			$ glab stack sync --update-base
-		`),
+			glab stack sync
+			glab stack sync --no-verify
+			glab stack sync --update-base`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

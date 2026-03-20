@@ -44,8 +44,7 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			# Run a scheduled pipeline with ID 1
 			$ glab schedule run 1
-			> Started schedule with ID 1
-		`),
+			Started schedule with ID 1`),
 		Long: ``,
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{

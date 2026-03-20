@@ -28,8 +28,7 @@ glab stack last [flags]
 ## Examples
 
 ```console
-$ glab stack last
-
+glab stack last
 ```
 
 ## Options inherited from parent commands

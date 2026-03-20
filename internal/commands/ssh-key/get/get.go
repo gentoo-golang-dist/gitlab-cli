@@ -39,14 +39,13 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get ssh key with ID as argument
-			$ glab ssh-key get 7750633
+			glab ssh-key get 7750633
 
 			# Interactive
-			$ glab ssh-key get
+			glab ssh-key get
 
 			# Interactive, with pagination
-			$ glab ssh-key get -P 50 -p 2
-		`),
+			glab ssh-key get -P 50 -p 2`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

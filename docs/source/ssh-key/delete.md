@@ -20,13 +20,13 @@ glab ssh-key delete <key-id> [flags]
 
 ```console
 # Delete SSH key with ID as argument
-$ glab ssh-key delete 7750633
+glab ssh-key delete 7750633
 
 # Interactive
-$ glab ssh-key delete
+glab ssh-key delete
 
 # Interactive, with pagination
-$ glab ssh-key delete -P 50 -p 2
+glab ssh-key delete -P 50 -p 2
 ```
 
 ## Options
