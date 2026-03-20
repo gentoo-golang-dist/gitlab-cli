@@ -374,11 +374,10 @@ func Test_buildMultipartBody(t *testing.T) {
 
 	t.Run("text fields only", func(t *testing.T) {
 		t.Parallel()
-		body, contentType, err := buildMultipartBody(
+		body, contentType := buildMultipartBody(
 			[]string{"branch=main", "message=hello world"},
 			io.NopCloser(bytes.NewReader(nil)),
 		)
-		require.NoError(t, err)
 
 		mediaType, params, err := mime.ParseMediaType(contentType)
 		require.NoError(t, err)
@@ -405,11 +404,10 @@ func Test_buildMultipartBody(t *testing.T) {
 		f := filepath.Join(tmp, "upload.txt")
 		require.NoError(t, os.WriteFile(f, []byte("file content"), 0o600))
 
-		body, contentType, err := buildMultipartBody(
+		body, contentType := buildMultipartBody(
 			[]string{"file=@" + f, "branch=main"},
 			io.NopCloser(bytes.NewReader(nil)),
 		)
-		require.NoError(t, err)
 
 		mediaType, params, err := mime.ParseMediaType(contentType)
 		require.NoError(t, err)
@@ -436,11 +434,10 @@ func Test_buildMultipartBody(t *testing.T) {
 	t.Run("file field via stdin (@-)", func(t *testing.T) {
 		t.Parallel()
 		stdin := io.NopCloser(bytes.NewBufferString("stdin content"))
-		body, contentType, err := buildMultipartBody(
+		body, contentType := buildMultipartBody(
 			[]string{"file=@-"},
 			stdin,
 		)
-		require.NoError(t, err)
 
 		_, params, err := mime.ParseMediaType(contentType)
 		require.NoError(t, err)
@@ -455,19 +452,23 @@ func Test_buildMultipartBody(t *testing.T) {
 
 	t.Run("missing file returns error", func(t *testing.T) {
 		t.Parallel()
-		_, _, err := buildMultipartBody(
+		// Errors propagate through the pipe reader, not at construction time.
+		body, _ := buildMultipartBody(
 			[]string{"file=@/nonexistent/path/file.bin"},
 			io.NopCloser(bytes.NewReader(nil)),
 		)
-		require.Error(t, err)
+		_, readErr := io.ReadAll(body)
+		require.Error(t, readErr)
 	})
 
 	t.Run("malformed field returns error", func(t *testing.T) {
 		t.Parallel()
-		_, _, err := buildMultipartBody(
+		// Errors propagate through the pipe reader, not at construction time.
+		body, _ := buildMultipartBody(
 			[]string{"no-equals-sign"},
 			io.NopCloser(bytes.NewReader(nil)),
 		)
-		require.Error(t, err)
+		_, readErr := io.ReadAll(body)
+		require.Error(t, readErr)
 	})
 }

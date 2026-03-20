@@ -276,10 +276,7 @@ func (o *options) run(ctx context.Context) error {
 		if !o.requestMethodPassed {
 			method = http.MethodPost
 		}
-		body, contentType, err := buildMultipartBody(o.formFields, o.io.In)
-		if err != nil {
-			return err
-		}
+		body, contentType := buildMultipartBody(o.formFields, o.io.In)
 		requestBody = body
 		requestHeaders = append([]string{fmt.Sprintf("Content-Type: %s", contentType)}, requestHeaders...)
 	}
