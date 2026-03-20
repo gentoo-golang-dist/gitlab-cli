@@ -174,12 +174,7 @@ func formatMatches(matches []string) string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		if len(m) > 8 {
-			b.WriteString(m[:8])
-			b.WriteString("…")
-		} else {
-			b.WriteString(m)
-		}
+		b.WriteString(TruncateDiscussionID(m))
 	}
 	return b.String()
 }

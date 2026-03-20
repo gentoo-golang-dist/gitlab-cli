@@ -156,11 +156,7 @@ func (o *resolveOptions) run(ctx context.Context) error {
 		return fmt.Errorf("failed to %s discussion: %w", o.action, err)
 	}
 
-	prefix := o.discussionID
-	if len(prefix) > 8 {
-		prefix = prefix[:8] + "…"
-	}
-	fmt.Fprintf(o.io.StdOut, "✓ Discussion %s (%s in !%d)\n", o.past, prefix, o.mr.IID)
+	fmt.Fprintf(o.io.StdOut, "✓ Discussion %s (%s in !%d)\n", o.past, mrutils.TruncateDiscussionID(o.discussionID), o.mr.IID)
 	return nil
 }
 
