@@ -12,6 +12,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 func NewCmdResolve(f cmdutils.Factory) *cobra.Command {
@@ -30,10 +31,8 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [<id> | <branch>] <discussion-id>", action),
-		Short: fmt.Sprintf("%s a discussion on a merge request (EXPERIMENTAL)", capitalize(action)),
+		Short: fmt.Sprintf("%s a discussion on a merge request. (EXPERIMENTAL)", capitalize(action)),
 		Long: heredoc.Docf(`
-			This command is experimental.
-
 			%s a discussion on a merge request by discussion ID or note ID.
 
 			The identifier can be:
@@ -43,7 +42,7 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 
 			If a prefix matches multiple discussions, an error is returned with
 			the ambiguous matches.
-		`, capitalize(action)),
+		`, capitalize(action)) + text.ExperimentalString,
 		Example: heredoc.Docf(`
 			# %s a discussion by full ID
 			$ glab mr note %s abc12345deadbeef1234567890abcdef12345678
