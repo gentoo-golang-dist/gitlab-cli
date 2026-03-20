@@ -142,7 +142,8 @@ func matchesType(discussion *gitlab.Discussion, typ string) bool {
 // ResolveDiscussionID resolves a prefix (8+ chars) to a full discussion ID.
 // Returns an error if the prefix is ambiguous or not found.
 var ResolveDiscussionID = func(client *gitlab.Client, projectID any, mrIID int64, prefix string) (string, error) {
-	if len(prefix) < 8 {
+	prefixLen := len(prefix)
+	if prefixLen < 8 {
 		return "", fmt.Errorf("discussion ID prefix must be at least 8 characters, got %d", len(prefix))
 	}
 	discussions, err := ListAllDiscussions(client, projectID, mrIID, &gitlab.ListMergeRequestDiscussionsOptions{})
@@ -151,7 +152,7 @@ var ResolveDiscussionID = func(client *gitlab.Client, projectID any, mrIID int64
 	}
 	var matches []string
 	for _, d := range discussions {
-		if len(d.ID) >= len(prefix) && d.ID[:len(prefix)] == prefix {
+		if len(d.ID) >= prefixLen && d.ID[:prefixLen] == prefix {
 			matches = append(matches, d.ID)
 		}
 	}
@@ -167,14 +168,19 @@ var ResolveDiscussionID = func(client *gitlab.Client, projectID any, mrIID int64
 
 // formatMatches formats discussion IDs for display, truncating each to 8 chars.
 func formatMatches(matches []string) string {
-	truncated := make([]string, len(matches))
+	var b strings.Builder
 	for i, m := range matches {
-		if len(m) > 8 {
-			m = m[:8] + "…"
+		if i > 0 {
+			b.WriteString(", ")
 		}
-		truncated[i] = m
+		if len(m) > 8 {
+			b.WriteString(m[:8])
+			b.WriteString("…")
+		} else {
+			b.WriteString(m)
+		}
 	}
-	return strings.Join(truncated, ", ")
+	return b.String()
 }
 
 // FindDiscussionByNoteID finds the discussion containing a specific note ID.
