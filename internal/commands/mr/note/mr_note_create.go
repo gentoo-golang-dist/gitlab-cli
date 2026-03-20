@@ -52,9 +52,10 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
+			// Check if we're resolving or reopening
 			resolveNoteID, _ := cmd.Flags().GetInt64("resolve")
-			reopenNoteID, _ := cmd.Flags().GetInt64("reopen")
 			unresolveNoteID, _ := cmd.Flags().GetInt64("unresolve")
+			reopenNoteID, _ := cmd.Flags().GetInt64("reopen")			
 
 			if reopenNoteID == 0 && unresolveNoteID != 0 {
 				reopenNoteID = unresolveNoteID
@@ -177,6 +178,7 @@ func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.Mer
 		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 	}
 
+	// Resolve or reopen the discussion
 	action := "resolved"
 	if !resolve {
 		action = "reopened"
