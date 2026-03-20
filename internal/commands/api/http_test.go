@@ -5,10 +5,15 @@ package api
 import (
 	"bytes"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
@@ -362,4 +367,107 @@ func Test_addQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_buildMultipartBody(t *testing.T) {
+	t.Parallel()
+
+	t.Run("text fields only", func(t *testing.T) {
+		t.Parallel()
+		body, contentType, err := buildMultipartBody(
+			[]string{"branch=main", "message=hello world"},
+			io.NopCloser(bytes.NewReader(nil)),
+		)
+		require.NoError(t, err)
+
+		mediaType, params, err := mime.ParseMediaType(contentType)
+		require.NoError(t, err)
+		assert.Equal(t, "multipart/form-data", mediaType)
+
+		mr := multipart.NewReader(body, params["boundary"])
+
+		part, err := mr.NextPart()
+		require.NoError(t, err)
+		assert.Equal(t, "branch", part.FormName())
+		val, _ := io.ReadAll(part)
+		assert.Equal(t, "main", string(val))
+
+		part, err = mr.NextPart()
+		require.NoError(t, err)
+		assert.Equal(t, "message", part.FormName())
+		val, _ = io.ReadAll(part)
+		assert.Equal(t, "hello world", string(val))
+	})
+
+	t.Run("file field via @filepath", func(t *testing.T) {
+		t.Parallel()
+		tmp := t.TempDir()
+		f := filepath.Join(tmp, "upload.txt")
+		require.NoError(t, os.WriteFile(f, []byte("file content"), 0o600))
+
+		body, contentType, err := buildMultipartBody(
+			[]string{"file=@" + f, "branch=main"},
+			io.NopCloser(bytes.NewReader(nil)),
+		)
+		require.NoError(t, err)
+
+		mediaType, params, err := mime.ParseMediaType(contentType)
+		require.NoError(t, err)
+		assert.Equal(t, "multipart/form-data", mediaType)
+
+		mr := multipart.NewReader(body, params["boundary"])
+
+		// first part: the file
+		part, err := mr.NextPart()
+		require.NoError(t, err)
+		assert.Equal(t, "file", part.FormName())
+		assert.Equal(t, "upload.txt", part.FileName())
+		val, _ := io.ReadAll(part)
+		assert.Equal(t, "file content", string(val))
+
+		// second part: text field
+		part, err = mr.NextPart()
+		require.NoError(t, err)
+		assert.Equal(t, "branch", part.FormName())
+		val, _ = io.ReadAll(part)
+		assert.Equal(t, "main", string(val))
+	})
+
+	t.Run("file field via stdin (@-)", func(t *testing.T) {
+		t.Parallel()
+		stdin := io.NopCloser(bytes.NewBufferString("stdin content"))
+		body, contentType, err := buildMultipartBody(
+			[]string{"file=@-"},
+			stdin,
+		)
+		require.NoError(t, err)
+
+		_, params, err := mime.ParseMediaType(contentType)
+		require.NoError(t, err)
+
+		mr := multipart.NewReader(body, params["boundary"])
+		part, err := mr.NextPart()
+		require.NoError(t, err)
+		assert.Equal(t, "file", part.FormName())
+		val, _ := io.ReadAll(part)
+		assert.Equal(t, "stdin content", string(val))
+	})
+
+	t.Run("missing file returns error", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := buildMultipartBody(
+			[]string{"file=@/nonexistent/path/file.bin"},
+			io.NopCloser(bytes.NewReader(nil)),
+		)
+		require.Error(t, err)
+	})
+
+	t.Run("malformed field returns error", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := buildMultipartBody(
+			[]string{"no-equals-sign"},
+			io.NopCloser(bytes.NewReader(nil)),
+		)
+		require.Error(t, err)
+	})
 }

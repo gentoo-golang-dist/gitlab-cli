@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -128,6 +131,57 @@ func parseQuery(path string, params map[string]any) (string, error) {
 		sep = "&"
 	}
 	return path + sep + q.Encode(), nil
+}
+
+// buildMultipartBody constructs a multipart/form-data request body from a slice
+// of raw "key=value" or "key=@filepath" strings. File fields use the @filepath
+// syntax; all other fields are written as plain text parts. The returned
+// contentType string includes the boundary and must be set as the request's
+// Content-Type header.
+func buildMultipartBody(formFields []string, stdin io.ReadCloser) (*bytes.Buffer, string, error) {
+	b := &bytes.Buffer{}
+	w := multipart.NewWriter(b)
+
+	for _, f := range formFields {
+		key, value, err := parseField(f)
+		if err != nil {
+			return nil, "", err
+		}
+
+		if strings.HasPrefix(value, "@") {
+			path := value[1:]
+			var r io.Reader
+			var filename string
+			if path == "-" {
+				r = stdin
+				filename = "-"
+			} else {
+				fh, err := os.Open(path)
+				if err != nil {
+					return nil, "", err
+				}
+				defer fh.Close()
+				r = fh
+				filename = filepath.Base(path)
+			}
+			fw, err := w.CreateFormFile(key, filename)
+			if err != nil {
+				return nil, "", err
+			}
+			if _, err := io.Copy(fw, r); err != nil {
+				return nil, "", err
+			}
+		} else {
+			if err := w.WriteField(key, value); err != nil {
+				return nil, "", err
+			}
+		}
+	}
+
+	if err := w.Close(); err != nil {
+		return nil, "", err
+	}
+	return b, w.FormDataContentType(), nil
 }
 
 func parseStringArrayField(strValue string) []string {
