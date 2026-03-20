@@ -16,7 +16,6 @@ import (
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -40,7 +39,6 @@ func setupListCmd(t *testing.T, tc *gitlabtesting.TestClient) cmdtest.CmdExecFun
 	}, true,
 		cmdtest.WithGitLabClient(tc.Client),
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-		cmdtest.WithConfig(config.NewFromString("editor: vi")),
 	)
 }
 
