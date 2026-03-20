@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"strings"
 
@@ -128,9 +129,6 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 
 				// Show preview and ask for confirmation unless --yes is provided
 				if !skipConfirmation {
-					out := f.IO().StdOut
-					fmt.Fprintf(out, "\nProposed changes:\n")
-
 					// Determine what title will be applied
 					var proposedTitle string
 					if cmd.Flags().Changed("title") {
@@ -141,14 +139,6 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						}
 					} else {
 						proposedTitle = title // from autofill
-					}
-					if proposedTitle != "" {
-						// Handle multi-line titles by indenting continuation lines
-						lines := strings.Split(proposedTitle, "\n")
-						fmt.Fprintf(out, "  Title: %s\n", lines[0])
-						for _, line := range lines[1:] {
-							fmt.Fprintf(out, "         %s\n", line)
-						}
 					}
 
 					// Determine what description will be applied
@@ -166,16 +156,8 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					} else {
 						proposedDescription = body // from autofill
 					}
-					if proposedDescription != "" {
-						// Handle multi-line descriptions by indenting continuation lines
-						lines := strings.Split(proposedDescription, "\n")
-						fmt.Fprintf(out, "  Description: %s\n", lines[0])
-						for _, line := range lines[1:] {
-							fmt.Fprintf(out, "              %s\n", line)
-						}
-					}
 
-					fmt.Fprintf(out, "\n")
+					writeUpdatePreview(f.IO().StdOut, proposedTitle, proposedDescription)
 
 					action, err := confirmUpdateSurvey(cmd.Context(), f)
 					if err != nil {
@@ -389,6 +371,27 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	mrUpdateCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt.")
 
 	return mrUpdateCmd
+}
+
+// writeUpdatePreview prints the proposed title and description to w before asking for confirmation.
+// Multi-line values are indented so continuation lines align with the first line of content.
+func writeUpdatePreview(w io.Writer, title, description string) {
+	fmt.Fprintf(w, "\nProposed changes:\n")
+	if title != "" {
+		lines := strings.Split(title, "\n")
+		fmt.Fprintf(w, "  Title: %s\n", lines[0])
+		for _, line := range lines[1:] {
+			fmt.Fprintf(w, "         %s\n", line)
+		}
+	}
+	if description != "" {
+		lines := strings.Split(description, "\n")
+		fmt.Fprintf(w, "  Description: %s\n", lines[0])
+		for _, line := range lines[1:] {
+			fmt.Fprintf(w, "              %s\n", line)
+		}
+	}
+	fmt.Fprintf(w, "\n")
 }
 
 func confirmUpdateSurvey(ctx context.Context, f cmdutils.Factory) (cmdutils.Action, error) {

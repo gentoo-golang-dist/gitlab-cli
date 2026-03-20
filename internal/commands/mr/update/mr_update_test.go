@@ -4,6 +4,7 @@ package update
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -254,4 +255,63 @@ func TestUpdateMergeRequest(t *testing.T) {
 	}
 
 	api.UpdateMR = oldUpdateMr
+}
+
+func TestWriteUpdatePreview(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		title       string
+		description string
+		want        string
+	}{
+		{
+			name:        "single-line title and description",
+			title:       "My title",
+			description: "My description",
+			want:        "\nProposed changes:\n  Title: My title\n  Description: My description\n\n",
+		},
+		{
+			name:  "multi-line title indents continuation lines",
+			title: "First line\nSecond line\nThird line",
+			want:  "\nProposed changes:\n  Title: First line\n         Second line\n         Third line\n\n",
+		},
+		{
+			name:        "multi-line description indents continuation lines",
+			description: "First line\nSecond line",
+			want:        "\nProposed changes:\n  Description: First line\n              Second line\n\n",
+		},
+		{
+			name:        "editor mode placeholder",
+			description: "(from editor)",
+			want:        "\nProposed changes:\n  Description: (from editor)\n\n",
+		},
+		{
+			name:        "only title shown when description is empty",
+			title:       "Just a title",
+			description: "",
+			want:        "\nProposed changes:\n  Title: Just a title\n\n",
+		},
+		{
+			name:        "only description shown when title is empty",
+			title:       "",
+			description: "Just a description",
+			want:        "\nProposed changes:\n  Description: Just a description\n\n",
+		},
+		{
+			name:        "nothing shown when both are empty",
+			title:       "",
+			description: "",
+			want:        "\nProposed changes:\n\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var buf strings.Builder
+			writeUpdatePreview(&buf, tc.title, tc.description)
+			assert.Equal(t, tc.want, buf.String())
+		})
+	}
 }
