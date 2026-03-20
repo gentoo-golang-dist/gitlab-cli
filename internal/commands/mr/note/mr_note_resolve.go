@@ -25,15 +25,13 @@ type resolveOptions struct {
 	action  string
 	past    string
 
-	// Parsed from args in validate.
+	// Populated in complete.
 	mrArgs           []string
 	discussionPrefix string
-
-	// Populated in complete.
-	client       *gitlab.Client
-	mr           *gitlab.MergeRequest
-	repo         glrepo.Interface
-	discussionID string
+	client           *gitlab.Client
+	mr               *gitlab.MergeRequest
+	repo             glrepo.Interface
+	discussionID     string
 }
 
 func NewCmdResolve(f cmdutils.Factory) *cobra.Command {
@@ -88,9 +86,7 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 		`, capitalize(action), action, capitalize(action), action, capitalize(action), action, capitalize(action), action),
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.validate(args)
-
-			if err := opts.complete(cmd.Context()); err != nil {
+			if err := opts.complete(cmd.Context(), args); err != nil {
 				return err
 			}
 
@@ -101,14 +97,12 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 	return cmd
 }
 
-func (o *resolveOptions) validate(args []string) {
+func (o *resolveOptions) complete(ctx context.Context, args []string) error {
 	o.discussionPrefix = args[len(args)-1]
 	if len(args) == 2 {
 		o.mrArgs = args[:1]
 	}
-}
 
-func (o *resolveOptions) complete(ctx context.Context) error {
 	client, err := o.factory.GitLabClient()
 	if err != nil {
 		return err
