@@ -1064,3 +1064,231 @@ func TestMRCreate_BooleanFlags(t *testing.T) {
 		})
 	}
 }
+
+func TestNewCmdCreate_WithAutoMerge(t *testing.T) {
+	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
+	t.Setenv("NO_COLOR", "true")
+
+	testClient := gitlabtesting.NewTestClient(t)
+
+	// Mock GetProject
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "master",
+			WebURL:               "http://gitlab.com/OWNER/REPO",
+			Name:                 "OWNER",
+			Path:                 "REPO",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+
+	// Mock CreateMergeRequest
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequest("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:           1,
+				IID:          12,
+				ProjectID:    3,
+				Title:        "myMRtitle",
+				Description:  "myMRbody",
+				State:        "opened",
+				TargetBranch: "master",
+				SourceBranch: "feat-new-mr",
+				WebURL:       "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+				SHA:          "abc123",
+			},
+		}, nil, nil)
+
+	// Mock AcceptMergeRequest for auto-merge
+	testClient.MockMergeRequests.EXPECT().
+		AcceptMergeRequest("OWNER/REPO", int64(12), gomock.Any()).
+		DoAndReturn(func(pid any, mr int64, opts *gitlab.AcceptMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+			// Verify that AutoMerge is set to true and SHA is provided
+			assert.NotNil(t, opts.AutoMerge)
+			assert.True(t, *opts.AutoMerge)
+			assert.NotNil(t, opts.SHA)
+			assert.Equal(t, "abc123", *opts.SHA)
+
+			return &gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:           1,
+					IID:          12,
+					ProjectID:    3,
+					Title:        "myMRtitle",
+					Description:  "myMRbody",
+					State:        "opened",
+					TargetBranch: "master",
+					SourceBranch: "feat-new-mr",
+					WebURL:       "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+				},
+			}, nil, nil
+		})
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: master\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feat-new-mr
+		deadbeef refs/remotes/origin/feat-new-mr
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{
+							Name:     "upstream",
+							Resolved: "head",
+							PushURL:  pu,
+						},
+						Repo: glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{
+							Name:     "origin",
+							Resolved: "base",
+							PushURL:  pu,
+						},
+						Repo: glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) {
+				return "feat-new-mr", nil
+			}
+		},
+	)
+
+	cliStr := []string{
+		"-t", "myMRtitle",
+		"-d", "myMRbody",
+		"--auto-merge",
+	}
+
+	cli := strings.Join(cliStr, " ")
+
+	output, err := exec(cli)
+	if err != nil {
+		if errors.Is(err, cmdutils.SilentError) {
+			t.Errorf("Unexpected error: %q", output.Stderr())
+		}
+		t.Error(err)
+		return
+	}
+
+	outputLines := strings.Split(output.String(), "\n")
+	assert.Contains(t, outputLines[0], "!12 myMRtitle (feat-new-mr)")
+	assert.Contains(t, output.Stderr(), "\nCreating merge request for feat-new-mr into master in OWNER/REPO\n\n")
+	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
+	assert.Contains(t, output.String(), "Auto-merge enabled. Will merge when all checks pass.")
+}
+
+func TestNewCmdCreate_WithAutoMergeFailure(t *testing.T) {
+	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
+	t.Setenv("NO_COLOR", "true")
+
+	testClient := gitlabtesting.NewTestClient(t)
+
+	// Mock GetProject
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "master",
+			WebURL:               "http://gitlab.com/OWNER/REPO",
+			Name:                 "OWNER",
+			Path:                 "REPO",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+
+	// Mock CreateMergeRequest
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequest("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:           1,
+				IID:          12,
+				ProjectID:    3,
+				Title:        "myMRtitle",
+				Description:  "myMRbody",
+				State:        "opened",
+				TargetBranch: "master",
+				SourceBranch: "feat-new-mr",
+				WebURL:       "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+				SHA:          "abc123",
+			},
+		}, nil, nil)
+
+	// Mock AcceptMergeRequest to fail
+	testClient.MockMergeRequests.EXPECT().
+		AcceptMergeRequest("OWNER/REPO", int64(12), gomock.Any()).
+		Return(nil, nil, errors.New("405 Method Not Allowed"))
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: master\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feat-new-mr
+		deadbeef refs/remotes/origin/feat-new-mr
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{
+							Name:     "upstream",
+							Resolved: "head",
+							PushURL:  pu,
+						},
+						Repo: glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{
+							Name:     "origin",
+							Resolved: "base",
+							PushURL:  pu,
+						},
+						Repo: glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) {
+				return "feat-new-mr", nil
+			}
+		},
+	)
+
+	cliStr := []string{
+		"-t", "myMRtitle",
+		"-d", "myMRbody",
+		"--auto-merge",
+	}
+
+	cli := strings.Join(cliStr, " ")
+
+	output, err := exec(cli)
+
+	// Should get an error
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "merge request created but auto-merge could not be enabled")
+	assert.Contains(t, err.Error(), "405 Method Not Allowed")
+
+	// But the MR should still be displayed
+	assert.Contains(t, output.String(), "!12 myMRtitle (feat-new-mr)")
+	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
+}

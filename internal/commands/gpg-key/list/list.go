@@ -33,8 +33,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Short: "Get a list of GPG keys for the currently authenticated user.",
 		Long:  "",
 		Example: heredoc.Doc(`
-			$ glab gpg-key list
-		`),
+			glab gpg-key list`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

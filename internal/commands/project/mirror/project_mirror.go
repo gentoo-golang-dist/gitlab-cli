@@ -64,21 +64,20 @@ func NewCmdMirror(f cmdutils.Factory) *cobra.Command {
 		`, "`"),
 		Example: heredoc.Docf(`
 			# Create a project, then configure pull mirroring
-			$ glab repo create mygroup/myproject --public
-			$ glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s
+			glab repo create mygroup/myproject --public
+			glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s
 
 			# Configure pull mirroring from a private repository
-			$ glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://username:token@gitlab.example.com/org/private-repo%[1]s
+			glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://username:token@gitlab.example.com/org/private-repo%[1]s
 
 			# Configure pull mirroring for protected branches only
-			$ glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s --protected-branches-only
+			glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s --protected-branches-only
 
 			# Configure push mirroring to another GitLab instance
-			$ glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/myproject%[1]s
+			glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/myproject%[1]s
 
 			# Configure push mirroring and allow divergent refs
-			$ glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/repo%[1]s --allow-divergence
-		`, `"`),
+			glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/repo%[1]s --allow-divergence`, `"`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

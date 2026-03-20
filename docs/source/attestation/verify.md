@@ -1,5 +1,5 @@
 ---
-title: glab attestation verify
+title: '`glab attestation verify`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -34,11 +34,10 @@ glab attestation verify <project_id> <artifact_path> [flags]
 
 ```console
 # Verify attestation for the filename.txt file in the gitlab-org/gitlab project.
-$ glab attestation verify gitlab-org/gitlab filename.txt
+glab attestation verify gitlab-org/gitlab filename.txt
 
 # Verify attestation for the filename.txt file in the project with ID 123.
-$ glab attestation verify 123 filename.txt
-
+glab attestation verify 123 filename.txt
 ```
 
 ## Options inherited from parent commands

@@ -15,11 +15,10 @@ func NewCmdAttestation(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Verify attestation for the filename.txt file in the gitlab-org/gitlab project.
-			$ glab attestation verify gitlab-org/gitlab filename.txt
+			glab attestation verify gitlab-org/gitlab filename.txt
 
 			# Verify attestation for the filename.txt file in the project with ID 123.
-			$ glab attestation verify 123 filename.txt
-		`),
+			glab attestation verify 123 filename.txt`),
 		Annotations: map[string]string{
 			"help:arguments": heredoc.Doc(`
 			A project can be supplied as an argument in the following formats:

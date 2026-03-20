@@ -1,5 +1,5 @@
 ---
-title: glab label delete
+title: '`glab label delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,9 +19,8 @@ glab label delete [flags]
 ## Examples
 
 ```console
-$ glab label delete foo
-$ glab label delete -R owner/repo foo
-
+glab label delete foo
+glab label delete -R owner/repo foo
 ```
 
 ## Options inherited from parent commands

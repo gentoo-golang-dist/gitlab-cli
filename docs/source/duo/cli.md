@@ -1,5 +1,5 @@
 ---
-title: glab duo cli
+title: '`glab duo cli`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -40,7 +40,7 @@ Use `--update` to check for and install updates to the binary.
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
+<https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
 glab duo cli [command] [flags]
@@ -50,14 +50,13 @@ glab duo cli [command] [flags]
 
 ```console
 # Run the GitLab Duo CLI
-$ glab duo cli
+glab duo cli
 
 # Show Duo CLI help
-$ glab duo cli --help
+glab duo cli --help
 
 # Check for and install updates
-$ glab duo cli --update
-
+glab duo cli --update
 ```
 
 ## Options inherited from parent commands

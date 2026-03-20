@@ -1,5 +1,5 @@
 ---
-title: glab issue update
+title: '`glab issue update`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,9 +19,8 @@ glab issue update <id> [flags]
 ## Examples
 
 ```console
-$ glab issue update 42 --label ui,ux
-$ glab issue update 42 --unlabel working
-
+glab issue update 42 --label ui,ux
+glab issue update 42 --unlabel working
 ```
 
 ## Options

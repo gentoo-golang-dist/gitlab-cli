@@ -1,5 +1,5 @@
 ---
-title: glab iteration list
+title: '`glab iteration list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,11 +25,10 @@ ls
 ## Examples
 
 ```console
-- glab iteration list
-- glab iteration ls
-- glab iteration list -R owner/repository
-- glab iteration list -g mygroup
-
+glab iteration list
+glab iteration ls
+glab iteration list -R owner/repository
+glab iteration list -g mygroup
 ```
 
 ## Options

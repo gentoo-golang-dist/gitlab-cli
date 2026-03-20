@@ -494,6 +494,7 @@ func TestListTags(t *testing.T) {
 		},
 	}
 
+	unsetGitHookEnv(t)
 	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
 	t.Setenv("GIT_DISCOVERY_ACROSS_FILESYSTEM", "true")
 

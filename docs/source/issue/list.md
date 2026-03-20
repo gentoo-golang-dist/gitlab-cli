@@ -1,5 +1,5 @@
 ---
-title: glab issue list
+title: '`glab issue list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,11 +25,10 @@ ls
 ## Examples
 
 ```console
-$ glab issue list --all
-$ glab issue ls --all
-$ glab issue list --assignee=@me
-$ glab issue list --milestone release-2.0.0 --opened
-
+glab issue list --all
+glab issue ls --all
+glab issue list --assignee=@me
+glab issue list --milestone release-2.0.0 --opened
 ```
 
 ## Options

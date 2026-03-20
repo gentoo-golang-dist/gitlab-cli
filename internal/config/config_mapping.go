@@ -46,7 +46,7 @@ func EnvKeyEquivalence(key string) []string {
 
 	ciAutologinEnabled := os.Getenv("GLAB_ENABLE_CI_AUTOLOGIN") == "true" && os.Getenv("GITLAB_CI") == "true"
 	if ciAutologinEnabled {
-		dbg.Debug("The experimental GLAB_ENABLE_CI_AUTOLOGIN is enabled together with GITLAB_CI being true. This enables auto-login using GitLab's predefined CI/CD variables and potentially authenticates with the CI_JOB_TOKEN")
+		dbg.Debug("CI auto-login is enabled because GLAB_ENABLE_CI_AUTOLOGIN and GITLAB_CI are both true. This enables auto-login using GitLab's predefined CI/CD variables and potentially authenticates with the CI_JOB_TOKEN")
 	}
 
 	switch key {

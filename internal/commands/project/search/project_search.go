@@ -39,11 +39,10 @@ func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
 		Args:    cobra.ExactArgs(0),
 		Aliases: []string{"find", "lookup"},
 		Example: heredoc.Doc(`
-			$ glab project search -s "title"
-			$ glab repo search -s "title"
-			$ glab project find -s "title"
-			$ glab project lookup -s "title"
-		`),
+			glab project search -s "title"
+			glab repo search -s "title"
+			glab project find -s "title"
+			glab project lookup -s "title"`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

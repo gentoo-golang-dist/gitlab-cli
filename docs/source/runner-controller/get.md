@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller get
+title: '`glab runner-controller get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,7 +20,7 @@ connection status. This is an administrator-only feature.
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
+<https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
 glab runner-controller get <controller-id> [flags]
@@ -30,11 +30,10 @@ glab runner-controller get <controller-id> [flags]
 
 ```console
 # Get runner controller with ID 42
-$ glab runner-controller get 42
+glab runner-controller get 42
 
 # Get runner controller as JSON
-$ glab runner-controller get 42 --output json
-
+glab runner-controller get 42 --output json
 ```
 
 ## Options

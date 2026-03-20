@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller scope delete
+title: '`glab runner-controller scope delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,7 +25,7 @@ Use one of the following flags to specify the scope type:
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
+<https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
 glab runner-controller scope delete <controller-id> [flags]
@@ -35,18 +35,17 @@ glab runner-controller scope delete <controller-id> [flags]
 
 ```console
 # Remove an instance-level scope from runner controller 42 (with confirmation)
-$ glab runner-controller scope delete 42 --instance
+glab runner-controller scope delete 42 --instance
 
 # Remove an instance-level scope without confirmation
-$ glab runner-controller scope delete 42 --instance --force
+glab runner-controller scope delete 42 --instance --force
 
 # Remove a runner-level scope for runner 5 from runner controller 42
-$ glab runner-controller scope delete 42 --runner 5 --force
+glab runner-controller scope delete 42 --runner 5 --force
 
 # Remove runner-level scopes for multiple runners
-$ glab runner-controller scope delete 42 --runner 5 --runner 10 --force
-$ glab runner-controller scope delete 42 --runner 5,10 --force
-
+glab runner-controller scope delete 42 --runner 5 --runner 10 --force
+glab runner-controller scope delete 42 --runner 5,10 --force
 ```
 
 ## Options

@@ -29,7 +29,7 @@ func MDWrap(text string) string {
 		url := result[startIdx:endIdx]
 
 		if shouldWrapURL(result, startIdx, insideBackticks) {
-			wrapped := fmt.Sprintf("[%s](%s)", url, url)
+			wrapped := fmt.Sprintf("<%s>", url)
 			lenDiff := len(wrapped) - len(url)
 
 			// Replace the URL with wrapped version

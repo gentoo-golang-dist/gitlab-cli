@@ -1,5 +1,5 @@
 ---
-title: glab runner assign
+title: '`glab runner assign`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,11 +26,10 @@ glab runner assign <runner-id> [flags]
 
 ```console
 # Assign runner 9 to the current repository
-$ glab runner assign 9
+glab runner assign 9
 
 # Assign runner 9 to a specific repository
-$ glab runner assign 9 -R owner/repo
-
+glab runner assign 9 -R owner/repo
 ```
 
 ## Options

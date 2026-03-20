@@ -1,5 +1,5 @@
 ---
-title: glab mr update
+title: '`glab mr update`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,17 +20,16 @@ glab mr update [<id> | <branch>] [flags]
 
 ```console
 # Mark a merge request as ready
-$ glab mr update 23 --ready
+glab mr update 23 --ready
 
 # Mark a merge request as draft
-$ glab mr update 23 --draft
+glab mr update 23 --draft
 
 # Updates the merge request for the current branch
-$ glab mr update --draft
+glab mr update --draft
 
 # Update merge request with commit information
-$ glab mr update 23 --fill --fill-commit-body --yes
-
+glab mr update 23 --fill --fill-commit-body --yes
 ```
 
 ## Options

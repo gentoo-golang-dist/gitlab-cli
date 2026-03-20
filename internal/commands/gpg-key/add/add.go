@@ -35,11 +35,10 @@ func NewCmdAdd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Read GPG key from stdin and upload.
-			$ glab gpg-key add
+			glab gpg-key add
 
 			# Read GPG key from specified key file and upload.
-			$ glab gpg-key add ~/.gnupg/pubkey.asc
-		`),
+			glab gpg-key add ~/.gnupg/pubkey.asc`),
 		Args: cobra.MaximumNArgs(1), // Allow 0 or 1 args to support stdin or file
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

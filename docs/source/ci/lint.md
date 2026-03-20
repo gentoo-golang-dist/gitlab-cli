@@ -1,5 +1,5 @@
 ---
-title: glab ci lint
+title: '`glab ci lint`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,10 +20,9 @@ glab ci lint [flags]
 
 ```console
 # Uses .gitlab-ci.yml in the current directory
-$ glab ci lint
-$ glab ci lint .gitlab-ci.yml
-$ glab ci lint path/to/.gitlab-ci.yml
-
+glab ci lint
+glab ci lint .gitlab-ci.yml
+glab ci lint path/to/.gitlab-ci.yml
 ```
 
 ## Options

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/glamour"
+	"charm.land/glamour/v2"
 	"github.com/google/shlex"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"

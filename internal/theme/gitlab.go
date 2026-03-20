@@ -3,8 +3,8 @@ package theme
 import (
 	"image/color"
 
+	"charm.land/fang/v2"
 	lipglossv2 "charm.land/lipgloss/v2" // v2 - used by fang
-	"github.com/charmbracelet/fang"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss" // v1 - used by huh
 	"github.com/muesli/termenv"

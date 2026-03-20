@@ -42,10 +42,9 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
-			$ glab ci lint
-			$ glab ci lint .gitlab-ci.yml
-			$ glab ci lint path/to/.gitlab-ci.yml
-		`),
+			glab ci lint
+			glab ci lint .gitlab-ci.yml
+			glab ci lint path/to/.gitlab-ci.yml`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

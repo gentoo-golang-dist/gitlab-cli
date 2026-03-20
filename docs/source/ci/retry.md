@@ -1,5 +1,5 @@
 ---
-title: glab ci retry
+title: '`glab ci retry`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,14 +20,13 @@ glab ci retry <job-id> [flags]
 
 ```console
 # Interactively select a job to retry
-$ glab ci retry
+glab ci retry
 
 # Retry job with ID 224356863
-$ glab ci retry 224356863
+glab ci retry 224356863
 
 # Retry job with the name 'lint'
-$ glab ci retry lint
-
+glab ci retry lint
 ```
 
 ## Options

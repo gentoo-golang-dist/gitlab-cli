@@ -1,5 +1,5 @@
 ---
-title: glab incident unsubscribe
+title: '`glab incident unsubscribe`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,10 +25,9 @@ unsub
 ## Examples
 
 ```console
-$ glab incident unsubscribe 123
-$ glab incident unsub 123
-$ glab incident unsubscribe https://gitlab.com/OWNER/REPO/-/issues/incident/123
-
+glab incident unsubscribe 123
+glab incident unsub 123
+glab incident unsubscribe https://gitlab.com/OWNER/REPO/-/issues/incident/123
 ```
 
 ## Options inherited from parent commands

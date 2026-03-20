@@ -1,5 +1,5 @@
 ---
-title: glab runner unassign
+title: '`glab runner unassign`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -28,11 +28,10 @@ glab runner unassign <runner-id> [flags]
 
 ```console
 # Unassign runner 9 from the current repository
-$ glab runner unassign 9
+glab runner unassign 9
 
 # Unassign runner 9 from a specific repository
-$ glab runner unassign 9 -R owner/repo
-
+glab runner unassign 9 -R owner/repo
 ```
 
 ## Options

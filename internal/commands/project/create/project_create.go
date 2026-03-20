@@ -69,21 +69,20 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		},
 		Example: heredoc.Doc(`
 			# Create a repository under your account using the current directory name.
-			$ glab repo create
+			glab repo create
 
 			# Create a repository under a group using the current directory name.
-			$ glab repo create --group glab-cli
+			glab repo create --group glab-cli
 
 			# Create a repository with a specific name.
-			$ glab repo create my-project
+			glab repo create my-project
 
 			# Create a repository for a group.
-			$ glab repo create glab-cli/my-project
+			glab repo create glab-cli/my-project
 
 			# Create on a host other than gitlab.com.
-			$ GITLAB_HOST=example.com glab repo create
-			$ glab repo create <host>/path/to/repository
-	  `),
+			GITLAB_HOST=example.com glab repo create
+			glab repo create <host>/path/to/repository`),
 	}
 
 	projectCreateCmd.Flags().StringP("name", "n", "", "Name of the new project.")

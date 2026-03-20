@@ -1,5 +1,5 @@
 ---
-title: glab repo members remove
+title: '`glab repo members remove`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -24,11 +24,10 @@ glab repo members remove [flags]
 
 ```console
 # Remove a user by username
-$ glab repo members remove --username=john.doe
+glab repo members remove --username=john.doe
 
 # Remove a user by ID
-$ glab repo members remove --user-id=123
-
+glab repo members remove --user-id=123
 ```
 
 ## Options

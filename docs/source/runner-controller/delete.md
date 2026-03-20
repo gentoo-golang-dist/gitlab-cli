@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller delete
+title: '`glab runner-controller delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,11 +20,10 @@ glab runner-controller delete <id> [flags]
 
 ```console
 # Delete a runner controller (with confirmation prompt)
-$ glab runner-controller delete 42
+glab runner-controller delete 42
 
 # Delete a runner controller without confirmation
-$ glab runner-controller delete 42 --force
-
+glab runner-controller delete 42 --force
 ```
 
 ## Options

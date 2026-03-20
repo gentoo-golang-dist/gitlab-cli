@@ -61,14 +61,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	`, "`") + text.ExperimentalString,
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
-		$ glab duo cli
+		glab duo cli
 
 		# Show Duo CLI help
-		$ glab duo cli --help
+		glab duo cli --help
 
 		# Check for and install updates
-		$ glab duo cli --update
-	`),
+		glab duo cli --update`),
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Handle --update flag manually since DisableFlagParsing is true

@@ -1,5 +1,5 @@
 ---
-title: glab deploy-key get
+title: '`glab deploy-key get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,8 +20,7 @@ glab deploy-key get <key-id> [flags]
 
 ```console
 # Get deploy key with ID as argument
-$ glab deploy-key get 1234
-
+glab deploy-key get 1234
 ```
 
 ## Options

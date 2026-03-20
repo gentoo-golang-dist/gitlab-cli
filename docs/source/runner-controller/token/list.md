@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller token list
+title: '`glab runner-controller token list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,11 +20,10 @@ glab runner-controller token list <controller-id> [flags]
 
 ```console
 # List all tokens for runner controller 42
-$ glab runner-controller token list 42
+glab runner-controller token list 42
 
 # List tokens as JSON
-$ glab runner-controller token list 42 --output json
-
+glab runner-controller token list 42 --output json
 ```
 
 ## Options

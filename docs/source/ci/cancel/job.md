@@ -1,5 +1,5 @@
 ---
-title: glab ci cancel job
+title: '`glab ci cancel job`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,11 +19,10 @@ glab ci cancel job <id> [flags]
 ## Examples
 
 ```console
-$ glab ci cancel job 1504182795
-$ glab ci cancel job 1504182795,1504182795
-$ glab ci cancel job "1504182795 1504182795"
-$ glab ci cancel job 1504182795,1504182795 --dry-run
-
+glab ci cancel job 1504182795
+glab ci cancel job 1504182795,1504182795
+glab ci cancel job "1504182795 1504182795"
+glab ci cancel job 1504182795,1504182795 --dry-run
 ```
 
 ## Options

@@ -1,5 +1,5 @@
 ---
-title: glab config edit
+title: '`glab config edit`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -28,19 +28,18 @@ glab config edit [flags]
 ## Examples
 
 ```console
-Open the configuration file with the default editor
-- glab config edit
+# Open the configuration file with the default editor
+glab config edit
 
-Open the configuration file with vim
-- EDITOR=vim glab config edit
+# Open the configuration file with vim
+EDITOR=vim glab config edit
 
-Set vim to be used for all future 'glab config edit' invocations
-- glab config set editor vim
-- glab config edit
+# Set vim to be used for all future 'glab config edit' invocations
+glab config set editor vim
+glab config edit
 
-Open the local configuration file with the default editor
-- glab config edit -l
-
+# Open the local configuration file with the default editor
+glab config edit -l
 ```
 
 ## Options

@@ -40,11 +40,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# List all tokens for runner controller 42
-			$ glab runner-controller token list 42
+			glab runner-controller token list 42
 
 			# List tokens as JSON
-			$ glab runner-controller token list 42 --output json
-		`),
+			glab runner-controller token list 42 --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

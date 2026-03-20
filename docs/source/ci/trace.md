@@ -1,5 +1,5 @@
 ---
-title: glab ci trace
+title: '`glab ci trace`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,14 +20,13 @@ glab ci trace [<job-id>|<job-name>] [flags]
 
 ```console
 # Interactively select a job to trace
-$ glab ci trace
+glab ci trace
 
 # Trace job with ID 224356863
-$ glab ci trace 224356863
+glab ci trace 224356863
 
 # Trace job with the name 'lint'
-$ glab ci trace lint
-
+glab ci trace lint
 ```
 
 ## Options

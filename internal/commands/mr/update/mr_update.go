@@ -27,17 +27,16 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 		# Mark a merge request as ready
-		$ glab mr update 23 --ready
+		glab mr update 23 --ready
 
 		# Mark a merge request as draft
-		$ glab mr update 23 --draft
+		glab mr update 23 --draft
 
 		# Updates the merge request for the current branch
-		$ glab mr update --draft
+		glab mr update --draft
 
 		# Update merge request with commit information
-		$ glab mr update 23 --fill --fill-commit-body --yes
-		`),
+		glab mr update 23 --fill --fill-commit-body --yes`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

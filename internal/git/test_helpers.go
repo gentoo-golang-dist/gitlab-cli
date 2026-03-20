@@ -1,6 +1,7 @@
 package git
 
 import (
+	"os"
 	"os/exec"
 	"testing"
 
@@ -9,8 +10,29 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
 
+// unsetGitHookEnv removes git hook environment variables (GIT_DIR,
+// GIT_WORK_TREE, GIT_INDEX_FILE) that leak when tests run inside a git
+// hook (e.g., pre-push via lefthook). Without this, child git processes
+// in test temp directories operate against the parent repository.
+// The original values are restored when the test completes.
+func unsetGitHookEnv(t *testing.T) {
+	t.Helper()
+
+	for _, key := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"} {
+		if _, ok := os.LookupEnv(key); ok {
+			// t.Setenv saves the original value and restores it on cleanup.
+			// We then unset the variable so git commands in temp repos don't
+			// inherit hook environment from the parent process.
+			t.Setenv(key, "")
+			require.NoError(t, os.Unsetenv(key))
+		}
+	}
+}
+
 func InitGitRepo(t *testing.T) string {
 	t.Helper()
+
+	unsetGitHookEnv(t)
 
 	tempDir := t.TempDir()
 

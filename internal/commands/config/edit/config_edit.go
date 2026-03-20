@@ -37,19 +37,18 @@ The command uses the following order when choosing the editor to use:
 3. 'EDITOR' environment variable
 `),
 		Example: heredoc.Doc(`
-			Open the configuration file with the default editor
-			- glab config edit
+			# Open the configuration file with the default editor
+			glab config edit
 
-			Open the configuration file with vim
-			- EDITOR=vim glab config edit
+			# Open the configuration file with vim
+			EDITOR=vim glab config edit
 
-			Set vim to be used for all future 'glab config edit' invocations
-			- glab config set editor vim
-			- glab config edit
+			# Set vim to be used for all future 'glab config edit' invocations
+			glab config set editor vim
+			glab config edit
 
-			Open the local configuration file with the default editor
-			- glab config edit -l
-		`),
+			# Open the local configuration file with the default editor
+			glab config edit -l`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",

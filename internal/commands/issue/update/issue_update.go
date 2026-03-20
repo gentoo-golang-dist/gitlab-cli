@@ -22,9 +22,8 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		Short: `Update issue`,
 		Long:  ``,
 		Example: heredoc.Doc(`
-			$ glab issue update 42 --label ui,ux
-			$ glab issue update 42 --unlabel working
-		`),
+			glab issue update 42 --label ui,ux
+			glab issue update 42 --unlabel working`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

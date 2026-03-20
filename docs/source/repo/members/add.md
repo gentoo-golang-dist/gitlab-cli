@@ -1,5 +1,5 @@
 ---
-title: glab repo members add
+title: '`glab repo members add`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -35,13 +35,13 @@ glab repo members add [flags]
 
 ```console
 # Add a user as a developer
-$ glab repo members add --username=john.doe --role=developer
+glab repo members add --username=john.doe --role=developer
 # Add a user as a maintainer with expiration date
-$ glab repo members add --username=jane.smith --role=maintainer --expires-at=2024-12-31
+glab repo members add --username=jane.smith --role=maintainer --expires-at=2024-12-31
 # Add a user by ID
-$ glab repo members add --user-id=123 --role=reporter
+glab repo members add --user-id=123 --role=reporter
 # Add a user with a custom role
-$ glab repo members add --username=john.doe --role-id=101
+glab repo members add --username=john.doe --role-id=101
 ```
 
 ## Options

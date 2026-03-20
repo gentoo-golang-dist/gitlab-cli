@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller token create
+title: '`glab runner-controller token create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,14 +20,13 @@ glab runner-controller token create <controller-id> [flags]
 
 ```console
 # Create a token for runner controller 42
-$ glab runner-controller token create 42
+glab runner-controller token create 42
 
 # Create a token with a description
-$ glab runner-controller token create 42 --description "production"
+glab runner-controller token create 42 --description "production"
 
 # Create a token and output as JSON
-$ glab runner-controller token create 42 --output json
-
+glab runner-controller token create 42 --output json
 ```
 
 ## Options

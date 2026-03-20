@@ -1,5 +1,5 @@
 ---
-title: glab repo contributors
+title: '`glab repo contributors`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,11 +26,10 @@ users
 
 ```console
 # List contributors for the current repository
-$ glab repo contributors
+glab repo contributors
 
 # List contributors for a specific repository
-$ glab repo contributors -R gitlab-com/www-gitlab-com
-
+glab repo contributors -R gitlab-com/www-gitlab-com
 ```
 
 ## Options

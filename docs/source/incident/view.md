@@ -1,5 +1,5 @@
 ---
-title: glab incident view
+title: '`glab incident view`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,12 +25,11 @@ show
 ## Examples
 
 ```console
-$ glab incident view 123
-$ glab incident show 123
-$ glab incident view --web 123
-$ glab incident view --comments 123
-$ glab incident view https://gitlab.com/NAMESPACE/REPO/-/issues/incident/123
-
+glab incident view 123
+glab incident show 123
+glab incident view --web 123
+glab incident view --comments 123
+glab incident view https://gitlab.com/NAMESPACE/REPO/-/issues/incident/123
 ```
 
 ## Options

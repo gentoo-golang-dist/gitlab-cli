@@ -49,17 +49,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:    cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# List runners for the current project
-			$ glab runner list
+			glab runner list
 
 			# List runners for a specific project
-			$ glab runner list -R owner/repo
+			glab runner list -R owner/repo
 
 			# List runners for a group
-			$ glab runner list --group mygroup
+			glab runner list --group mygroup
 
 			# List runners as JSON
-			$ glab runner list --output json
-		`),
+			glab runner list --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -192,9 +191,9 @@ func formatStatus(c *iostreams.ColorPalette, status string) string {
 	case "offline":
 		return c.Gray(status)
 	case "stale":
-		return c.Yellow(status)
+		return c.Magenta(status)
 	case "never_contacted":
-		return c.Gray(status)
+		return c.Yellow(status)
 	case "paused":
 		return c.Yellow(status)
 	default:

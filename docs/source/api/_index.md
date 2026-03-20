@@ -1,5 +1,5 @@
 ---
-title: glab api
+title: '`glab api`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -71,8 +71,8 @@ The `--output` flag controls the output format:
 - `json` (default): Pretty-printed JSON. Arrays are output as a single JSON array.
 - `ndjson`: Newline-delimited JSON (also known as JSONL or JSON Lines). Each array element
   or object is output on a separate line. This format is more memory-efficient for large datasets
-  and works well with tools like `jq`. See [https://github.com/ndjson/ndjson-spec](https://github.com/ndjson/ndjson-spec) and
-  [https://jsonlines.org/](https://jsonlines.org/) for format specifications.
+  and works well with tools like `jq`. See <https://github.com/ndjson/ndjson-spec> and
+  <https://jsonlines.org/> for format specifications.
 
 ```plaintext
 glab api <endpoint> [flags]
