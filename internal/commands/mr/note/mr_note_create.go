@@ -52,7 +52,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			// Check if we're resolving or unresolving
+			// Check if we're resolving or reopening
 			resolveNoteID, _ := cmd.Flags().GetInt64("resolve")
 			unresolveNoteID, _ := cmd.Flags().GetInt64("reopen")
 

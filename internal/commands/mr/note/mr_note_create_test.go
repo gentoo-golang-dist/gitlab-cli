@@ -426,6 +426,6 @@ func Test_mrNote_reopen(t *testing.T) {
 		output, err := exec(`1 --reopen 300`)
 		require.NoError(t, err)
 		assert.Empty(t, output.Stderr())
-		assert.Contains(t, output.String(), "✓ Discussion unresolved (note #300 in !1)")
+		assert.Contains(t, output.String(), "✓ Discussion reopened (note #300 in !1)")
 	})
 }
