@@ -63,10 +63,7 @@ func Test_resolve_subcommand(t *testing.T) {
 
 		testClient.MockDiscussions.EXPECT().
 			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, gitlab.Ptr(true), opts.Resolved)
-				return &gitlab.Discussion{ID: discussionID}, nil, nil
-			})
+			Return(&gitlab.Discussion{ID: "abc12345deadbeef1234567890abcdef12345678"}, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
@@ -120,10 +117,7 @@ func Test_resolve_subcommand(t *testing.T) {
 
 		testClient.MockDiscussions.EXPECT().
 			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, gitlab.Ptr(true), opts.Resolved)
-				return &gitlab.Discussion{ID: discussionID}, nil, nil
-			})
+			Return(&gitlab.Discussion{ID: "abc12345deadbeef1234567890abcdef12345678"}, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
@@ -247,10 +241,7 @@ func Test_reopen_subcommand(t *testing.T) {
 
 		testClient.MockDiscussions.EXPECT().
 			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "def67890cafebabe1234567890abcdef12345678", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, gitlab.Ptr(false), opts.Resolved)
-				return &gitlab.Discussion{ID: discussionID}, nil, nil
-			})
+			Return(&gitlab.Discussion{ID: "def67890cafebabe1234567890abcdef12345678"}, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)

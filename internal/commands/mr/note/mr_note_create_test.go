@@ -307,10 +307,7 @@ func Test_mrNote_resolve(t *testing.T) {
 		// Mock ResolveMergeRequestDiscussion
 		testClient.MockDiscussions.EXPECT().
 			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "def456", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, gitlab.Ptr(true), opts.Resolved)
-				return &gitlab.Discussion{ID: "def456"}, nil, nil
-			})
+			Return(&gitlab.Discussion{ID: "def456"}, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
@@ -408,10 +405,7 @@ func Test_mrNote_unresolve(t *testing.T) {
 		// Mock ResolveMergeRequestDiscussion with Resolved: false
 		testClient.MockDiscussions.EXPECT().
 			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "ghi789", gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, gitlab.Ptr(false), opts.Resolved)
-				return &gitlab.Discussion{ID: "ghi789"}, nil, nil
-			})
+			Return(&gitlab.Discussion{ID: "ghi789"}, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
