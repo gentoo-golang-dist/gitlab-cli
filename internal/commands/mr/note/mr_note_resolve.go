@@ -19,11 +19,12 @@ import (
 )
 
 type resolveOptions struct {
-	io      *iostreams.IOStreams
-	factory cmdutils.Factory
-	resolve bool
-	action  string
-	past    string
+	io           *iostreams.IOStreams
+	factory      cmdutils.Factory
+	gitlabClient func() (*gitlab.Client, error)
+	resolve      bool
+	action       string
+	past         string
 
 	// Populated in complete.
 	mrArgs           []string
@@ -51,11 +52,12 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 	}
 
 	opts := &resolveOptions{
-		io:      f.IO(),
-		factory: f,
-		resolve: resolve,
-		action:  action,
-		past:    past,
+		io:           f.IO(),
+		factory:      f,
+		gitlabClient: f.GitLabClient,
+		resolve:      resolve,
+		action:       action,
+		past:         past,
 	}
 
 	cmd := &cobra.Command{
@@ -103,7 +105,7 @@ func (o *resolveOptions) complete(ctx context.Context, args []string) error {
 		o.mrArgs = args[:1]
 	}
 
-	client, err := o.factory.GitLabClient()
+	client, err := o.gitlabClient()
 	if err != nil {
 		return err
 	}
