@@ -124,7 +124,7 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 			},
 		}
 
-		discussions, err = mrutils.ListAllDiscussions(client, baseRepo.FullName(), mr.IID, l)
+		discussions, err = mrutils.ListAllDiscussions(ctx, client, baseRepo.FullName(), mr.IID, l)
 		if err != nil {
 			return err
 		}

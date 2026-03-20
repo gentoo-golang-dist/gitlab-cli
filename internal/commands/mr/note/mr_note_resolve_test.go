@@ -59,14 +59,13 @@ func Test_resolve_subcommand(t *testing.T) {
 		makeMRMock(t, testClient)
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
-		resolved := true
 		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any()).
+			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, &resolved, opts.Resolved)
+				assert.Equal(t, gitlab.Ptr(true), opts.Resolved)
 				return &gitlab.Discussion{ID: discussionID}, nil, nil
 			})
 
@@ -80,7 +79,7 @@ func Test_resolve_subcommand(t *testing.T) {
 
 		output, err := exec(`resolve 1 abc12345`)
 		require.NoError(t, err)
-		assert.Contains(t, output.String(), "✓ Discussion resolved (abc12345 in !1)")
+		assert.Contains(t, output.String(), "✓ Discussion resolved (abc12345… in !1)")
 	})
 
 	t.Run("resolve by full ID", func(t *testing.T) {
@@ -92,11 +91,11 @@ func Test_resolve_subcommand(t *testing.T) {
 		fullID := "abc12345deadbeef1234567890abcdef12345678"
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
 		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), fullID, gomock.Any()).
+			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), fullID, gomock.Any(), gomock.Any()).
 			Return(&gitlab.Discussion{ID: fullID}, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
@@ -119,14 +118,13 @@ func Test_resolve_subcommand(t *testing.T) {
 		makeMRMock(t, testClient)
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
-		resolved := true
 		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any()).
+			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, &resolved, opts.Resolved)
+				assert.Equal(t, gitlab.Ptr(true), opts.Resolved)
 				return &gitlab.Discussion{ID: discussionID}, nil, nil
 			})
 
@@ -150,7 +148,7 @@ func Test_resolve_subcommand(t *testing.T) {
 		makeMRMock(t, testClient)
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
@@ -192,7 +190,7 @@ func Test_resolve_subcommand(t *testing.T) {
 		makeMRMock(t, testClient)
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
@@ -225,7 +223,7 @@ func Test_resolve_subcommand(t *testing.T) {
 			},
 		}
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(ambiguous, nil, nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
@@ -252,14 +250,13 @@ func Test_unresolve_subcommand(t *testing.T) {
 		makeMRMock(t, testClient)
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
-		unresolved := false
 		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "def67890cafebabe1234567890abcdef12345678", gomock.Any()).
+			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "def67890cafebabe1234567890abcdef12345678", gomock.Any(), gomock.Any()).
 			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
-				assert.Equal(t, &unresolved, opts.Resolved)
+				assert.Equal(t, gitlab.Ptr(false), opts.Resolved)
 				return &gitlab.Discussion{ID: discussionID}, nil, nil
 			})
 
@@ -273,7 +270,7 @@ func Test_unresolve_subcommand(t *testing.T) {
 
 		output, err := exec(`unresolve 1 def67890`)
 		require.NoError(t, err)
-		assert.Contains(t, output.String(), "✓ Discussion unresolved (def67890 in !1)")
+		assert.Contains(t, output.String(), "✓ Discussion unresolved (def67890… in !1)")
 	})
 
 	t.Run("unresolve API error", func(t *testing.T) {
@@ -283,11 +280,11 @@ func Test_unresolve_subcommand(t *testing.T) {
 		makeMRMock(t, testClient)
 
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(makeDiscussions(), nil, nil)
 
 		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any()).
+			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "abc12345deadbeef1234567890abcdef12345678", gomock.Any(), gomock.Any()).
 			Return(nil, nil, fmt.Errorf("403 Forbidden"))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {

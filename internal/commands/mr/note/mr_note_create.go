@@ -1,6 +1,7 @@
 package note
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -57,11 +58,11 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			unresolveNoteID, _ := cmd.Flags().GetInt64("unresolve")
 
 			if resolveNoteID != 0 {
-				return resolveDiscussion(client, f, mr, repo, resolveNoteID, true)
+				return resolveDiscussion(cmd.Context(), client, f, mr, repo, resolveNoteID, true)
 			}
 
 			if unresolveNoteID != 0 {
-				return resolveDiscussion(client, f, mr, repo, unresolveNoteID, false)
+				return resolveDiscussion(cmd.Context(), client, f, mr, repo, unresolveNoteID, false)
 			}
 
 			// Create note (existing behavior)
@@ -127,8 +128,8 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	return mrCreateNoteCmd
 }
 
-func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.MergeRequest, repo glrepo.Interface, noteID int64, resolve bool) error {
-	discussions, err := mrutils.ListAllDiscussions(client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
+func resolveDiscussion(ctx context.Context, client *gitlab.Client, f cmdutils.Factory, mr *gitlab.MergeRequest, repo glrepo.Interface, noteID int64, resolve bool) error {
+	discussions, err := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list discussions: %w", err)
 	}
@@ -150,6 +151,7 @@ func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.Mer
 		&gitlab.ResolveMergeRequestDiscussionOptions{
 			Resolved: &resolve,
 		},
+		gitlab.WithContext(ctx),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to %s discussion: %w", action, err)

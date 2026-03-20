@@ -75,10 +75,12 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 				return err
 			}
 
+			ctx := cmd.Context()
+
 			var discussionID string
 			// Check if the identifier is an integer note ID.
 			if noteID, parseErr := strconv.ParseInt(discussionPrefix, 10, 64); parseErr == nil {
-				discussions, listErr := mrutils.ListAllDiscussions(client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
+				discussions, listErr := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
 				if listErr != nil {
 					return fmt.Errorf("failed to list discussions: %w", listErr)
 				}
@@ -87,7 +89,7 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 					return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 				}
 			} else {
-				discussionID, err = mrutils.ResolveDiscussionID(client, repo.FullName(), mr.IID, discussionPrefix)
+				discussionID, err = mrutils.ResolveDiscussionID(ctx, client, repo.FullName(), mr.IID, discussionPrefix)
 				if err != nil {
 					return err
 				}
@@ -100,6 +102,7 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 				&gitlab.ResolveMergeRequestDiscussionOptions{
 					Resolved: &resolve,
 				},
+				gitlab.WithContext(ctx),
 			)
 			if err != nil {
 				return fmt.Errorf("failed to %s discussion: %w", action, err)
@@ -107,7 +110,7 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 
 			prefix := discussionID
 			if len(prefix) > 8 {
-				prefix = prefix[:8]
+				prefix = prefix[:8] + "…"
 			}
 			fmt.Fprintf(f.IO().StdOut, "✓ Discussion %sd (%s in !%d)\n", action, prefix, mr.IID)
 			return nil

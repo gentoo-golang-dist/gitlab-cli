@@ -1,6 +1,7 @@
 package mrutils
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -10,7 +11,7 @@ import (
 )
 
 // ListAllDiscussions fetches all discussions for a merge request, paginating automatically.
-var ListAllDiscussions = func(client *gitlab.Client, projectID any, mrIID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
+var ListAllDiscussions = func(ctx context.Context, client *gitlab.Client, projectID any, mrIID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
 	if opts == nil {
 		opts = &gitlab.ListMergeRequestDiscussionsOptions{}
 	}
@@ -26,7 +27,7 @@ var ListAllDiscussions = func(client *gitlab.Client, projectID any, mrIID int64,
 
 	for {
 		opts.Page = page
-		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(projectID, mrIID, opts)
+		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(projectID, mrIID, opts, gitlab.WithContext(ctx))
 		if err != nil {
 			return nil, err
 		}
@@ -141,12 +142,12 @@ func matchesType(discussion *gitlab.Discussion, typ string) bool {
 
 // ResolveDiscussionID resolves a prefix (8+ chars) to a full discussion ID.
 // Returns an error if the prefix is ambiguous or not found.
-var ResolveDiscussionID = func(client *gitlab.Client, projectID any, mrIID int64, prefix string) (string, error) {
+var ResolveDiscussionID = func(ctx context.Context, client *gitlab.Client, projectID any, mrIID int64, prefix string) (string, error) {
 	prefixLen := len(prefix)
 	if prefixLen < 8 {
 		return "", fmt.Errorf("discussion ID prefix must be at least 8 characters, got %d", len(prefix))
 	}
-	discussions, err := ListAllDiscussions(client, projectID, mrIID, &gitlab.ListMergeRequestDiscussionsOptions{})
+	discussions, err := ListAllDiscussions(ctx, client, projectID, mrIID, &gitlab.ListMergeRequestDiscussionsOptions{})
 	if err != nil {
 		return "", err
 	}
