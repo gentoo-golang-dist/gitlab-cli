@@ -33,7 +33,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Use:   "list [<id> | <branch>]",
 		Short: "List discussions on a merge request (EXPERIMENTAL)",
 		Long: heredoc.Doc(`
-			This command is experimental.
+			This command is experimental. For review (Draft)
 
 			Fetch and display all discussions on a merge request.
 

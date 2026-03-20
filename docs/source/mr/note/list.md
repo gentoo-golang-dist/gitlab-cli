@@ -14,7 +14,7 @@ List discussions on a merge request (EXPERIMENTAL)
 
 ## Synopsis
 
-This command is experimental.
+This command is experimental. For review (Draft)
 
 Fetch and display all discussions on a merge request.
 
