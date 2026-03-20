@@ -15,7 +15,6 @@ import (
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -74,7 +73,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		output, err := exec(`resolve 1 abc12345`)
@@ -103,7 +101,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		output, err := exec(`resolve 1 ` + fullID)
@@ -133,7 +130,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		output, err := exec(`resolve 1 100`)
@@ -156,7 +152,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`resolve 1 999999`)
@@ -175,7 +170,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`resolve 1 abc`)
@@ -198,7 +192,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`resolve 1 zzz12345`)
@@ -231,7 +224,6 @@ func Test_resolve_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`resolve 1 abc12345`)
@@ -265,7 +257,6 @@ func Test_reopen_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		output, err := exec(`reopen 1 def67890`)
@@ -292,7 +283,6 @@ func Test_reopen_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`reopen 1 abc12345`)
@@ -310,7 +300,6 @@ func Test_reopen_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`reopen 1 abc12345 extra`)
@@ -328,7 +317,6 @@ func Test_reopen_subcommand(t *testing.T) {
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
 		)
 
 		_, err := exec(`reopen`)
