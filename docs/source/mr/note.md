@@ -48,6 +48,7 @@ $ glab mr note 123 --reopen 3107030349
       --reopen int       Reopen the discussion containing the specified note ID.
       --resolve int      Resolve the discussion containing the specified note ID.
       --unique           Don't create a comment or note if it already exists.
+      --unresolve int    DEPRECATED: use --reopen instead.
 ```
 
 ## Options inherited from parent commands

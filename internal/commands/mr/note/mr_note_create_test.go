@@ -428,4 +428,51 @@ func Test_mrNote_reopen(t *testing.T) {
 		assert.Empty(t, output.Stderr())
 		assert.Contains(t, output.String(), "✓ Discussion reopened (note #300 in !1)")
 	})
+
+	t.Run("deprecated --unresolve flag still works", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+			Return(&gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:     1,
+					IID:    1,
+					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+				},
+			}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Discussion{
+				{
+					ID: "ghi789",
+					Notes: []*gitlab.Note{
+						{ID: 300, Body: "Third discussion"},
+					},
+				},
+			}, nil, nil)
+
+		unresolved := false
+		testClient.MockDiscussions.EXPECT().
+			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "ghi789", gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, discussionID string, opts *gitlab.ResolveMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, &unresolved, opts.Resolved)
+				return &gitlab.Discussion{ID: "ghi789"}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+		)
+
+		output, err := exec(`1 --unresolve 300`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "✓ Discussion reopened (note #300 in !1)")
+	})
 }

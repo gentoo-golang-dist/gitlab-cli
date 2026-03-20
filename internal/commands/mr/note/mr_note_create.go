@@ -52,16 +52,20 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			// Check if we're resolving or reopening
 			resolveNoteID, _ := cmd.Flags().GetInt64("resolve")
-			unresolveNoteID, _ := cmd.Flags().GetInt64("reopen")
+			reopenNoteID, _ := cmd.Flags().GetInt64("reopen")
+			unresolveNoteID, _ := cmd.Flags().GetInt64("unresolve")
+
+			if reopenNoteID == 0 && unresolveNoteID != 0 {
+				reopenNoteID = unresolveNoteID
+			}
 
 			if resolveNoteID != 0 {
 				return resolveDiscussion(client, f, mr, repo, resolveNoteID, true)
 			}
 
-			if unresolveNoteID != 0 {
-				return resolveDiscussion(client, f, mr, repo, unresolveNoteID, false)
+			if reopenNoteID != 0 {
+				return resolveDiscussion(client, f, mr, repo, reopenNoteID, false)
 			}
 
 			// Create note (existing behavior)
@@ -112,6 +116,8 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.Flags().Bool("unique", false, "Don't create a comment or note if it already exists.")
 	mrCreateNoteCmd.Flags().Int64("resolve", 0, "Resolve the discussion containing the specified note ID.")
 	mrCreateNoteCmd.Flags().Int64("reopen", 0, "Reopen the discussion containing the specified note ID.")
+	mrCreateNoteCmd.Flags().Int64("unresolve", 0, "Unresolve the discussion containing the specified note ID.")
+	_ = mrCreateNoteCmd.Flags().MarkDeprecated("unresolve", "use --reopen instead.")
 
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "resolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "reopen")
@@ -166,10 +172,9 @@ func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.Mer
 		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 	}
 
-	// Resolve or unresolve the discussion
-	action := "resolve"
+	action := "resolved"
 	if !resolve {
-		action = "unresolve"
+		action = "reopened"
 	}
 
 	_, _, err := client.Discussions.ResolveMergeRequestDiscussion(
@@ -184,6 +189,6 @@ func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.Mer
 		return fmt.Errorf("failed to %s discussion: %w", action, err)
 	}
 
-	fmt.Fprintf(f.IO().StdOut, "✓ Discussion %sd (note #%d in !%d)\n", action, noteID, mr.IID)
+	fmt.Fprintf(f.IO().StdOut, "✓ Discussion %s (note #%d in !%d)\n", action, noteID, mr.IID)
 	return nil
 }
