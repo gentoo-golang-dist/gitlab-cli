@@ -12,6 +12,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type listOptions struct {
@@ -29,18 +30,15 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		factory: f,
 	}
 
-	cmd := &cobra.Command{
+	mrNoteListCmd := &cobra.Command{
 		Use:   "list [<id> | <branch>]",
-		Short: "List discussions on a merge request (EXPERIMENTAL)",
-		Long: heredoc.Doc(`
-			This command is experimental.
+		Short: "List merge request discussions. (EXPERIMENTAL)",
+		Long: heredoc.Docf(`Fetches and displays merge request discussions.
 
-			Fetch and display all discussions on a merge request.
-
-			Uses the same output format as 'glab mr view --comments'.
-			Supports filtering by note type, resolution state, and file path.
-			Supports JSON output for scripting.
-		`),
+		Uses the same output format as %[1]sglab mr view --comments%[1]s.
+		Supports filtering by note type, resolution state, and file path.
+		Supports JSON output for scripting.
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# List all discussions on the current branch's MR
 			glab mr note list
@@ -66,18 +64,18 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().VarP(
+	mrNoteListCmd.Flags().VarP(
 		cmdutils.NewEnumValue([]string{"all", "general", "diff", "system"}, "all", &opts.noteType),
 		"type", "t", "Note type: all, general, diff, system.",
 	)
-	cmd.Flags().Var(
+	mrNoteListCmd.Flags().Var(
 		cmdutils.NewEnumValue([]string{"all", "resolved", "unresolved"}, "all", &opts.state),
 		"state", "Resolution state: all, resolved, unresolved.",
 	)
-	cmd.Flags().StringVar(&opts.filePath, "file", "", "Show only diff notes on this file path.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	mrNoteListCmd.Flags().StringVar(&opts.filePath, "file", "", "Show only diff notes on this file path.")
+	cmdutils.EnableJSONOutput(mrNoteListCmd, &opts.outputFormat)
 
-	return cmd
+	return mrNoteListCmd
 }
 
 func (o *listOptions) complete(args []string) {
