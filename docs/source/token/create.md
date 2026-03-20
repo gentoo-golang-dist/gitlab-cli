@@ -46,24 +46,22 @@ new
 
 ```console
 # Create project access token for current project (default 30 days)
-$ glab token create --access-level developer --scope read_repository --scope read_registry my-project-token
+glab token create --access-level developer --scope read_repository --scope read_registry my-project-token
 
 # Create project access token with 7 day lifetime
-$ glab token create --repo user/my-repo --access-level owner --scope api my-project-token --duration 7d
+glab token create --repo user/my-repo --access-level owner --scope api my-project-token --duration 7d
 
 # Create a group access token expiring in 2 weeks
-$ glab token create --group group/sub-group --access-level owner --scope api my-group-token --duration 2w
+glab token create --group group/sub-group --access-level owner --scope api my-group-token --duration 2w
 
 # Create a personal access token for current user with 90 day lifetime
-$ glab token create --user @me --scope k8s_proxy my-personal-token --duration 90d
+glab token create --user @me --scope k8s_proxy my-personal-token --duration 90d
 
 # (administrator only) Create a personal access token for another user
-$ glab token create --user johndoe --scope api johns-personal-token --duration 180d
+glab token create --user johndoe --scope api johns-personal-token --duration 180d
 
 # Create a token with explicit expiration date
-$ glab token create --access-level developer --scope api my-token --expires-at 2025-12-31
-
-
+glab token create --access-level developer --scope api my-token --expires-at 2025-12-31
 ```
 
 ## Options

@@ -42,13 +42,11 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 		Aliases: []string{"ls"},
 		Args:    cobra.ExactArgs(0),
 		Example: heredoc.Doc(`
-			$ glab variable list
-			$ glab variable list -i
-			$ glab variable list --per-page 100 --page 1
-			$ glab variable list --group gitlab-org
-			$ glab variable list --group gitlab-org --per-page 100
-		`,
-		),
+			glab variable list
+			glab variable list -i
+			glab variable list --per-page 100 --page 1
+			glab variable list --group gitlab-org
+			glab variable list --group gitlab-org --per-page 100`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},

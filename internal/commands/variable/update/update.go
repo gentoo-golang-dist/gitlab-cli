@@ -45,14 +45,13 @@ func NewCmdUpdate(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 		Short: "Update an existing variable for a project or group.",
 		Args:  cobra.RangeArgs(1, 2),
 		Example: heredoc.Doc(`
-			$ glab variable update WITH_ARG "some value"
-			$ glab variable update FROM_FLAG -v "some value"
-			$ glab variable update FROM_ENV_WITH_ARG "${ENV_VAR}"
-			$ glab variable update FROM_ENV_WITH_FLAG -v"${ENV_VAR}"
-			$ glab variable update FROM_FILE < secret.txt
-			$ cat file.txt | glab variable update SERVER_TOKEN
-			$ cat token.txt | glab variable update GROUP_TOKEN -g mygroup --scope=prod
-		`),
+			glab variable update WITH_ARG "some value"
+			glab variable update FROM_FLAG -v "some value"
+			glab variable update FROM_ENV_WITH_ARG "${ENV_VAR}"
+			glab variable update FROM_ENV_WITH_FLAG -v"${ENV_VAR}"
+			glab variable update FROM_FILE < secret.txt
+			cat file.txt | glab variable update SERVER_TOKEN
+			cat token.txt | glab variable update GROUP_TOKEN -g mygroup --scope=prod`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

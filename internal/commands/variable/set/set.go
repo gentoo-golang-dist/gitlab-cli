@@ -47,15 +47,14 @@ func NewCmdSet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 		Aliases: []string{"new", "create"},
 		Args:    cobra.RangeArgs(1, 2),
 		Example: heredoc.Doc(`
-			$ glab variable set WITH_ARG "some value"
-			$ glab variable set WITH_DESC "some value" --description "some description"
-			$ glab variable set FROM_FLAG -v "some value"
-			$ glab variable set FROM_ENV_WITH_ARG "${ENV_VAR}"
-			$ glab variable set FROM_ENV_WITH_FLAG -v"${ENV_VAR}"
-			$ glab variable set FROM_FILE < secret.txt
-			$ cat file.txt | glab variable set SERVER_TOKEN
-			$ cat token.txt | glab variable set GROUP_TOKEN -g mygroup --scope=prod
-		`),
+			glab variable set WITH_ARG "some value"
+			glab variable set WITH_DESC "some value" --description "some description"
+			glab variable set FROM_FLAG -v "some value"
+			glab variable set FROM_ENV_WITH_ARG "${ENV_VAR}"
+			glab variable set FROM_ENV_WITH_FLAG -v"${ENV_VAR}"
+			glab variable set FROM_FILE < secret.txt
+			cat file.txt | glab variable set SERVER_TOKEN
+			cat token.txt | glab variable set GROUP_TOKEN -g mygroup --scope=prod`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

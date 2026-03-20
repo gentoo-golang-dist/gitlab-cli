@@ -40,10 +40,9 @@ func NewCmdGet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 		Short: "Get a variable for a project or group.",
 		Args:  cobra.RangeArgs(1, 1),
 		Example: heredoc.Doc(`
-			$ glab variable get VAR_KEY
-			$ glab variable get -g GROUP VAR_KEY
-			$ glab variable get -s SCOPE VAR_KEY
-		`),
+			glab variable get VAR_KEY
+			glab variable get -g GROUP VAR_KEY
+			glab variable get -s SCOPE VAR_KEY`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},

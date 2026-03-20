@@ -41,20 +41,19 @@ rot
 
 ```console
 # Rotate project access token of current project (default 30 days)
-$ glab token rotate my-project-token
+glab token rotate my-project-token
 
 # Rotate project access token with explicit expiration date
-$ glab token rotate --repo user/repo my-project-token --expires-at 2025-08-08
+glab token rotate --repo user/repo my-project-token --expires-at 2025-08-08
 
 # Rotate group access token with 7 day lifetime
-$ glab token rotate --group group/sub-group my-group-token --duration 7d
+glab token rotate --group group/sub-group my-group-token --duration 7d
 
 # Rotate personal access token with 2 week lifetime
-$ glab token rotate --user @me my-personal-token --duration 2w
+glab token rotate --user @me my-personal-token --duration 2w
 
 # Rotate a personal access token of another user (administrator only)
-$ glab token rotate --user johndoe johns-personal-token --duration 90d
-
+glab token rotate --user johndoe johns-personal-token --duration 90d
 ```
 
 ## Options
