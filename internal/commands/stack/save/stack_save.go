@@ -68,6 +68,19 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 				return fmt.Errorf("error running Git command: %v", err)
 			}
 
+			stack, err := git.GatherStackRefs(title)
+			if err != nil {
+				return fmt.Errorf("error getting refs from file system: %v", err)
+			}
+
+			if !stack.Empty() {
+				currentRef, err := git.CurrentStackRefFromCurrentBranch(title)
+				if err == nil && !currentRef.Empty() && !currentRef.IsLast() {
+					color := f.IO().Color()
+					f.IO().LogErrorf("%s warning: you are not on the last entry of the stack. Consider using 'glab stack amend' to modify the current entry. New changes will be appended to the end of the stack.\n", color.WarnIcon())
+				}
+			}
+
 			author, err := git.GitUserName()
 			if err != nil {
 				return fmt.Errorf("error getting Git author: %v", err)
@@ -95,11 +108,6 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 			_, err = commitFiles(description)
 			if err != nil {
 				return fmt.Errorf("error committing files: %v", err)
-			}
-
-			stack, err := git.GatherStackRefs(title)
-			if err != nil {
-				return fmt.Errorf("error getting refs from file system: %v", err)
 			}
 
 			var stackRef git.StackRef
