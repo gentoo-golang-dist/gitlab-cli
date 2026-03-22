@@ -22,16 +22,17 @@ type options struct {
 	io        *iostreams.IOStreams
 	baseRepo  func() (glrepo.Interface, error)
 
-	key         string
-	value       string
-	typ         string
-	scope       string
-	protected   bool
-	masked      bool
-	hidden      bool
-	raw         bool
-	group       string
-	description string
+	key           string
+	value         string
+	typ           string
+	scope         string
+	protected     bool
+	masked        bool
+	hidden        bool
+	hiddenChanged bool
+	raw           bool
+	group         string
+	description   string
 }
 
 func NewCmdSet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Command {
@@ -60,6 +61,7 @@ func NewCmdSet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)
+			opts.hiddenChanged = cmd.Flags().Changed("hidden")
 
 			if err := opts.validate(cmd, args); err != nil {
 				return err
@@ -135,11 +137,13 @@ func (o *options) run() error {
 			Value:            gitlab.Ptr(o.value),
 			EnvironmentScope: gitlab.Ptr(o.scope),
 			Masked:           gitlab.Ptr(o.masked),
-			MaskedAndHidden:  gitlab.Ptr(o.hidden),
 			Protected:        gitlab.Ptr(o.protected),
 			VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
 			Raw:              gitlab.Ptr(o.raw),
 			Description:      gitlab.Ptr(o.description),
+		}
+		if o.hiddenChanged {
+			createVarOpts.MaskedAndHidden = gitlab.Ptr(o.hidden)
 		}
 
 		_, _, err := client.GroupVariables.CreateVariable(o.group, createVarOpts)
@@ -161,11 +165,13 @@ func (o *options) run() error {
 		Value:            gitlab.Ptr(o.value),
 		EnvironmentScope: gitlab.Ptr(o.scope),
 		Masked:           gitlab.Ptr(o.masked),
-		MaskedAndHidden:  gitlab.Ptr(o.hidden),
 		Protected:        gitlab.Ptr(o.protected),
 		VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
 		Raw:              gitlab.Ptr(o.raw),
 		Description:      gitlab.Ptr(o.description),
+	}
+	if o.hiddenChanged {
+		createVarOpts.MaskedAndHidden = gitlab.Ptr(o.hidden)
 	}
 	_, _, err = client.ProjectVariables.CreateVariable(baseRepo.FullName(), createVarOpts)
 	if err != nil {
