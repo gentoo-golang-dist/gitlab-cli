@@ -28,14 +28,23 @@ glab stack save [flags]
 ## Examples
 
 ```console
-glab stack save added_file
-glab stack save . -m "added a function"
+# Save currently staged changes as diff with description
 glab stack save -m "added a function"
+
+# Add specified file to staged changes and save diff
+glab stack save added_file
+
+# Add all tracked files to staged changes and save diff
+glab stack save -a -m "added a function to exisiting file"
+
+# Add all tracked and untracked files to staged changes and save diff
+glab stack save . -m "added new file"
 ```
 
 ## Options
 
 ```plaintext
+  -a, --all                  Automatically stage modified and deleted tracked files
   -d, --description string   Description of the change.
   -m, --message string       Alias for the description flag.
 ```

@@ -17,20 +17,29 @@ import (
 )
 
 func NewCmdAmendStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetTextUsingEditor) *cobra.Command {
+	var amendStageAll bool
 	stackSaveCmd := &cobra.Command{
 		Use:   "amend",
 		Short: `Save more changes to a stacked diff. (EXPERIMENTAL)`,
 		Long: `Add more changes to an existing stacked diff.
 ` + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			glab stack amend modifiedfile
-			glab stack amend . -m "fixed a function"
-			glab stack amend newfile -d "forgot to add this"`),
+			# Amend diff with currently staged changes
+			glab stack amend -m "Fix a function"
+
+			# Add specified file to staged changes and amend diff
+			glab stack amend newfile -m "forgot to add this"
+
+			# Add all tracked files to staged changes and amend diff
+			glab stack amend -a -m "fixed a function in exisiting file"
+
+			# Add all tracked and untracked files to staged changes and amend diff
+			glab stack amend . -m "refactored file into new files"`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			output, err := amendFunc(cmd.Context(), f, args, getText, description)
+			output, err := amendFunc(cmd.Context(), f, args, getText, description, amendStageAll)
 			if err != nil {
 				return fmt.Errorf("could not run stack amend: %v", err)
 			}
@@ -44,12 +53,13 @@ func NewCmdAmendStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.Get
 	}
 	stackSaveCmd.Flags().StringVarP(&description, "description", "d", "", "a description of the change")
 	stackSaveCmd.Flags().StringVarP(&description, "message", "m", "", "alias for the description flag")
+	stackSaveCmd.Flags().BoolVarP(&amendStageAll, "all", "a", false, "Automatically stage modified and deleted tracked files")
 	stackSaveCmd.MarkFlagsMutuallyExclusive("message", "description")
 
 	return stackSaveCmd
 }
 
-func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText cmdutils.GetTextUsingEditor, description string) (string, error) {
+func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText cmdutils.GetTextUsingEditor, description string, stageAll bool) (string, error) {
 	// check if there are even any changes before we start
 	err := checkForChanges()
 	if err != nil {
@@ -82,7 +92,7 @@ func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText c
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
 	// git add files
-	err = addFiles(args[0:])
+	err = addFiles(args[0:], stageAll)
 	if err != nil {
 		return "", fmt.Errorf("error adding files: %v", err)
 	}

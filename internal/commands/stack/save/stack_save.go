@@ -23,15 +23,24 @@ import (
 var description string
 
 func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetTextUsingEditor) *cobra.Command {
+	var stageAll bool
 	stackSaveCmd := &cobra.Command{
 		Use:   "save",
 		Short: `Save your progress within a stacked diff. (EXPERIMENTAL)`,
 		Long: `Save your current progress with a diff on the stack.
 ` + text.ExperimentalString,
 		Example: heredoc.Doc(`
+			# Save currently staged changes as diff with description
+			glab stack save -m "added a function"
+
+			# Add specified file to staged changes and save diff
 			glab stack save added_file
-			glab stack save . -m "added a function"
-			glab stack save -m "added a function"`),
+
+			# Add all tracked files to staged changes and save diff
+			glab stack save -a -m "added a function to exisiting file"
+
+			# Add all tracked and untracked files to staged changes and save diff
+			glab stack save . -m "added new file"`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -57,7 +66,7 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 			s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
 			// git add files
-			err = addFiles(args[0:])
+			err = addFiles(args[0:], stageAll)
 			if err != nil {
 				return fmt.Errorf("error adding files: %v", err)
 			}
@@ -156,6 +165,7 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 	}
 	stackSaveCmd.Flags().StringVarP(&description, "description", "d", "", "Description of the change.")
 	stackSaveCmd.Flags().StringVarP(&description, "message", "m", "", "Alias for the description flag.")
+	stackSaveCmd.Flags().BoolVarP(&stageAll, "all", "a", false, "Automatically stage modified and deleted tracked files")
 
 	return stackSaveCmd
 }
@@ -174,28 +184,67 @@ func checkForChanges() error {
 	return nil
 }
 
-// addFiles adds files to git (git add args...)
-func addFiles(args []string) error {
-	if len(args) == 0 {
-		args = []string{"."}
+func checkForStagedChanges() (bool, error) {
+	gitCmd := git.GitCommand("diff", "--cached", "--name-only")
+	output, err := run.PrepareCmd(gitCmd).Output()
+	if err != nil {
+		return false, fmt.Errorf("error checking for staged changes: %v", err)
 	}
 
-	for _, file := range args {
-		_, err := os.Stat(file)
+	return strings.TrimSpace(string(output)) != "", nil
+}
+
+// addFiles adds files to git (git add args...)
+func addFiles(args []string, stageAll bool) error {
+	// If stageAll flag is set, stage tracked files only (like git commit -a)
+	if stageAll {
+		gitCmd := git.GitCommand("add", "--update")
+		_, err := run.PrepareCmd(gitCmd).Output()
+		if err != nil {
+			return fmt.Errorf("error running Git add --update: %v", err)
+		}
+		hasStagedChanges, err := checkForStagedChanges()
 		if err != nil {
 			return err
 		}
+		if !hasStagedChanges {
+			return fmt.Errorf("no staged changes after 'git add --update'. Are there any tracked modified files?")
+		}
+		return nil
 	}
 
-	cmdargs := append([]string{"add"}, args...)
-	gitCmd := git.GitCommand(cmdargs...)
+	// If explicit files are provided, stage those files
+	if len(args) > 0 {
+		for _, file := range args {
+			_, err := os.Stat(file)
+			if err != nil {
+				return err
+			}
+		}
 
-	_, err := run.PrepareCmd(gitCmd).Output()
+		cmdargs := append([]string{"add"}, args...)
+		gitCmd := git.GitCommand(cmdargs...)
+
+		_, err := run.PrepareCmd(gitCmd).Output()
+		if err != nil {
+			return fmt.Errorf("error running Git add: %v", err)
+		}
+
+		return nil
+	}
+
+	// No args and no flags: check if there are staged changes
+	hasStagedChanges, err := checkForStagedChanges()
 	if err != nil {
-		return fmt.Errorf("error running Git add: %v", err)
+		return err
 	}
 
-	return err
+	if !hasStagedChanges {
+		return fmt.Errorf("no staged changes. Stage files manually with 'git add', use -a flag to automatically stage tracked files, or specify files explicitly")
+	}
+
+	// If there are staged changes, proceed without staging anything
+	return nil
 }
 
 func commitFiles(message string) (string, error) {

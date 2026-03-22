@@ -46,6 +46,7 @@ func TestSaveNewStack(t *testing.T) {
 		desc          string
 		args          []string
 		files         []string
+		trackedFiles  []string
 		message       string
 		expected      string
 		wantErr       bool
@@ -69,11 +70,12 @@ func TestSaveNewStack(t *testing.T) {
 		},
 
 		{
-			desc:     "adding files with no argument",
+			desc:     "adding files with no argument and no staged changes",
 			args:     []string{""},
 			files:    []string{"testfile", "randomfile"},
 			message:  "this is a commit message",
-			expected: "• cool-test-feature: Saved with message: \"this is a commit message\".\n",
+			expected: "no staged changes",
+			wantErr:  true,
 		},
 
 		{
@@ -100,6 +102,23 @@ func TestSaveNewStack(t *testing.T) {
 			wantErr:  true,
 			noTTY:    true,
 		},
+
+		{
+			desc:         "adding tracked files with -a flag",
+			args:         []string{"-a"},
+			trackedFiles: []string{"trackedfile"},
+			message:      "this is a commit message",
+			expected:     "• cool-test-feature: Saved with message: \"this is a commit message\".\n",
+		},
+
+		{
+			desc:     "adding with -a flag but only untracked files returns error",
+			args:     []string{"-a"},
+			files:    []string{"untrackedfile"},
+			message:  "this is a commit message",
+			wantErr:  true,
+			expected: "glab stack save -a with no tracked changes should return an error",
+		},
 	}
 
 	for _, tc := range tests {
@@ -115,6 +134,23 @@ func TestSaveNewStack(t *testing.T) {
 			require.Nil(t, err)
 
 			createTemporaryFiles(t, dir, tc.files)
+
+			if len(tc.trackedFiles) > 0 {
+				createTemporaryFiles(t, dir, tc.trackedFiles)
+
+				gitCmd := git.GitCommand("add", ".")
+				_, err = run.PrepareCmd(gitCmd).Output()
+				require.Nil(t, err)
+
+				gitCmd = git.GitCommand("commit", "-m", "initial tracked files")
+				_, err = run.PrepareCmd(gitCmd).Output()
+				require.Nil(t, err)
+
+				for _, file := range tc.trackedFiles {
+					err = os.WriteFile(path.Join(dir, file), []byte("modified content"), 0o644)
+					require.Nil(t, err)
+				}
+			}
 
 			getText := getMockEditor(tc.editorMessage, &[]string{})
 			args := strings.Join(tc.args, " ")
@@ -214,23 +250,57 @@ func TestSaveStack_WarningWhenNotOnLastEntry(t *testing.T) {
 
 func Test_addFiles(t *testing.T) {
 	tests := []struct {
-		desc     string
-		args     []string
-		expected []string
+		desc           string
+		args           []string
+		expected       []string
+		untrackedFiles []string
+		stageAll       bool
+		wantErr        bool
+		errContains    string
+		statusPrefix   string
 	}{
 		{
-			desc:     "adding regular files",
-			args:     []string{"file1", "file2"},
-			expected: []string{"file1", "file2"},
+			desc:         "adding regular files",
+			args:         []string{"file1", "file2"},
+			expected:     []string{"file1", "file2"},
+			statusPrefix: "A  ",
 		},
 		{
-			desc:     "adding files with a dot argument",
-			args:     []string{"."},
-			expected: []string{"file1", "file2"},
+			desc:         "adding files with a dot argument",
+			args:         []string{"."},
+			expected:     []string{"file1", "file2"},
+			statusPrefix: "A  ",
 		},
 		{
-			desc:     "adding files with no argument",
-			expected: []string{"file1", "file2"},
+			desc:         "with -a flag stages tracked files only",
+			args:         []string{},
+			expected:     []string{"file1"},
+			stageAll:     true,
+			statusPrefix: "M  ",
+		},
+		{
+			desc:        "with no args and no staged changes returns error",
+			args:        []string{},
+			expected:    []string{},
+			wantErr:     true,
+			errContains: "no staged changes. Stage files manually",
+		},
+		{
+			desc:        "with -a flag but no tracked changes returns error",
+			args:        []string{""},
+			expected:    []string{},
+			wantErr:     true,
+			stageAll:    true,
+			errContains: "no staged changes after 'git add --update'",
+		},
+		{
+			desc:           "with -a flag but only untracked files returns error",
+			args:           []string{"-a"},
+			expected:       []string{},
+			untrackedFiles: []string{"untracked1", "untracked2"},
+			wantErr:        true,
+			stageAll:       true,
+			errContains:    "no staged changes after 'git add --update'",
 		},
 	}
 
@@ -241,8 +311,33 @@ func Test_addFiles(t *testing.T) {
 			require.Nil(t, err)
 
 			createTemporaryFiles(t, dir, tc.expected)
+			createTemporaryFiles(t, dir, tc.untrackedFiles)
 
-			err = addFiles(tc.args)
+			// For the tracked files test, we need to add the expected files to git first
+			if tc.stageAll && len(tc.expected) > 0 {
+				gitCmd := git.GitCommand("add", tc.expected[0])
+				_, err := run.PrepareCmd(gitCmd).Output()
+				require.Nil(t, err)
+
+				gitCmd = git.GitCommand("commit", "-m", "initial")
+				_, err = run.PrepareCmd(gitCmd).Output()
+				require.Nil(t, err)
+
+				// Now modify the file so we have a tracked file change
+				err = os.WriteFile(path.Join(dir, tc.expected[0]), []byte("modified"), 0o644)
+				require.Nil(t, err)
+			}
+
+			err = addFiles(tc.args, tc.stageAll)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				if tc.errContains != "" {
+					require.ErrorContains(t, err, tc.errContains)
+				}
+				return
+			}
+
 			require.Nil(t, err)
 
 			gitCmd := git.GitCommand("status", "--short", "-u")
@@ -251,7 +346,7 @@ func Test_addFiles(t *testing.T) {
 
 			normalizedFiles := []string{}
 			for _, file := range tc.expected {
-				file = "A  " + file
+				file = tc.statusPrefix + file
 
 				normalizedFiles = append(normalizedFiles, file)
 			}
@@ -320,7 +415,7 @@ func Test_commitFiles(t *testing.T) {
 			dir := git.InitGitRepoWithCommit(t)
 
 			createTemporaryFiles(t, dir, []string{"yo", "test"})
-			err := addFiles([]string{"."})
+			err := addFiles([]string{"."}, false)
 			require.Nil(t, err)
 
 			got, err := commitFiles(tt.message)
