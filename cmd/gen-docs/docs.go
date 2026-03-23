@@ -393,7 +393,7 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 	// Generate environment variables section from annotations with table formatting
 	if envHelp, ok := cmd.Annotations["help:environment"]; ok {
 		buf.WriteString("## Environment Variables\n\n")
-		buf.WriteString("<!-- markdownlint-disable MD044 MD034 -->\n")
+		buf.WriteString("<!-- markdownlint-disable MD044 MD034 -->\n\n")
 		buf.WriteString("| Variable | Description |\n")
 		buf.WriteString("|----------|-------------|\n")
 
@@ -424,7 +424,7 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 				}
 			}
 		}
-		buf.WriteString("<!-- markdownlint-enable MD044 MD034 -->\n")
+		buf.WriteString("\n<!-- markdownlint-enable MD044 MD034 -->\n")
 		buf.WriteString("\n")
 	}
 	if err := printRootOptions(buf, cmd); err != nil {

@@ -45,6 +45,7 @@ in the main README.
 ## Environment Variables
 
 <!-- markdownlint-disable MD044 MD034 -->
+
 | Variable | Description |
 |----------|-------------|
 | `BROWSER` | The web browser to use for opening links. Can be set in the config with 'glab config set browser mybrowser'. |
@@ -63,6 +64,7 @@ in the main README.
 | `REMOTE_ALIAS or GIT_REMOTE_URL_VAR` | A 'git remote' variable or alias that contains the GitLab URL. Can be set in the config with 'glab config set remote_alias origin'. |
 | `VISUAL, EDITOR (in order of precedence)` | The editor tool to use for authoring text. Can be set in the config with 'glab config set editor vim'. |
 | `GLAB_ENABLE_CI_AUTOLOGIN` | Set to `true` to enable auto-login in GitLab CI. CI auto-login detects if glab is running in a GitLab CI job by checking the predefined CI/CD variable `GITLAB_CI`. If detected, it uses predefined CI/CD variables such as `CI_SERVER_FQDN` and `CI_JOB_TOKEN` to sign in, and ignores host variables like `GITLAB_HOST`. If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN` are set, they take precedence over `CI_JOB_TOKEN`. Only glab commands that support `CI_JOB_TOKEN` work with CI auto-login. For a list of supported commands, see <https://docs.gitlab.com/ci/jobs/ci_job_token/#job-token-access>. |
+
 <!-- markdownlint-enable MD044 MD034 -->
 
 ## Options
