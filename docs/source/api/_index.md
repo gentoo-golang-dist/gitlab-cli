@@ -137,7 +137,7 @@ $ glab api graphql --paginate -f query='
 
 ```plaintext
   -F, --field stringArray       Add a parameter of inferred type. Changes the default HTTP method to "POST".
-      --form stringArray        Add a multipart form field. Use @filepath to upload a file. Changes the default HTTP method to "POST".
+      --form stringArray        Add a multipart form field. Use @filepath to upload a file, or @- to read from standard input (at most once). Changes the default HTTP method to "POST".
   -H, --header stringArray      Add an additional HTTP request header.
       --hostname string         The GitLab hostname for the request. Defaults to 'gitlab.com', or the authenticated host in the current Git directory.
   -i, --include                 Include HTTP response headers in the output.
