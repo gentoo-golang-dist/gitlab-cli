@@ -26,6 +26,7 @@ Manages GitLab CI/CD runners for projects, groups, or the entire instance.
 
 - [`assign`](assign.md)
 - [`delete`](delete.md)
+- [`jobs`](jobs.md)
 - [`list`](list.md)
 - [`managers`](managers.md)
 - [`unassign`](unassign.md)
