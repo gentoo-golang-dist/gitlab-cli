@@ -50,9 +50,10 @@ for issue in $issue_numbers; do
   echo "Processing issue #$issue..."
 
   # Check current state (capture HTTP status for better error handling)
+  api_failed=0
   response=$(glab api "/projects/:id/issues/$issue" 2>&1) || api_failed=$?
 
-  if [ -n "${api_failed:-}" ]; then
+  if [ "$api_failed" -ne 0 ]; then
     echo "✗ API error fetching issue #$issue (may be authentication, rate limit, or network issue)"
     echo ""
     continue
@@ -69,7 +70,8 @@ for issue in $issue_numbers; do
   if [ "$state" = "closed" ]; then
     # Issue already closed - just notify about the release
     echo "✓ Issue #$issue already closed, adding release comment"
-    glab issue note "$issue" -m "🎉 This issue has been resolved in [glab v$version](https://gitlab.com/gitlab-org/cli/-/releases/$current_tag)"
+    glab issue note "$issue" -m "🎉 This issue has been resolved in [glab v$version](https://gitlab.com/gitlab-org/cli/-/releases/$current_tag)" || \
+      echo "✗ Failed to add release comment to issue #$issue"
 
   elif [ "$state" = "opened" ]; then
     # Issue should have been closed but wasn't - close it now
@@ -78,7 +80,8 @@ for issue in $issue_numbers; do
     # Close the issue with explanation
     glab issue close "$issue" -m "Closing this issue as it was resolved in [glab v$version](https://gitlab.com/gitlab-org/cli/-/releases/$current_tag).
 
-If this issue should remain open or was closed prematurely, please mention a project maintainer and we'll reopen it."
+If this issue should remain open or was closed prematurely, please mention a project maintainer and we'll reopen it." || \
+      echo "✗ Failed to close issue #$issue"
 
   else
     echo "✗ Unexpected state for issue #$issue: $state"
