@@ -165,8 +165,8 @@ func writeMultipartFields(w *multipart.Writer, formFields []string, stdin io.Rea
 		if err != nil {
 			return err
 		}
-		if strings.HasPrefix(value, "@") {
-			if err := copyFileField(w, key, value[1:], stdin); err != nil {
+		if path, isFile := strings.CutPrefix(value, "@"); isFile {
+			if err := copyFileField(w, key, path, stdin); err != nil {
 				return err
 			}
 		} else {

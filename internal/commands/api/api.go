@@ -199,7 +199,7 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 	fl.StringVarP(&opts.requestMethod, "method", "X", "GET", "The HTTP method for the request.")
 	fl.StringArrayVarP(&opts.magicFields, "field", "F", nil, "Add a parameter of inferred type. Changes the default HTTP method to \"POST\".")
 	fl.StringArrayVarP(&opts.rawFields, "raw-field", "f", nil, "Add a string parameter.")
-	fl.StringArrayVar(&opts.formFields, "form", nil, "Add a multipart form field. Use @filepath to upload a file. Changes the default HTTP method to \"POST\".")
+	fl.StringArrayVar(&opts.formFields, "form", nil, "Add a multipart form field. Use @filepath to upload a file, or @- to read from standard input (at most once). Changes the default HTTP method to \"POST\".")
 	fl.StringArrayVarP(&opts.requestHeaders, "header", "H", nil, "Add an additional HTTP request header.")
 	fl.BoolVarP(&opts.showResponseHeaders, "include", "i", false, "Include HTTP response headers in the output.")
 	fl.BoolVar(&opts.paginate, "paginate", false, "Make additional HTTP requests to fetch all pages of results.")
@@ -231,6 +231,16 @@ func (o *options) validate(cmd *cobra.Command) error {
 
 	if o.outputFormat != "json" && o.outputFormat != "ndjson" {
 		return &cmdutils.FlagError{Err: fmt.Errorf("invalid output format %q: must be 'json' or 'ndjson'", o.outputFormat)}
+	}
+
+	stdinCount := 0
+	for _, f := range o.formFields {
+		if strings.HasSuffix(f, "=@-") {
+			stdinCount++
+		}
+	}
+	if stdinCount > 1 {
+		return &cmdutils.FlagError{Err: errors.New("'@-' (stdin) can only be used once across all --form fields.")}
 	}
 
 	return nil

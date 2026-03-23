@@ -264,6 +264,11 @@ func Test_NewCmdApi(t *testing.T) {
 			cli:      `projects --form "file=@foo.png" --input body.json`,
 			wantsErr: true,
 		},
+		{
+			name:     "form stdin used twice is invalid",
+			cli:      `projects --form "file=@-" --form "other=@-"`,
+			wantsErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
