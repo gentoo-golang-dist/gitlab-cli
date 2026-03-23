@@ -45,9 +45,7 @@ glab mr note 123 --unresolve 3107030349
 
 ```plaintext
   -m, --message string   Comment or note message.
-      --resolve int      Resolve the discussion containing the specified note ID.
       --unique           Don't create a comment or note if it already exists.
-      --unresolve int    Unresolve the discussion containing the specified note ID.
 ```
 
 ## Options inherited from parent commands
@@ -60,3 +58,5 @@ glab mr note 123 --unresolve 3107030349
 ## Subcommands
 
 - [`list`](list.md)
+- [`reopen`](reopen.md)
+- [`resolve`](resolve.md)

@@ -93,7 +93,7 @@ func (o *listOptions) run(ctx context.Context) error {
 		return err
 	}
 
-	discussions, err := mrutils.ListAllDiscussions(client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
+	discussions, err := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
 	if err != nil {
 		return err
 	}

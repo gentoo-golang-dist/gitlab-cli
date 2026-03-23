@@ -16,7 +16,6 @@ import (
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -40,7 +39,6 @@ func setupListCmd(t *testing.T, tc *gitlabtesting.TestClient) cmdtest.CmdExecFun
 	}, true,
 		cmdtest.WithGitLabClient(tc.Client),
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-		cmdtest.WithConfig(config.NewFromString("editor: vi")),
 	)
 }
 
@@ -59,7 +57,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "abcdef1234567890abcdef1234567890abcdef12",
@@ -112,7 +110,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{}, nil, nil)
 
 		exec := setupListCmd(t, tc)
@@ -128,7 +126,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "general1234567890abcdef1234567890abcdef12",
@@ -168,7 +166,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "general1234567890abcdef1234567890abcdef12",
@@ -206,7 +204,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "general1234567890abcdef1234567890abcdef12",
@@ -241,7 +239,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "resolved234567890abcdef1234567890abcdef12",
@@ -281,7 +279,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "resolved234567890abcdef1234567890abcdef12",
@@ -321,7 +319,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "filemain234567890abcdef1234567890abcdef12",
@@ -371,7 +369,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID: "jsontest234567890abcdef1234567890abcdef12",
@@ -399,7 +397,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "thread12345678901234567890abcdef12345678",
@@ -437,7 +435,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "diffresol234567890abcdef1234567890abcdef12",
@@ -490,7 +488,7 @@ func Test_NoteList(t *testing.T) {
 		makeMRForList(t, tc)
 
 		tc.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any()).
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return([]*gitlab.Discussion{
 				{
 					ID:             "nonresol234567890abcdef1234567890abcdef12",
