@@ -40,14 +40,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			l := &gitlab.CreateLabelOptions{}
 
 			if s, _ := cmd.Flags().GetString("name"); s != "" {
-				l.Name = gitlab.Ptr(s)
+				l.Name = new(s)
 			}
 
 			if s, _ := cmd.Flags().GetString("color"); s != "" {
-				l.Color = gitlab.Ptr(s)
+				l.Color = new(s)
 			}
 			if s, _ := cmd.Flags().GetString("description"); s != "" {
-				l.Description = gitlab.Ptr(s)
+				l.Description = new(s)
 			}
 			if cmd.Flags().Changed("priority") {
 				if s, err := cmd.Flags().GetInt("priority"); err == nil {

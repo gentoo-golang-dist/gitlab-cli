@@ -132,13 +132,13 @@ func (o *options) run() error {
 	if o.group != "" {
 		// update group-level variable
 		updateGroupVarOpts := &gitlab.UpdateGroupVariableOptions{
-			Value:            gitlab.Ptr(o.value),
-			VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
-			Masked:           gitlab.Ptr(o.masked),
-			Protected:        gitlab.Ptr(o.protected),
-			Raw:              gitlab.Ptr(o.raw),
-			EnvironmentScope: gitlab.Ptr(o.scope),
-			Description:      gitlab.Ptr(o.description),
+			Value:            new(o.value),
+			VariableType:     new(gitlab.VariableTypeValue(o.typ)),
+			Masked:           new(o.masked),
+			Protected:        new(o.protected),
+			Raw:              new(o.raw),
+			EnvironmentScope: new(o.scope),
+			Description:      new(o.description),
 		}
 
 		_, _, err = client.GroupVariables.UpdateVariable(o.group, o.key, updateGroupVarOpts)
@@ -157,14 +157,14 @@ func (o *options) run() error {
 	}
 
 	updateProjectVarOpts := &gitlab.UpdateProjectVariableOptions{
-		Value:            gitlab.Ptr(o.value),
-		VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
-		Masked:           gitlab.Ptr(o.masked),
-		Protected:        gitlab.Ptr(o.protected),
-		Raw:              gitlab.Ptr(o.raw),
-		EnvironmentScope: gitlab.Ptr(o.scope),
+		Value:            new(o.value),
+		VariableType:     new(gitlab.VariableTypeValue(o.typ)),
+		Masked:           new(o.masked),
+		Protected:        new(o.protected),
+		Raw:              new(o.raw),
+		EnvironmentScope: new(o.scope),
 		Filter:           &gitlab.VariableFilter{EnvironmentScope: o.scope},
-		Description:      gitlab.Ptr(o.description),
+		Description:      new(o.description),
 	}
 	_, _, err = client.ProjectVariables.UpdateVariable(baseRepo.FullName(), o.key, updateProjectVarOpts)
 	if err != nil {

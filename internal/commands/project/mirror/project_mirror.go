@@ -181,10 +181,10 @@ func (o *options) run() error {
 
 func (o *options) createPushMirror() error {
 	pm, _, err := o.client.ProjectMirrors.AddProjectMirror(o.projectID, &gitlab.AddProjectMirrorOptions{
-		URL:                   gitlab.Ptr(o.url),
-		Enabled:               gitlab.Ptr(o.enabled),
-		OnlyProtectedBranches: gitlab.Ptr(o.protectedBranchesOnly),
-		KeepDivergentRefs:     gitlab.Ptr(o.allowDivergence),
+		URL:                   new(o.url),
+		Enabled:               new(o.enabled),
+		OnlyProtectedBranches: new(o.protectedBranchesOnly),
+		KeepDivergentRefs:     new(o.allowDivergence),
 	})
 	if err != nil {
 		return cmdutils.WrapError(err, "Failed to create push mirror. Check if the project exists and ensure you have the necessary permissions.")
@@ -200,9 +200,9 @@ func (o *options) createPushMirror() error {
 
 func (o *options) createPullMirror() error {
 	_, _, err := o.client.Projects.EditProject(o.projectID, &gitlab.EditProjectOptions{
-		ImportURL:                   gitlab.Ptr(o.url),
-		Mirror:                      gitlab.Ptr(o.enabled),
-		OnlyMirrorProtectedBranches: gitlab.Ptr(o.protectedBranchesOnly),
+		ImportURL:                   new(o.url),
+		Mirror:                      new(o.enabled),
+		OnlyMirrorProtectedBranches: new(o.protectedBranchesOnly),
 	})
 	if err != nil {
 		return cmdutils.WrapError(err, "Failed to create pull mirror. Check if the project exists and ensure you have the necessary permissions.")

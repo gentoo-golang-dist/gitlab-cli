@@ -71,7 +71,7 @@ func (a *apiWrapper) GetAgentByName(name string) (*gitlab.Agent, error) {
 }
 
 func (a *apiWrapper) RegisterAgent(name string) (*gitlab.Agent, error) {
-	agent, _, err := a.client.ClusterAgents.RegisterAgent(a.projectID, &gitlab.RegisterAgentOptions{Name: gitlab.Ptr(name)})
+	agent, _, err := a.client.ClusterAgents.RegisterAgent(a.projectID, &gitlab.RegisterAgentOptions{Name: new(name)})
 	return agent, err
 }
 
@@ -94,7 +94,7 @@ type agentConfigProject struct {
 
 func (a *apiWrapper) ConfigureAgent(agent *gitlab.Agent, branch string) error {
 	configPath := fmt.Sprintf(".gitlab/agents/%s/config.yaml", agent.Name)
-	file, _, err := a.client.RepositoryFiles.GetFile(a.projectID, configPath, &gitlab.GetFileOptions{Ref: gitlab.Ptr(branch)})
+	file, _, err := a.client.RepositoryFiles.GetFile(a.projectID, configPath, &gitlab.GetFileOptions{Ref: new(branch)})
 	if err != nil && !glab_api.Is404(err) {
 		return err
 	}
@@ -116,14 +116,14 @@ func (a *apiWrapper) ConfigureAgent(agent *gitlab.Agent, branch string) error {
 		}
 
 		opts := &gitlab.CreateFileOptions{
-			Branch:        gitlab.Ptr(branch),
-			Content:       gitlab.Ptr(string(configuredContent)),
-			CommitMessage: gitlab.Ptr(fmt.Sprintf("Add %s via glab file sync", configPath)),
+			Branch:        new(branch),
+			Content:       new(string(configuredContent)),
+			CommitMessage: new(fmt.Sprintf("Add %s via glab file sync", configPath)),
 		}
 
 		if a.commitAuthor != nil {
-			opts.AuthorName = gitlab.Ptr(a.commitAuthor.name)
-			opts.AuthorEmail = gitlab.Ptr(a.commitAuthor.email)
+			opts.AuthorName = new(a.commitAuthor.name)
+			opts.AuthorEmail = new(a.commitAuthor.email)
 		}
 
 		_, _, err = a.client.RepositoryFiles.CreateFile(a.projectID, configPath, opts)
@@ -155,14 +155,14 @@ func (a *apiWrapper) ConfigureAgent(agent *gitlab.Agent, branch string) error {
 		}
 
 		opts := &gitlab.UpdateFileOptions{
-			Branch:        gitlab.Ptr(branch),
-			Content:       gitlab.Ptr(string(configuredContent)),
-			CommitMessage: gitlab.Ptr(fmt.Sprintf("Update %s via glab file sync", configPath)),
+			Branch:        new(branch),
+			Content:       new(string(configuredContent)),
+			CommitMessage: new(fmt.Sprintf("Update %s via glab file sync", configPath)),
 		}
 
 		if a.commitAuthor != nil {
-			opts.AuthorName = gitlab.Ptr(a.commitAuthor.name)
-			opts.AuthorEmail = gitlab.Ptr(a.commitAuthor.email)
+			opts.AuthorName = new(a.commitAuthor.name)
+			opts.AuthorEmail = new(a.commitAuthor.email)
 		}
 
 		_, _, err = a.client.RepositoryFiles.UpdateFile(a.projectID, configPath, opts)
@@ -178,18 +178,18 @@ func (a *apiWrapper) ConfigureEnvironment(agentID int64, name string, kubernetes
 
 	if env == nil {
 		_, _, err := a.client.Environments.CreateEnvironment(a.projectID, &gitlab.CreateEnvironmentOptions{
-			Name:                gitlab.Ptr(name),
-			ClusterAgentID:      gitlab.Ptr(agentID),
-			KubernetesNamespace: gitlab.Ptr(kubernetesNamespace),
-			FluxResourcePath:    gitlab.Ptr(fluxResourcePath),
+			Name:                new(name),
+			ClusterAgentID:      new(agentID),
+			KubernetesNamespace: new(kubernetesNamespace),
+			FluxResourcePath:    new(fluxResourcePath),
 		})
 		return err
 	} else {
 		_, _, err := a.client.Environments.EditEnvironment(a.projectID, env.ID, &gitlab.EditEnvironmentOptions{
-			Name:                gitlab.Ptr(name),
-			ClusterAgentID:      gitlab.Ptr(agentID),
-			KubernetesNamespace: gitlab.Ptr(kubernetesNamespace),
-			FluxResourcePath:    gitlab.Ptr(fluxResourcePath),
+			Name:                new(name),
+			ClusterAgentID:      new(agentID),
+			KubernetesNamespace: new(kubernetesNamespace),
+			FluxResourcePath:    new(fluxResourcePath),
 		})
 		return err
 	}
@@ -216,15 +216,15 @@ func (a *apiWrapper) CreateAgentToken(agentID int64) (*gitlab.AgentToken, error)
 
 	// create new token
 	token, _, err := a.client.ClusterAgents.CreateAgentToken(a.projectID, agentID, &gitlab.CreateAgentTokenOptions{
-		Name:        gitlab.Ptr(fmt.Sprintf("glab-bootstrap-%d", time.Now().UTC().Unix())),
-		Description: gitlab.Ptr("Created by the `glab cluster agent bootstrap command"),
+		Name:        new(fmt.Sprintf("glab-bootstrap-%d", time.Now().UTC().Unix())),
+		Description: new("Created by the `glab cluster agent bootstrap command"),
 	})
 	return token, err
 }
 
 func (a *apiWrapper) SyncFile(f file, branch string) error {
 	_, resp, err := a.client.RepositoryFiles.GetFileMetaData(a.projectID, f.path, &gitlab.GetFileMetaDataOptions{
-		Ref: gitlab.Ptr(branch),
+		Ref: new(branch),
 	})
 	if err != nil {
 		if resp.StatusCode != http.StatusNotFound {
@@ -232,14 +232,14 @@ func (a *apiWrapper) SyncFile(f file, branch string) error {
 		}
 
 		opts := &gitlab.CreateFileOptions{
-			Branch:        gitlab.Ptr(branch),
-			Content:       gitlab.Ptr(string(f.content)),
-			CommitMessage: gitlab.Ptr(fmt.Sprintf("Add %s via glab file sync", f.path)),
+			Branch:        new(branch),
+			Content:       new(string(f.content)),
+			CommitMessage: new(fmt.Sprintf("Add %s via glab file sync", f.path)),
 		}
 
 		if a.commitAuthor != nil {
-			opts.AuthorName = gitlab.Ptr(a.commitAuthor.name)
-			opts.AuthorEmail = gitlab.Ptr(a.commitAuthor.email)
+			opts.AuthorName = new(a.commitAuthor.name)
+			opts.AuthorEmail = new(a.commitAuthor.email)
 		}
 
 		// file does not exist yet, lets create it
@@ -248,14 +248,14 @@ func (a *apiWrapper) SyncFile(f file, branch string) error {
 	}
 
 	opts := &gitlab.UpdateFileOptions{
-		Branch:        gitlab.Ptr(branch),
-		Content:       gitlab.Ptr(string(f.content)),
-		CommitMessage: gitlab.Ptr(fmt.Sprintf("Update %s via glab file sync", f.path)),
+		Branch:        new(branch),
+		Content:       new(string(f.content)),
+		CommitMessage: new(fmt.Sprintf("Update %s via glab file sync", f.path)),
 	}
 
 	if a.commitAuthor != nil {
-		opts.AuthorName = gitlab.Ptr(a.commitAuthor.name)
-		opts.AuthorEmail = gitlab.Ptr(a.commitAuthor.email)
+		opts.AuthorName = new(a.commitAuthor.name)
+		opts.AuthorEmail = new(a.commitAuthor.email)
 	}
 
 	// file already exists, lets update it
@@ -278,7 +278,7 @@ func (a *apiWrapper) GetKASAddress() (string, error) {
 
 func (a *apiWrapper) getEnvironmentByName(name string) (*gitlab.Environment, error) {
 	opts := &gitlab.ListEnvironmentsOptions{
-		Name: gitlab.Ptr(name),
+		Name: new(name),
 	}
 
 	envs, _, err := a.client.Environments.ListEnvironments(a.projectID, opts)

@@ -79,9 +79,9 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 	}
 
 	mr, baseRepo, err := mrutils.MRFromArgsWithOpts(ctx, f, args, &gitlab.GetMergeRequestsOptions{
-		IncludeDivergedCommitsCount: gitlab.Ptr(true),
-		RenderHTML:                  gitlab.Ptr(true),
-		IncludeRebaseInProgress:     gitlab.Ptr(true),
+		IncludeDivergedCommitsCount: new(true),
+		RenderHTML:                  new(true),
+		IncludeRebaseInProgress:     new(true),
 	}, "any")
 	if err != nil {
 		return err

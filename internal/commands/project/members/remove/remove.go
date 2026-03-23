@@ -102,7 +102,7 @@ func (o *options) run() error {
 	case o.username != "":
 		// Get user ID from username
 		users, _, err := client.Users.ListUsers(&gitlab.ListUsersOptions{
-			Username: gitlab.Ptr(o.username),
+			Username: new(o.username),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to find user %s: %w", o.username, err)

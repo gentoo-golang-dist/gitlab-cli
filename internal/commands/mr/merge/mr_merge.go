@@ -201,16 +201,16 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 
 	mergeOpts := &gitlab.AcceptMergeRequestOptions{}
 	if o.mergeCommitMessage != "" {
-		mergeOpts.MergeCommitMessage = gitlab.Ptr(o.mergeCommitMessage)
+		mergeOpts.MergeCommitMessage = new(o.mergeCommitMessage)
 	}
 	if o.squashMessage != "" {
-		mergeOpts.SquashCommitMessage = gitlab.Ptr(o.squashMessage)
+		mergeOpts.SquashCommitMessage = new(o.squashMessage)
 	}
 	if o.squashBeforeMerge {
-		mergeOpts.Squash = gitlab.Ptr(true)
+		mergeOpts.Squash = new(true)
 	}
 	if o.removeSourceBranch {
-		mergeOpts.ShouldRemoveSourceBranch = gitlab.Ptr(true)
+		mergeOpts.ShouldRemoveSourceBranch = new(true)
 	}
 	if o.setAutoMerge && mr.Pipeline != nil {
 		if mr.Pipeline.Status == "canceled" || mr.Pipeline.Status == "failed" {
@@ -218,10 +218,10 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 			fmt.Fprintln(o.io.StdOut, c.FailedIcon(), "Cannot perform merge action")
 			return cmdutils.SilentError
 		}
-		mergeOpts.AutoMerge = gitlab.Ptr(true)
+		mergeOpts.AutoMerge = new(true)
 	}
 	if o.sha != "" {
-		mergeOpts.SHA = gitlab.Ptr(o.sha)
+		mergeOpts.SHA = new(o.sha)
 	}
 
 	if o.rebaseBeforeMerge {

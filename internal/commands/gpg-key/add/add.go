@@ -95,7 +95,7 @@ func (o *options) run() error {
 	}
 
 	gpgKeyAddOptions := &gitlab.AddGPGKeyOptions{
-		Key: gitlab.Ptr(string(keyInBytes)),
+		Key: new(string(keyInBytes)),
 	}
 	_, _, err = client.Users.AddGPGKey(gpgKeyAddOptions)
 	if err != nil {

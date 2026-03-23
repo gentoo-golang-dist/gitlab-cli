@@ -43,15 +43,15 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 			l := &gitlab.UpdateLabelOptions{}
 
 			if s, _ := cmd.Flags().GetString("new-name"); s != "" {
-				l.Name = gitlab.Ptr(s)
+				l.Name = new(s)
 				change += fmt.Sprintf("Updated name: %s\n", s)
 			}
 			if s, _ := cmd.Flags().GetString("color"); s != "" {
-				l.Color = gitlab.Ptr(s)
+				l.Color = new(s)
 				change += fmt.Sprintf("Updated color: %s\n", s)
 			}
 			if s, _ := cmd.Flags().GetString("description"); s != "" {
-				l.Description = gitlab.Ptr(s)
+				l.Description = new(s)
 				change += fmt.Sprintf("Updated description: %s\n", s)
 			}
 			if cmd.Flags().Changed("priority") {

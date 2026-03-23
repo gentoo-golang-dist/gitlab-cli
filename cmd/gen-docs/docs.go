@@ -173,21 +173,21 @@ func printSubcommands(cmd *cobra.Command, buf *bytes.Buffer) {
 		return
 	}
 
-	var subcommands string
+	var subcommands strings.Builder
 	// Generate children commands
 	for _, cmdC := range cmd.Commands() {
 		if cmdC.Name() != "help" && cmdC.IsAvailableCommand() {
 			if cmdC.HasAvailableSubCommands() {
-				subcommands += fmt.Sprintf("- [`%s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name())
+				subcommands.WriteString(fmt.Sprintf("- [`%s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name()))
 			} else {
-				subcommands += fmt.Sprintf("- [`%s`](%s.md)\n", cmdC.Name(), cmdC.Name())
+				subcommands.WriteString(fmt.Sprintf("- [`%s`](%s.md)\n", cmdC.Name(), cmdC.Name()))
 			}
 		}
 	}
 
-	if subcommands != "" {
+	if subcommands.String() != "" {
 		buf.WriteString("\n## Subcommands\n\n")
-		buf.WriteString(subcommands)
+		buf.WriteString(subcommands.String())
 	}
 }
 
@@ -196,18 +196,18 @@ func printRootSubcommands(cmd *cobra.Command, buf *bytes.Buffer) {
 		return
 	}
 
-	var subcommands string
+	var subcommands strings.Builder
 	// Generate children commands for root
 	// All top-level commands get directories and _index.md files based on the generation logic
 	for _, cmdC := range cmd.Commands() {
 		if cmdC.Name() != "help" && cmdC.IsAvailableCommand() {
-			subcommands += fmt.Sprintf("- [`glab %s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name())
+			subcommands.WriteString(fmt.Sprintf("- [`glab %s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name()))
 		}
 	}
 
-	if subcommands != "" {
+	if subcommands.String() != "" {
 		buf.WriteString("\n## Commands\n\n")
-		buf.WriteString(subcommands)
+		buf.WriteString(subcommands.String())
 	}
 }
 

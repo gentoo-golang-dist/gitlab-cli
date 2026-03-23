@@ -394,30 +394,30 @@ var createRun = func(ctx context.Context, opts *options) error {
 	}
 
 	if action == cmdutils.SubmitAction {
-		issueCreateOpts.Title = gitlab.Ptr(opts.Title)
+		issueCreateOpts.Title = new(opts.Title)
 		issueCreateOpts.Labels = (*gitlab.LabelOptions)(&opts.Labels)
 		issueCreateOpts.Description = &opts.Description
 		if opts.IsConfidential {
-			issueCreateOpts.Confidential = gitlab.Ptr(opts.IsConfidential)
+			issueCreateOpts.Confidential = new(opts.IsConfidential)
 		}
 		if opts.Weight != 0 {
-			issueCreateOpts.Weight = gitlab.Ptr(opts.Weight)
+			issueCreateOpts.Weight = new(opts.Weight)
 		}
 		if opts.LinkedMR != 0 {
-			issueCreateOpts.MergeRequestToResolveDiscussionsOf = gitlab.Ptr(opts.LinkedMR)
+			issueCreateOpts.MergeRequestToResolveDiscussionsOf = new(opts.LinkedMR)
 		}
 		if opts.Milestone != 0 {
-			issueCreateOpts.MilestoneID = gitlab.Ptr(opts.Milestone)
+			issueCreateOpts.MilestoneID = new(opts.Milestone)
 		}
 		if opts.EpicID != 0 {
-			issueCreateOpts.EpicID = gitlab.Ptr(opts.EpicID)
+			issueCreateOpts.EpicID = new(opts.EpicID)
 		}
 		if opts.DueDate != "" {
 			dueDate, err := gitlab.ParseISOTime(opts.DueDate)
 			if err != nil {
 				return err
 			}
-			issueCreateOpts.DueDate = gitlab.Ptr(dueDate)
+			issueCreateOpts.DueDate = new(dueDate)
 		}
 
 		if len(opts.Assignees) > 0 {
@@ -448,8 +448,8 @@ func postCreateActions(apiClient *gitlab.Client, issue *gitlab.Issue, opts *opti
 		for _, targetIssueIID := range opts.LinkedIssues {
 			fmt.Fprintln(opts.io.StdErr, "- Linking to issue ", targetIssueIID)
 			issueLink, _, err := apiClient.IssueLinks.CreateIssueLink(repo.FullName(), issue.IID, &gitlab.CreateIssueLinkOptions{
-				TargetIssueIID: gitlab.Ptr(strconv.Itoa(targetIssueIID)),
-				LinkType:       gitlab.Ptr(opts.IssueLinkType),
+				TargetIssueIID: new(strconv.Itoa(targetIssueIID)),
+				LinkType:       new(opts.IssueLinkType),
 			})
 			if err != nil {
 				return err
@@ -459,14 +459,14 @@ func postCreateActions(apiClient *gitlab.Client, issue *gitlab.Issue, opts *opti
 	}
 	if opts.TimeEstimate != "" {
 		fmt.Fprintln(opts.io.StdErr, "- Adding time estimate ", opts.TimeEstimate)
-		_, _, err := apiClient.Issues.SetTimeEstimate(repo.FullName(), issue.IID, &gitlab.SetTimeEstimateOptions{Duration: gitlab.Ptr(opts.TimeEstimate)})
+		_, _, err := apiClient.Issues.SetTimeEstimate(repo.FullName(), issue.IID, &gitlab.SetTimeEstimateOptions{Duration: new(opts.TimeEstimate)})
 		if err != nil {
 			return err
 		}
 	}
 	if opts.TimeSpent != "" {
 		fmt.Fprintln(opts.io.StdErr, "- Adding time spent ", opts.TimeSpent)
-		_, _, err := apiClient.Issues.AddSpentTime(repo.FullName(), issue.IID, &gitlab.AddSpentTimeOptions{Duration: gitlab.Ptr(opts.TimeSpent)})
+		_, _, err := apiClient.Issues.AddSpentTime(repo.FullName(), issue.IID, &gitlab.AddSpentTimeOptions{Duration: new(opts.TimeSpent)})
 		if err != nil {
 			return err
 		}

@@ -134,7 +134,7 @@ func (o *options) run(issueType issuable.IssueType, args []string) error {
 
 	if o.showComments {
 		l := &gitlab.ListIssueNotesOptions{
-			Sort: gitlab.Ptr("asc"),
+			Sort: new("asc"),
 		}
 		if o.commentPageNumber != 0 {
 			l.Page = int64(o.commentPageNumber)

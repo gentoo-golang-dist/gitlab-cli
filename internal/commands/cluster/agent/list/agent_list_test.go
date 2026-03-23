@@ -29,12 +29,12 @@ func TestAgentList(t *testing.T) {
 			{
 				ID:        1,
 				Name:      "local",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 			{
 				ID:        2,
 				Name:      "prd",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 		}, &gitlab.Response{}, nil).
 		Times(1)
@@ -71,7 +71,7 @@ func TestAgentList_Pagination(t *testing.T) {
 			{
 				ID:        2,
 				Name:      "prd",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 		}, &gitlab.Response{NextPage: 0}, nil)
 
@@ -103,12 +103,12 @@ func TestAgentList_JSON(t *testing.T) {
 			{
 				ID:        1,
 				Name:      "local",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 			{
 				ID:        2,
 				Name:      "prd",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 		}, &gitlab.Response{}, nil)
 

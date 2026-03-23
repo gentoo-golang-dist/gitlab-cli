@@ -194,29 +194,29 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 	c := opts.io.Color()
 	listOpts := &gitlab.ListGroupProjectsOptions{}
 	if !opts.withShared {
-		listOpts.WithShared = gitlab.Ptr(false)
+		listOpts.WithShared = new(false)
 	}
 	if opts.withMREnabled {
-		listOpts.WithMergeRequestsEnabled = gitlab.Ptr(true)
+		listOpts.WithMergeRequestsEnabled = new(true)
 	}
 	if opts.withIssuesEnabled {
-		listOpts.WithIssuesEnabled = gitlab.Ptr(true)
+		listOpts.WithIssuesEnabled = new(true)
 	}
 	if opts.owned {
-		listOpts.Owned = gitlab.Ptr(true)
+		listOpts.Owned = new(true)
 	}
 	if opts.activeSet {
-		listOpts.Active = gitlab.Ptr(opts.active)
+		listOpts.Active = new(opts.active)
 	}
 	if opts.archivedSet {
-		listOpts.Archived = gitlab.Ptr(opts.archived)
+		listOpts.Archived = new(opts.archived)
 	}
 	if opts.includeSubgroups {
 		includeSubGroups := true
 		listOpts.IncludeSubGroups = &includeSubGroups
 	}
 	if opts.visibility != "" {
-		listOpts.Visibility = gitlab.Ptr(gitlab.VisibilityValue(opts.visibility))
+		listOpts.Visibility = new(gitlab.VisibilityValue(opts.visibility))
 	}
 
 	listOpts.PerPage = 100

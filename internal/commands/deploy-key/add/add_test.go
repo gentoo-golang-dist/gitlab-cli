@@ -31,7 +31,7 @@ func Test_AddDeployKey(t *testing.T) {
 		Title:     "My deploy key",
 		Key:       "ssh-rsa AAAA...",
 		CanPush:   true,
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testCases := []testCase{

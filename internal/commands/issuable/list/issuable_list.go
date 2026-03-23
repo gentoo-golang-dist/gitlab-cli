@@ -202,10 +202,10 @@ func listRun(opts *ListOptions) error {
 	client := apiClient.Lab()
 
 	listOpts := &gitlab.ListProjectIssuesOptions{
-		State:   gitlab.Ptr(opts.State),
-		In:      gitlab.Ptr(opts.In),
-		OrderBy: gitlab.Ptr(opts.OrderBy),
-		Sort:    gitlab.Ptr(opts.Sort),
+		State:   new(opts.State),
+		In:      new(opts.In),
+		OrderBy: new(opts.OrderBy),
+		Sort:    new(opts.Sort),
 	}
 	listOpts.Page = 1
 	listOpts.PerPage = 30
@@ -228,7 +228,7 @@ func listRun(opts *ListOptions) error {
 		if err != nil {
 			return err
 		}
-		listOpts.NotAssigneeID = gitlab.Ptr(uid)
+		listOpts.NotAssigneeID = new(uid)
 	}
 
 	if opts.Author != "" {
@@ -236,7 +236,7 @@ func listRun(opts *ListOptions) error {
 		if err != nil {
 			return err
 		}
-		listOpts.AuthorID = gitlab.Ptr(uid)
+		listOpts.AuthorID = new(uid)
 	}
 
 	if opts.NotAuthor != "" {
@@ -244,11 +244,11 @@ func listRun(opts *ListOptions) error {
 		if err != nil {
 			return err
 		}
-		listOpts.NotAuthorID = gitlab.Ptr(uid)
+		listOpts.NotAuthorID = new(uid)
 	}
 
 	if opts.Search != "" {
-		listOpts.Search = gitlab.Ptr(opts.Search)
+		listOpts.Search = new(opts.Search)
 		opts.ListType = "search"
 	}
 	if len(opts.Labels) != 0 {
@@ -260,11 +260,11 @@ func listRun(opts *ListOptions) error {
 		opts.ListType = "search"
 	}
 	if opts.Milestone != "" {
-		listOpts.Milestone = gitlab.Ptr(opts.Milestone)
+		listOpts.Milestone = new(opts.Milestone)
 		opts.ListType = "search"
 	}
 	if opts.Confidential {
-		listOpts.Confidential = gitlab.Ptr(opts.Confidential)
+		listOpts.Confidential = new(opts.Confidential)
 		opts.ListType = "search"
 	}
 	if opts.Page != 0 {
@@ -280,12 +280,12 @@ func listRun(opts *ListOptions) error {
 
 	issueType := "issue"
 	if opts.IssueType != "" {
-		listOpts.IssueType = gitlab.Ptr(opts.IssueType)
+		listOpts.IssueType = new(opts.IssueType)
 		opts.ListType = "search"
 		issueType = opts.IssueType
 	}
 	if issueType == "issue" && opts.Iteration != 0 {
-		listOpts.IterationID = gitlab.Ptr(int64(opts.Iteration))
+		listOpts.IterationID = new(int64(opts.Iteration))
 	}
 
 	var issues []*gitlab.Issue

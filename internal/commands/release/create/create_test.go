@@ -689,10 +689,10 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(&gitlab.Project{DefaultBranch: "some-default-branch"}, nil, nil)
 		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
 		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
-			Name:        gitlab.Ptr("0.0.1"),
-			TagName:     gitlab.Ptr("0.0.1"),
-			Description: gitlab.Ptr("test release"),
-			Ref:         gitlab.Ptr("some-default-branch"),
+			Name:        new("0.0.1"),
+			TagName:     new("0.0.1"),
+			Description: new("test release"),
+			Ref:         new("some-default-branch"),
 		}).Return(&gitlab.Release{}, nil, nil)
 
 		_, err := exec("0.0.1 --notes \"test release\"")
@@ -717,10 +717,10 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(nil, nil, errors.New("forbidden"))
 		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
 		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
-			Name:        gitlab.Ptr("0.0.1"),
-			TagName:     gitlab.Ptr("0.0.1"),
-			Description: gitlab.Ptr("test release"),
-			Ref:         gitlab.Ptr("some-default-branch"),
+			Name:        new("0.0.1"),
+			TagName:     new("0.0.1"),
+			Description: new("test release"),
+			Ref:         new("some-default-branch"),
 		}).Return(&gitlab.Release{}, nil, nil)
 
 		_, err := exec("0.0.1 --notes \"test release\"")
@@ -743,9 +743,9 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 		tc.MockProjects.EXPECT().GetProject("OWNER/REPO", gomock.Any()).Return(nil, nil, errors.New("forbidden"))
 		tc.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
 		tc.MockReleases.EXPECT().CreateRelease("OWNER/REPO", &gitlab.CreateReleaseOptions{
-			Name:        gitlab.Ptr("0.0.1"),
-			TagName:     gitlab.Ptr("0.0.1"),
-			Description: gitlab.Ptr("test release"),
+			Name:        new("0.0.1"),
+			TagName:     new("0.0.1"),
+			Description: new("test release"),
 			Ref:         nil,
 		}).Return(&gitlab.Release{}, nil, nil)
 

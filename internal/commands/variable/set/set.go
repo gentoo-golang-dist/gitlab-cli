@@ -131,15 +131,15 @@ func (o *options) run() error {
 	if o.group != "" {
 		// creating group-level variable
 		createVarOpts := &gitlab.CreateGroupVariableOptions{
-			Key:              gitlab.Ptr(o.key),
-			Value:            gitlab.Ptr(o.value),
-			EnvironmentScope: gitlab.Ptr(o.scope),
-			Masked:           gitlab.Ptr(o.masked),
-			MaskedAndHidden:  gitlab.Ptr(o.hidden),
-			Protected:        gitlab.Ptr(o.protected),
-			VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
-			Raw:              gitlab.Ptr(o.raw),
-			Description:      gitlab.Ptr(o.description),
+			Key:              new(o.key),
+			Value:            new(o.value),
+			EnvironmentScope: new(o.scope),
+			Masked:           new(o.masked),
+			MaskedAndHidden:  new(o.hidden),
+			Protected:        new(o.protected),
+			VariableType:     new(gitlab.VariableTypeValue(o.typ)),
+			Raw:              new(o.raw),
+			Description:      new(o.description),
 		}
 
 		_, _, err := client.GroupVariables.CreateVariable(o.group, createVarOpts)
@@ -157,15 +157,15 @@ func (o *options) run() error {
 		return err
 	}
 	createVarOpts := &gitlab.CreateProjectVariableOptions{
-		Key:              gitlab.Ptr(o.key),
-		Value:            gitlab.Ptr(o.value),
-		EnvironmentScope: gitlab.Ptr(o.scope),
-		Masked:           gitlab.Ptr(o.masked),
-		MaskedAndHidden:  gitlab.Ptr(o.hidden),
-		Protected:        gitlab.Ptr(o.protected),
-		VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
-		Raw:              gitlab.Ptr(o.raw),
-		Description:      gitlab.Ptr(o.description),
+		Key:              new(o.key),
+		Value:            new(o.value),
+		EnvironmentScope: new(o.scope),
+		Masked:           new(o.masked),
+		MaskedAndHidden:  new(o.hidden),
+		Protected:        new(o.protected),
+		VariableType:     new(gitlab.VariableTypeValue(o.typ)),
+		Raw:              new(o.raw),
+		Description:      new(o.description),
 	}
 	_, _, err = client.ProjectVariables.CreateVariable(baseRepo.FullName(), createVarOpts)
 	if err != nil {

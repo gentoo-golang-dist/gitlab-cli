@@ -82,7 +82,7 @@ func (o *options) run() error {
 		return fmt.Errorf("Unable to read file at %s: %w", o.inputFilePath, err)
 	}
 
-	_, _, err = client.SecureFiles.CreateSecureFile(repo.FullName(), reader, &gitlab.CreateSecureFileOptions{Name: gitlab.Ptr(o.fileName)})
+	_, _, err = client.SecureFiles.CreateSecureFile(repo.FullName(), reader, &gitlab.CreateSecureFileOptions{Name: new(o.fileName)})
 	if err != nil {
 		return fmt.Errorf("Error creating secure file: %w", err)
 	}

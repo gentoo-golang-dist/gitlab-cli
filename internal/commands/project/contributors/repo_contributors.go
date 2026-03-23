@@ -82,7 +82,7 @@ func (o *options) run() error {
 	}
 
 	l := &gitlab.ListContributorsOptions{
-		OrderBy: gitlab.Ptr(o.orderBy),
+		OrderBy: new(o.orderBy),
 		ListOptions: gitlab.ListOptions{
 			Page:    int64(o.page),
 			PerPage: int64(o.perPage),
@@ -90,7 +90,7 @@ func (o *options) run() error {
 	}
 
 	if o.sort != "" {
-		l.Sort = gitlab.Ptr(o.sort)
+		l.Sort = new(o.sort)
 	}
 
 	users, _, err := client.Repositories.Contributors(repo.FullName(), l)

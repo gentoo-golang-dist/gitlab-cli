@@ -136,15 +136,15 @@ func optsFromFlags(flags *pflag.FlagSet) *gitlab.ListProjectPipelinesOptions {
 	olderThanDuration, _ := flags.GetDuration(FlagOlderThan)
 
 	if source != "" {
-		opts.Source = gitlab.Ptr(source)
+		opts.Source = new(source)
 	}
 
 	if status != "" {
-		opts.Status = gitlab.Ptr(gitlab.BuildStateValue(status))
+		opts.Status = new(gitlab.BuildStateValue(status))
 	}
 
 	if olderThanDuration != 0 {
-		opts.UpdatedBefore = gitlab.Ptr(time.Now().Add(-olderThanDuration))
+		opts.UpdatedBefore = new(time.Now().Add(-olderThanDuration))
 	}
 
 	return opts

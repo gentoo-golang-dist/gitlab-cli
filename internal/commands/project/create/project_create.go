@@ -234,20 +234,20 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 	readme, _ := cmd.Flags().GetBool("readme")
 
 	opts := &gitlab.CreateProjectOptions{
-		Name:                 gitlab.Ptr(name),
-		Path:                 gitlab.Ptr(projectPath),
-		Description:          gitlab.Ptr(description),
-		DefaultBranch:        gitlab.Ptr(defaultBranch),
+		Name:                 new(name),
+		Path:                 new(projectPath),
+		Description:          new(description),
+		DefaultBranch:        new(defaultBranch),
 		TagList:              &tags,
-		InitializeWithReadme: gitlab.Ptr(readme),
+		InitializeWithReadme: new(readme),
 	}
 
 	if visibility != "" {
-		opts.Visibility = &visibility
+		opts.Visibility = new(visibility)
 	}
 
 	if namespaceID != 0 {
-		opts.NamespaceID = gitlab.Ptr(int64(namespaceID))
+		opts.NamespaceID = new(int64(namespaceID))
 	}
 
 	project, err := createProject(gitlabClient, opts)

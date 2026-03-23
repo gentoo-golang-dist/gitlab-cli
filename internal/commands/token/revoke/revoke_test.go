@@ -47,7 +47,7 @@ func TestRevokePersonalAccessToken(t *testing.T) {
 		Scopes:    []string{"k8s_proxy"},
 		UserID:    926857,
 		Active:    true,
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
+		ExpiresAt: new(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
 		Token:     "sometoken",
 	}
 
@@ -115,7 +115,7 @@ func TestRevokeGroupAccessToken(t *testing.T) {
 			Name:      "my-group-token",
 			Scopes:    []string{"read_registry", "read_repository"},
 			CreatedAt: parseTime("2024-07-08T17:33:34.829Z"),
-			ExpiresAt: gitlab.Ptr(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
+			ExpiresAt: new(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
 			Active:    true,
 			Revoked:   false,
 			Token:     "glpat-yz2791KMU-xxxxxxxxx",
@@ -184,7 +184,7 @@ func TestRevokeProjectAccessToken(t *testing.T) {
 			Name:      "my-project-token",
 			Scopes:    []string{"api", "read_repository"},
 			CreatedAt: parseTime("2024-07-08T19:47:14.727Z"),
-			ExpiresAt: gitlab.Ptr(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
+			ExpiresAt: new(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
 			Active:    true,
 			Revoked:   false,
 			Token:     "glpat-dfsdfjksjdfslkdfjsd",

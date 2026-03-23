@@ -74,15 +74,15 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 
 			if m, _ := cmd.Flags().GetString("title"); m != "" {
 				actions = append(actions, fmt.Sprintf("updated title to %q", m))
-				l.Title = gitlab.Ptr(m)
+				l.Title = new(m)
 			}
 			if m, _ := cmd.Flags().GetBool("lock-discussion"); m {
 				actions = append(actions, "locked discussion")
-				l.DiscussionLocked = gitlab.Ptr(m)
+				l.DiscussionLocked = new(m)
 			}
 			if m, _ := cmd.Flags().GetBool("unlock-discussion"); m {
 				actions = append(actions, "unlocked discussion")
-				l.DiscussionLocked = gitlab.Ptr(false)
+				l.DiscussionLocked = new(bool)
 			}
 			if cmd.Flags().Changed("weight") {
 				weight, _ := cmd.Flags().GetInt("weight")
@@ -90,7 +90,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					return &cmdutils.FlagError{Err: errors.New("weight must be a positive integer or zero")}
 				}
 				actions = append(actions, fmt.Sprintf("set weight to %d", weight))
-				l.Weight = gitlab.Ptr(int64(weight))
+				l.Weight = new(int64(weight))
 			}
 
 			if m, _ := cmd.Flags().GetString("description"); m != "" {
@@ -114,13 +114,13 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						return err
 					}
 
-					l.Description = gitlab.Ptr("")
+					l.Description = new("")
 					err = cmdutils.EditorPrompt(cmd.Context(), f.IO(), l.Description, "Description", issue.Description, editor)
 					if err != nil {
 						return err
 					}
 				} else {
-					l.Description = gitlab.Ptr(m)
+					l.Description = new(m)
 				}
 			}
 			if m, _ := cmd.Flags().GetStringSlice("label"); len(m) != 0 {
@@ -133,11 +133,11 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			}
 			if m, _ := cmd.Flags().GetBool("public"); m {
 				actions = append(actions, "made public")
-				l.Confidential = gitlab.Ptr(false)
+				l.Confidential = new(false)
 			}
 			if m, _ := cmd.Flags().GetBool("confidential"); m {
 				actions = append(actions, "made confidential")
-				l.Confidential = gitlab.Ptr(true)
+				l.Confidential = new(true)
 			}
 			if ok := cmd.Flags().Changed("milestone"); ok {
 				if m, _ := cmd.Flags().GetString("milestone"); m != "" || m == "0" {
@@ -146,11 +146,11 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						return err
 					}
 					actions = append(actions, fmt.Sprintf("added milestone %q", m))
-					l.MilestoneID = gitlab.Ptr(mID)
+					l.MilestoneID = new(mID)
 				} else {
 					// Unassign the Milestone
 					actions = append(actions, "unassigned milestone")
-					l.MilestoneID = gitlab.Ptr(int64(0))
+					l.MilestoneID = new(int64(0))
 				}
 			}
 			if cmd.Flags().Changed("unassign") {
@@ -180,7 +180,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				l.DueDate = gitlab.Ptr(dueDate)
+				l.DueDate = new(dueDate)
 			}
 
 			fmt.Fprintf(out, "- Updating issue #%d\n", issue.IID)

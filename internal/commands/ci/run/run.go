@@ -42,7 +42,7 @@ func extractEnvVar(s string) (*gitlab.PipelineVariableOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	pvar.VariableType = gitlab.Ptr(gitlab.EnvVariableType)
+	pvar.VariableType = new(gitlab.EnvVariableType)
 	return pvar, nil
 }
 
@@ -55,9 +55,8 @@ func extractFileVar(s string) (*gitlab.PipelineVariableOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	content := string(b)
-	pvar.VariableType = gitlab.Ptr(gitlab.FileVariableType)
-	pvar.Value = &content
+	pvar.VariableType = new(gitlab.FileVariableType)
+	pvar.Value = new(string(b))
 	return pvar, nil
 }
 
@@ -98,7 +97,7 @@ func createPipeline(cmd *cobra.Command, c *gitlab.CreatePipelineOptions, f cmdut
 }
 
 func createBranchPipeline(branch string, c *gitlab.CreatePipelineOptions, apiClient *gitlab.Client, repo glrepo.Interface) (*gitlab.Pipeline, error) {
-	c.Ref = gitlab.Ptr(branch)
+	c.Ref = new(branch)
 	pipe, _, err := apiClient.Pipelines.CreatePipeline(repo.FullName(), c)
 	return pipe, err
 }
@@ -272,7 +271,7 @@ If used with merge request pipelines, the command fails with a message like ` + 
 			}
 
 			if len(pipelineVars) != 0 {
-				c.Variables = gitlab.Ptr(pipelineVars)
+				c.Variables = new(pipelineVars)
 			}
 
 			pipe, err := createPipeline(cmd, c, f, client, repo, mr)

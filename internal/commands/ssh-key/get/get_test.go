@@ -29,7 +29,7 @@ func Test_GetSSHKey(t *testing.T) {
 	testKey := &gitlab.SSHKey{
 		ID:        123,
 		Key:       "ssh-ed25519 example",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 		UsageType: "auth_and_signing",
 		Title:     "mysshkey",
 	}
@@ -87,7 +87,7 @@ func TestSshKeyGet_JSON(t *testing.T) {
 	testKey := &gitlab.SSHKey{
 		ID:        123,
 		Key:       "ssh-ed25519 example",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 		UsageType: "auth_and_signing",
 		Title:     "mysshkey",
 	}

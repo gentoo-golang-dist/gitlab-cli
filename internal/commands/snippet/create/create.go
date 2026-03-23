@@ -169,7 +169,7 @@ func (o *options) run(ctx context.Context) error {
 		snippet, _, err = client.Snippets.CreateSnippet(&gitlab.CreateSnippetOptions{
 			Title:       &o.title,
 			Description: &o.description,
-			Visibility:  gitlab.Ptr(gitlab.VisibilityValue(o.visibility)),
+			Visibility:  new(gitlab.VisibilityValue(o.visibility)),
 			Files:       &o.files,
 		})
 	} else {
@@ -177,7 +177,7 @@ func (o *options) run(ctx context.Context) error {
 		snippet, _, err = client.ProjectSnippets.CreateSnippet(repo.FullName(), &gitlab.CreateProjectSnippetOptions{
 			Title:       &o.title,
 			Description: &o.description,
-			Visibility:  gitlab.Ptr(gitlab.VisibilityValue(o.visibility)),
+			Visibility:  new(gitlab.VisibilityValue(o.visibility)),
 			Files:       &o.files,
 		})
 	}

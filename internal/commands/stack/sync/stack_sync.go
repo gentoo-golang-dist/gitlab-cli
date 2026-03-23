@@ -352,13 +352,13 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 	}
 
 	l := &gitlab.CreateMergeRequestOptions{
-		Title:              gitlab.Ptr(title),
-		Description:        gitlab.Ptr(description),
-		SourceBranch:       gitlab.Ptr(ref.Branch),
-		TargetBranch:       gitlab.Ptr(previousBranch),
-		AssigneeID:         gitlab.Ptr(opts.user.ID),
-		RemoveSourceBranch: gitlab.Ptr(true),
-		TargetProjectID:    gitlab.Ptr(targetProject.ID),
+		Title:              new(title),
+		Description:        new(description),
+		SourceBranch:       new(ref.Branch),
+		TargetBranch:       new(previousBranch),
+		AssigneeID:         new(opts.user.ID),
+		RemoveSourceBranch: new(true),
+		TargetProjectID:    new(targetProject.ID),
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)

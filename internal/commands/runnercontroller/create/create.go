@@ -76,10 +76,10 @@ func (o *options) run(ctx context.Context) error {
 
 	createOpts := &gitlab.CreateRunnerControllerOptions{}
 	if o.description != "" {
-		createOpts.Description = gitlab.Ptr(o.description)
+		createOpts.Description = new(o.description)
 	}
 	if o.state != "" {
-		createOpts.State = gitlab.Ptr(o.state)
+		createOpts.State = new(o.state)
 	}
 
 	controller, _, err := client.RunnerControllers.CreateRunnerController(createOpts, gitlab.WithContext(ctx))

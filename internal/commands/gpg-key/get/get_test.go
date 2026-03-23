@@ -29,7 +29,7 @@ func Test_GetGPGKey(t *testing.T) {
 	testKey := &gitlab.GPGKey{
 		ID:        123,
 		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...\n-----END PGP PUBLIC KEY BLOCK-----",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testCases := []testCase{
@@ -103,7 +103,7 @@ func TestGpgKeyGet_JSON(t *testing.T) {
 	testKey := &gitlab.GPGKey{
 		ID:        123,
 		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...\n-----END PGP PUBLIC KEY BLOCK-----",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testClient := gitlabtesting.NewTestClient(t)

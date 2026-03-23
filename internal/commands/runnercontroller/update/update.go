@@ -92,10 +92,10 @@ func (o *options) run(ctx context.Context) error {
 
 	updateOpts := &gitlab.UpdateRunnerControllerOptions{}
 	if o.description != "" {
-		updateOpts.Description = gitlab.Ptr(o.description)
+		updateOpts.Description = new(o.description)
 	}
 	if o.state != "" {
-		updateOpts.State = gitlab.Ptr(o.state)
+		updateOpts.State = new(o.state)
 	}
 
 	controller, _, err := client.RunnerControllers.UpdateRunnerController(o.id, updateOpts, gitlab.WithContext(ctx))

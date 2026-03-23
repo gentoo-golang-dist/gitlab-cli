@@ -137,35 +137,35 @@ func listAllProjects(apiClient *gitlab.Client, opts options) ([]*gitlab.Project,
 			PerPage: int64(opts.perPage),
 			Page:    int64(opts.page),
 		},
-		OrderBy: gitlab.Ptr(opts.orderBy),
+		OrderBy: new(opts.orderBy),
 	}
 
 	// Other filters only valid if FilterAll not true
 	if !opts.filterAll {
 		if !opts.filterStarred && !opts.filterMember {
 			// if no other filters are passed, default to Owned filter
-			l.Owned = gitlab.Ptr(true)
+			l.Owned = new(true)
 		}
 
 		if opts.filterOwner {
-			l.Owned = gitlab.Ptr(opts.filterOwner)
+			l.Owned = new(opts.filterOwner)
 		}
 
 		if opts.filterStarred {
-			l.Starred = gitlab.Ptr(opts.filterStarred)
+			l.Starred = new(opts.filterStarred)
 		}
 
 		if opts.filterMember {
-			l.Membership = gitlab.Ptr(opts.filterMember)
+			l.Membership = new(opts.filterMember)
 		}
 	}
 
 	if opts.archivedSet {
-		l.Archived = gitlab.Ptr(opts.archived)
+		l.Archived = new(opts.archived)
 	}
 
 	if opts.sort != "" {
-		l.Sort = gitlab.Ptr(opts.sort)
+		l.Sort = new(opts.sort)
 	}
 
 	return apiClient.Projects.ListProjects(l)
@@ -185,35 +185,35 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 			PerPage: int64(opts.perPage),
 			Page:    int64(opts.page),
 		},
-		OrderBy: gitlab.Ptr(opts.orderBy),
+		OrderBy: new(opts.orderBy),
 	}
 
 	// Other filters only valid if FilterAll not true
 	if !opts.filterAll {
 		if !opts.filterStarred && !opts.filterMember {
 			// if no other filters are passed, default to Owned filter
-			l.Owned = gitlab.Ptr(true)
+			l.Owned = new(true)
 		}
 
 		if opts.filterOwner {
-			l.Owned = gitlab.Ptr(opts.filterOwner)
+			l.Owned = new(opts.filterOwner)
 		}
 
 		if opts.filterStarred {
-			l.Starred = gitlab.Ptr(opts.filterStarred)
+			l.Starred = new(opts.filterStarred)
 		}
 	}
 
 	if opts.includeSubgroups {
-		l.IncludeSubGroups = gitlab.Ptr(true)
+		l.IncludeSubGroups = new(true)
 	}
 
 	if opts.archivedSet {
-		l.Archived = gitlab.Ptr(opts.archived)
+		l.Archived = new(opts.archived)
 	}
 
 	if opts.sort != "" {
-		l.Sort = gitlab.Ptr(opts.sort)
+		l.Sort = new(opts.sort)
 	}
 
 	return apiClient.Groups.ListGroupProjects(group.ID, l)
@@ -221,7 +221,7 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 
 func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
 	l := &gitlab.ListProjectsOptions{
-		OrderBy: gitlab.Ptr(opts.orderBy),
+		OrderBy: new(opts.orderBy),
 		ListOptions: gitlab.ListOptions{
 			PerPage: int64(opts.perPage),
 			Page:    int64(opts.page),
@@ -229,15 +229,15 @@ func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.P
 	}
 
 	if opts.archivedSet {
-		l.Archived = gitlab.Ptr(opts.archived)
+		l.Archived = new(opts.archived)
 	}
 
 	if opts.filterStarred {
-		l.Starred = gitlab.Ptr(opts.filterStarred)
+		l.Starred = new(opts.filterStarred)
 	}
 
 	if opts.sort != "" {
-		l.Sort = gitlab.Ptr(opts.sort)
+		l.Sort = new(opts.sort)
 	}
 
 	return apiClient.Projects.ListUserProjects(opts.user, l)

@@ -97,13 +97,13 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 			if branch != "" {
-				c.Ref = gitlab.Ptr(branch)
+				c.Ref = new(branch)
 			} else if currentBranch, err := f.Branch(); err == nil {
-				c.Ref = gitlab.Ptr(currentBranch)
+				c.Ref = new(currentBranch)
 			} else {
 				// `ci run-trig` is running out of a git repo
 				fmt.Fprintln(f.IO().StdOut, "not in a Git repository. Using repository argument.")
-				c.Ref = gitlab.Ptr(ciutils.GetDefaultBranch(repo, client))
+				c.Ref = new(ciutils.GetDefaultBranch(repo, client))
 			}
 
 			token, err := cmd.Flags().GetString("token")
@@ -116,7 +116,7 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 			if token == "" {
 				return errors.New("`--token` parameter can be omitted only if `CI_JOB_TOKEN` environment variable is set.")
 			}
-			c.Token = &token
+			c.Token = new(token)
 
 			pipe, _, err := client.PipelineTriggers.RunPipelineTrigger(repo.FullName(), c)
 			if err != nil {

@@ -82,6 +82,6 @@ func (o *options) run(ctx context.Context) error {
 		client,
 		repo,
 		mr,
-		&gitlab.RebaseMergeRequestOptions{SkipCI: gitlab.Ptr(o.SkipCI)},
+		&gitlab.RebaseMergeRequestOptions{SkipCI: new(o.SkipCI)},
 	)
 }

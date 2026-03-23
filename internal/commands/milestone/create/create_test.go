@@ -31,7 +31,7 @@ func Test_CreateProjectMilestone(t *testing.T) {
 		Title:       "Example title",
 		Description: "Example description",
 		State:       "active",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -105,7 +105,7 @@ func Test_CreateGroupMilestone(t *testing.T) {
 		Title:       "Example title",
 		Description: "Example description",
 		State:       "active",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{

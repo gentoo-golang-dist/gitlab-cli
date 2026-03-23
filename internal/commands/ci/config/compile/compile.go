@@ -72,10 +72,10 @@ func compileRun(f cmdutils.Factory, path string) error {
 	compiledResult, _, err := client.Validate.ProjectNamespaceLint(
 		project.ID,
 		&gitlab.ProjectNamespaceLintOptions{
-			Content:     gitlab.Ptr(string(content)),
-			DryRun:      gitlab.Ptr(false),
-			Ref:         gitlab.Ptr(""),
-			IncludeJobs: gitlab.Ptr(false),
+			Content:     new(string(content)),
+			DryRun:      new(bool),
+			Ref:         new(string),
+			IncludeJobs: new(bool),
 		},
 	)
 	if err != nil {

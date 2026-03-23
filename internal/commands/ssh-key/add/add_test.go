@@ -33,7 +33,7 @@ func Test_AddSSHKey(t *testing.T) {
 		ID:        1,
 		Key:       "ssh-ed25519 example",
 		Title:     "mysshkey",
-		CreatedAt: gitlab.Ptr(time.Time{}),
+		CreatedAt: new(time.Time{}),
 	}
 
 	testCases := []testCase{

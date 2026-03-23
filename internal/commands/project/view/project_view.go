@@ -208,7 +208,7 @@ func getReadmeFile(opts *options, project *gitlab.Project) (*gitlab.File, error)
 		opts.branch = readmeRef
 	}
 
-	readmeFile, _, err := opts.client.RepositoryFiles.GetFile(project.PathWithNamespace, readmeFileName, &gitlab.GetFileOptions{Ref: gitlab.Ptr(opts.branch)})
+	readmeFile, _, err := opts.client.RepositoryFiles.GetFile(project.PathWithNamespace, readmeFileName, &gitlab.GetFileOptions{Ref: new(opts.branch)})
 	if err != nil {
 		return nil, cmdutils.WrapError(err, fmt.Sprintf("Failed to retrieve README file on the %s branch.", opts.branch))
 	}

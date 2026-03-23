@@ -45,7 +45,7 @@ func Test_NewCmdNote(t *testing.T) {
 				Return(&gitlab.Issue{
 					ID:        1,
 					IID:       1,
-					IssueType: gitlab.Ptr(string(cc.issueType)),
+					IssueType: new(string(cc.issueType)),
 					WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 				}, nil, nil)
 
@@ -127,7 +127,7 @@ func Test_NewCmdNote_error(t *testing.T) {
 				Return(&gitlab.Issue{
 					ID:        1,
 					IID:       1,
-					IssueType: gitlab.Ptr(string(cc.issueType)),
+					IssueType: new(string(cc.issueType)),
 					WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 				}, nil, nil)
 
@@ -163,7 +163,7 @@ func Test_NewCmdNote_error(t *testing.T) {
 			Return(&gitlab.Issue{
 				ID:        1,
 				IID:       1,
-				IssueType: gitlab.Ptr("issue"), // Not an incident
+				IssueType: new("issue"), // Not an incident
 				WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 			}, nil, nil)
 
@@ -202,7 +202,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 				Return(&gitlab.Issue{
 					ID:        1,
 					IID:       1,
-					IssueType: gitlab.Ptr(string(cc.issueType)),
+					IssueType: new(string(cc.issueType)),
 					WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 				}, nil, nil)
 
@@ -257,7 +257,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 					Return(&gitlab.Issue{
 						ID:        1,
 						IID:       1,
-						IssueType: gitlab.Ptr(string(cc.issueType)),
+						IssueType: new(string(cc.issueType)),
 						WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 					}, nil, nil)
 

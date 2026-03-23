@@ -53,7 +53,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			jsonOut := format == "json"
 
 			if m, _ := cmd.Flags().GetString("status"); m != "" {
-				l.Status = gitlab.Ptr(gitlab.BuildStateValue(m))
+				l.Status = new(gitlab.BuildStateValue(m))
 				titleQualifier = m
 			}
 			// Support both --order and --orderBy (deprecated) for backward compatibility
@@ -64,10 +64,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 				orderByValue, _ = cmd.Flags().GetString("order")
 			}
 			if orderByValue != "" {
-				l.OrderBy = gitlab.Ptr(orderByValue)
+				l.OrderBy = new(orderByValue)
 			}
 			if m, _ := cmd.Flags().GetString("sort"); m != "" {
-				l.Sort = gitlab.Ptr(m)
+				l.Sort = new(m)
 			}
 			if p, _ := cmd.Flags().GetInt("page"); p != 0 {
 				l.Page = int64(p)
@@ -76,39 +76,39 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 				l.PerPage = int64(p)
 			}
 			if m, _ := cmd.Flags().GetString("ref"); m != "" {
-				l.Ref = gitlab.Ptr(m)
+				l.Ref = new(m)
 			}
 			if m, _ := cmd.Flags().GetString("scope"); m != "" {
-				l.Scope = gitlab.Ptr(m)
+				l.Scope = new(m)
 			}
 			if m, _ := cmd.Flags().GetString("source"); m != "" {
-				l.Source = gitlab.Ptr(m)
+				l.Source = new(m)
 			}
 			if m, _ := cmd.Flags().GetString("sha"); m != "" {
-				l.SHA = gitlab.Ptr(m)
+				l.SHA = new(m)
 			}
 			if m, _ := cmd.Flags().GetBool("yaml-errors"); m {
-				l.YamlErrors = gitlab.Ptr(true)
+				l.YamlErrors = new(m)
 			}
 			if m, _ := cmd.Flags().GetString("name"); m != "" {
-				l.Name = gitlab.Ptr(m)
+				l.Name = new(m)
 			}
 			if m, _ := cmd.Flags().GetString("username"); m != "" {
-				l.Username = gitlab.Ptr(m)
+				l.Username = new(m)
 			}
 			if m, _ := cmd.Flags().GetString("updated-after"); m != "" {
 				updatedAfterTime, err := time.Parse("2006-01-02T15:04:05Z", m)
 				if err != nil {
 					return err
 				}
-				l.UpdatedAfter = gitlab.Ptr(updatedAfterTime)
+				l.UpdatedAfter = new(updatedAfterTime)
 			}
 			if m, _ := cmd.Flags().GetString("updated-before"); m != "" {
 				updatedBeforeTime, err := time.Parse("2006-01-02T15:04:05Z", m)
 				if err != nil {
 					return err
 				}
-				l.UpdatedBefore = gitlab.Ptr(updatedBeforeTime)
+				l.UpdatedBefore = new(updatedBeforeTime)
 			}
 
 			pipes, _, err := client.Pipelines.ListProjectPipelines(repo.FullName(), l)

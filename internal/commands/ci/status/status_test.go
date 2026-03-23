@@ -31,7 +31,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			branch: "main",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 					Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil)
 
 				// Mock job check to verify pipeline has jobs
@@ -48,7 +48,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline found but has no jobs (e.g., external pipeline)
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil)
 
 				// Mock job check returns empty list
@@ -84,7 +84,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline not found
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(nil, nil, errors.New("not found"))
 
 				// Find and get MR
@@ -115,7 +115,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline not found
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(nil, nil, errors.New("not found"))
 
 				// No MRs found
@@ -133,7 +133,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline not found
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(nil, nil, errors.New("not found"))
 
 				// Find MR but no pipeline
@@ -187,7 +187,7 @@ func TestCiStatusCommand_NoPrompt(t *testing.T) {
 	gomock.InOrder(
 		// Mock a finished pipeline so the command doesn't loop
 		tc.MockPipelines.EXPECT().
-			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 			Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil),
 
 		// Mock job check in GetPipelineWithFallback
@@ -226,7 +226,7 @@ func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
 	gomock.InOrder(
 		// Mock a finished pipeline
 		tc.MockPipelines.EXPECT().
-			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 			Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil),
 
 		// Mock job check in GetPipelineWithFallback
@@ -259,7 +259,7 @@ func TestCiStatus_JSON(t *testing.T) {
 
 	// Mock a finished pipeline
 	tc.MockPipelines.EXPECT().
-		GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+		GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 		Return(&gitlab.Pipeline{ID: 1, Status: "success", Ref: "main"}, nil, nil)
 
 	// Mock job check in GetPipelineWithFallback

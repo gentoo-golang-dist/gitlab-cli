@@ -60,7 +60,7 @@ func TestCIDeleteByStatus(t *testing.T) {
 	tc := gitlabtesting.NewTestClient(t)
 	gomock.InOrder(
 		tc.MockPipelines.EXPECT().
-			ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: gitlab.Ptr(gitlab.Success)}).
+			ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: new(gitlab.Success)}).
 			Return([]*gitlab.PipelineInfo{
 				{
 					ID: 11111111,
@@ -142,7 +142,7 @@ func TestCIDeletedDryRunWithFilterDoesNotDelete(t *testing.T) {
 
 	tc := gitlabtesting.NewTestClient(t)
 	tc.MockPipelines.EXPECT().
-		ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: gitlab.Ptr(gitlab.Success)}).
+		ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: new(gitlab.Success)}).
 		Return([]*gitlab.PipelineInfo{
 			{
 				ID: 11111111,
@@ -168,7 +168,7 @@ func TestCIDeleteBySource(t *testing.T) {
 	tc := gitlabtesting.NewTestClient(t)
 	gomock.InOrder(
 		tc.MockPipelines.EXPECT().
-			ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Source: gitlab.Ptr("push")}).
+			ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Source: new("push")}).
 			Return([]*gitlab.PipelineInfo{
 				{
 					ID: 22222222,
@@ -209,7 +209,7 @@ func TestExtractPipelineIDsFromFlagsWithError(t *testing.T) {
 
 	tc := gitlabtesting.NewTestClient(t)
 	tc.MockPipelines.EXPECT().
-		ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: gitlab.Ptr(gitlab.Success)}).
+		ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: new(gitlab.Success)}).
 		Return(nil, nil, errors.New(`{"message": "403 Forbidden"}`))
 	exec := cmdtest.SetupCmdForTest(t, NewCmdDelete, false, cmdtest.WithGitLabClient(tc.Client))
 
@@ -231,7 +231,7 @@ func TestOptsFromFlags(t *testing.T) {
 	opts := optsFromFlags(flags)
 
 	assert.Nil(t, opts.Source)
-	assert.Equal(t, opts.Status, gitlab.Ptr(gitlab.BuildStateValue("success")))
+	assert.Equal(t, opts.Status, new(gitlab.BuildStateValue("success")))
 
 	lowerTimeBoundary := time.Now().Add(-1 * 24 * time.Hour).Add(-5 * time.Second)
 	upperTimeBoundary := time.Now().Add(-1 * 24 * time.Hour).Add(5 * time.Second)

@@ -68,7 +68,7 @@ func NewCmdReopen(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comma
 			}
 
 			l := &gitlab.UpdateIssueOptions{}
-			l.StateEvent = gitlab.Ptr("reopen")
+			l.StateEvent = new("reopen")
 
 			for _, issue := range issues {
 				valid, msg := issuable.ValidateIncidentCmd(issueType, "reopen", issue)

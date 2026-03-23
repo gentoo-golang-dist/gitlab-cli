@@ -184,9 +184,9 @@ func (o *options) run() error {
 
 		if o.user == "@me" {
 			token, _, err := client.Users.CreatePersonalAccessTokenForCurrentUser(&gitlab.CreatePersonalAccessTokenForCurrentUserOptions{
-				Name:      gitlab.Ptr(o.name),
-				Scopes:    gitlab.Ptr(o.scopes),
-				ExpiresAt: gitlab.Ptr(expirationDate),
+				Name:      new(o.name),
+				Scopes:    new(o.scopes),
+				ExpiresAt: new(expirationDate),
 			})
 			if err != nil {
 				return err

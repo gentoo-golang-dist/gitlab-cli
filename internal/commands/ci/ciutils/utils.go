@@ -29,7 +29,7 @@ func makeHyperlink(s *iostreams.IOStreams, pipeline *gitlab.PipelineInfo) string
 // for merged results pipelines where the direct branch lookup may fail or returns a pipeline with no jobs.
 func GetPipelineWithFallback(ctx context.Context, client *gitlab.Client, repoName, branch string, ios *iostreams.IOStreams) (*gitlab.Pipeline, error) {
 	// First try: Get pipeline by branch name
-	pipeline, _, err := client.Pipelines.GetLatestPipeline(repoName, &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr(branch)}, gitlab.WithContext(ctx))
+	pipeline, _, err := client.Pipelines.GetLatestPipeline(repoName, &gitlab.GetLatestPipelineOptions{Ref: new(branch)}, gitlab.WithContext(ctx))
 	if err == nil {
 		// Check if the pipeline has jobs - some pipelines (e.g., external pipelines) may have no jobs
 		jobs, _, jobsErr := client.Jobs.ListPipelineJobs(repoName, pipeline.ID, &gitlab.ListJobsOptions{
@@ -76,7 +76,7 @@ func GetPipelineWithFallback(ctx context.Context, client *gitlab.Client, repoNam
 // getMRForBranch finds a merge request for the given branch
 func getMRForBranch(ctx context.Context, client *gitlab.Client, repoName, branch string, ios *iostreams.IOStreams) (*gitlab.MergeRequest, error) {
 	opts := &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.Ptr(branch),
+		SourceBranch: new(branch),
 	}
 
 	mrs, err := api.ListMRs(client, repoName, opts)
@@ -368,7 +368,7 @@ func getJobIdInteractive(ctx context.Context, inputs *JobInputs, opts *JobOption
 			return 0, err
 		}
 		// use commit statuses to show external jobs
-		cs, _, err := opts.Client.Commits.GetCommitStatuses(opts.Repo.FullName(), pipeline.SHA, &gitlab.GetCommitStatusesOptions{All: gitlab.Ptr(true)})
+		cs, _, err := opts.Client.Commits.GetCommitStatuses(opts.Repo.FullName(), pipeline.SHA, &gitlab.GetCommitStatusesOptions{All: new(true)})
 		if err != nil {
 			return 0, err
 		}

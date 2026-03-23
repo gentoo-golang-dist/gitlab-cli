@@ -31,7 +31,7 @@ func TestDeployKeyList(t *testing.T) {
 		Title:     "example key",
 		Key:       "ssh-ed25519 example",
 		CanPush:   false,
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testCases := []testCase{
@@ -93,7 +93,7 @@ func TestDeployKeyList_JSON(t *testing.T) {
 		Title:     "example key",
 		Key:       "ssh-ed25519 example",
 		CanPush:   false,
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testClient := gitlabtesting.NewTestClient(t)

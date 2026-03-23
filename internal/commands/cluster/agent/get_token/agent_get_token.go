@@ -128,9 +128,9 @@ func (o *options) cachedPAT(ctx context.Context) (*gitlab.PersonalAccessToken, e
 		patExpiresAt := time.Now().Add(o.tokenExpiryDuration).UTC()
 
 		pat, _, err := client.Users.CreatePersonalAccessTokenForCurrentUser(&gitlab.CreatePersonalAccessTokenForCurrentUserOptions{
-			Name:      gitlab.Ptr(patName),
-			Scopes:    gitlab.Ptr(patScopes),
-			ExpiresAt: gitlab.Ptr(gitlab.ISOTime(patExpiresAt)),
+			Name:      new(patName),
+			Scopes:    new(patScopes),
+			ExpiresAt: new(gitlab.ISOTime(patExpiresAt)),
 		}, gitlab.WithContext(ctx))
 		if err != nil {
 			return nil, err

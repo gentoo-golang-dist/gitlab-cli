@@ -58,7 +58,7 @@ func NewCmdClose(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comman
 			}
 
 			l := &gitlab.UpdateIssueOptions{}
-			l.StateEvent = gitlab.Ptr("close")
+			l.StateEvent = new("close")
 
 			c := f.IO().Color()
 

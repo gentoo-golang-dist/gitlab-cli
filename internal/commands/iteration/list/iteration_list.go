@@ -98,7 +98,7 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	iterationApiOpts := &listProjectIterationsOptions{}
-	iterationApiOpts.IncludeAncestors = gitlab.Ptr(true)
+	iterationApiOpts.IncludeAncestors = new(true)
 
 	if o.page != 0 {
 		iterationApiOpts.Page = int64(o.page)

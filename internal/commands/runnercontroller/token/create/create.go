@@ -80,7 +80,7 @@ func (o *options) run(ctx context.Context) error {
 
 	createOpts := &gitlab.CreateRunnerControllerTokenOptions{}
 	if o.description != "" {
-		createOpts.Description = gitlab.Ptr(o.description)
+		createOpts.Description = new(o.description)
 	}
 
 	token, _, err := client.RunnerControllerTokens.CreateRunnerControllerToken(o.controllerID, createOpts, gitlab.WithContext(ctx))

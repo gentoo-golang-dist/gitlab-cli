@@ -676,7 +676,7 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.Milestone != 0 {
-		mrCreateOpts.MilestoneID = gitlab.Ptr(o.Milestone)
+		mrCreateOpts.MilestoneID = new(o.Milestone)
 	}
 
 	if action == cmdutils.CancelAction {
@@ -710,8 +710,8 @@ func (o *options) run(ctx context.Context) error {
 		// Enable auto-merge if requested
 		if o.AutoMerge {
 			mergeOpts := &gitlab.AcceptMergeRequestOptions{
-				AutoMerge: gitlab.Ptr(true),
-				SHA:       gitlab.Ptr(mr.SHA),
+				AutoMerge: new(true),
+				SHA:       new(mr.SHA),
 			}
 
 			_, _, err = client.MergeRequests.AcceptMergeRequest(headRepo.FullName(), mr.IID, mergeOpts)

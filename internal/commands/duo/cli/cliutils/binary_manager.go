@@ -220,10 +220,10 @@ func (m *BinaryManager) downloadAndInstall(ctx context.Context, platform platfor
 // latestPackageOptions returns options for fetching the latest Duo CLI package.
 func latestPackageOptions() *gitlab.ListProjectPackagesOptions {
 	return &gitlab.ListProjectPackagesOptions{
-		PackageType: gitlab.Ptr("generic"),
-		PackageName: gitlab.Ptr(duoPackageName),
-		OrderBy:     gitlab.Ptr("version"),
-		Sort:        gitlab.Ptr("desc"),
+		PackageType: new("generic"),
+		PackageName: new(duoPackageName),
+		OrderBy:     new("version"),
+		Sort:        new("desc"),
 		ListOptions: gitlab.ListOptions{
 			PerPage: 1,
 		},

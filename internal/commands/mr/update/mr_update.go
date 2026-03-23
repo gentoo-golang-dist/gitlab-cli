@@ -215,14 +215,14 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				mergeTitle = re.ReplaceAllString(mergeTitle, "")
 			}
 
-			l.Title = gitlab.Ptr(mergeTitle)
+			l.Title = new(mergeTitle)
 			if m, _ := cmd.Flags().GetBool("lock-discussion"); m {
 				actions = append(actions, "locked discussion")
-				l.DiscussionLocked = gitlab.Ptr(m)
+				l.DiscussionLocked = new(m)
 			}
 			if m, _ := cmd.Flags().GetBool("unlock-discussion"); m {
 				actions = append(actions, "unlocked discussion")
-				l.DiscussionLocked = gitlab.Ptr(false)
+				l.DiscussionLocked = new(false)
 			}
 
 			if m, _ := cmd.Flags().GetString("description"); m != "" {
@@ -235,17 +235,17 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						return err
 					}
 
-					l.Description = gitlab.Ptr("")
+					l.Description = new("")
 					err = cmdutils.EditorPrompt(cmd.Context(), f.IO(), l.Description, "Body", mr.Description, editor)
 					if err != nil {
 						return err
 					}
 				} else {
-					l.Description = gitlab.Ptr(m)
+					l.Description = new(m)
 				}
 			} else if mergeBody != "" {
 				// Use autofilled body if available and no explicit body provided
-				l.Description = gitlab.Ptr(mergeBody)
+				l.Description = new(mergeBody)
 			}
 
 			if m, _ := cmd.Flags().GetStringSlice("label"); len(m) != 0 {
@@ -258,7 +258,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			}
 			if m, _ := cmd.Flags().GetString("target-branch"); m != "" {
 				actions = append(actions, fmt.Sprintf("set target branch to %q", m))
-				l.TargetBranch = gitlab.Ptr(m)
+				l.TargetBranch = new(m)
 			}
 			if ok := cmd.Flags().Changed("milestone"); ok {
 				if m, _ := cmd.Flags().GetString("milestone"); m != "" || m == "0" {
@@ -267,11 +267,11 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 						return err
 					}
 					actions = append(actions, fmt.Sprintf("added milestone %q", m))
-					l.MilestoneID = gitlab.Ptr(mID)
+					l.MilestoneID = new(mID)
 				} else {
 					// Unassign the Milestone
 					actions = append(actions, "unassigned milestone")
-					l.MilestoneID = gitlab.Ptr(int64(0))
+					l.MilestoneID = new(int64(0))
 				}
 			}
 			if cmd.Flags().Changed("unassign") {
@@ -314,7 +314,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					actions = append(actions, "enabled removal of source branch on merge.")
 				}
 
-				l.RemoveSourceBranch = gitlab.Ptr(!mr.ForceRemoveSourceBranch)
+				l.RemoveSourceBranch = new(!mr.ForceRemoveSourceBranch)
 			}
 
 			if squashBeforeMerge, _ := cmd.Flags().GetBool("squash-before-merge"); squashBeforeMerge {
@@ -325,7 +325,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					actions = append(actions, "enabled squashing of commits before merge.")
 				}
 
-				l.Squash = gitlab.Ptr(!mr.Squash)
+				l.Squash = new(!mr.Squash)
 			}
 
 			fmt.Fprintf(f.IO().StdOut, "- Updating merge request !%d\n", mr.IID)

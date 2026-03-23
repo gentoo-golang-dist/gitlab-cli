@@ -31,7 +31,7 @@ func Test_AddGPGKey(t *testing.T) {
 	validGPGKey := &gitlab.GPGKey{
 		ID:        1,
 		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQENBFnZ...\n-----END PGP PUBLIC KEY BLOCK-----",
-		CreatedAt: gitlab.Ptr(time.Time{}),
+		CreatedAt: new(time.Time{}),
 	}
 
 	testCases := []testCase{

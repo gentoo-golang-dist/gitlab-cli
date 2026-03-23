@@ -208,7 +208,7 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	l := &gitlab.ListProjectMergeRequestsOptions{
-		State: gitlab.Ptr(o.state),
+		State: new(o.state),
 		ListOptions: gitlab.ListOptions{
 			Page:    1,
 			PerPage: 30,
@@ -225,19 +225,19 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		l.AuthorID = gitlab.Ptr(u.ID)
+		l.AuthorID = new(u.ID)
 		o.listType = "search"
 	}
 	if o.sourceBranch != "" {
-		l.SourceBranch = gitlab.Ptr(o.sourceBranch)
+		l.SourceBranch = new(o.sourceBranch)
 		o.listType = "search"
 	}
 	if o.targetBranch != "" {
-		l.TargetBranch = gitlab.Ptr(o.targetBranch)
+		l.TargetBranch = new(o.targetBranch)
 		o.listType = "search"
 	}
 	if o.search != "" {
-		l.Search = gitlab.Ptr(o.search)
+		l.Search = new(o.search)
 		o.listType = "search"
 	}
 	if len(o.labels) > 0 {
@@ -249,7 +249,7 @@ func (o *options) run() error {
 		o.listType = "search"
 	}
 	if o.milestone != "" {
-		l.Milestone = gitlab.Ptr(o.milestone)
+		l.Milestone = new(o.milestone)
 		o.listType = "search"
 	}
 	if o.page != 0 {
@@ -259,26 +259,26 @@ func (o *options) run() error {
 		l.PerPage = int64(o.perPage)
 	}
 	if o.draft {
-		l.WIP = gitlab.Ptr("yes")
+		l.WIP = new("yes")
 		o.listType = "search"
 	}
 	if o.notDraft {
-		l.WIP = gitlab.Ptr("no")
+		l.WIP = new("no")
 		o.listType = "search"
 	}
 
 	if o.mine {
-		l.Scope = gitlab.Ptr("assigned_to_me")
+		l.Scope = new("assigned_to_me")
 		o.listType = "search"
 	}
 
 	if o.orderBy != "" {
-		l.OrderBy = gitlab.Ptr(o.orderBy)
+		l.OrderBy = new(o.orderBy)
 		o.listType = "search"
 	}
 
 	if o.sort != "" {
-		l.Sort = gitlab.Ptr(o.sort)
+		l.Sort = new(o.sort)
 	}
 
 	assigneeIds := make([]int, 0)
@@ -313,23 +313,23 @@ func (o *options) run() error {
 	title := utils.NewListTitle(o.titleQualifier + " merge request")
 
 	if !o.createdBefore.IsZero() {
-		l.CreatedBefore = gitlab.Ptr(o.createdBefore)
+		l.CreatedBefore = new(o.createdBefore)
 	}
 
 	if !o.createdAfter.IsZero() {
-		l.CreatedAfter = gitlab.Ptr(o.createdAfter)
+		l.CreatedAfter = new(o.createdAfter)
 	}
 
 	if !o.deployedBefore.IsZero() {
-		l.DeployedBefore = gitlab.Ptr(o.deployedBefore)
+		l.DeployedBefore = new(o.deployedBefore)
 	}
 
 	if !o.deployedAfter.IsZero() {
-		l.DeployedAfter = gitlab.Ptr(o.deployedAfter)
+		l.DeployedAfter = new(o.deployedAfter)
 	}
 
 	if o.environment != "" {
-		l.Environment = gitlab.Ptr(o.environment)
+		l.Environment = new(o.environment)
 	}
 
 	if o.group != "" {

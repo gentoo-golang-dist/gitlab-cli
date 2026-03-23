@@ -138,10 +138,10 @@ func (o *options) run(ctx context.Context) error {
 
 	forkOpts := &gitlab.ForkProjectOptions{}
 	if o.name != "" {
-		forkOpts.Name = gitlab.Ptr(o.name)
+		forkOpts.Name = new(o.name)
 	}
 	if o.path != "" {
-		forkOpts.Path = gitlab.Ptr(o.path)
+		forkOpts.Path = new(o.path)
 	}
 
 	forkedProject, resp, err := labClient.Projects.ForkProject(o.repoToFork.FullName(), forkOpts)
@@ -426,7 +426,7 @@ func (o *options) run(ctx context.Context) error {
 
 func searchProject(o *options, client *gitlab.Client) (*gitlab.Project, error) {
 	projects, _, err := client.Projects.ListProjects(&gitlab.ListProjectsOptions{
-		Search: gitlab.Ptr(o.repoToFork.RepoName()),
+		Search: new(o.repoToFork.RepoName()),
 	})
 	if err != nil {
 		fmt.Fprintf(o.io.StdErr, "ERROR: Cannot list projects: %v\n", err)
