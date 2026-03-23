@@ -5,6 +5,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	assignCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/assign"
+	createCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/create"
 	deleteCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/delete"
 	jobsCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/jobs"
 	listCmd "gitlab.com/gitlab-org/cli/internal/commands/runner/list"
@@ -21,6 +22,7 @@ func NewCmdRunner(f cmdutils.Factory) *cobra.Command {
 	}
 
 	runnerCmd.AddCommand(assignCmd.NewCmd(f))
+	runnerCmd.AddCommand(createCmd.NewCmd(f))
 	runnerCmd.AddCommand(listCmd.NewCmd(f))
 	runnerCmd.AddCommand(managersCmd.NewCmd(f))
 	runnerCmd.AddCommand(jobsCmd.NewCmd(f))

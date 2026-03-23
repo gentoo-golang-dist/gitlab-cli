@@ -25,6 +25,7 @@ Manages GitLab CI/CD runners for projects, groups, or the entire instance.
 ## Subcommands
 
 - [`assign`](assign.md)
+- [`create`](create.md)
 - [`delete`](delete.md)
 - [`jobs`](jobs.md)
 - [`list`](list.md)
