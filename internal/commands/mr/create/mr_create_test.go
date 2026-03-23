@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -317,10 +317,11 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 	// git -c log.ShowSignature=false show -s --pretty=format:%b deadb00f
 	cs.Stub("commit body")
 
-	// Set up responder for prompts
-	responder := huhtest.NewResponder()
-	responder.AddSelect("Choose a template:", 0)                                              // Select first option: "Open a merge request with commit messages."
-	responder.AddResponse("Description", "- commit msg 1  \n\n- commit msg 2  \ncommit body") // Accept the pre-filled description
+	c := ugh.New(t)
+	c.Expect(ugh.Select("Choose a template:")).
+		Do(ugh.SelectIndex(0))
+	c.Expect(ugh.Input("Description")).
+		Do(ugh.Type("- commit msg 1  \n\n- commit msg 2  \ncommit body"))
 
 	cliStr := []string{
 		"--source-branch", "feat-new-mr",
@@ -366,7 +367,7 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 	}, true,
 		cmdtest.WithGitLabClient(testClient.Client),
 		cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		cmdtest.WithResponder(t, responder),
+		cmdtest.WithConsole(t, c),
 	)
 
 	output, err := exec(cli)

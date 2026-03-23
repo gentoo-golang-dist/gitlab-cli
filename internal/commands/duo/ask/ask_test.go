@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -118,20 +118,19 @@ The appropriate git log --pretty=format:'%h' Git command non-git cmd for listing
 
 			// Set up prompt stub if needed
 			if tc.withPrompt {
-				responder := huhtest.NewResponder()
-				// FIXME: there is a bug in huhtest (I've created https://github.com/survivorbat/huhtest/issues/2)
-				// which leads to wrong answers when the Confirm has an affirmative default.
-				// Therefore, we need to invert our actual answer.
+				c := ugh.New(t)
 				if !tc.withExecution {
-					responder = responder.
-						AddConfirm(runCmdsQuestion, huhtest.ConfirmAffirm).
-						AddConfirm("Run `.*?`", huhtest.ConfirmAffirm).MatchRegexp()
+					c.Expect(ugh.Confirm(runCmdsQuestion)).
+						Do(ugh.Reject)
 				} else {
-					responder = responder.
-						AddConfirm(runCmdsQuestion, huhtest.ConfirmNegative).
-						AddConfirm("Run `.*?`", huhtest.ConfirmNegative).MatchRegexp()
+					c.Expect(ugh.Confirm(runCmdsQuestion)).
+						Do(ugh.Affirm).
+						Expect(ugh.ConfirmRegexp(`Run ` + "`.*?`")).
+						Do(ugh.Affirm).
+						Expect(ugh.ConfirmRegexp(`Run ` + "`.*?`")).
+						Do(ugh.Affirm)
 				}
-				opts = append(opts, cmdtest.WithResponder(t, responder))
+				opts = append(opts, cmdtest.WithConsole(t, c))
 			}
 
 			exec := cmdtest.SetupCmdForTest(t, NewCmdAsk, false, opts...)

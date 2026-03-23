@@ -6,9 +6,9 @@ import (
 	"path"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -71,9 +71,10 @@ func TestCreateNewStack(t *testing.T) {
 				cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, nil, "", glinstance.DefaultHostname).Lab()),
 			}
 			if tc.needsResponder {
-				responder := huhtest.NewResponder()
-				responder.AddResponse("New stack title?", tc.responderInput)
-				opts = append(opts, cmdtest.WithResponder(t, responder))
+				c := ugh.New(t)
+				c.Expect(ugh.Input("New stack title?")).
+					Do(ugh.Type(tc.responderInput))
+				opts = append(opts, cmdtest.WithConsole(t, c))
 			}
 
 			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {

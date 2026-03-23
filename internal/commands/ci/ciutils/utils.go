@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 	"github.com/pkg/errors"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"

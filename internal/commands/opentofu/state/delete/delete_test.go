@@ -5,9 +5,9 @@ package delete
 import (
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
@@ -70,15 +70,17 @@ func TestDelete_YesInPrompt(t *testing.T) {
 	// GIVEN
 	tc := gitlabtesting.NewTestClient(t)
 
+	c := ugh.New(t)
+	c.Expect(ugh.Confirm("Are you sure you want to delete? This action is destructive")).
+		Do(ugh.Affirm)
+
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithGitLabClient(tc.Client),
 		cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
-		cmdtest.WithResponder(t,
-			huhtest.NewResponder().
-				AddConfirm("Are you sure you want to delete? This action is destructive", huhtest.ConfirmAffirm)),
+		cmdtest.WithConsole(t, c),
 	)
 
 	// setup mock expectations
@@ -98,15 +100,17 @@ func TestDelete_NoInPrompt(t *testing.T) {
 	// GIVEN
 	tc := gitlabtesting.NewTestClient(t)
 
+	c := ugh.New(t)
+	c.Expect(ugh.Confirm("Are you sure you want to delete? This action is destructive")).
+		Do(ugh.Reject)
+
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithGitLabClient(tc.Client),
 		cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
-		cmdtest.WithResponder(t,
-			huhtest.NewResponder().
-				AddConfirm("Are you sure you want to delete? This action is destructive", huhtest.ConfirmNegative)),
+		cmdtest.WithConsole(t, c),
 	)
 
 	// setup mock expectations

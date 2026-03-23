@@ -8,14 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sync"
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/acarl005/stripansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -25,6 +25,38 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
+
+const (
+	testConsoleWidth  = 120
+	testConsoleHeight = 40
+)
+
+func testIOStreamsWithConsole(t *testing.T, c *ugh.Console) (*iostreams.IOStreams, context.CancelFunc) {
+	t.Helper()
+
+	appInR, appInW := io.Pipe()
+	appOutR, appOutW := io.Pipe()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	wait := c.Start(ctx, appOutR, appInW)
+
+	ios := iostreams.New(
+		iostreams.WithStdin(appInR, true),
+		iostreams.WithStdout(appOutW, true),
+		iostreams.WithStderr(io.Discard, true),
+		iostreams.WithProgramOptions(tea.WithWindowSize(testConsoleWidth, testConsoleHeight)),
+	)
+
+	cleanup := func() {
+		appInW.Close()
+		appOutW.Close()
+		appOutR.Close()
+		cancel()
+		wait()
+	}
+
+	return ios, cleanup
+}
 
 // testIOStreams creates IOStreams for testing (avoids import cycle with cmdtest)
 func testIOStreams() *iostreams.IOStreams {
@@ -37,51 +69,6 @@ func testIOStreams() *iostreams.IOStreams {
 		iostreams.WithStdout(out, false),
 		iostreams.WithStderr(errOut, false),
 	)
-}
-
-// testIOStreamsWithResponder creates IOStreams with huhtest.Responder support for testing
-func testIOStreamsWithResponder(t *testing.T, responder *huhtest.Responder) (*iostreams.IOStreams, context.CancelFunc) {
-	t.Helper()
-
-	// Create pipes for responder communication
-	rIn, wIn := io.Pipe()
-	rOut, wOut := io.Pipe()
-
-	errOut := &bytes.Buffer{}
-
-	ios := iostreams.New(
-		iostreams.WithStdin(rIn, true),
-		iostreams.WithStdout(wOut, true),
-		iostreams.WithStderr(errOut, false),
-	)
-
-	// Start responder
-	rstdin, rstdout, cancel := responder.Start(t, 1*time.Hour)
-
-	var wg sync.WaitGroup
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		_, _ = io.Copy(wIn, rstdin)
-	}()
-
-	go func() {
-		defer wg.Done()
-		_, _ = io.Copy(rstdout, rOut)
-	}()
-
-	// Create a cancel function that cleans up everything
-	cancelFunc := func() {
-		cancel()
-		_ = rIn.Close()
-		_ = wIn.Close()
-		_ = rOut.Close()
-		_ = wOut.Close()
-		wg.Wait()
-	}
-
-	return ios, cancelFunc
 }
 
 func Test_ParseAssignees(t *testing.T) {
@@ -609,7 +596,7 @@ func Test_PickMetadata(t *testing.T) {
 	}{
 		{
 			name:       "nothing picked",
-			skipReason: "huhtest doesn't support empty multi-select - this case requires manual testing",
+			skipReason: "empty multi-select not yet supported",
 		},
 		{
 			name:     "labels",
@@ -653,10 +640,11 @@ func Test_PickMetadata(t *testing.T) {
 				t.Skip(tC.skipReason)
 			}
 
-			responder := huhtest.NewResponder()
-			responder.AddMultiSelect("Which metadata types to add?", tC.values)
+			c := ugh.New(t)
+			c.Expect(ugh.MultiSelect("Which metadata types to add?")).
+				Do(ugh.ToggleIndices(tC.values...))
 
-			ios, cancel := testIOStreamsWithResponder(t, responder)
+			ios, cancel := testIOStreamsWithConsole(t, c)
 			defer cancel()
 
 			got, err := PickMetadata(t.Context(), ios)
@@ -670,10 +658,10 @@ func Test_PickMetadata(t *testing.T) {
 	t.Run("Prompt fails", func(t *testing.T) {
 		// For testing prompt failure, we can use a responder that doesn't provide a response
 		// This will cause a timeout/error
-		responder := huhtest.NewResponder()
-		// Don't add any response - this will cause an error
+		c := ugh.New(t, ugh.WithSize(testConsoleWidth, testConsoleHeight), ugh.WithTimeout(100*time.Millisecond))
+		// No expects - will timeout
 
-		ios, cancel := testIOStreamsWithResponder(t, responder)
+		ios, cancel := testIOStreamsWithConsole(t, c)
 		defer cancel()
 
 		// Use a short context timeout to make the test fail quickly
@@ -711,7 +699,7 @@ func Test_UsersPrompt(t *testing.T) {
 	}{
 		{
 			name:       "nothing",
-			skipReason: "huhtest doesn't support empty multi-select",
+			skipReason: "empty multi-select not yet supported",
 		},
 		{
 			name:               "reporter",
@@ -812,9 +800,10 @@ func Test_UsersPrompt(t *testing.T) {
 				return
 			}
 
-			responder := huhtest.NewResponder()
-			responder.AddMultiSelect("Select some users", tC.choiceIndices)
-			io, cancel = testIOStreamsWithResponder(t, responder)
+			c := ugh.New(t)
+			c.Expect(ugh.MultiSelect("Select some users")).
+				Do(ugh.ToggleIndices(tC.choiceIndices...))
+			io, cancel = testIOStreamsWithConsole(t, c)
 			defer cancel()
 
 			ctx, ctxCancel := context.WithTimeout(t.Context(), 2*time.Second)
@@ -835,7 +824,7 @@ func Test_UsersPrompt(t *testing.T) {
 	}
 
 	t.Run("Prompt fails", func(t *testing.T) {
-		t.Skip("huhtest doesn't support simulating prompt failures - this case requires manual testing")
+		t.Skip("prompt failure simulation not yet supported")
 	})
 
 	t.Run("API Failed", func(t *testing.T) {
@@ -866,9 +855,10 @@ func Test_UsersPrompt(t *testing.T) {
 			}, nil
 		}
 
-		responder := huhtest.NewResponder()
-		responder.AddMultiSelect("Select assignees", []int{1}) // Select second option: "bar (developer)"
-		io, cancel := testIOStreamsWithResponder(t, responder)
+		c := ugh.New(t)
+		c.Expect(ugh.MultiSelect("Select assignees")).
+			Do(ugh.ToggleIndices(1))
+		io, cancel := testIOStreamsWithConsole(t, c)
 		defer cancel()
 
 		ctx, ctxCancel := context.WithTimeout(t.Context(), 2*time.Second)
@@ -925,12 +915,11 @@ func Test_MilestonesPrompt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.name, func(t *testing.T) {
-			stdin, stdout, cancel := huhtest.NewResponder().
-				AddSelect("Select milestone", tC.inputIdx).
-				Start(t, 1*time.Hour)
-			t.Cleanup(cancel)
-
-			ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true))
+			c := ugh.New(t)
+			c.Expect(ugh.Select("Select milestone")).
+				Do(ugh.SelectIndex(tC.inputIdx))
+			ios, cleanup := testIOStreamsWithConsole(t, c)
+			t.Cleanup(cleanup)
 
 			var got int64
 			err := MilestonesPrompt(t.Context(), &got, &gitlab.Client{}, repoRemote, ios)
@@ -1097,11 +1086,11 @@ func Test_LabelsPromptAPIFail(t *testing.T) {
 
 func Test_LabelsPromptPromptsFail(t *testing.T) {
 	t.Run("MultiSelect", func(t *testing.T) {
-		t.Skip("huhtest doesn't support simulating prompt failures - this case requires manual testing")
+		t.Skip("prompt failure simulation not yet supported")
 	})
 
 	t.Run("AskQuestionWithInput", func(t *testing.T) {
-		t.Skip("huhtest doesn't support simulating prompt failures - this case requires manual testing")
+		t.Skip("prompt failure simulation not yet supported")
 	})
 }
 
@@ -1160,13 +1149,13 @@ func Test_LabelsPromptMultiSelect(t *testing.T) {
 		},
 		{
 			name:       "nothing",
-			skipReason: "huhtest doesn't support empty multi-select",
+			skipReason: "empty multi-select not yet supported",
 		},
 		{
 			name:       "nothing-but-respect-already-defined",
 			labels:     []string{"qux"},
 			expected:   []string{"qux"},
-			skipReason: "huhtest doesn't support empty multi-select",
+			skipReason: "empty multi-select not yet supported",
 		},
 	}
 	for _, tC := range testCases {
@@ -1175,9 +1164,10 @@ func Test_LabelsPromptMultiSelect(t *testing.T) {
 				t.Skip(tC.skipReason)
 			}
 
-			responder := huhtest.NewResponder()
-			responder.AddMultiSelect("Select labels", tC.choiceIndices)
-			ios, cancel := testIOStreamsWithResponder(t, responder)
+			c := ugh.New(t)
+			c.Expect(ugh.MultiSelect("Select labels")).
+				Do(ugh.ToggleIndices(tC.choiceIndices...))
+			ios, cancel := testIOStreamsWithConsole(t, c)
 			defer cancel()
 
 			ctx, ctxCancel := context.WithTimeout(t.Context(), 2*time.Second)
@@ -1234,9 +1224,10 @@ func Test_LabelsPromptAskQuestionWithInput(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.name, func(t *testing.T) {
-			responder := huhtest.NewResponder()
-			responder.AddResponse("Label(s) (comma-separated)", tC.input)
-			ios, cancel := testIOStreamsWithResponder(t, responder)
+			c := ugh.New(t)
+			c.Expect(ugh.Input("Label(s) (comma-separated)")).
+				Do(ugh.Type(tC.input))
+			ios, cancel := testIOStreamsWithConsole(t, c)
 			defer cancel()
 
 			ctx, ctxCancel := context.WithTimeout(t.Context(), 2*time.Second)
@@ -1288,12 +1279,11 @@ func Test_ConfirmSubmission(t *testing.T) {
 		}
 		for _, tC := range testCases {
 			t.Run(tC.name, func(t *testing.T) {
-				stdin, stdout, cancel := huhtest.NewResponder().
-					AddSelect("What's next?", tC.optionIdx).
-					Start(t, 1*time.Hour)
-				t.Cleanup(cancel)
-
-				ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true))
+				c := ugh.New(t)
+				c.Expect(ugh.Select("What's next?")).
+					Do(ugh.SelectIndex(tC.optionIdx))
+				ios, cleanup := testIOStreamsWithConsole(t, c)
+				t.Cleanup(cleanup)
 
 				got, err := ConfirmSubmission(t.Context(), ios, tC.allowAddMetadata)
 				assert.NoError(t, err)

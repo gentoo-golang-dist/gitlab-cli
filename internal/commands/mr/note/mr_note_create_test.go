@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -169,8 +169,9 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 				}, nil, nil
 			})
 
-		responder := huhtest.NewResponder()
-		responder.AddResponse("Note message:", "some note message")
+		c := ugh.New(t)
+		c.Expect(ugh.Input("Note message:")).
+			Do(ugh.Type("some note message"))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
@@ -178,7 +179,7 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-			cmdtest.WithResponder(t, responder),
+			cmdtest.WithConsole(t, c),
 		)
 
 		output, err := exec(`1`)
@@ -201,8 +202,9 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 				},
 			}, nil, nil)
 
-		responder := huhtest.NewResponder()
-		responder.AddResponse("Note message:", "")
+		c := ugh.New(t)
+		c.Expect(ugh.Input("Note message:")).
+			Do(ugh.Type(""))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
@@ -210,7 +212,7 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-			cmdtest.WithResponder(t, responder),
+			cmdtest.WithConsole(t, c),
 		)
 
 		_, err := exec(`1`)
@@ -247,8 +249,9 @@ func Test_mrNoteCreate_no_duplicate(t *testing.T) {
 				{ID: 333, Body: "ccc"},
 			}, nil, nil)
 
-		responder := huhtest.NewResponder()
-		responder.AddResponse("Note message:", "some note message")
+		c := ugh.New(t)
+		c.Expect(ugh.Input("Note message:")).
+			Do(ugh.Type("some note message"))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdNote(f)
@@ -256,7 +259,7 @@ func Test_mrNoteCreate_no_duplicate(t *testing.T) {
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-			cmdtest.WithResponder(t, responder),
+			cmdtest.WithConsole(t, c),
 		)
 
 		output, err := exec(`1 --unique`)
