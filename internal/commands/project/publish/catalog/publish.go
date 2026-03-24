@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -73,8 +73,7 @@ func NewCmdPublishCatalog(f cmdutils.Factory) *cobra.Command {
       %[1]stemplates/secret-detection/template.yml%[1]s.
     `, "`"),
 		Example: heredoc.Doc(`
-			- glab repo publish catalog v1.2.3
-		`),
+			glab repo publish catalog v1.2.3`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

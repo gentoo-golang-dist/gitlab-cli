@@ -14,8 +14,7 @@ func NewCmdSnippet(f cmdutils.Factory) *cobra.Command {
 		Short: `Create, view and manage snippets.`,
 		Long:  ``,
 		Example: heredoc.Doc(`
-			$ glab snippet create --title "Title of the snippet" --filename "main.go"
-		`),
+			glab snippet create --title "Title of the snippet" --filename "main.go"`),
 		Annotations: map[string]string{
 			"help:arguments": heredoc.Doc(`
 			A snippet can be supplied as argument in the following format:

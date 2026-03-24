@@ -18,14 +18,13 @@ func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
 		Aliases: []string{},
 		Example: heredoc.Doc(`
 			# Interactively select a job to retry
-			$ glab ci retry
+			glab ci retry
 
 			# Retry job with ID 224356863
-			$ glab ci retry 224356863
+			glab ci retry 224356863
 
 			# Retry job with the name 'lint'
-			$ glab ci retry lint
-		`),
+			glab ci retry lint`),
 		Long: ``,
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"syscall"
 
+	"charm.land/fang/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/fang"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/api"

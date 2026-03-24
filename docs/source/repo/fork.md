@@ -1,5 +1,5 @@
 ---
-title: glab repo fork
+title: '`glab repo fork`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,10 +19,9 @@ glab repo fork <repo> [flags]
 ## Examples
 
 ```console
-$ glab repo fork
-$ glab repo fork namespace/repo
-$ glab repo fork namespace/repo --clone
-
+glab repo fork
+glab repo fork namespace/repo
+glab repo fork namespace/repo --clone
 ```
 
 ## Options

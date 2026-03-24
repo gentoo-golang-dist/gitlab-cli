@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -46,8 +46,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Use:   "list",
 		Short: `Get list of repositories.`,
 		Example: heredoc.Doc(`
-			$ glab repo list
-		`),
+			glab repo list`),
 		Args:    cobra.ExactArgs(0),
 		Aliases: []string{"ls"},
 		Annotations: map[string]string{
@@ -66,7 +65,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	repoListCmd.Flags().BoolVarP(&opts.includeSubgroups, "include-subgroups", "G", false, "Include projects in subgroups of this group. Default is false. Used with the '--group' flag.")
 	repoListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	repoListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(repoListCmd, &opts.outputFormat)
 	repoListCmd.Flags().BoolVarP(&opts.filterAll, "all", "a", false, "List all projects on the instance.")
 	repoListCmd.Flags().BoolVarP(&opts.filterOwner, "mine", "m", false, "List only projects you own. Default if no filters are provided.")
 	repoListCmd.Flags().StringVarP(&opts.user, "user", "u", "", "List user projects.")
@@ -138,35 +137,35 @@ func listAllProjects(apiClient *gitlab.Client, opts options) ([]*gitlab.Project,
 			PerPage: int64(opts.perPage),
 			Page:    int64(opts.page),
 		},
-		OrderBy: gitlab.Ptr(opts.orderBy),
+		OrderBy: new(opts.orderBy),
 	}
 
 	// Other filters only valid if FilterAll not true
 	if !opts.filterAll {
 		if !opts.filterStarred && !opts.filterMember {
 			// if no other filters are passed, default to Owned filter
-			l.Owned = gitlab.Ptr(true)
+			l.Owned = new(true)
 		}
 
 		if opts.filterOwner {
-			l.Owned = gitlab.Ptr(opts.filterOwner)
+			l.Owned = new(opts.filterOwner)
 		}
 
 		if opts.filterStarred {
-			l.Starred = gitlab.Ptr(opts.filterStarred)
+			l.Starred = new(opts.filterStarred)
 		}
 
 		if opts.filterMember {
-			l.Membership = gitlab.Ptr(opts.filterMember)
+			l.Membership = new(opts.filterMember)
 		}
 	}
 
 	if opts.archivedSet {
-		l.Archived = gitlab.Ptr(opts.archived)
+		l.Archived = new(opts.archived)
 	}
 
 	if opts.sort != "" {
-		l.Sort = gitlab.Ptr(opts.sort)
+		l.Sort = new(opts.sort)
 	}
 
 	return apiClient.Projects.ListProjects(l)
@@ -186,35 +185,35 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 			PerPage: int64(opts.perPage),
 			Page:    int64(opts.page),
 		},
-		OrderBy: gitlab.Ptr(opts.orderBy),
+		OrderBy: new(opts.orderBy),
 	}
 
 	// Other filters only valid if FilterAll not true
 	if !opts.filterAll {
 		if !opts.filterStarred && !opts.filterMember {
 			// if no other filters are passed, default to Owned filter
-			l.Owned = gitlab.Ptr(true)
+			l.Owned = new(true)
 		}
 
 		if opts.filterOwner {
-			l.Owned = gitlab.Ptr(opts.filterOwner)
+			l.Owned = new(opts.filterOwner)
 		}
 
 		if opts.filterStarred {
-			l.Starred = gitlab.Ptr(opts.filterStarred)
+			l.Starred = new(opts.filterStarred)
 		}
 	}
 
 	if opts.includeSubgroups {
-		l.IncludeSubGroups = gitlab.Ptr(true)
+		l.IncludeSubGroups = new(true)
 	}
 
 	if opts.archivedSet {
-		l.Archived = gitlab.Ptr(opts.archived)
+		l.Archived = new(opts.archived)
 	}
 
 	if opts.sort != "" {
-		l.Sort = gitlab.Ptr(opts.sort)
+		l.Sort = new(opts.sort)
 	}
 
 	return apiClient.Groups.ListGroupProjects(group.ID, l)
@@ -222,7 +221,7 @@ func listAllProjectsForGroup(apiClient *gitlab.Client, opts options) ([]*gitlab.
 
 func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.Project, *gitlab.Response, error) {
 	l := &gitlab.ListProjectsOptions{
-		OrderBy: gitlab.Ptr(opts.orderBy),
+		OrderBy: new(opts.orderBy),
 		ListOptions: gitlab.ListOptions{
 			PerPage: int64(opts.perPage),
 			Page:    int64(opts.page),
@@ -230,15 +229,15 @@ func listAllProjectsForUser(apiClient *gitlab.Client, opts options) ([]*gitlab.P
 	}
 
 	if opts.archivedSet {
-		l.Archived = gitlab.Ptr(opts.archived)
+		l.Archived = new(opts.archived)
 	}
 
 	if opts.filterStarred {
-		l.Starred = gitlab.Ptr(opts.filterStarred)
+		l.Starred = new(opts.filterStarred)
 	}
 
 	if opts.sort != "" {
-		l.Sort = gitlab.Ptr(opts.sort)
+		l.Sort = new(opts.sort)
 	}
 
 	return apiClient.Projects.ListUserProjects(opts.user, l)

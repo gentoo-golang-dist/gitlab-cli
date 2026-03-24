@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 //go:embed pipeline_inputs.md

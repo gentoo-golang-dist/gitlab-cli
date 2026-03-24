@@ -1,5 +1,5 @@
 ---
-title: glab repo create
+title: '`glab repo create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -29,21 +29,20 @@ glab repo create [path] [flags]
 
 ```console
 # Create a repository under your account using the current directory name.
-$ glab repo create
+glab repo create
 
 # Create a repository under a group using the current directory name.
-$ glab repo create --group glab-cli
+glab repo create --group glab-cli
 
 # Create a repository with a specific name.
-$ glab repo create my-project
+glab repo create my-project
 
 # Create a repository for a group.
-$ glab repo create glab-cli/my-project
+glab repo create glab-cli/my-project
 
 # Create on a host other than gitlab.com.
-$ GITLAB_HOST=example.com glab repo create
-$ glab repo create <host>/path/to/repository
-
+GITLAB_HOST=example.com glab repo create
+glab repo create <host>/path/to/repository
 ```
 
 ## Options

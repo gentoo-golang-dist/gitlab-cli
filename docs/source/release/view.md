@@ -1,5 +1,5 @@
 ---
-title: glab release view
+title: '`glab release view`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,17 +26,17 @@ glab release view <tag> [flags]
 
 ```console
 # View the latest release of a GitLab repository
-$ glab release view
+glab release view
 
 # View a release with specified tag name
-$ glab release view v1.0.1
-
+glab release view v1.0.1
 ```
 
 ## Options
 
 ```plaintext
-  -w, --web   Open the release in the browser.
+  -F, --output string   Format output as: text, json. (default "text")
+  -w, --web             Open the release in the browser.
 ```
 
 ## Options inherited from parent commands

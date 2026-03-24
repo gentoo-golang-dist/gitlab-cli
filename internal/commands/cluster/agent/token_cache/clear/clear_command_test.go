@@ -15,8 +15,8 @@ import (
 	"github.com/zalando/go-keyring"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -110,7 +110,7 @@ func TestClear_WithRevoke_ActiveToken(t *testing.T) {
 	cacheDir := t.TempDir()
 	setUserCacheDir(t, cacheDir)
 
-	expires := gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(24 * time.Hour)))
+	expires := new(gitlab.ISOTime(time.Now().UTC().Add(24 * time.Hour)))
 	pat := &gitlab.PersonalAccessToken{ID: 456, Name: "active-token", ExpiresAt: expires, Revoked: false}
 	writeFSToken(t, tc.Client.BaseURL().String(), 10, pat)
 
@@ -136,13 +136,13 @@ func TestClear_WithRevoke_SkipsExpiredToken(t *testing.T) {
 	cacheDir := t.TempDir()
 	setUserCacheDir(t, cacheDir)
 
-	expires := gitlab.Ptr(gitlab.ISOTime(time.Now().Add(-24 * time.Hour)))
+	expires := new(gitlab.ISOTime(time.Now().Add(-24 * time.Hour)))
 	pat := &gitlab.PersonalAccessToken{ID: 789, Name: "expired-token", ExpiresAt: expires, Revoked: false}
 	writeFSToken(t, tc.Client.BaseURL().String(), 15, pat)
 
 	// no API call expected for expired token
 	tc.MockPersonalAccessTokens.EXPECT().
-		RevokePersonalAccessToken(gomock.Any(), gomock.Any()).
+		RevokePersonalAccessTokenByID(gomock.Any(), gomock.Any()).
 		Times(0)
 
 	out, err := exec("--filesystem --keyring=false --revoke=true")
@@ -164,7 +164,7 @@ func TestClear_WithRevoke_SkipsAlreadyRevokedToken(t *testing.T) {
 
 	// no API call expected for already revoked token
 	tc.MockPersonalAccessTokens.EXPECT().
-		RevokePersonalAccessToken(gomock.Any(), gomock.Any()).
+		RevokePersonalAccessTokenByID(gomock.Any(), gomock.Any()).
 		Times(0)
 
 	out, err := exec("--filesystem --keyring=false --revoke=true")

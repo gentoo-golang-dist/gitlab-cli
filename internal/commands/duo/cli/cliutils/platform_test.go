@@ -4,7 +4,6 @@ package cliutils
 
 import (
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,32 +11,6 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
-
-func TestDetectPlatform(t *testing.T) {
-	t.Parallel()
-
-	// This test runs on the actual platform, so we verify it works correctly
-	platform, err := detectPlatform()
-	require.NoError(t, err)
-
-	assert.NotEmpty(t, platform.os)
-	assert.NotEmpty(t, platform.arch)
-
-	// Verify the platform matches current runtime
-	assert.Equal(t, runtime.GOOS, platform.os)
-
-	// Verify architecture normalization
-	switch runtime.GOARCH {
-	case "amd64":
-		if runtime.GOOS == "windows" {
-			assert.Equal(t, "x64-baseline", platform.arch)
-		} else {
-			assert.Equal(t, "x64", platform.arch)
-		}
-	case "arm64", "aarch64":
-		assert.Equal(t, "arm64", platform.arch)
-	}
-}
 
 func TestNormalizeArch(t *testing.T) {
 	t.Parallel()

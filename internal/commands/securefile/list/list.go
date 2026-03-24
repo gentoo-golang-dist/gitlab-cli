@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -21,18 +21,17 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
-			List all secure files.
-			- glab securefile list
+			# List all secure files.
+			glab securefile list
 
-			List all secure files with 'cmd' alias.
-			- glab securefile ls
+			# List all secure files with 'cmd' alias.
+			glab securefile ls
 
-			List a specific page of secure files.
-			- glab securefile list --page 2
+			# List a specific page of secure files.
+			glab securefile list --page 2
 
-			List a specific page of secure files, with a custom page size.
-			- glab securefile list --page 2 --per-page 10
-		`),
+			# List a specific page of secure files, with a custom page size.
+			glab securefile list --page 2 --per-page 10`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

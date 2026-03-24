@@ -1,5 +1,5 @@
 ---
-title: glab issue
+title: '`glab issue`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -15,11 +15,10 @@ Work with GitLab issues.
 ## Examples
 
 ```console
-$ glab issue list
-$ glab issue create --label --confidential
-$ glab issue view --web 123
-$ glab issue note -m "closing because !123 was merged" <issue number>
-
+glab issue list
+glab issue create --label --confidential
+glab issue view --web 123
+glab issue note -m "closing because !123 was merged" <issue number>
 ```
 
 ## Options

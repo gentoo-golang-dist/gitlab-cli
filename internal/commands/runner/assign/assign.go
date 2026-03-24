@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -34,17 +34,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use:   "assign <runner-id> [flags]",
 		Short: "Assign a runner to a project.",
 		Long: heredoc.Doc(`
-			Assigns an available runner to a project.
-			Specify the project with -R (e.g. owner/repo).
-			Requires Maintainer or Owner of the project.
+			Assigns a runner to a project.
+
+			Requires the Maintainer or Owner role for the project.
 		`),
 		Example: heredoc.Doc(`
 			# Assign runner 9 to the current repository
-			$ glab runner assign 9
+			glab runner assign 9
 
 			# Assign runner 9 to a specific repository
-			$ glab runner assign 9 -R owner/repo
-		`),
+			glab runner assign 9 -R owner/repo`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",

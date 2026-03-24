@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
@@ -120,9 +120,9 @@ func (c *Context) uploadAsGenericPackage(projectID, tagName string, packageName 
 	}
 	assetURL := c.Client.BaseURL().JoinPath(assetPath)
 	return &ReleaseAsset{
-		Name:            gitlab.Ptr(file.Label),
-		URL:             gitlab.Ptr(assetURL.String()),
-		DirectAssetPath: gitlab.Ptr("/" + file.Name),
+		Name:            new(file.Label),
+		URL:             new(assetURL.String()),
+		DirectAssetPath: new("/" + file.Name),
 		LinkType:        file.Type,
 	}, nil
 }
@@ -161,9 +161,9 @@ func (c *Context) uploadAsProjectMarkdownFile(projectID string, file *ReleaseFil
 	assetURL.Path = projectFile.FullPath
 
 	return &ReleaseAsset{
-		Name:            gitlab.Ptr(file.Label),
-		URL:             gitlab.Ptr(assetURL.String()),
-		DirectAssetPath: gitlab.Ptr("/" + file.Name),
+		Name:            new(file.Label),
+		URL:             new(assetURL.String()),
+		DirectAssetPath: new("/" + file.Name),
 		LinkType:        file.Type,
 	}, nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -43,11 +43,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Remove a user by username
-			$ glab repo members remove --username=john.doe
+			glab repo members remove --username=john.doe
 
 			# Remove a user by ID
-			$ glab repo members remove --user-id=123
-		`),
+			glab repo members remove --user-id=123`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",
@@ -103,7 +102,7 @@ func (o *options) run() error {
 	case o.username != "":
 		// Get user ID from username
 		users, _, err := client.Users.ListUsers(&gitlab.ListUsersOptions{
-			Username: gitlab.Ptr(o.username),
+			Username: new(o.username),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to find user %s: %w", o.username, err)

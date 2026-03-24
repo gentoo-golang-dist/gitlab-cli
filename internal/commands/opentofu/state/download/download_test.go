@@ -4,13 +4,14 @@ package download
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -31,7 +32,7 @@ func TestDownload_Latest(t *testing.T) {
 	// setup mock expectations
 	tc.MockTerraformStates.EXPECT().
 		DownloadLatest("OWNER/REPO", "production", gomock.Any()).
-		Return(bytes.NewBufferString("hello world"), nil, nil)
+		Return(io.NopCloser(bytes.NewBufferString("hello world")), nil, nil)
 
 	// WHEN
 	out, err := exec("production")
@@ -56,7 +57,7 @@ func TestDownload_WithSerial(t *testing.T) {
 	// setup mock expectations
 	tc.MockTerraformStates.EXPECT().
 		Download("OWNER/REPO", "production", uint64(42), gomock.Any()).
-		Return(bytes.NewBufferString("hello world"), nil, nil)
+		Return(io.NopCloser(bytes.NewBufferString("hello world")), nil, nil)
 
 	// WHEN
 	out, err := exec("production 42")

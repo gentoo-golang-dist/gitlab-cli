@@ -47,7 +47,7 @@ BUILDLOC ?= ./bin/glab
 
 # Dependency versions
 GOTESTSUM_VERSION = 1.13.0
-GOLANGCI_LINT_VERSION = 2.10.1
+GOLANGCI_LINT_VERSION = 2.11.1
 
 # Add the ability to override some variables
 # Use with care
@@ -123,6 +123,15 @@ test: GITLAB_TOKEN=
 test: export CI_PROJECT_PATH=$(shell git remote get-url origin)
 test: bin/gotestsum ## Run tests
 	$(GOTEST) --no-summary=skipped --format-hide-empty-pkg --junitfile ./coverage.xml --format ${TEST_FORMAT} -- -coverprofile=./coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+
+.PHONY: test-changed
+test-changed: bin/gotestsum ## Run tests on packages changed vs origin/main (including reverse dependencies)
+	$(eval CHANGED_PKGS := $(shell ./scripts/changed-test-pkgs.sh))
+	@if [ -z "$(CHANGED_PKGS)" ]; then \
+		echo "No Go packages changed vs origin/main — skipping tests"; \
+	else \
+		$(MAKE) test TEST_PKGS="$(CHANGED_PKGS)"; \
+	fi
 
 .PHONY: test-race
 test-race: TEST_FORMAT ?= short

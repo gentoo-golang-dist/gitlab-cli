@@ -4,7 +4,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -17,10 +17,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-			$ glab label create
-			$ glab label new
-			$ glab label create -R owner/repo
-		`),
+			glab label create
+			glab label new
+			glab label create -R owner/repo`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -41,18 +40,18 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			l := &gitlab.CreateLabelOptions{}
 
 			if s, _ := cmd.Flags().GetString("name"); s != "" {
-				l.Name = gitlab.Ptr(s)
+				l.Name = new(s)
 			}
 
 			if s, _ := cmd.Flags().GetString("color"); s != "" {
-				l.Color = gitlab.Ptr(s)
+				l.Color = new(s)
 			}
 			if s, _ := cmd.Flags().GetString("description"); s != "" {
-				l.Description = gitlab.Ptr(s)
+				l.Description = new(s)
 			}
 			if cmd.Flags().Changed("priority") {
 				if s, err := cmd.Flags().GetInt("priority"); err == nil {
-					l.Priority = gitlab.Ptr(int64(s))
+					l.Priority = gitlab.NewNullableWithValue(int64(s))
 				} else {
 					return err
 				}

@@ -7,18 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	catalog "gitlab.com/gitlab-org/cli/internal/commands/project/publish/catalog"
@@ -115,36 +116,39 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Args: cmdutils.MinimumArgs(1, "no tag name provided."),
 		Example: heredoc.Docf(`
 			# Create a release interactively
-			$ glab release create v1.0.1
+			glab release create v1.0.1
 
 			# Create a release non-interactively by specifying a note
-			$ glab release create v1.0.1 --notes "bugfix release"
+			glab release create v1.0.1 --notes "bugfix release"
 
 			# Use release notes from a file
-			$ glab release create v1.0.1 -F changelog.md
+			glab release create v1.0.1 -F changelog.md
+
+			# Update an existing release (e.g., change the release date) without modifying notes
+			glab release create v1.0.1 --released-at "2024-01-15T10:00:00Z"
 
 			# Upload a release asset with a display name (type will default to 'other')
-			$ glab release create v1.0.1 '/path/to/asset.zip#My display label'
+			glab release create v1.0.1 '/path/to/asset.zip#My display label'
 
 			# Upload a release asset with a display name and type
-			$ glab release create v1.0.1 '/path/to/asset.png#My display label#image'
+			glab release create v1.0.1 '/path/to/asset.png#My display label#image'
 
 			# Upload all assets in a specified folder (types default to 'other')
-			$ glab release create v1.0.1 ./dist/*
+			glab release create v1.0.1 ./dist/*
 
 			# Upload all tarballs in a specified folder (types default to 'other')
-			$ glab release create v1.0.1 ./dist/*.tar.gz
+			glab release create v1.0.1 ./dist/*.tar.gz
 
 			# Create a release with assets specified as JSON object
-			$ glab release create v1.0.1 --assets-links='
-			  [
-			    {
-			      "name": "Asset1",
-			      "url":"https://<domain>/some/location/1",
-			      "link_type": "other",
-			      "direct_asset_path": "path/to/file"
-			    }
-			  ]'
+			glab release create v1.0.1 --assets-links='
+			[
+			  {
+			    "name": "Asset1",
+			    "url":"https://<domain>/some/location/1",
+			    "link_type": "other",
+			    "direct_asset_path": "path/to/file"
+			  }
+			]'
 
 			# (EXPERIMENTAL) Create a release and publish it to the GitLab CI/CD catalog
 			# Requires the feature flag %[1]sci_release_cli_catalog_publish_option%[1]s to be enabled
@@ -163,8 +167,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			#   for components that bundle together multiple related files. For example,
 			#   %[1]stemplates/secret-detection/template.yml%[1]s.
 
-			$ glab release create v1.0.1 --publish-to-catalog
-		`, "`"),
+			glab release create v1.0.1 --publish-to-catalog`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -226,13 +229,6 @@ func (o *options) complete(flags *pflag.FlagSet, args []string) error {
 		return err
 	}
 	o.noteProvided = o.notes != ""
-
-	// Validate that we can prompt for notes if they weren't provided
-	if !o.noteProvided && !o.io.IsInteractive() {
-		return &cmdutils.FlagError{
-			Err: errors.New("--notes or --notes-file required for non-interactive mode"),
-		}
-	}
 
 	if !flags.Changed("use-package-registry") {
 		if usePackageRegistry, err := strconv.ParseBool(os.Getenv("GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY")); err != nil {
@@ -297,7 +293,13 @@ func resolveNotesFileOrText(opts *options) (string, error) {
 
 	f, err := root.Open(opts.experimentalNotesTextOrFile)
 	if err != nil {
-		return opts.experimentalNotesTextOrFile, nil
+		// If the file simply doesn't exist, treat the value as text.
+		// For any other error (e.g., permission denied), report it so
+		// the user knows the file was found but couldn't be read.
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrInvalid) {
+			return opts.experimentalNotesTextOrFile, nil
+		}
+		return "", fmt.Errorf("could not open file %q: %w", opts.experimentalNotesTextOrFile, err)
 	}
 	defer func() {
 		cerr := f.Close()
@@ -308,8 +310,7 @@ func resolveNotesFileOrText(opts *options) (string, error) {
 
 	b, err := io.ReadAll(f)
 	if err != nil {
-		// Rule 3: fallback to using the value as text
-		return opts.experimentalNotesTextOrFile, nil
+		return "", fmt.Errorf("could not read file %q: %w", opts.experimentalNotesTextOrFile, err)
 	}
 
 	return string(b), nil

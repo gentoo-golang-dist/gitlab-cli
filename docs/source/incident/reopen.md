@@ -1,5 +1,5 @@
 ---
-title: glab incident reopen
+title: '`glab incident reopen`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,10 +25,9 @@ open
 ## Examples
 
 ```console
-$ glab incident reopen 123
-$ glab incident open 123
-$ glab incident reopen https://gitlab.com/NAMESPACE/REPO/-/issues/incident/123
-
+glab incident reopen 123
+glab incident open 123
+glab incident reopen https://gitlab.com/NAMESPACE/REPO/-/issues/incident/123
 ```
 
 ## Options inherited from parent commands

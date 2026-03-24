@@ -1,13 +1,14 @@
 package note
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -20,23 +21,23 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd := &cobra.Command{
 		Use:     "note [<id> | <branch>]",
 		Aliases: []string{"comment"},
-		Short:   "Add a comment or note to a merge request, or resolve/unresolve discussions.",
+		Short:   "Manage comments and discussions on a merge request.",
 		Long:    ``,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request with ID 123
-			$ glab mr note 123 -m "Looks good to me!"
+			glab mr note 123 -m "Looks good to me!"
 
 			# Add a comment to the merge request for the current branch
-			$ glab mr note -m "LGTM"
+			glab mr note -m "LGTM"
 
 			# Open your editor to compose a multi-line comment
-			$ glab mr note 123
+			glab mr note 123
 
 			# Resolve a discussion by note ID
-			$ glab mr note 123 --resolve 3107030349
+			glab mr note 123 --resolve 3107030349
 
 			# Unresolve a discussion by note ID
-			$ glab mr note 123 --unresolve 3107030349`),
+			glab mr note 123 --unresolve 3107030349`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -57,11 +58,11 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			unresolveNoteID, _ := cmd.Flags().GetInt64("unresolve")
 
 			if resolveNoteID != 0 {
-				return resolveDiscussion(client, f, mr, repo, resolveNoteID, true)
+				return resolveDiscussion(cmd.Context(), client, f, mr, repo, resolveNoteID, true)
 			}
 
 			if unresolveNoteID != 0 {
-				return resolveDiscussion(client, f, mr, repo, unresolveNoteID, false)
+				return resolveDiscussion(cmd.Context(), client, f, mr, repo, unresolveNoteID, false)
 			}
 
 			// Create note (existing behavior)
@@ -117,68 +118,40 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("message", "unresolve")
 	mrCreateNoteCmd.MarkFlagsMutuallyExclusive("resolve", "unresolve")
 
+	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("resolve", "use `glab mr note resolve` instead."))
+	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("unresolve", "use `glab mr note reopen` instead."))
+
+	mrCreateNoteCmd.AddCommand(NewCmdList(f))
+	mrCreateNoteCmd.AddCommand(NewCmdResolve(f))
+	mrCreateNoteCmd.AddCommand(NewCmdReopen(f))
+
 	return mrCreateNoteCmd
 }
 
-func resolveDiscussion(client *gitlab.Client, f cmdutils.Factory, mr *gitlab.MergeRequest, repo glrepo.Interface, noteID int64, resolve bool) error {
-	// List all discussions to find the one containing this note (with pagination)
-	var allDiscussions []*gitlab.Discussion
-	var page int64 = 1
-	for {
-		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(
-			repo.FullName(),
-			mr.IID,
-			&gitlab.ListMergeRequestDiscussionsOptions{
-				ListOptions: gitlab.ListOptions{
-					Page:    page,
-					PerPage: 100,
-				},
-			},
-		)
-		if err != nil {
-			return fmt.Errorf("failed to list discussions: %w", err)
-		}
-		allDiscussions = append(allDiscussions, discussions...)
-		if resp == nil || resp.NextPage == 0 {
-			break
-		}
-		page = resp.NextPage
+func resolveDiscussion(ctx context.Context, client *gitlab.Client, f cmdutils.Factory, mr *gitlab.MergeRequest, repo glrepo.Interface, noteID int64, resolve bool) error {
+	discussions, err := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list discussions: %w", err)
 	}
 
-	// Find discussion containing the note
-	var targetDiscussionID string
-	var found bool
-
-	for _, discussion := range allDiscussions {
-		for _, note := range discussion.Notes {
-			if note.ID == noteID {
-				targetDiscussionID = discussion.ID
-				found = true
-				break
-			}
-		}
-		if found {
-			break
-		}
-	}
-
-	if !found {
+	targetDiscussionID, err := mrutils.FindDiscussionByNoteID(discussions, noteID)
+	if err != nil {
 		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 	}
 
-	// Resolve or unresolve the discussion
 	action := "resolve"
 	if !resolve {
 		action = "unresolve"
 	}
 
-	_, _, err := client.Discussions.ResolveMergeRequestDiscussion(
+	_, _, err = client.Discussions.ResolveMergeRequestDiscussion(
 		repo.FullName(),
 		mr.IID,
 		targetDiscussionID,
 		&gitlab.ResolveMergeRequestDiscussionOptions{
 			Resolved: &resolve,
 		},
+		gitlab.WithContext(ctx),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to %s discussion: %w", action, err)

@@ -1,5 +1,5 @@
 ---
-title: glab gpg-key list
+title: '`glab gpg-key list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,14 +19,14 @@ glab gpg-key list [flags]
 ## Examples
 
 ```console
-$ glab gpg-key list
-
+glab gpg-key list
 ```
 
 ## Options
 
 ```plaintext
-      --show-id   Shows IDs of GPG keys.
+  -F, --output string   Format output as: text, json. (default "text")
+      --show-id         Shows IDs of GPG keys.
 ```
 
 ## Options inherited from parent commands

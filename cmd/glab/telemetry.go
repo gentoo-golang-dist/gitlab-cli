@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
@@ -96,9 +96,9 @@ func sendTelemetryData(f cmdutils.Factory, cmd *cobra.Command) {
 
 	_, err = client.UsageData.TrackEvent(&gitlab.TrackEventOptions{
 		Event:          "gitlab_cli_command_used",
-		NamespaceID:    gitlab.Ptr(namespaceID),
-		ProjectID:      gitlab.Ptr(projectID),
-		SendToSnowplow: gitlab.Ptr(true),
+		NamespaceID:    new(namespaceID),
+		ProjectID:      new(projectID),
+		SendToSnowplow: new(true),
 		AdditionalProperties: map[string]string{
 			"label":                  command,
 			"property":               subcommand,

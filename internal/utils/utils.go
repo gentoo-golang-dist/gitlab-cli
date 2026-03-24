@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/glamour"
+	"charm.land/glamour/v2"
+	"github.com/google/shlex"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/browser"
 	"gitlab.com/gitlab-org/cli/internal/run"
@@ -247,4 +248,27 @@ func FormatDueDate(date *gitlab.ISOTime) string {
 		return ""
 	}
 	return date.String()
+}
+
+// ParseEditorCommand parses an editor command string into separate command and arguments.
+// This is useful when passing editor commands to libraries like huh that expect separate
+// command and argument parameters.
+//
+// For example:
+//   - Input: "emacsclient -t -a \"emacs -nw\""
+//   - Output: []string{"emacsclient", "-t", "-a", "emacs -nw"}
+//
+// If parsing fails, it returns a slice containing just the original string.
+func ParseEditorCommand(editorCmd string) []string {
+	if editorCmd == "" {
+		return nil
+	}
+
+	parts, err := shlex.Split(editorCmd)
+	if err != nil || len(parts) == 0 {
+		// Fall back to returning the full string if parsing fails
+		return []string{editorCmd}
+	}
+
+	return parts
 }

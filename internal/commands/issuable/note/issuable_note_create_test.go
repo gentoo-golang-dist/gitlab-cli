@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
@@ -45,7 +45,7 @@ func Test_NewCmdNote(t *testing.T) {
 				Return(&gitlab.Issue{
 					ID:        1,
 					IID:       1,
-					IssueType: gitlab.Ptr(string(cc.issueType)),
+					IssueType: new(string(cc.issueType)),
 					WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 				}, nil, nil)
 
@@ -127,7 +127,7 @@ func Test_NewCmdNote_error(t *testing.T) {
 				Return(&gitlab.Issue{
 					ID:        1,
 					IID:       1,
-					IssueType: gitlab.Ptr(string(cc.issueType)),
+					IssueType: new(string(cc.issueType)),
 					WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 				}, nil, nil)
 
@@ -163,7 +163,7 @@ func Test_NewCmdNote_error(t *testing.T) {
 			Return(&gitlab.Issue{
 				ID:        1,
 				IID:       1,
-				IssueType: gitlab.Ptr("issue"), // Not an incident
+				IssueType: new("issue"), // Not an incident
 				WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 			}, nil, nil)
 
@@ -202,7 +202,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 				Return(&gitlab.Issue{
 					ID:        1,
 					IID:       1,
-					IssueType: gitlab.Ptr(string(cc.issueType)),
+					IssueType: new(string(cc.issueType)),
 					WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 				}, nil, nil)
 
@@ -220,8 +220,9 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 					}, nil, nil
 				})
 
-			responder := huhtest.NewResponder()
-			responder.AddResponse("Message:", "some note message")
+			c := ugh.New(t)
+			c.Expect(ugh.Input("Message:")).
+				Do(ugh.Type("some note message"))
 
 			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 				return NewCmdNote(f, cc.issueType)
@@ -229,7 +230,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 				cmdtest.WithGitLabClient(testClient.Client),
 				cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 				cmdtest.WithConfig(config.NewFromString("editor: vi")),
-				cmdtest.WithResponder(t, responder),
+				cmdtest.WithConsole(t, c),
 			)
 
 			output, err := exec(`1`)
@@ -257,12 +258,13 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 					Return(&gitlab.Issue{
 						ID:        1,
 						IID:       1,
-						IssueType: gitlab.Ptr(string(cc.issueType)),
+						IssueType: new(string(cc.issueType)),
 						WebURL:    "https://gitlab.com/OWNER/REPO/issues/1",
 					}, nil, nil)
 
-				responder := huhtest.NewResponder()
-				responder.AddResponse("Message:", tt.message)
+				c := ugh.New(t)
+				c.Expect(ugh.Input("Message:")).
+					Do(ugh.Type(tt.message))
 
 				exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 					return NewCmdNote(f, cc.issueType)
@@ -270,7 +272,7 @@ func Test_IssuableNoteCreate_prompt(t *testing.T) {
 					cmdtest.WithGitLabClient(testClient.Client),
 					cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 					cmdtest.WithConfig(config.NewFromString("editor: vi")),
-					cmdtest.WithResponder(t, responder),
+					cmdtest.WithConsole(t, c),
 				)
 
 				_, err := exec(`1`)

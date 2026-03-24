@@ -1,5 +1,5 @@
 ---
-title: glab ssh-key add
+title: '`glab ssh-key add`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,11 +26,10 @@ glab ssh-key add [key-file] [flags]
 
 ```console
 # Read ssh key from stdin and upload.
-$ glab ssh-key add -t "my title"
+glab ssh-key add -t "my title"
 
 # Read ssh key from specified key file, upload and set the ssh key type to "authentication".
-$ glab ssh-key add ~/.ssh/id_ed25519.pub -t "my title" --usage-type "auth"
-
+glab ssh-key add ~/.ssh/id_ed25519.pub -t "my title" --usage-type "auth"
 ```
 
 ## Options

@@ -10,7 +10,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -63,20 +63,19 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 		# Rotate project access token of current project (default 30 days)
-		$ glab token rotate my-project-token
+		glab token rotate my-project-token
 
 		# Rotate project access token with explicit expiration date
-		$ glab token rotate --repo user/repo my-project-token --expires-at 2025-08-08
+		glab token rotate --repo user/repo my-project-token --expires-at 2025-08-08
 
 		# Rotate group access token with 7 day lifetime
-		$ glab token rotate --group group/sub-group my-group-token --duration 7d
+		glab token rotate --group group/sub-group my-group-token --duration 7d
 
 		# Rotate personal access token with 2 week lifetime
-		$ glab token rotate --user @me my-personal-token --duration 2w
+		glab token rotate --user @me my-personal-token --duration 2w
 
 		# Rotate a personal access token of another user (administrator only)
-		$ glab token rotate --user johndoe johns-personal-token --duration 90d
-		`),
+		glab token rotate --user johndoe johns-personal-token --duration 90d`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -98,7 +97,7 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
 	cmd.Flags().VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at midnight UTC on the calculated date.")
 	cmd.Flags().VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
-	cmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
 	cmd.MarkFlagsMutuallyExclusive("duration", "expires-at")
 	return cmd
 }

@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -86,7 +86,7 @@ func TestNewCheckUpdateCmd(t *testing.T) {
 						{
 							TagName:    "v1.11.1",
 							Name:       "v1.11.1",
-							ReleasedAt: gitlab.Ptr(time.Date(2020, 11, 3, 5, 39, 4, 0, time.UTC)),
+							ReleasedAt: new(time.Date(2020, 11, 3, 5, 39, 4, 0, time.UTC)),
 						},
 					}, nil, nil
 				})

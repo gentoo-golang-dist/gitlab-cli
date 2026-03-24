@@ -1,5 +1,5 @@
 ---
-title: glab mr merge
+title: '`glab mr merge`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,12 +26,11 @@ accept
 
 ```console
 # Merge a merge request
-$ glab mr merge 235
-$ glab mr accept 235
+glab mr merge 235
+glab mr accept 235
 
 # Finds open merge request from current branch
-$ glab mr merge
-
+glab mr merge
 ```
 
 ## Options

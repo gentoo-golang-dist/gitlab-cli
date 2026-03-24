@@ -1,5 +1,5 @@
 ---
-title: glab mr reopen
+title: '`glab mr reopen`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,14 +26,13 @@ open
 
 ```console
 # Reopen merge request 123
-$ glab mr reopen 123
+glab mr reopen 123
 
 # Reopen merge requests 123, 456, and 789
-$ glab mr reopen 123 456 789
+glab mr reopen 123 456 789
 
 # Reopen merge requests from branches branch-1 and branch-2
-$ glab mr reopen branch-1 branch-2
-
+glab mr reopen branch-1 branch-2
 ```
 
 ## Options inherited from parent commands

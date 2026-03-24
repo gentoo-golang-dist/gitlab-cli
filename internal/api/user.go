@@ -3,11 +3,11 @@ package api
 import (
 	"fmt"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 func UserByName(client *gitlab.Client, name string) (*gitlab.User, error) {
-	opts := &gitlab.ListUsersOptions{Username: gitlab.Ptr(name)}
+	opts := &gitlab.ListUsersOptions{Username: new(name)}
 
 	if opts.PerPage == 0 {
 		opts.PerPage = DefaultListLimit

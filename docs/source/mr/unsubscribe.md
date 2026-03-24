@@ -1,5 +1,5 @@
 ---
-title: glab mr unsubscribe
+title: '`glab mr unsubscribe`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,13 +26,12 @@ unsub
 
 ```console
 # Unsubscribe from a merge request
-$ glab mr unsubscribe 123
-$ glab mr unsub 123
-$ glab mr unsubscribe branch
+glab mr unsubscribe 123
+glab mr unsub 123
+glab mr unsubscribe branch
 
 # Unsubscribe from multiple merge requests
-$ glab mr unsubscribe 123 branch
-
+glab mr unsubscribe 123 branch
 ```
 
 ## Options inherited from parent commands

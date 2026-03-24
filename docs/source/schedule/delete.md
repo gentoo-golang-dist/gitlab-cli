@@ -1,5 +1,5 @@
 ---
-title: glab schedule delete
+title: '`glab schedule delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -21,8 +21,7 @@ glab schedule delete <id> [flags]
 ```console
 # Delete a scheduled pipeline with ID 10
 $ glab schedule delete 10
-> Deleted schedule with ID 10
-
+Deleted schedule with ID 10
 ```
 
 ## Options inherited from parent commands

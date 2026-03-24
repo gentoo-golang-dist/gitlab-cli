@@ -11,8 +11,8 @@ import (
 	"slices"
 	"strings"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
@@ -38,10 +38,13 @@ type LoginOptions struct {
 	Token    string
 	JobToken string
 
-	ApiHost     string
-	ApiProtocol string
-	GitProtocol string
+	ApiHost                  string
+	ApiProtocol              string
+	GitProtocol              string
+	SSHHostname              string
+	ContainerRegistryDomains string
 
+	WebLogin   bool
 	UseKeyring bool
 }
 
@@ -69,9 +72,9 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			To store your token in your operating system's keyring instead, use %[1]s--use-keyring%[1]s.
 			After authentication, all %[1]sglab%[1]s commands use the stored credentials.
 			
-			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s
-			are set, they take precedence over the stored credentials.
-			These variables are ignored when CI auto-login is enabled with %[1]sGLAB_ENABLE_CI_AUTOLOGIN%[1]s.
+			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s are set,
+			they take precedence over the stored credentials.
+			When CI auto-login is enabled, these variables also override %[1]sCI_JOB_TOKEN%[1]s.
 			
 			To pass a token on standard input, use %[1]s--stdin%[1]s.
 			
@@ -81,29 +84,31 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Docf(`
 			# Start interactive setup
 			# (If in a Git repository, glab will detect and suggest GitLab instances from remotes)
-			$ glab auth login
+			glab auth login
 
 			# Authenticate against %[1]sgitlab.com%[1]s by reading the token from a file
-			$ glab auth login --stdin < myaccesstoken.txt
+			glab auth login --stdin < myaccesstoken.txt
 
 			# Authenticate with GitLab Self-Managed or GitLab Dedicated
-			$ glab auth login --hostname salsa.debian.org
+			glab auth login --hostname salsa.debian.org
 
 			# Non-interactive setup
-			$ glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
+			glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
 
 			# Non-interactive setup reading token from a file
-			$ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+			glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+
+			# Semi-interactive OAuth login, skipping all prompts except browser auth
+			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
 			# Non-interactive CI/CD setup
-			$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
-		`, "`"),
+			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" {
-				return &cmdutils.FlagError{Err: errors.New("'--stdin', '--token', or '--job-token' required when not running interactively.")}
+			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" && !opts.WebLogin {
+				return &cmdutils.FlagError{Err: errors.New("'--stdin', '--token', '--job-token', or '--web' required when not running interactively.")}
 			}
 
 			if opts.JobToken != "" && (opts.Token != "" || tokenStdin) {
@@ -112,6 +117,10 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 
 			if opts.Token != "" && tokenStdin {
 				return &cmdutils.FlagError{Err: errors.New("specify one of '--token' or '--stdin'. You cannot use both flags at the same time.")}
+			}
+
+			if opts.WebLogin && (opts.Token != "" || tokenStdin || opts.JobToken != "") {
+				return &cmdutils.FlagError{Err: errors.New("'--web' cannot be combined with '--token', '--stdin', or '--job-token'.")}
 			}
 
 			if tokenStdin {
@@ -137,9 +146,9 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 				opts.Hostname = glinstance.DefaultHostname
 			}
 
-			if opts.Interactive && (opts.ApiHost != "" || opts.ApiProtocol != "" || opts.GitProtocol != "") {
-				return &cmdutils.FlagError{Err: errors.New("api-host, api-protocol, and git-protocol can only be used in non-interactive mode.")}
-			}
+			// Note: --api-host, --api-protocol, --git-protocol are now allowed
+			// in interactive mode. When set, they skip the corresponding prompts
+			// instead of erroring. This enables semi-interactive login flows.
 
 			if err := loginRun(cmd.Context(), opts); err != nil {
 				return cmdutils.WrapError(err, "Could not sign in!")
@@ -154,9 +163,12 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.JobToken, "job-token", "j", "", "CI job token.")
 	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read token from standard input.")
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
+	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
 	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "API host url.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
+	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint.")
+	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
 
 	return cmd
 }
@@ -297,38 +309,13 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			// Check if user selected "Enter a different hostname"
 			if selectedOption == promptLoginDifferentHostname {
 				// Fall back to manual entry
-				hostname = opts.defaultHostname
-				apiHostname = hostname
-
-				hostnameInput := huh.NewInput().
-					Title("GitLab hostname:").
-					Value(&hostname).
-					Placeholder(opts.defaultHostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err := opts.IO.Run(ctx, hostnameInput)
+				var sshHostname string
+				var err error
+				hostname, apiHostname, sshHostname, err = promptForSelfHostedInstance(ctx, opts)
 				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
+					return err
 				}
-
-				// Set default for API hostname
-				if apiHostname == opts.defaultHostname {
-					apiHostname = hostname
-				}
-
-				apiHostnameInput := huh.NewInput().
-					Title("API hostname:").
-					Description("For instances with a different hostname for the API endpoint.").
-					Value(&apiHostname).
-					Placeholder(hostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err = opts.IO.Run(ctx, apiHostnameInput)
-				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
-				}
+				opts.SSHHostname = sshHostname
 			} else {
 				// User selected a detected host - find it in the list
 				for _, host := range detectedHosts {
@@ -359,38 +346,13 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			isSelfHosted = selectedOption == promptSelfManagedOrDedicatedInstance
 
 			if isSelfHosted {
-				hostname = opts.defaultHostname
-				apiHostname = hostname
-
-				hostnameInput := huh.NewInput().
-					Title("GitLab hostname:").
-					Value(&hostname).
-					Placeholder(opts.defaultHostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err := opts.IO.Run(ctx, hostnameInput)
+				var sshHostname string
+				var err error
+				hostname, apiHostname, sshHostname, err = promptForSelfHostedInstance(ctx, opts)
 				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
+					return err
 				}
-
-				// Set default for API hostname
-				if apiHostname == opts.defaultHostname {
-					apiHostname = hostname
-				}
-
-				apiHostnameInput := huh.NewInput().
-					Title("API hostname:").
-					Description("For instances with a different hostname for the API endpoint.").
-					Value(&apiHostname).
-					Placeholder(hostname).
-					Validate(func(s string) error {
-						return hostnameValidator(s)
-					})
-				err = opts.IO.Run(ctx, apiHostnameInput)
-				if err != nil {
-					return fmt.Errorf("could not prompt: %w", err)
-				}
+				opts.SSHHostname = sshHostname
 			} else {
 				hostname = selectedOption
 				apiHostname = hostname
@@ -398,6 +360,45 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	} else {
 		isSelfHosted = glinstance.IsSelfHosted(hostname)
+
+		// If interactive and self-hosted, prompt for API hostname and SSH hostname
+		if opts.Interactive && isSelfHosted {
+			// Prompt for API hostname
+			apiHostnameInput := huh.NewInput().
+				Title("API hostname:").
+				Description("For instances with a different hostname for the API endpoint.").
+				Value(&apiHostname).
+				Placeholder(hostname).
+				Validate(func(s string) error {
+					return hostnameValidator(s)
+				})
+			err := opts.IO.Run(ctx, apiHostnameInput)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			// Prompt for SSH hostname (default to main hostname, like API hostname)
+			sshHostname := hostname
+			// Try to detect from git remotes as a suggestion
+			if detectedSSH := detectSSHHost(hostname); detectedSSH != "" {
+				sshHostname = detectedSSH
+			}
+
+			sshHostnameInput := huh.NewInput().
+				Title("SSH hostname:").
+				Description("For instances with a different hostname for SSH git operations.").
+				Value(&sshHostname).
+				Placeholder(hostname).
+				Validate(func(s string) error {
+					return hostnameValidator(s)
+				})
+			err = opts.IO.Run(ctx, sshHostnameInput)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			opts.SSHHostname = sshHostname
+		}
 	}
 
 	fmt.Fprintf(opts.IO.StdErr, "- Signing into %s\n", hostname)
@@ -440,21 +441,32 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	)
 
 	if opts.Interactive {
-		loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb}
-		err := opts.IO.Select(ctx, &loginType, "How would you like to sign in?", loginTypeOptions)
-		if err != nil {
-			return fmt.Errorf("could not get sign-in type: %w", err)
+		if opts.WebLogin {
+			loginType = promptLoginTypeWeb
+		} else {
+			loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb}
+			err := opts.IO.Select(ctx, &loginType, "How would you like to sign in?", loginTypeOptions)
+			if err != nil {
+				return fmt.Errorf("could not get sign-in type: %w", err)
+			}
 		}
 
-		containerRegistryDomains = defaultContainerRegistryDomainsString(hostname)
-		containerRegistryInput := huh.NewInput().
-			Title("What domains does this host use for the container registry and image dependency proxy?").
-			Value(&containerRegistryDomains).
-			Placeholder(defaultContainerRegistryDomainsString(hostname))
-		err = opts.IO.Run(ctx, containerRegistryInput)
-		if err != nil {
-			return fmt.Errorf("could not get container registry domains: %w", err)
+		if opts.ContainerRegistryDomains != "" {
+			containerRegistryDomains = opts.ContainerRegistryDomains
+		} else {
+			containerRegistryDomains = defaultContainerRegistryDomainsString(hostname)
+			containerRegistryInput := huh.NewInput().
+				Title("What domains does this host use for the container registry and image dependency proxy?").
+				Value(&containerRegistryDomains).
+				Placeholder(defaultContainerRegistryDomainsString(hostname))
+			err := opts.IO.Run(ctx, containerRegistryInput)
+			if err != nil {
+				return fmt.Errorf("could not get container registry domains: %w", err)
+			}
 		}
+	} else if opts.WebLogin {
+		// Non-interactive web login: go straight to OAuth
+		loginType = promptLoginTypeWeb
 	}
 
 	var token string
@@ -502,36 +514,18 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 	}
 
-	// Detect and optionally set SSH host
-	sshHost := detectSSHHost(hostname)
-	if sshHost != "" && sshHost != hostname {
-		// Found different SSH host
-		if opts.Interactive {
-			var setSSHHost bool
-			prompt := fmt.Sprintf("Detected SSH hostname: %s. Use this for SSH operations?", sshHost)
-			confirmInput := huh.NewConfirm().
-				Title(prompt).
-				Value(&setSSHHost).
-				Affirmative("Yes").
-				Negative("No")
-			err := opts.IO.Run(ctx, confirmInput)
-			if err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
-			}
-			if setSSHHost {
-				if err := cfg.Set(hostname, "ssh_host", sshHost); err != nil {
-					return err
-				}
-			}
-		} else {
-			// In non-interactive mode, auto-set if detected
-			if err := cfg.Set(hostname, "ssh_host", sshHost); err != nil {
-				return err
-			}
+	// Set SSH hostname if it's different from the main hostname
+	if opts.SSHHostname != "" && opts.SSHHostname != hostname {
+		if err := cfg.Set(hostname, "ssh_host", opts.SSHHostname); err != nil {
+			return err
 		}
 	}
 
+	// Smart default: use SSH if user configured a custom SSH host
 	gitProtocol := "https"
+	if opts.SSHHostname != "" && opts.SSHHostname != hostname {
+		gitProtocol = "ssh"
+	}
 	apiProtocol := "https"
 
 	glabExecutable := "glab"
@@ -541,29 +535,43 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	credentialFlow := &authutils.GitCredentialFlow{Executable: glabExecutable}
 
 	if opts.Interactive {
-		gitProtocolOptions := []string{promptProtocolSSH, promptProtocolHTTPS, promptProtocolHTTP}
-		gitProtocol = promptProtocolHTTPS // Set default
-		err = opts.IO.Select(ctx, &gitProtocol, "Choose default Git protocol:", gitProtocolOptions)
-		if err != nil {
-			return fmt.Errorf("could not prompt: %w", err)
+		if opts.GitProtocol != "" {
+			gitProtocol = strings.ToLower(opts.GitProtocol)
+		} else {
+			gitProtocolOptions := []string{promptProtocolSSH, promptProtocolHTTPS, promptProtocolHTTP}
+			// Use smart default based on SSH hostname configuration
+			defaultProtocol := promptProtocolHTTPS
+			if gitProtocol == "ssh" {
+				defaultProtocol = promptProtocolSSH
+			}
+			gitProtocol = defaultProtocol
+			err = opts.IO.Select(ctx, &gitProtocol, "Choose default Git protocol:", gitProtocolOptions)
+			if err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+
+			gitProtocol = strings.ToLower(gitProtocol)
 		}
 
-		gitProtocol = strings.ToLower(gitProtocol)
-		if opts.Interactive && gitProtocol != "ssh" {
+		if gitProtocol != "ssh" {
 			if err := credentialFlow.Prompt(ctx, opts.IO, hostname, gitProtocol); err != nil {
 				return err
 			}
 		}
 
 		if isSelfHosted {
-			apiProtocolOptions := []string{promptProtocolHTTPS, promptProtocolHTTP}
-			apiProtocol = promptProtocolHTTPS // Set default
-			err = opts.IO.Select(ctx, &apiProtocol, "Choose host API protocol:", apiProtocolOptions)
-			if err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
-			}
+			if opts.ApiProtocol != "" {
+				apiProtocol = strings.ToLower(opts.ApiProtocol)
+			} else {
+				apiProtocolOptions := []string{promptProtocolHTTPS, promptProtocolHTTP}
+				apiProtocol = promptProtocolHTTPS // Set default
+				err = opts.IO.Select(ctx, &apiProtocol, "Choose host API protocol:", apiProtocolOptions)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
 
-			apiProtocol = strings.ToLower(apiProtocol)
+				apiProtocol = strings.ToLower(apiProtocol)
+			}
 		}
 
 		fmt.Fprintf(opts.IO.StdErr, "- glab config set -h %s git_protocol %s\n", hostname, gitProtocol)
@@ -693,6 +701,67 @@ func setContainerRegistryDomains(cfg config.Config, hostname string, domains str
 	return cfg.Set(hostname, "container_registry_domains", domains)
 }
 
+// promptForSelfHostedInstance prompts the user for hostname, API hostname, and SSH hostname
+// for a self-hosted GitLab instance. Returns (hostname, apiHostname, sshHostname, error).
+func promptForSelfHostedInstance(ctx context.Context, opts *LoginOptions) (string, string, string, error) {
+	hostname := opts.defaultHostname
+	apiHostname := hostname
+
+	// Prompt for GitLab hostname
+	hostnameInput := huh.NewInput().
+		Title("GitLab hostname:").
+		Value(&hostname).
+		Placeholder(opts.defaultHostname).
+		Validate(func(s string) error {
+			return hostnameValidator(s)
+		})
+	err := opts.IO.Run(ctx, hostnameInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	// Set default for API hostname
+	if apiHostname == opts.defaultHostname {
+		apiHostname = hostname
+	}
+
+	// Prompt for API hostname
+	apiHostnameInput := huh.NewInput().
+		Title("API hostname:").
+		Description("For instances with a different hostname for the API endpoint.").
+		Value(&apiHostname).
+		Placeholder(hostname).
+		Validate(func(s string) error {
+			return hostnameValidator(s)
+		})
+	err = opts.IO.Run(ctx, apiHostnameInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	// Prompt for SSH hostname
+	sshHostname := hostname
+	// Try to detect from git remotes as a suggestion
+	if detectedSSH := detectSSHHost(hostname); detectedSSH != "" {
+		sshHostname = detectedSSH
+	}
+
+	sshHostnameInput := huh.NewInput().
+		Title("SSH hostname:").
+		Description("For instances with a different hostname for SSH git operations.").
+		Value(&sshHostname).
+		Placeholder(hostname).
+		Validate(func(s string) error {
+			return hostnameValidator(s)
+		})
+	err = opts.IO.Run(ctx, sshHostnameInput)
+	if err != nil {
+		return "", "", "", fmt.Errorf("could not prompt: %w", err)
+	}
+
+	return hostname, apiHostname, sshHostname, nil
+}
+
 // splitHostnameAndSubfolder splits a hostname that may contain a subfolder path.
 // Examples:
 //   - "example.com" → ("example.com", "")
@@ -732,26 +801,14 @@ func detectSSHHost(httpHostname string) string {
 	}
 
 	// Look for SSH remotes and extract hostname
+	// Note: git.ParseURL() already normalizes SCP-style URLs (git@host:path)
+	// to SSH URLs (ssh://host/path) when remotes are loaded, so the Scheme=="ssh"
+	// check below catches all SSH remotes regardless of original URL format.
 	for _, remote := range remotes {
 		if remote.FetchURL != nil && remote.FetchURL.Scheme == "ssh" {
 			sshHost := remote.FetchURL.Hostname()
 			if sshHost != "" && sshHost != httpHostname {
 				return sshHost
-			}
-		}
-		// Also check SCP-style URLs (git@host:path)
-		if remote.FetchURL != nil {
-			// Try to parse as SCP-style: git@hostname:path
-			urlStr := remote.FetchURL.String()
-			if strings.Contains(urlStr, "@") && strings.Contains(urlStr, ":") && !strings.Contains(urlStr, "://") {
-				// This looks like SCP-style
-				parts := strings.SplitN(urlStr, "@", 2)
-				if len(parts) == 2 {
-					hostParts := strings.SplitN(parts[1], ":", 2)
-					if len(hostParts) == 2 && hostParts[0] != httpHostname {
-						return hostParts[0]
-					}
-				}
 			}
 		}
 	}

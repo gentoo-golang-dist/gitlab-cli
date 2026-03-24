@@ -7,13 +7,13 @@ import (
 	"os/exec"
 	"testing"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/run"
@@ -354,10 +354,20 @@ func TestCIRunMrPipeline(t *testing.T) {
 				return nil, fmt.Errorf("unexpected branch in this mock :(")
 			}
 
-			execFunc := cmdtest.SetupCmdForTest(t, NewCmdRun, true,
+			factoryOpts := []cmdtest.FactoryOption{
 				cmdtest.WithGitLabClient(testClient.Client),
 				cmdtest.WithBranch("custom-branch-123"),
-				cmdtest.WithResponder(t, huhtest.NewResponder().AddSelect("Multiple merge requests exist for this branch", 0).MatchRegexp()),
+			}
+
+			if tc.cli == "--mr --branch my_branch_with_a_myriad_of_mrs" {
+				c := ugh.New(t)
+				c.Expect(ugh.SelectRegexp("Multiple merge requests exist for this branch")).
+					Do(ugh.SelectIndex(0))
+				factoryOpts = append(factoryOpts, cmdtest.WithConsole(t, c))
+			}
+
+			execFunc := cmdtest.SetupCmdForTest(t, NewCmdRun, true,
+				factoryOpts...,
 			)
 			restoreCmd := run.SetPrepareCmd(func(cmd *exec.Cmd) run.Runnable {
 				return &test.OutputStub{}

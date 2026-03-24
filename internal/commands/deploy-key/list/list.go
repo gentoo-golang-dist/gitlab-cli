@@ -4,7 +4,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -23,7 +23,8 @@ type options struct {
 	page    int
 	perPage int
 
-	showKeyIDs bool
+	showKeyIDs   bool
+	outputFormat string
 }
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
@@ -37,8 +38,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Short: "Get a list of deploy keys for the current project.",
 		Long:  "",
 		Example: heredoc.Doc(`
-		  - glab deploy-key list
-		`),
+			glab deploy-key list`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -51,6 +51,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.showKeyIDs, "show-id", "", false, "Shows IDs of deploy keys.")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -76,6 +77,10 @@ func (o *options) run() error {
 	keys, _, err := client.DeployKeys.ListProjectDeployKeys(baseRepo.FullName(), listProjectDeployKeysOptions)
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to get deploy keys.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(keys)
 	}
 
 	cs := o.io.Color()

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/charmbracelet/fang"
+	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/iostreams"

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -29,7 +29,7 @@ func Test_GetGPGKey(t *testing.T) {
 	testKey := &gitlab.GPGKey{
 		ID:        123,
 		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...\n-----END PGP PUBLIC KEY BLOCK-----",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testCases := []testCase{
@@ -95,4 +95,33 @@ func Test_GetGPGKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGpgKeyGet_JSON(t *testing.T) {
+	t.Parallel()
+
+	testKey := &gitlab.GPGKey{
+		ID:        123,
+		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...\n-----END PGP PUBLIC KEY BLOCK-----",
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockUsers.EXPECT().
+		GetGPGKey(int64(123)).
+		Return(testKey, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdGet,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("123 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":123`)
+	assert.Contains(t, out.String(), `"key":"-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...\n-----END PGP PUBLIC KEY BLOCK-----"`)
+	assert.Empty(t, out.Stderr())
 }

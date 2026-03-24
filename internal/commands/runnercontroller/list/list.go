@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -37,11 +37,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# List all runner controllers
-			$ glab runner-controller list
+			glab runner-controller list
 
 			# List runner controllers as JSON
-			$ glab runner-controller list --output json
-		`),
+			glab runner-controller list --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -50,10 +49,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	fl := cmd.Flags()
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
 	fl.Int64VarP(&opts.perPage, "per-page", "P", 30, "Number of items per page.")
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	return cmd
 }

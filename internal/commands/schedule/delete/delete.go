@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -35,8 +35,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			# Delete a scheduled pipeline with ID 10
 			$ glab schedule delete 10
-			> Deleted schedule with ID 10
-		`),
+			Deleted schedule with ID 10`),
 		Long: ``,
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{

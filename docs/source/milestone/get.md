@@ -1,5 +1,5 @@
 ---
-title: glab milestone get
+title: '`glab milestone get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,20 +20,20 @@ glab milestone get [flags]
 
 ```console
  # Get milestone for the current project
-$ glab milestone get 123
+glab milestone get 123
 
 # Get milestone for the specified project
-$ glab milestone get 123 --project project-name
+glab milestone get 123 --project project-name
 
 # Get milestone for the specified group
-$ glab milestone get 123 --group group-name
-
+glab milestone get 123 --group group-name
 ```
 
 ## Options
 
 ```plaintext
       --group string     The ID or URL-encoded path of the group.
+  -F, --output string    Format output as: text, json. (default "text")
       --project string   The ID or URL-encoded path of the project.
 ```
 

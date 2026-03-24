@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -113,4 +113,41 @@ func Test_ProjectContributors(t *testing.T) {
 			assert.Empty(t, out.Stderr())
 		})
 	}
+}
+
+func TestRepoContributors_JSON(t *testing.T) {
+	t.Parallel()
+
+	testContributors := []*gitlab.Contributor{
+		{
+			Name:    "Test User",
+			Email:   "tu@gitlab.com",
+			Commits: 41,
+		},
+		{
+			Name:    "Test User2",
+			Email:   "tu2@gitlab.com",
+			Commits: 12,
+		},
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockRepositories.EXPECT().
+		Contributors("OWNER/REPO", gomock.Any()).
+		Return(testContributors, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdContributors,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("--output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"name":"Test User"`)
+	assert.Contains(t, out.String(), `"email":"tu@gitlab.com"`)
+	assert.Contains(t, out.String(), `"commits":41`)
+	assert.Empty(t, out.Stderr())
 }

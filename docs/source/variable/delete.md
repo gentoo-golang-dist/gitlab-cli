@@ -1,5 +1,5 @@
 ---
-title: glab variable delete
+title: '`glab variable delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,10 +25,9 @@ remove
 ## Examples
 
 ```console
-$ glab variable delete VAR_NAME
-$ glab variable delete VAR_NAME --scope=prod
-$ glab variable delete VARNAME -g mygroup
-
+glab variable delete VAR_NAME
+glab variable delete VAR_NAME --scope=prod
+glab variable delete VARNAME -g mygroup
 ```
 
 ## Options

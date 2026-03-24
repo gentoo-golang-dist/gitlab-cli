@@ -1,5 +1,5 @@
 ---
-title: glab schedule create
+title: '`glab schedule create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -21,8 +21,7 @@ glab schedule create [flags]
 ```console
 # Create a scheduled pipeline that runs every hour
 $ glab schedule create --cron "0 * * * *" --description "Describe your pipeline here" --ref "main" --variable "foo:bar" --variable "baz:baz"
-> Created schedule
-
+Created schedule
 ```
 
 ## Options

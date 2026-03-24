@@ -11,7 +11,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	workitemsapi "gitlab.com/gitlab-org/cli/internal/commands/workitems/api"
@@ -68,29 +68,28 @@ for group-level work items or -R to specify a different project.
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
 				# List first 20 open work items in current project
-				$ glab work-items list
+				glab work-items list
 
 				# List open epics in a group (default: 20 items)
-				$ glab work-items list --type epic -g gitlab-org
+				glab work-items list --type epic -g gitlab-org
 
 				# List first 50 open work items
-				$ glab work-items list --per-page 50 -g gitlab-org
+				glab work-items list --per-page 50 -g gitlab-org
 
 				# Get next page using cursor from previous output
-				$ glab work-items list --after "eyJpZCI6OTk5OX0" -g gitlab-org
+				glab work-items list --after "eyJpZCI6OTk5OX0" -g gitlab-org
 
 				# List closed work items
-				$ glab work-items list --state closed -g gitlab-org
+				glab work-items list --state closed -g gitlab-org
 
 				# List all work items regardless of state
-				$ glab work-items list --state all -g gitlab-org
+				glab work-items list --state all -g gitlab-org
 
 				# JSON output with pagination metadata
-				$ glab work-items list --output json -g gitlab-org
+				glab work-items list --output json -g gitlab-org
 
 				# List issues in a specific project
-				$ glab work-items list --type issue -R gitlab-org/cli
-		`),
+				glab work-items list --type issue -R gitlab-org/cli`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -108,17 +107,12 @@ for group-level work items or -R to specify a different project.
 
 	// Enable -R flag for repo override
 	cmdutils.EnableRepoOverride(cmd, f)
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	// Flags
 	cmd.Flags().StringP("group", "g", "", "List work items for a group or subgroup")
 	cmd.Flags().StringSliceVarP(&opts.types, "type", "t", []string{}, "Filter by work item type (epic, issue, task, etc.) Multiple types can be comma-separated or specified by repeating the flag.")
 
-	cmd.Flags().VarP(
-		cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat),
-		"output",
-		"F",
-		"Format output as: text, json",
-	)
 	cmd.Flags().StringVar(&opts.state, "state", "opened", "Filter by state: opened, closed, all")
 	cmd.Flags().StringVar(&opts.after, "after", "", "Fetch items after this cursor (for pagination)")
 	cmd.Flags().Int64VarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page (max 100)")

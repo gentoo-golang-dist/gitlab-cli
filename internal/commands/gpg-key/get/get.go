@@ -4,7 +4,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -17,7 +17,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
 
-	keyID int64
+	keyID        int64
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -31,7 +32,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get GPG key with ID as argument
-			$ glab gpg-key get 7750633`),
+			glab gpg-key get 7750633`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -44,6 +45,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			return opts.run()
 		},
 	}
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -65,6 +68,10 @@ func (o *options) run() error {
 	key, _, err := client.Users.GetGPGKey(o.keyID)
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to get GPG key.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(key)
 	}
 
 	o.io.LogInfof("Showing GPG key with ID %d\n", key.ID)

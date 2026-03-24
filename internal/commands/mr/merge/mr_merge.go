@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"time"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/avast/retry-go/v5"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
@@ -67,12 +67,11 @@ func NewCmdMerge(f cmdutils.Factory) *cobra.Command {
 		},
 		Example: heredoc.Doc(`
 			# Merge a merge request
-			$ glab mr merge 235
-			$ glab mr accept 235
+			glab mr merge 235
+			glab mr accept 235
 
 			# Finds open merge request from current branch
-			$ glab mr merge
-		`),
+			glab mr merge`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.validate(); err != nil {
@@ -202,16 +201,16 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 
 	mergeOpts := &gitlab.AcceptMergeRequestOptions{}
 	if o.mergeCommitMessage != "" {
-		mergeOpts.MergeCommitMessage = gitlab.Ptr(o.mergeCommitMessage)
+		mergeOpts.MergeCommitMessage = new(o.mergeCommitMessage)
 	}
 	if o.squashMessage != "" {
-		mergeOpts.SquashCommitMessage = gitlab.Ptr(o.squashMessage)
+		mergeOpts.SquashCommitMessage = new(o.squashMessage)
 	}
 	if o.squashBeforeMerge {
-		mergeOpts.Squash = gitlab.Ptr(true)
+		mergeOpts.Squash = new(true)
 	}
 	if o.removeSourceBranch {
-		mergeOpts.ShouldRemoveSourceBranch = gitlab.Ptr(true)
+		mergeOpts.ShouldRemoveSourceBranch = new(true)
 	}
 	if o.setAutoMerge && mr.Pipeline != nil {
 		if mr.Pipeline.Status == "canceled" || mr.Pipeline.Status == "failed" {
@@ -219,10 +218,10 @@ func (o *options) run(x cmdutils.Factory, cmd *cobra.Command, args []string) err
 			fmt.Fprintln(o.io.StdOut, c.FailedIcon(), "Cannot perform merge action")
 			return cmdutils.SilentError
 		}
-		mergeOpts.AutoMerge = gitlab.Ptr(true)
+		mergeOpts.AutoMerge = new(true)
 	}
 	if o.sha != "" {
-		mergeOpts.SHA = gitlab.Ptr(o.sha)
+		mergeOpts.SHA = new(o.sha)
 	}
 
 	if o.rebaseBeforeMerge {

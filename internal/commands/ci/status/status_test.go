@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -31,7 +31,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			branch: "main",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 					Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil)
 
 				// Mock job check to verify pipeline has jobs
@@ -48,7 +48,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline found but has no jobs (e.g., external pipeline)
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil)
 
 				// Mock job check returns empty list
@@ -84,7 +84,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline not found
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(nil, nil, errors.New("not found"))
 
 				// Find and get MR
@@ -115,7 +115,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline not found
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(nil, nil, errors.New("not found"))
 
 				// No MRs found
@@ -133,7 +133,7 @@ func Test_getPipelineWithFallback(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				// Latest pipeline not found
 				tc.MockPipelines.EXPECT().
-					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("feature")}, gomock.Any()).
+					GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("feature")}, gomock.Any()).
 					Return(nil, nil, errors.New("not found"))
 
 				// Find MR but no pipeline
@@ -187,7 +187,7 @@ func TestCiStatusCommand_NoPrompt(t *testing.T) {
 	gomock.InOrder(
 		// Mock a finished pipeline so the command doesn't loop
 		tc.MockPipelines.EXPECT().
-			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 			Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil),
 
 		// Mock job check in GetPipelineWithFallback
@@ -226,7 +226,7 @@ func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
 	gomock.InOrder(
 		// Mock a finished pipeline
 		tc.MockPipelines.EXPECT().
-			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr("main")}, gomock.Any()).
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
 			Return(&gitlab.Pipeline{ID: 1, Status: "success"}, nil, nil),
 
 		// Mock job check in GetPipelineWithFallback
@@ -250,4 +250,40 @@ func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
 	// This should complete without hanging since the pipeline is finished
 	_, err := exec("")
 	require.NoError(t, err)
+}
+
+func TestCiStatus_JSON(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+
+	// Mock a finished pipeline
+	tc.MockPipelines.EXPECT().
+		GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
+		Return(&gitlab.Pipeline{ID: 1, Status: "success", Ref: "main"}, nil, nil)
+
+	// Mock job check in GetPipelineWithFallback
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any()).
+		Return([]*gitlab.Job{{ID: 1, Name: "test"}}, nil, nil)
+
+	// Mock jobs for the pipeline with pagination
+	tc.MockJobs.EXPECT().
+		ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Job{
+			{ID: 1, Name: "test", Stage: "test", Status: "success"},
+		}, &gitlab.Response{NextPage: 0}, nil)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdStatus, false,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBranch("main"),
+	)
+
+	out, err := exec("--output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":1`)
+	assert.Contains(t, out.String(), `"status":"success"`)
+	assert.Contains(t, out.String(), `"jobs"`)
+	assert.Empty(t, out.Stderr())
 }

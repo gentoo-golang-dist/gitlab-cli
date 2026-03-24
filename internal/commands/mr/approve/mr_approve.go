@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
@@ -19,14 +19,13 @@ func NewCmdApprove(f cmdutils.Factory) *cobra.Command {
 		Short: `Approve merge requests.`,
 		Long:  ``,
 		Example: heredoc.Doc(`
-			$ glab mr approve 235
-			$ glab mr approve 123 345
-			$ glab mr approve branch-1
-			$ glab mr approve branch-2 branch-3
+			glab mr approve 235
+			glab mr approve 123 345
+			glab mr approve branch-1
+			glab mr approve branch-2 branch-3
 
 			# Finds open merge request from current branch and approves it
-			$ glab mr approve
-		`),
+			glab mr approve`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -54,7 +53,7 @@ func NewCmdApprove(f cmdutils.Factory) *cobra.Command {
 
 				opts := &gitlab.ApproveMergeRequestOptions{}
 				if s, _ := cmd.Flags().GetString("sha"); s != "" {
-					opts.SHA = gitlab.Ptr(s)
+					opts.SHA = new(s)
 				}
 
 				fmt.Fprintf(f.IO().StdOut, "- Approving merge request !%d\n", mr.IID)

@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -29,7 +29,7 @@ func Test_GetSSHKey(t *testing.T) {
 	testKey := &gitlab.SSHKey{
 		ID:        123,
 		Key:       "ssh-ed25519 example",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 		UsageType: "auth_and_signing",
 		Title:     "mysshkey",
 	}
@@ -79,4 +79,37 @@ func Test_GetSSHKey(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSshKeyGet_JSON(t *testing.T) {
+	t.Parallel()
+
+	testKey := &gitlab.SSHKey{
+		ID:        123,
+		Key:       "ssh-ed25519 example",
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		UsageType: "auth_and_signing",
+		Title:     "mysshkey",
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockUsers.EXPECT().
+		GetSSHKey(int64(123)).
+		Return(testKey, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdGet,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+	)
+
+	out, err := exec("123 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":123`)
+	assert.Contains(t, out.String(), `"title":"mysshkey"`)
+	assert.Contains(t, out.String(), `"key":"ssh-ed25519 example"`)
+	assert.Contains(t, out.String(), `"usage_type":"auth_and_signing"`)
+	assert.Empty(t, out.Stderr())
 }

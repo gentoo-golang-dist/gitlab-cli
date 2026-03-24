@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -45,14 +45,13 @@ func NewCmdAdd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Read deploy key from stdin and upload.
-			$ glab deploy-key add -t "my title"
+			glab deploy-key add -t "my title"
 
 			# Read deploy key from specified key file and upload
-			$ cat ~/.ssh/id_ed25519.pub | glab deploy-key add --title='test' -
+			cat ~/.ssh/id_ed25519.pub | glab deploy-key add --title='test' -
 
 			# Read deploy key from specified key file, upload and set "can push" attribute.
-			$ glab deploy-key add ~/.ssh/id_ed25519.pub -t "my title" --can-push true
-		`),
+			glab deploy-key add ~/.ssh/id_ed25519.pub -t "my title" --can-push true`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

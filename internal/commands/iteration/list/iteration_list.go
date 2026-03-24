@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -41,11 +41,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
-			- glab iteration list
-			- glab iteration ls
-			- glab iteration list -R owner/repository
-			- glab iteration list -g mygroup
-		`),
+			glab iteration list
+			glab iteration ls
+			glab iteration list -R owner/repository
+			glab iteration list -g mygroup`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -57,7 +56,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 	iterationListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	iterationListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	iterationListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(iterationListCmd, &opts.outputFormat)
 	iterationListCmd.Flags().StringVarP(&opts.group, "group", "g", "", "List iterations for a group.")
 	return iterationListCmd
 }
@@ -99,7 +98,7 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	iterationApiOpts := &listProjectIterationsOptions{}
-	iterationApiOpts.IncludeAncestors = gitlab.Ptr(true)
+	iterationApiOpts.IncludeAncestors = new(true)
 
 	if o.page != 0 {
 		iterationApiOpts.Page = int64(o.page)

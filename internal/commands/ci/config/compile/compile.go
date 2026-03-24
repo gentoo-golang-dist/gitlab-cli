@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -21,10 +21,9 @@ func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
-			$ glab ci config compile
-			$ glab ci config compile .gitlab-ci.yml
-			$ glab ci config compile path/to/.gitlab-ci.yml
-		`),
+			glab ci config compile
+			glab ci config compile .gitlab-ci.yml
+			glab ci config compile path/to/.gitlab-ci.yml`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -73,10 +72,10 @@ func compileRun(f cmdutils.Factory, path string) error {
 	compiledResult, _, err := client.Validate.ProjectNamespaceLint(
 		project.ID,
 		&gitlab.ProjectNamespaceLintOptions{
-			Content:     gitlab.Ptr(string(content)),
-			DryRun:      gitlab.Ptr(false),
-			Ref:         gitlab.Ptr(""),
-			IncludeJobs: gitlab.Ptr(false),
+			Content:     new(string(content)),
+			DryRun:      new(bool),
+			Ref:         new(string),
+			IncludeJobs: new(bool),
 		},
 	)
 	if err != nil {

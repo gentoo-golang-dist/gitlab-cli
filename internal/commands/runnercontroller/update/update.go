@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -37,14 +37,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Update a runner controller's description
-			$ glab runner-controller update 42 --description "Updated description"
+			glab runner-controller update 42 --description "Updated description"
 
 			# Update a runner controller's state
-			$ glab runner-controller update 42 --state enabled
+			glab runner-controller update 42 --state enabled
 
 			# Update both description and state
-			$ glab runner-controller update 42 --description "Production" --state enabled
-		`),
+			glab runner-controller update 42 --description "Production" --state enabled`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -55,6 +54,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			return opts.run(cmd.Context())
 		},
 	}
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.description, "description", "d", "", "Description of the runner controller.")
@@ -67,7 +68,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		"state",
 		"State of the runner controller: disabled, enabled, dry_run.",
 	)
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	cmd.MarkFlagsOneRequired("description", "state")
 
@@ -92,10 +92,10 @@ func (o *options) run(ctx context.Context) error {
 
 	updateOpts := &gitlab.UpdateRunnerControllerOptions{}
 	if o.description != "" {
-		updateOpts.Description = gitlab.Ptr(o.description)
+		updateOpts.Description = new(o.description)
 	}
 	if o.state != "" {
-		updateOpts.State = gitlab.Ptr(o.state)
+		updateOpts.State = new(o.state)
 	}
 
 	controller, _, err := client.RunnerControllers.UpdateRunnerController(o.id, updateOpts, gitlab.WithContext(ctx))

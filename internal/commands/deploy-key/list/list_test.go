@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -31,7 +31,7 @@ func TestDeployKeyList(t *testing.T) {
 		Title:     "example key",
 		Key:       "ssh-ed25519 example",
 		CanPush:   false,
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testCases := []testCase{
@@ -83,4 +83,37 @@ func TestDeployKeyList(t *testing.T) {
 			assert.Empty(t, out.ErrBuf.String())
 		})
 	}
+}
+
+func TestDeployKeyList_JSON(t *testing.T) {
+	t.Parallel()
+
+	testKey := &gitlab.ProjectDeployKey{
+		ID:        1,
+		Title:     "example key",
+		Key:       "ssh-ed25519 example",
+		CanPush:   false,
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockDeployKeys.EXPECT().
+		ListProjectDeployKeys("OWNER/REPO", gomock.Any()).
+		Return([]*gitlab.ProjectDeployKey{testKey}, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdList,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("--output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":1`)
+	assert.Contains(t, out.String(), `"title":"example key"`)
+	assert.Contains(t, out.String(), `"key":"ssh-ed25519 example"`)
+	assert.Contains(t, out.String(), `"can_push":false`)
+	assert.Empty(t, out.Stderr())
 }

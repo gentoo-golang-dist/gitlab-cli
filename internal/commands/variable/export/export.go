@@ -11,7 +11,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -55,14 +55,13 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 		Aliases: []string{"ex"},
 		Args:    cobra.ExactArgs(0),
 		Example: heredoc.Doc(`
-			$ glab variable export
-			$ glab variable export --per-page 1000 --page 1
-			$ glab variable export --group gitlab-org
-			$ glab variable export --group gitlab-org --per-page 1000 --page 1
-			$ glab variable export --output json
-			$ glab variable export --output env
-			$ glab variable export --output export
-		`),
+			glab variable export
+			glab variable export --per-page 1000 --page 1
+			glab variable export --group gitlab-org
+			glab variable export --group gitlab-org --per-page 1000 --page 1
+			glab variable export --output json
+			glab variable export --output env
+			glab variable export --output export`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},

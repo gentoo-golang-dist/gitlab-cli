@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
@@ -46,14 +46,13 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Args: cmdutils.MinimumArgs(1, "no tag name provided"),
 		Example: heredoc.Doc(`
 			# Delete a release (with a confirmation prompt)
-			$ glab release delete v1.1.0
+			glab release delete v1.1.0
 
 			# Skip the confirmation prompt and force delete
-			$ glab release delete v1.0.1 -y
+			glab release delete v1.0.1 -y
 
 			# Delete release and associated tag
-			$ glab release delete v1.0.1 --with-tag
-		`),
+			glab release delete v1.0.1 --with-tag`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

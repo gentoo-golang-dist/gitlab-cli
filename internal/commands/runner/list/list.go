@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -38,24 +38,27 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   "List GitLab CI/CD runners.",
-		Long:    "List runners for a project (default), group, or instance. Use -R, --repo to list runners for another repository. Instance scope requires administrator access.\n",
+		Use:   "list [flags]",
+		Short: "List runners.",
+		Long: heredoc.Doc(`
+			List runners for a project (default), group, or instance.
+
+			Instance scope requires administrator access.
+		`),
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# List runners for the current project
-			$ glab runner list
+			glab runner list
 
 			# List runners for a specific project
-			$ glab runner list -R owner/repo
+			glab runner list -R owner/repo
 
 			# List runners for a group
-			$ glab runner list --group mygroup
+			glab runner list --group mygroup
 
 			# List runners as JSON
-			$ glab runner list --output json
-		`),
+			glab runner list --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -68,8 +71,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmdutils.EnableRepoOverride(cmd, f)
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 	fl := cmd.Flags()
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
 	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page.")
 	fl.StringVarP(&opts.group, "group", "g", "", "List runners for a group. Ignored if -R/--repo is set.")
@@ -188,9 +191,9 @@ func formatStatus(c *iostreams.ColorPalette, status string) string {
 	case "offline":
 		return c.Gray(status)
 	case "stale":
-		return c.Yellow(status)
+		return c.Magenta(status)
 	case "never_contacted":
-		return c.Gray(status)
+		return c.Yellow(status)
 	case "paused":
 		return c.Yellow(status)
 	default:

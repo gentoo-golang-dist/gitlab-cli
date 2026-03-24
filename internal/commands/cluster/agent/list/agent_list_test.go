@@ -9,8 +9,8 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/stretchr/testify/assert"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -29,12 +29,12 @@ func TestAgentList(t *testing.T) {
 			{
 				ID:        1,
 				Name:      "local",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 			{
 				ID:        2,
 				Name:      "prd",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 		}, &gitlab.Response{}, nil).
 		Times(1)
@@ -71,7 +71,7 @@ func TestAgentList_Pagination(t *testing.T) {
 			{
 				ID:        2,
 				Name:      "prd",
-				CreatedAt: gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
 			},
 		}, &gitlab.Response{NextPage: 0}, nil)
 
@@ -89,4 +89,35 @@ func TestAgentList_Pagination(t *testing.T) {
 
 	`), output.String())
 	assert.Equal(t, ``, output.Stderr())
+}
+
+func TestAgentList_JSON(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlab_testing.NewTestClient(t)
+	exec := cmdtest.SetupCmdForTest(t, NewCmdAgentList, false, cmdtest.WithGitLabClient(tc.Client))
+
+	tc.MockClusterAgents.EXPECT().
+		ListAgents("OWNER/REPO", &gitlab.ListAgentsOptions{ListOptions: gitlab.ListOptions{Page: 1, PerPage: 30}}).
+		Return([]*gitlab.Agent{
+			{
+				ID:        1,
+				Name:      "local",
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
+			},
+			{
+				ID:        2,
+				Name:      "prd",
+				CreatedAt: new(time.Now().Add(-24 * time.Hour)),
+			},
+		}, &gitlab.Response{}, nil)
+
+	output, err := exec("--output json")
+	assert.NoError(t, err)
+
+	assert.Contains(t, output.String(), `"id":1`)
+	assert.Contains(t, output.String(), `"name":"local"`)
+	assert.Contains(t, output.String(), `"id":2`)
+	assert.Contains(t, output.String(), `"name":"prd"`)
+	assert.Empty(t, output.Stderr())
 }

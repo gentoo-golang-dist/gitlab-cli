@@ -1,5 +1,5 @@
 ---
-title: glab stack sync
+title: '`glab stack sync`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -18,6 +18,8 @@ Sync and submit progress on a stacked diff. This command runs these steps:
 
 1. Optional. If working in a fork, select whether to push to the fork,
    or the upstream repository.
+1. Optional. If --update-base is set, rebases the entire stack onto the
+   latest version of the base branch.
 1. Pushes any amended changes to their merge requests.
 1. Rebases any changes that happened previously in the stack.
 1. Removes any branches that were already merged, or with a closed merge request.
@@ -25,7 +27,7 @@ Sync and submit progress on a stacked diff. This command runs these steps:
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
+<https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
 glab stack sync [flags]
@@ -34,15 +36,16 @@ glab stack sync [flags]
 ## Examples
 
 ```console
-$ glab stack sync
-$ glab stack sync --no-verify
-
+glab stack sync
+glab stack sync --no-verify
+glab stack sync --update-base
 ```
 
 ## Options
 
 ```plaintext
-      --no-verify   Bypass the pre-push hook. (See githooks(5) for more information.)
+      --no-verify     Bypass the pre-push hook. (See githooks(5) for more information.)
+      --update-base   Rebase the stack onto the latest version of the base branch.
 ```
 
 ## Options inherited from parent commands

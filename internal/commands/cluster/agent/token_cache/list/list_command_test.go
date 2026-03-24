@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -70,7 +70,7 @@ func TestList_FilesystemTokens_ShowsTable(t *testing.T) {
 	cacheDir := t.TempDir()
 	setUserCacheDir(t, cacheDir)
 
-	expires := gitlab.Ptr(gitlab.ISOTime(time.Now().Add(1 * time.Hour)))
+	expires := new(gitlab.ISOTime(time.Now().Add(1 * time.Hour)))
 	pat := &gitlab.PersonalAccessToken{Name: "tok1", ExpiresAt: expires}
 	writeFSToken(t, tc.Client.BaseURL().String(), 7, pat)
 

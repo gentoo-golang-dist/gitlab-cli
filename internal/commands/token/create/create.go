@@ -9,7 +9,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -71,24 +71,22 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 		# Create project access token for current project (default 30 days)
-		$ glab token create --access-level developer --scope read_repository --scope read_registry my-project-token
+		glab token create --access-level developer --scope read_repository --scope read_registry my-project-token
 
 		# Create project access token with 7 day lifetime
-		$ glab token create --repo user/my-repo --access-level owner --scope api my-project-token --duration 7d
+		glab token create --repo user/my-repo --access-level owner --scope api my-project-token --duration 7d
 
 		# Create a group access token expiring in 2 weeks
-		$ glab token create --group group/sub-group --access-level owner --scope api my-group-token --duration 2w
+		glab token create --group group/sub-group --access-level owner --scope api my-group-token --duration 2w
 
 		# Create a personal access token for current user with 90 day lifetime
-		$ glab token create --user @me --scope k8s_proxy my-personal-token --duration 90d
+		glab token create --user @me --scope k8s_proxy my-personal-token --duration 90d
 
 		# (administrator only) Create a personal access token for another user
-		$ glab token create --user johndoe --scope api johns-personal-token --duration 180d
+		glab token create --user johndoe --scope api johns-personal-token --duration 180d
 
 		# Create a token with explicit expiration date
-		$ glab token create --access-level developer --scope api my-token --expires-at 2025-12-31
-
-		`),
+		glab token create --access-level developer --scope api my-token --expires-at 2025-12-31`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -113,7 +111,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
 	cmd.Flags().StringSliceVarP(&opts.scopes, "scope", "S", []string{"read_repository"}, "Scopes for the token. Multiple scopes can be comma-separated or specified by repeating the flag. For a list, see https://docs.gitlab.com/user/profile/personal_access_tokens/#personal-access-token-scopes.")
 	cmd.Flags().VarP(&opts.accessLevel, "access-level", "A", "Access level of the token: one of 'guest', 'reporter', 'developer', 'maintainer', 'owner'.")
-	cmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as 'text' for the token value, 'json' for the actual API token structure.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as 'text' for the token value, 'json' for the actual API token structure.")
 	cmd.MarkFlagsMutuallyExclusive("user", "group")
 	cmd.MarkFlagsMutuallyExclusive("expires-at", "duration")
 	return cmd
@@ -186,9 +184,9 @@ func (o *options) run() error {
 
 		if o.user == "@me" {
 			token, _, err := client.Users.CreatePersonalAccessTokenForCurrentUser(&gitlab.CreatePersonalAccessTokenForCurrentUserOptions{
-				Name:      gitlab.Ptr(o.name),
-				Scopes:    gitlab.Ptr(o.scopes),
-				ExpiresAt: gitlab.Ptr(expirationDate),
+				Name:      new(o.name),
+				Scopes:    new(o.scopes),
+				ExpiresAt: new(expirationDate),
 			})
 			if err != nil {
 				return err

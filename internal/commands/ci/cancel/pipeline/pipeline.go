@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
@@ -26,11 +26,10 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 		Use:   "pipeline <id> [flags]",
 		Short: `Cancel CI/CD pipelines.`,
 		Example: heredoc.Doc(`
-			$ glab ci cancel pipeline 1504182795
-			$ glab ci cancel pipeline 1504182795,1504182796
-			$ glab ci cancel pipeline "1504182795 1504182796"
-			$ glab ci cancel pipeline 1504182795,1504182796 --dry-run
-		`),
+			glab ci cancel pipeline 1504182795
+			glab ci cancel pipeline 1504182795,1504182796
+			glab ci cancel pipeline "1504182795 1504182796"
+			glab ci cancel pipeline 1504182795,1504182796 --dry-run`),
 		Long: ``,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {

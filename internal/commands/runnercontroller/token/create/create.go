@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -36,14 +36,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Create a token for runner controller 42
-			$ glab runner-controller token create 42
+			glab runner-controller token create 42
 
 			# Create a token with a description
-			$ glab runner-controller token create 42 --description "production"
+			glab runner-controller token create 42 --description "production"
 
 			# Create a token and output as JSON
-			$ glab runner-controller token create 42 --output json
-		`),
+			glab runner-controller token create 42 --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -55,9 +54,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.description, "description", "d", "", "Description of the token.")
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	return cmd
 }
@@ -80,7 +80,7 @@ func (o *options) run(ctx context.Context) error {
 
 	createOpts := &gitlab.CreateRunnerControllerTokenOptions{}
 	if o.description != "" {
-		createOpts.Description = gitlab.Ptr(o.description)
+		createOpts.Description = new(o.description)
 	}
 
 	token, _, err := client.RunnerControllerTokens.CreateRunnerControllerToken(o.controllerID, createOpts, gitlab.WithContext(ctx))

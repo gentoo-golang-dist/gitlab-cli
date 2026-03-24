@@ -17,7 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/cluster/agent/agentutils"
@@ -128,9 +128,9 @@ func (o *options) cachedPAT(ctx context.Context) (*gitlab.PersonalAccessToken, e
 		patExpiresAt := time.Now().Add(o.tokenExpiryDuration).UTC()
 
 		pat, _, err := client.Users.CreatePersonalAccessTokenForCurrentUser(&gitlab.CreatePersonalAccessTokenForCurrentUserOptions{
-			Name:      gitlab.Ptr(patName),
-			Scopes:    gitlab.Ptr(patScopes),
-			ExpiresAt: gitlab.Ptr(gitlab.ISOTime(patExpiresAt)),
+			Name:      new(patName),
+			Scopes:    new(patScopes),
+			ExpiresAt: new(gitlab.ISOTime(patExpiresAt)),
 		}, gitlab.WithContext(ctx))
 		if err != nil {
 			return nil, err

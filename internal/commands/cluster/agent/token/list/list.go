@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -22,7 +22,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepoFunc func() (glrepo.Interface, error)
 
-	agentID int64
+	agentID      int64
+	outputFormat string
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
@@ -47,6 +48,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			return opts.run(cmd.Context())
 		},
 	}
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -76,6 +79,10 @@ func (o *options) run(ctx context.Context) error {
 		return fmt.Errorf("unable to retrieve agent tokens: %w", err)
 	}
 
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(tokens)
+	}
+
 	c := o.io.Color()
 	bold := c.Bold
 
@@ -95,7 +102,7 @@ func (o *options) run(ctx context.Context) error {
 		}
 
 		if cachedUserID != token.CreatedByUserID {
-			user, _, err := client.Users.GetUser(token.CreatedByUserID, gitlab.GetUsersOptions{}, gitlab.WithContext(ctx))
+			user, _, err := client.Users.GetUser(token.CreatedByUserID, &gitlab.GetUserOptions{}, gitlab.WithContext(ctx))
 			if err != nil {
 				username = fmt.Sprintf("%d", token.CreatedByUserID)
 			} else {

@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/release/releaseutils"
@@ -22,6 +22,7 @@ import (
 type options struct {
 	tagName       string
 	openInBrowser bool
+	outputFormat  string
 
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
@@ -46,11 +47,10 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# View the latest release of a GitLab repository
-			$ glab release view
+			glab release view
 
 			# View a release with specified tag name
-			$ glab release view v1.0.1
-		`),
+			glab release view v1.0.1`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -63,6 +63,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open the release in the browser.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -119,6 +120,10 @@ func (o *options) run() error {
 
 		browser, _ := cfg.Get(repo.RepoHost(), "browser")
 		return utils.OpenInBrowser(url, browser)
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(release)
 	}
 
 	glamourStyle, _ := cfg.Get(repo.RepoHost(), "glamour_style")

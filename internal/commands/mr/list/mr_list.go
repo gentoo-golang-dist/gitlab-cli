@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -93,19 +93,18 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 			mcpannotations.Safe: "true",
 		},
 		Example: heredoc.Doc(`
-			$ glab mr list --all
-			$ glab mr ls -a
-			$ glab mr list --assignee=@me
-			$ glab mr list --reviewer=@me
-			$ glab mr list --source-branch=new-feature
-			$ glab mr list --target-branch=main
-			$ glab mr list --search "this adds feature X"
-			$ glab mr list --label needs-review
-			$ glab mr list --not-label waiting-maintainer-feedback,subsystem-x
-			$ glab mr list -M --per-page 10
-			$ glab mr list --draft
-			$ glab mr list --not-draft
-		`),
+			glab mr list --all
+			glab mr ls -a
+			glab mr list --assignee=@me
+			glab mr list --reviewer=@me
+			glab mr list --source-branch=new-feature
+			glab mr list --target-branch=main
+			glab mr list --search "this adds feature X"
+			glab mr list --label needs-review
+			glab mr list --not-label waiting-maintainer-feedback,subsystem-x
+			glab mr list -M --per-page 10
+			glab mr list --draft
+			glab mr list --not-draft`),
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(cmd); err != nil {
@@ -133,7 +132,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	mrListCmd.Flags().BoolVarP(&opts.merged, "merged", "M", false, "Get only merged merge requests.")
 	mrListCmd.Flags().BoolVarP(&opts.draft, "draft", "d", false, "Filter by draft merge requests.")
 	mrListCmd.Flags().BoolVarP(&opts.notDraft, "not-draft", "", false, "Filter by non-draft merge requests.")
-	mrListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(mrListCmd, &opts.outputFormat)
 	mrListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	mrListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users. Multiple users can be comma-separated or specified by repeating the flag.")
@@ -209,7 +208,7 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	l := &gitlab.ListProjectMergeRequestsOptions{
-		State: gitlab.Ptr(o.state),
+		State: new(o.state),
 		ListOptions: gitlab.ListOptions{
 			Page:    1,
 			PerPage: 30,
@@ -226,19 +225,19 @@ func (o *options) run() error {
 		if err != nil {
 			return err
 		}
-		l.AuthorID = gitlab.Ptr(u.ID)
+		l.AuthorID = new(u.ID)
 		o.listType = "search"
 	}
 	if o.sourceBranch != "" {
-		l.SourceBranch = gitlab.Ptr(o.sourceBranch)
+		l.SourceBranch = new(o.sourceBranch)
 		o.listType = "search"
 	}
 	if o.targetBranch != "" {
-		l.TargetBranch = gitlab.Ptr(o.targetBranch)
+		l.TargetBranch = new(o.targetBranch)
 		o.listType = "search"
 	}
 	if o.search != "" {
-		l.Search = gitlab.Ptr(o.search)
+		l.Search = new(o.search)
 		o.listType = "search"
 	}
 	if len(o.labels) > 0 {
@@ -250,7 +249,7 @@ func (o *options) run() error {
 		o.listType = "search"
 	}
 	if o.milestone != "" {
-		l.Milestone = gitlab.Ptr(o.milestone)
+		l.Milestone = new(o.milestone)
 		o.listType = "search"
 	}
 	if o.page != 0 {
@@ -260,26 +259,26 @@ func (o *options) run() error {
 		l.PerPage = int64(o.perPage)
 	}
 	if o.draft {
-		l.WIP = gitlab.Ptr("yes")
+		l.WIP = new("yes")
 		o.listType = "search"
 	}
 	if o.notDraft {
-		l.WIP = gitlab.Ptr("no")
+		l.WIP = new("no")
 		o.listType = "search"
 	}
 
 	if o.mine {
-		l.Scope = gitlab.Ptr("assigned_to_me")
+		l.Scope = new("assigned_to_me")
 		o.listType = "search"
 	}
 
 	if o.orderBy != "" {
-		l.OrderBy = gitlab.Ptr(o.orderBy)
+		l.OrderBy = new(o.orderBy)
 		o.listType = "search"
 	}
 
 	if o.sort != "" {
-		l.Sort = gitlab.Ptr(o.sort)
+		l.Sort = new(o.sort)
 	}
 
 	assigneeIds := make([]int, 0)
@@ -314,23 +313,23 @@ func (o *options) run() error {
 	title := utils.NewListTitle(o.titleQualifier + " merge request")
 
 	if !o.createdBefore.IsZero() {
-		l.CreatedBefore = gitlab.Ptr(o.createdBefore)
+		l.CreatedBefore = new(o.createdBefore)
 	}
 
 	if !o.createdAfter.IsZero() {
-		l.CreatedAfter = gitlab.Ptr(o.createdAfter)
+		l.CreatedAfter = new(o.createdAfter)
 	}
 
 	if !o.deployedBefore.IsZero() {
-		l.DeployedBefore = gitlab.Ptr(o.deployedBefore)
+		l.DeployedBefore = new(o.deployedBefore)
 	}
 
 	if !o.deployedAfter.IsZero() {
-		l.DeployedAfter = gitlab.Ptr(o.deployedAfter)
+		l.DeployedAfter = new(o.deployedAfter)
 	}
 
 	if o.environment != "" {
-		l.Environment = gitlab.Ptr(o.environment)
+		l.Environment = new(o.environment)
 	}
 
 	if o.group != "" {

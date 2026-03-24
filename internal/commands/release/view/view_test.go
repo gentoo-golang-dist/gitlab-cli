@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -150,4 +150,45 @@ func Test_ReleaseView(t *testing.T) {
 			assert.Empty(t, out.Stderr())
 		})
 	}
+}
+
+func TestReleaseView_JSON(t *testing.T) {
+	t.Parallel()
+
+	createdAt, _ := time.Parse(time.RFC3339, "2020-01-23T07:13:17.721Z")
+	releasedAt, _ := time.Parse(time.RFC3339, "2020-01-23T07:13:17.721Z")
+
+	testRelease := &gitlab.Release{
+		Name:            "test_release",
+		TagName:         "0.0.1",
+		Description:     "Test description",
+		CreatedAt:       &createdAt,
+		ReleasedAt:      &releasedAt,
+		UpcomingRelease: false,
+		Author: gitlab.BasicUser{
+			ID:       11809982,
+			Username: "test_user",
+			Name:     "Test User",
+		},
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockReleases.EXPECT().
+		GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).
+		Return(testRelease, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdView,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("0.0.1 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"tag_name":"0.0.1"`)
+	assert.Contains(t, out.String(), `"name":"test_release"`)
+	assert.Contains(t, out.String(), `"description":"Test description"`)
+	assert.Empty(t, out.Stderr())
 }

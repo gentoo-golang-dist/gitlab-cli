@@ -7,11 +7,11 @@ This project is configured to send automated Slack notifications when a new rele
 ### 1. Create a Slack Incoming Webhook
 
 1. Go to your Slack workspace's [Incoming Webhooks](https://api.slack.com/messaging/webhooks) page
-2. Click "Create New App" or use an existing app
-3. Enable "Incoming Webhooks"
-4. Click "Add New Webhook to Workspace"
-5. Select the channel where you want release notifications
-6. Copy the webhook URL (format: `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX`)
+1. Click "Create New App" or use an existing app
+1. Enable "Incoming Webhooks"
+1. Click "Add New Webhook to Workspace"
+1. Select the channel where you want release notifications
+1. Copy the webhook URL (format: `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX`)
 
 ### 2. Configure CI/CD Variables
 
@@ -24,7 +24,7 @@ Add the following variables to your GitLab CI/CD settings:
 | `SLACK_WEBHOOK` | Your webhook URL                 | ✓         | ✓      |
 | `SLACK_CHANNEL` | Channel name (e.g., `#releases`) | ✓         | ✗      |
 
-**Important:** 
+**Important:**
 
 - Mark `SLACK_WEBHOOK` as **Protected** and **Masked** for security
 - Only protected tags will trigger the webhook
@@ -113,8 +113,8 @@ Modify the `changelog.groups` section in `.goreleaser.yml` to adjust how commits
 Testing Slack notifications locally is challenging because:
 
 1. **Snapshot mode skips announcements**: Running `goreleaser release --snapshot --clean` will not send Slack notifications, as snapshot mode automatically skips the announce step
-2. **GoReleaser Pro required**: The `goreleaser announce` command (which would allow testing announcements separately) is only available in GoReleaser Pro
-3. **Full release needed**: To test announcements with the free version, you would need to do a full release (not recommended for testing)
+1. **GoReleaser Pro required**: The `goreleaser announce` command (which would allow testing announcements separately) is only available in GoReleaser Pro
+1. **Full release needed**: To test announcements with the free version, you would need to do a full release (not recommended for testing)
 
 ### Alternative: Test the Slack Webhook Directly
 
@@ -136,17 +136,17 @@ curl -X POST -H 'Content-type: application/json' \
 The most reliable way to verify Slack notifications work correctly is to:
 
 1. Test the webhook URL directly using curl (as shown above)
-2. Review the notification template in `.goreleaser.yml` for syntax errors
-3. Let the notification run during an actual release (consider using a pre-release tag like `v1.0.0-rc1` for your first test)
+1. Review the notification template in `.goreleaser.yml` for syntax errors
+1. Let the notification run during an actual release (consider using a pre-release tag like `v1.0.0-rc1` for your first test)
 
 ## Troubleshooting
 
 ### Notifications not sending
 
 1. Verify `SLACK_WEBHOOK` is set and not expired
-2. Check that the webhook URL is correct
-3. Ensure the release job has access to protected variables
-4. Review GoReleaser logs in CI/CD pipeline
+1. Check that the webhook URL is correct
+1. Ensure the release job has access to protected variables
+1. Review GoReleaser logs in CI/CD pipeline
 
 ### Wrong channel
 

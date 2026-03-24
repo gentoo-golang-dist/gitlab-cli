@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -82,9 +82,9 @@ func Test_sendTelemetryData(t *testing.T) {
 			tc.MockUsageData.EXPECT().
 				TrackEvent(&gitlab.TrackEventOptions{
 					Event:          "gitlab_cli_command_used",
-					NamespaceID:    gitlab.Ptr(project.Namespace.ID),
-					ProjectID:      gitlab.Ptr(project.ID),
-					SendToSnowplow: gitlab.Ptr(true),
+					NamespaceID:    new(project.Namespace.ID),
+					ProjectID:      new(project.ID),
+					SendToSnowplow: new(true),
 					AdditionalProperties: map[string]string{
 						"label":                  tt.command,
 						"property":               tt.subcommand,

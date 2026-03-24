@@ -1,5 +1,5 @@
 ---
-title: glab securefile create
+title: '`glab securefile create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,11 +26,10 @@ upload
 
 ```console
 # Create a project secure file with the given name using the contents of the given path.
-$ glab securefile create "newfile.txt" "securefiles/localfile.txt"
+glab securefile create "newfile.txt" "securefiles/localfile.txt"
 
 # Create a project secure file using the 'upload' alias.
-$ glab securefile upload "newfile.txt" "securefiles/localfile.txt"
-
+glab securefile upload "newfile.txt" "securefiles/localfile.txt"
 ```
 
 ## Options inherited from parent commands

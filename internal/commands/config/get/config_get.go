@@ -32,11 +32,10 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
   		$ glab config get editor
-  		> vim
+  		vim
 
   		$ glab config get glamour_style
-  		> notty
-		`),
+  		notty`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",

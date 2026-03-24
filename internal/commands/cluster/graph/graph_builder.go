@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/utils/ptr"
 	"oss.terrastruct.com/d2/d2graph"
 	"oss.terrastruct.com/d2/d2lib"
 	"oss.terrastruct.com/d2/d2oracle"
@@ -242,7 +241,7 @@ func (b *graphBuilder) setOnGraph(toSet map[string]any, keys ...string) error {
 		var err error
 		switch val := v.(type) {
 		case string:
-			b.g, err = d2oracle.Set(b.g, nil, strings.Join(append(keys, k), "."), nil, ptr.To(val))
+			b.g, err = d2oracle.Set(b.g, nil, strings.Join(append(keys, k), "."), nil, new(val))
 		case map[string]any:
 			err = b.setOnGraph(val, append(keys, k)...)
 		default:

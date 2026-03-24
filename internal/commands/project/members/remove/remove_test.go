@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -28,7 +28,7 @@ func TestMembersRemove(t *testing.T) {
 			cli:  "--username=john.doe",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockUsers.EXPECT().
-					ListUsers(&gitlab.ListUsersOptions{Username: gitlab.Ptr("john.doe")}).
+					ListUsers(&gitlab.ListUsersOptions{Username: new("john.doe")}).
 					Return([]*gitlab.User{{ID: 1, Username: "john.doe"}}, nil, nil)
 				tc.MockProjectMembers.EXPECT().
 					DeleteProjectMember("OWNER/REPO", int64(1)).
@@ -63,7 +63,7 @@ func TestMembersRemove(t *testing.T) {
 			cli:  "--username=nonexistent",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockUsers.EXPECT().
-					ListUsers(&gitlab.ListUsersOptions{Username: gitlab.Ptr("nonexistent")}).
+					ListUsers(&gitlab.ListUsersOptions{Username: new("nonexistent")}).
 					Return([]*gitlab.User{}, nil, nil)
 			},
 			expectedError: "user nonexistent not found",

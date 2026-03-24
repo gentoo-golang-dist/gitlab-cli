@@ -1,5 +1,5 @@
 ---
-title: glab config get
+title: '`glab config get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,11 +20,10 @@ glab config get <key> [flags]
 
 ```console
 $ glab config get editor
-> vim
+vim
 
 $ glab config get glamour_style
-> notty
-
+notty
 ```
 
 ## Options

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 )
 
 func TestAccessLevel_Set(t *testing.T) {

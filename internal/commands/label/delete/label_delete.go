@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -18,9 +18,8 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Short: `Delete labels for a repository or project.`,
 		Long:  ``,
 		Example: heredoc.Doc(`
-			$ glab label delete foo
-			$ glab label delete -R owner/repo foo
-		`),
+			glab label delete foo
+			glab label delete -R owner/repo foo`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

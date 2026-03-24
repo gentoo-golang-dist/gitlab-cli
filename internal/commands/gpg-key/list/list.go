@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -19,7 +19,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
 
-	showKeyIDs bool
+	showKeyIDs   bool
+	outputFormat string
 }
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
@@ -32,8 +33,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Short: "Get a list of GPG keys for the currently authenticated user.",
 		Long:  "",
 		Example: heredoc.Doc(`
-			$ glab gpg-key list
-		`),
+			glab gpg-key list`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -44,6 +44,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&opts.showKeyIDs, "show-id", "", false, "Shows IDs of GPG keys.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -57,6 +58,10 @@ func (o *options) run() error {
 	keys, _, err := client.Users.ListGPGKeys()
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to list GPG keys.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(keys)
 	}
 
 	cs := o.io.Color()

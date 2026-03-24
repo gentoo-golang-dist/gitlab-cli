@@ -9,7 +9,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -38,11 +38,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: `Download the given state and output as JSON to stdout.`,
 		Example: heredoc.Doc(`
 			# Download the latest serial of the state production
-			$ glab opentofu state download production
+			glab opentofu state download production
 
 			# Download the serial 42 of the state production
-			$ glab opentofu state download production 42
-		`),
+			glab opentofu state download production 42`),
 		Args: cobra.MinimumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",

@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -78,12 +78,11 @@ func NewCmdView(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Command
 		Long:    ``,
 		Aliases: []string{"show"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s view 123
-			$ glab %[1]s show 123
-			$ glab %[1]s view --web 123
-			$ glab %[1]s view --comments 123
-			$ glab %[1]s view https://gitlab.com/NAMESPACE/REPO/-/%s
-		`, issueType, examplePath)),
+			glab %[1]s view 123
+			glab %[1]s show 123
+			glab %[1]s view --web 123
+			glab %[1]s view --comments 123
+			glab %[1]s view https://gitlab.com/NAMESPACE/REPO/-/%s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -98,7 +97,7 @@ func NewCmdView(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Command
 	issueViewCmd.Flags().BoolVarP(&opts.web, "web", "w", false, fmt.Sprintf("Open %s in a browser. Uses the default browser, or the browser specified in the $BROWSER variable.", issueType))
 	issueViewCmd.Flags().IntVarP(&opts.commentPageNumber, "page", "p", 1, "Page number.")
 	issueViewCmd.Flags().IntVarP(&opts.commentLimit, "per-page", "P", 20, "Number of items to list per page.")
-	issueViewCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(issueViewCmd, &opts.outputFormat)
 
 	return issueViewCmd
 }
@@ -135,7 +134,7 @@ func (o *options) run(issueType issuable.IssueType, args []string) error {
 
 	if o.showComments {
 		l := &gitlab.ListIssueNotesOptions{
-			Sort: gitlab.Ptr("asc"),
+			Sort: new("asc"),
 		}
 		if o.commentPageNumber != 0 {
 			l.Page = int64(o.commentPageNumber)

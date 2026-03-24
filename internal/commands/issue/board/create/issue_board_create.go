@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -62,7 +62,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			}
 
 			opts := &gitlab.CreateIssueBoardOptions{
-				Name: gitlab.Ptr(boardName),
+				Name: new(boardName),
 			}
 
 			fmt.Fprintln(out, "- Creating board")

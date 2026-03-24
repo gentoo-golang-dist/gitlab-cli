@@ -10,7 +10,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -60,18 +60,17 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			# View project information for the current directory.
 			# Must be a Git repository.
-			$ glab repo view
+			glab repo view
 
 			# View project information of specified name.
 			# glab repo view my-project
-			$ glab repo view user/repo
-			$ glab repo view group/namespace/repo
+			glab repo view user/repo
+			glab repo view group/namespace/repo
 
 			# Specify repository by full [Git] URL.
-			$ glab repo view git@gitlab.com:user/repo.git
-			$ glab repo view https://gitlab.company.org/user/repo
-			$ glab repo view https://gitlab.company.org/user/repo.git
-		`),
+			glab repo view git@gitlab.com:user/repo.git
+			glab repo view https://gitlab.company.org/user/repo
+			glab repo view https://gitlab.company.org/user/repo.git`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -85,7 +84,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	}
 
 	projectViewCmd.Flags().BoolVarP(&opts.web, "web", "w", false, "Open a project in the browser.")
-	projectViewCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(projectViewCmd, &opts.outputFormat)
 	projectViewCmd.Flags().StringVarP(&opts.branch, "branch", "b", "", "View a specific branch of the repository.")
 
 	return projectViewCmd
@@ -209,7 +208,7 @@ func getReadmeFile(opts *options, project *gitlab.Project) (*gitlab.File, error)
 		opts.branch = readmeRef
 	}
 
-	readmeFile, _, err := opts.client.RepositoryFiles.GetFile(project.PathWithNamespace, readmeFileName, &gitlab.GetFileOptions{Ref: gitlab.Ptr(opts.branch)})
+	readmeFile, _, err := opts.client.RepositoryFiles.GetFile(project.PathWithNamespace, readmeFileName, &gitlab.GetFileOptions{Ref: new(opts.branch)})
 	if err != nil {
 		return nil, cmdutils.WrapError(err, fmt.Sprintf("Failed to retrieve README file on the %s branch.", opts.branch))
 	}

@@ -1,5 +1,5 @@
 ---
-title: glab milestone delete
+title: '`glab milestone delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,14 +20,13 @@ glab milestone delete [flags]
 
 ```console
 # Delete milestone for the current project
-$ glab milestone delete 123
+glab milestone delete 123
 
 # Delete milestone for the specified project
-$ glab milestone delete 123 --project project-name
+glab milestone delete 123 --project project-name
 
 # Delete milestone for the specified group
-$ glab milestone delete 123 --group group-name
-
+glab milestone delete 123 --group group-name
 ```
 
 ## Options

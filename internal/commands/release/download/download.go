@@ -15,7 +15,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -56,14 +56,13 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Download all assets from the latest release
-			$ glab release download
+			glab release download
 
 			# Download all assets from the specified release tag
-			$ glab release download v1.1.0
+			glab release download v1.1.0
 
 			# Download assets with names matching the glob pattern
-			$ glab release download v1.10.1 --asset-name="*.tar.gz"
-		`),
+			glab release download v1.10.1 --asset-name="*.tar.gz"`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

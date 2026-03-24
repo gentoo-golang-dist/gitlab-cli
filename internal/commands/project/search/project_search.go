@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -39,11 +39,10 @@ func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
 		Args:    cobra.ExactArgs(0),
 		Aliases: []string{"find", "lookup"},
 		Example: heredoc.Doc(`
-			$ glab project search -s "title"
-			$ glab repo search -s "title"
-			$ glab project find -s "title"
-			$ glab project lookup -s "title"
-		`),
+			glab project search -s "title"
+			glab repo search -s "title"
+			glab project find -s "title"
+			glab project lookup -s "title"`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -55,7 +54,7 @@ func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
 	projectSearchCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	projectSearchCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
 	projectSearchCmd.Flags().StringVarP(&opts.search, "search", "s", "", "A string contained in the project name.")
-	projectSearchCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(projectSearchCmd, &opts.outputFormat)
 	cobra.CheckErr(projectSearchCmd.MarkFlagRequired("search"))
 
 	return projectSearchCmd

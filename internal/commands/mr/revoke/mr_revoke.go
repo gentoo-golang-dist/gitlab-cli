@@ -19,15 +19,14 @@ func NewCmdRevoke(f cmdutils.Factory) *cobra.Command {
 		Aliases: []string{"unapprove"},
 		Example: heredoc.Doc(`
 		# Revoke approval on a merge request
-		$ glab mr revoke 123
-		$ glab mr unapprove 123
-		$ glab mr revoke branch
+		glab mr revoke 123
+		glab mr unapprove 123
+		glab mr revoke branch
 
 		# Revoke approval on the currently checked out branch
-		$ glab mr revoke
+		glab mr revoke
 		# Revoke approval on merge request 123 on branch 456
-		$ glab mr revoke 123 branch 456
-		`),
+		glab mr revoke 123 branch 456`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

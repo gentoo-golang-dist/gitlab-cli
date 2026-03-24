@@ -5,12 +5,30 @@ import (
 
 	"github.com/spf13/cobra"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
+type options struct {
+	outputFormat string
+
+	io           *iostreams.IOStreams
+	gitlabClient func() (*gitlab.Client, error)
+	baseRepo     func() (glrepo.Interface, error)
+}
+
 func NewCmdApprovers(f cmdutils.Factory) *cobra.Command {
+	opts := &options{
+		io:           f.IO(),
+		gitlabClient: f.GitLabClient,
+		baseRepo:     f.BaseRepo,
+	}
+
 	mrApproversCmd := &cobra.Command{
 		Use:     "approvers [<id> | <branch>] [flags]",
 		Short:   `List eligible approvers for merge requests in any state.`,
@@ -21,7 +39,7 @@ func NewCmdApprovers(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := f.GitLabClient()
+			client, err := opts.gitlabClient()
 			if err != nil {
 				return err
 			}
@@ -33,18 +51,23 @@ func NewCmdApprovers(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintf(f.IO().StdOut, "\nListing merge request !%d eligible approvers:\n", mr.IID)
-
 			mrApprovals, _, err := client.MergeRequestApprovals.GetApprovalState(repo.FullName(), mr.IID)
 			if err != nil {
 				return err
 			}
 
-			mrutils.PrintMRApprovalState(f.IO(), mrApprovals)
+			if opts.outputFormat == "json" {
+				return opts.io.PrintJSON(mrApprovals)
+			}
+
+			fmt.Fprintf(opts.io.StdOut, "\nListing merge request !%d eligible approvers:\n", mr.IID)
+			mrutils.PrintMRApprovalState(opts.io, mrApprovals)
 
 			return nil
 		},
 	}
+
+	cmdutils.EnableJSONOutput(mrApproversCmd, &opts.outputFormat)
 
 	return mrApproversCmd
 }

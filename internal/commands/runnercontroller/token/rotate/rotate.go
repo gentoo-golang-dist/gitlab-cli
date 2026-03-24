@@ -9,7 +9,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -39,14 +39,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# Rotate token 1 for runner controller 42 (with confirmation prompt)
-			$ glab runner-controller token rotate 42 1
+			glab runner-controller token rotate 42 1
 
 			# Rotate without confirmation
-			$ glab runner-controller token rotate 42 1 --force
+			glab runner-controller token rotate 42 1 --force
 
 			# Rotate and output as JSON
-			$ glab runner-controller token rotate 42 1 --force --output json
-		`),
+			glab runner-controller token rotate 42 1 --force --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -61,9 +60,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	fl := cmd.Flags()
 	fl.BoolVarP(&opts.force, "force", "f", false, "Skip confirmation prompt.")
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	return cmd
 }

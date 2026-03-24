@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
@@ -37,10 +37,9 @@ func NewCmdUnsubscribe(f cmdutils.Factory, issueType issuable.IssueType) *cobra.
 		Long:    ``,
 		Aliases: []string{"unsub"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s unsubscribe 123
-			$ glab %[1]s unsub 123
-			$ glab %[1]s unsubscribe https://gitlab.com/OWNER/REPO/-/%[2]s
-		`, issueType, examplePath)),
+			glab %[1]s unsubscribe 123
+			glab %[1]s unsub 123
+			glab %[1]s unsubscribe https://gitlab.com/OWNER/REPO/-/%[2]s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

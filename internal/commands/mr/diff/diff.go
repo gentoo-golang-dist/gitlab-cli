@@ -14,7 +14,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
@@ -41,14 +41,13 @@ func NewCmdDiff(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 		Use:   "diff [<id> | <branch>]",
 		Short: "View changes in a merge request.",
 		Example: heredoc.Doc(`
-			$ glab mr diff 123
-			$ glab mr diff branch
+			glab mr diff 123
+			glab mr diff branch
 
 			# Get merge request from current branch
-			$ glab mr diff
+			glab mr diff
 
-			$ glab mr diff 123 --color=never
-		`),
+			glab mr diff 123 --color=never`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

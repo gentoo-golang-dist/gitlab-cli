@@ -27,6 +27,16 @@ type fatalLogger interface {
 }
 
 func init() {
+	// Unset git hook environment variables that leak when tests run inside
+	// a git hook (e.g., pre-push via lefthook). These cause rev-parse and
+	// child go-test builds (with -coverpkg=./...) to fail in worktrees.
+	// Note: this permanently unsets these vars for the process since init()
+	// has no testing.T for cleanup. This is intentional — any test importing
+	// cmdtest needs a clean git environment for binary builds.
+	for _, key := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"} {
+		os.Unsetenv(key)
+	}
+
 	path := &bytes.Buffer{}
 	// get root dir via git
 	gitCmd := git.GitCommand("rev-parse", "--show-toplevel")

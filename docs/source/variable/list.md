@@ -1,5 +1,5 @@
 ---
-title: glab variable list
+title: '`glab variable list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,12 +25,11 @@ ls
 ## Examples
 
 ```console
-$ glab variable list
-$ glab variable list -i
-$ glab variable list --per-page 100 --page 1
-$ glab variable list --group gitlab-org
-$ glab variable list --group gitlab-org --per-page 100
-
+glab variable list
+glab variable list -i
+glab variable list --per-page 100 --page 1
+glab variable list --group gitlab-org
+glab variable list --group gitlab-org --per-page 100
 ```
 
 ## Options

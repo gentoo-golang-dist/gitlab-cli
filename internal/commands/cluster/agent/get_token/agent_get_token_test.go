@@ -12,8 +12,8 @@ import (
 	"github.com/zalando/go-keyring"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlab_testing "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlab_testing "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -28,7 +28,7 @@ func TestAgentGetToken(t *testing.T) {
 		CreatePersonalAccessTokenForCurrentUser(gomock.Any(), gomock.Any()).
 		Return(&gitlab.PersonalAccessToken{
 			Token:     "glpat-XTESTX",
-			ExpiresAt: gitlab.Ptr(mustParse(t, "2023-01-02")),
+			ExpiresAt: new(mustParse(t, "2023-01-02")),
 		}, &gitlab.Response{}, nil).
 		Times(1)
 

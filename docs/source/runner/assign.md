@@ -1,5 +1,5 @@
 ---
-title: glab runner assign
+title: '`glab runner assign`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -14,9 +14,9 @@ Assign a runner to a project.
 
 ## Synopsis
 
-Assigns an available runner to a project.
-Specify the project with -R (e.g. owner/repo).
-Requires Maintainer or Owner of the project.
+Assigns a runner to a project.
+
+Requires the Maintainer or Owner role for the project.
 
 ```plaintext
 glab runner assign <runner-id> [flags]
@@ -26,11 +26,10 @@ glab runner assign <runner-id> [flags]
 
 ```console
 # Assign runner 9 to the current repository
-$ glab runner assign 9
+glab runner assign 9
 
 # Assign runner 9 to a specific repository
-$ glab runner assign 9 -R owner/repo
-
+glab runner assign 9 -R owner/repo
 ```
 
 ## Options

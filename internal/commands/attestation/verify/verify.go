@@ -11,7 +11,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -63,11 +63,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args: cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# Verify attestation for the filename.txt file in the gitlab-org/gitlab project.
-			$ glab attestation verify gitlab-org/gitlab filename.txt
+			glab attestation verify gitlab-org/gitlab filename.txt
 
 			# Verify attestation for the filename.txt file in the project with ID 123.
-			$ glab attestation verify 123 filename.txt
-		`),
+			glab attestation verify 123 filename.txt`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

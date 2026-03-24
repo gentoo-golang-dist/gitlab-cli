@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -29,7 +29,7 @@ func Test_GetLabel(t *testing.T) {
 		ID:          123,
 		Name:        "Example label",
 		Description: "Example Description",
-		Priority:    5,
+		Priority:    gitlab.NewNullableWithValue(int64(5)),
 		Color:       "#A1B2C3D4",
 	}
 
@@ -87,4 +87,37 @@ func Test_GetLabel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLabelGet_JSON(t *testing.T) {
+	t.Parallel()
+
+	testLabel := &gitlab.Label{
+		ID:          123,
+		Name:        "Example label",
+		Description: "Example Description",
+		Priority:    gitlab.NewNullableWithValue(int64(5)),
+		Color:       "#A1B2C3D4",
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockLabels.EXPECT().
+		GetLabel("OWNER/REPO", 123).
+		Return(testLabel, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdGet,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("123 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":123`)
+	assert.Contains(t, out.String(), `"name":"Example label"`)
+	assert.Contains(t, out.String(), `"description":"Example Description"`)
+	assert.Contains(t, out.String(), `"color":"#A1B2C3D4"`)
+	assert.Empty(t, out.Stderr())
 }

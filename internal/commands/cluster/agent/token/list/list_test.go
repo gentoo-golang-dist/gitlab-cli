@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -80,7 +80,7 @@ func TestList_SingleToken(t *testing.T) {
 					Description:     "any-description",
 					AgentID:         1,
 					Status:          "active",
-					CreatedAt:       gitlab.Ptr(time.Time{}),
+					CreatedAt:       new(time.Time{}),
 					CreatedByUserID: 100,
 					// LastUsedAt:      &time.Time{},
 				},
@@ -127,7 +127,7 @@ func TestList_MultipleToken(t *testing.T) {
 					Description:     "any-description",
 					AgentID:         1,
 					Status:          "active",
-					CreatedAt:       gitlab.Ptr(time.Time{}),
+					CreatedAt:       new(time.Time{}),
 					CreatedByUserID: 100,
 					// LastUsedAt:      &time.Time{},
 				},
@@ -137,7 +137,7 @@ func TestList_MultipleToken(t *testing.T) {
 					Description:     "another-description",
 					AgentID:         1,
 					Status:          "revoked",
-					CreatedAt:       gitlab.Ptr(time.Time{}),
+					CreatedAt:       new(time.Time{}),
 					CreatedByUserID: 100,
 					// LastUsedAt:      &time.Time{},
 				},
@@ -159,4 +159,40 @@ func TestList_MultipleToken(t *testing.T) {
 
 	// THEN
 	assert.Equal(t, expectedOutput, out.OutBuf.String())
+}
+
+func TestAgentTokenList_JSON(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		cmdtest.WithGitLabClient(tc.Client),
+	)
+
+	tc.MockClusterAgents.EXPECT().
+		ListAgentTokens("OWNER/REPO", int64(1), nil, gomock.Any()).
+		Return([]*gitlab.AgentToken{
+			{
+				ID:              42,
+				Name:            "any-name",
+				Description:     "any-description",
+				AgentID:         1,
+				Status:          "active",
+				CreatedAt:       new(time.Time{}),
+				CreatedByUserID: 100,
+			},
+		}, nil, nil)
+
+	out, err := exec("1 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":42`)
+	assert.Contains(t, out.String(), `"name":"any-name"`)
+	assert.Contains(t, out.String(), `"status":"active"`)
+	assert.Contains(t, out.String(), `"description":"any-description"`)
+	assert.Empty(t, out.Stderr())
 }

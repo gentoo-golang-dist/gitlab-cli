@@ -10,7 +10,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
@@ -42,7 +42,7 @@ func extractEnvVar(s string) (*gitlab.PipelineVariableOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	pvar.VariableType = gitlab.Ptr(gitlab.EnvVariableType)
+	pvar.VariableType = new(gitlab.EnvVariableType)
 	return pvar, nil
 }
 
@@ -55,9 +55,8 @@ func extractFileVar(s string) (*gitlab.PipelineVariableOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	content := string(b)
-	pvar.VariableType = gitlab.Ptr(gitlab.FileVariableType)
-	pvar.Value = &content
+	pvar.VariableType = new(gitlab.FileVariableType)
+	pvar.Value = new(string(b))
 	return pvar, nil
 }
 
@@ -98,7 +97,7 @@ func createPipeline(cmd *cobra.Command, c *gitlab.CreatePipelineOptions, f cmdut
 }
 
 func createBranchPipeline(branch string, c *gitlab.CreatePipelineOptions, apiClient *gitlab.Client, repo glrepo.Interface) (*gitlab.Pipeline, error) {
-	c.Ref = gitlab.Ptr(branch)
+	c.Ref = new(branch)
 	pipe, _, err := apiClient.Pipelines.CreatePipeline(repo.FullName(), c)
 	return pipe, err
 }
@@ -203,21 +202,21 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 		Short:   `Create or run a new CI/CD pipeline.`,
 		Aliases: []string{"create"},
 		Example: heredoc.Doc(`
-			$ glab ci run
-			$ glab ci run --variables \"key1:value,with,comma\"
-			$ glab ci run -b main
-			$ glab ci run --web
-			$ glab ci run --mr
+			glab ci run
+			glab ci run --variables \"key1:value,with,comma\"
+			glab ci run -b main
+			glab ci run --web
+			glab ci run --mr
 
 			# Specify CI variables
-			$ glab ci run -b main --variables-env key1:val1
-			$ glab ci run -b main --variables-env key1:val1,key2:val2
-			$ glab ci run -b main --variables-env key1:val1 --variables-env key2:val2
-			$ glab ci run -b main --variables-file MYKEY:file1 --variables KEY2:some_value
+			glab ci run -b main --variables-env key1:val1
+			glab ci run -b main --variables-env key1:val1,key2:val2
+			glab ci run -b main --variables-env key1:val1 --variables-env key2:val2
+			glab ci run -b main --variables-file MYKEY:file1 --variables KEY2:some_value
 
 			# Specify CI inputs
-			$ glab ci run -b main --input key1:val1 --input key2:val2
-			$ glab ci run -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
+			glab ci run -b main --input key1:val1 --input key2:val2
+			glab ci run -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
 
 			# Load variables from JSON file
 			# Create variables.json with this format:
@@ -232,8 +231,7 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 			#     "value": "production"
 			#   }
 			# ]
-			$ glab ci run -b main --variables-from variables.json
-			`),
+			glab ci run -b main --variables-from variables.json`),
 
 		Long: "The `--branch` " + `option is available for all pipeline types.
 
@@ -273,7 +271,7 @@ If used with merge request pipelines, the command fails with a message like ` + 
 			}
 
 			if len(pipelineVars) != 0 {
-				c.Variables = gitlab.Ptr(pipelineVars)
+				c.Variables = new(pipelineVars)
 			}
 
 			pipe, err := createPipeline(cmd, c, f, client, repo, mr)

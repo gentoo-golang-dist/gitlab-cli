@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -31,7 +31,7 @@ func Test_ListProjectMilestones(t *testing.T) {
 		Title:       "Milestone title",
 		Description: "Example description",
 		State:       "closed",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -106,7 +106,7 @@ func Test_ListGroupMilestones(t *testing.T) {
 		Title:       "Milestone title",
 		Description: "Example description",
 		State:       "closed",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -163,4 +163,37 @@ func Test_ListGroupMilestones(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMilestoneList_JSON(t *testing.T) {
+	t.Parallel()
+
+	testMilestone := &gitlab.Milestone{
+		ID:          123,
+		ProjectID:   456,
+		Title:       "Milestone title",
+		Description: "Example description",
+		State:       "closed",
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+	}
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockMilestones.EXPECT().
+		ListMilestones("456", gomock.Any()).
+		Return([]*gitlab.Milestone{testMilestone}, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmdList,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+	)
+
+	out, err := exec("--project 456 --output json")
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"id":123`)
+	assert.Contains(t, out.String(), `"title":"Milestone title"`)
+	assert.Contains(t, out.String(), `"state":"closed"`)
+	assert.Empty(t, out.Stderr())
 }

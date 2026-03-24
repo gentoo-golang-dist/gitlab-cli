@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -20,9 +20,8 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 		Short: `Edit group or project label.`,
 		Long:  ``,
 		Example: heredoc.Doc(`
-			$ glab label edit
-			$ glab label edit -R owner/repo
-		`),
+			glab label edit
+			glab label edit -R owner/repo`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -44,20 +43,20 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 			l := &gitlab.UpdateLabelOptions{}
 
 			if s, _ := cmd.Flags().GetString("new-name"); s != "" {
-				l.Name = gitlab.Ptr(s)
+				l.Name = new(s)
 				change += fmt.Sprintf("Updated name: %s\n", s)
 			}
 			if s, _ := cmd.Flags().GetString("color"); s != "" {
-				l.Color = gitlab.Ptr(s)
+				l.Color = new(s)
 				change += fmt.Sprintf("Updated color: %s\n", s)
 			}
 			if s, _ := cmd.Flags().GetString("description"); s != "" {
-				l.Description = gitlab.Ptr(s)
+				l.Description = new(s)
 				change += fmt.Sprintf("Updated description: %s\n", s)
 			}
 			if cmd.Flags().Changed("priority") {
 				if s, err := cmd.Flags().GetInt("priority"); err == nil {
-					l.Priority = gitlab.Ptr(int64(s))
+					l.Priority = gitlab.NewNullableWithValue(int64(s))
 					change += fmt.Sprintf("Updated priority: %d\n", s)
 				} else {
 					return err

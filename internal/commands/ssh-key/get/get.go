@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -22,9 +22,10 @@ type options struct {
 	apiClient func(repoHost string) (*api.Client, error)
 	io        *iostreams.IOStreams
 
-	keyID   int64
-	perPage int
-	page    int
+	keyID        int64
+	perPage      int
+	page         int
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -38,14 +39,13 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get ssh key with ID as argument
-			$ glab ssh-key get 7750633
+			glab ssh-key get 7750633
 
 			# Interactive
-			$ glab ssh-key get
+			glab ssh-key get
 
 			# Interactive, with pagination
-			$ glab ssh-key get -P 50 -p 2
-		`),
+			glab ssh-key get -P 50 -p 2`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -61,6 +61,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -91,6 +92,10 @@ func (o *options) run() error {
 	key, _, err := client.Users.GetSSHKey(o.keyID)
 	if err != nil {
 		return cmdutils.WrapError(err, "getting SSH key.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(key)
 	}
 
 	o.io.LogInfo(key.Key)

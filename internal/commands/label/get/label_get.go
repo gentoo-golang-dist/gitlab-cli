@@ -4,7 +4,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -17,7 +17,8 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	io           *iostreams.IOStreams
 
-	labelID int
+	labelID      int
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -31,10 +32,10 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get label info using label 1234 as argument
-			$ glab label get 1234
-			
+			glab label get 1234
+
 			# Get info about a label in another project
-			$ glab label get 1234 -R owner/repo`),
+			glab label get 1234 -R owner/repo`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -47,6 +48,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			return opts.run(f)
 		},
 	}
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -74,12 +77,18 @@ func (o *options) run(f cmdutils.Factory) error {
 		return cmdutils.WrapError(err, "failed to get label")
 	}
 
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(label)
+	}
+
 	table := tableprinter.NewTablePrinter()
 	table.AddRow("Label ID", label.ID)
 	table.AddRow("Name", label.Name)
 	table.AddRow("Description", label.Description)
 	table.AddRow("Color", label.Color)
-	table.AddRow("Priority", label.Priority)
+	if priority, err := label.Priority.Get(); err == nil {
+		table.AddRow("Priority", priority)
+	}
 	o.io.LogInfo(table.String())
 
 	return nil

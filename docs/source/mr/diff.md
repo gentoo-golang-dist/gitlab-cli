@@ -1,5 +1,5 @@
 ---
-title: glab mr diff
+title: '`glab mr diff`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,14 +19,13 @@ glab mr diff [<id> | <branch>] [flags]
 ## Examples
 
 ```console
-$ glab mr diff 123
-$ glab mr diff branch
+glab mr diff 123
+glab mr diff branch
 
 # Get merge request from current branch
-$ glab mr diff
+glab mr diff
 
-$ glab mr diff 123 --color=never
-
+glab mr diff 123 --color=never
 ```
 
 ## Options

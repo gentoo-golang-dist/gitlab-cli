@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -39,11 +40,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# List all tokens for runner controller 42
-			$ glab runner-controller token list 42
+			glab runner-controller token list 42
 
 			# List tokens as JSON
-			$ glab runner-controller token list 42 --output json
-		`),
+			glab runner-controller token list 42 --output json`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -55,10 +55,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+
 	fl := cmd.Flags()
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
 	fl.Int64VarP(&opts.perPage, "per-page", "P", 30, "Number of items per page.")
-	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
 	return cmd
 }
@@ -102,12 +103,27 @@ func (o *options) run(ctx context.Context) error {
 func (o *options) printTable(tokens []*gitlab.RunnerControllerToken) error {
 	c := o.io.Color()
 	table := tableprinter.NewTablePrinter()
-	table.AddRow(c.Bold("ID"), c.Bold("Description"), c.Bold("Created At"), c.Bold("Updated At"))
+	table.AddRow(c.Bold("ID"), c.Bold("Description"), c.Bold("Last Used At"), c.Bold("Created At"), c.Bold("Updated At"))
 	for _, t := range tokens {
-		table.AddRow(t.ID, formatDescription(t.Description), t.CreatedAt, t.UpdatedAt)
+		table.AddRow(t.ID, formatDescription(t.Description), formatLastUsedAt(c, t.LastUsedAt), t.CreatedAt, t.UpdatedAt)
 	}
 	fmt.Fprint(o.io.StdOut, table.Render())
 	return nil
+}
+
+// tokenActiveTimeout is the duration after which a token is considered inactive.
+// https://gitlab.com/gitlab-org/gitlab/-/blob/master/ee/app/models/ci/runner_controller_token.rb#L14
+const tokenActiveTimeout = time.Hour
+
+func formatLastUsedAt(c *iostreams.ColorPalette, t *time.Time) string {
+	if t == nil {
+		return "-"
+	}
+	s := t.String()
+	if time.Since(*t) > tokenActiveTimeout {
+		return c.Gray(s)
+	}
+	return c.Green(s)
 }
 
 func formatDescription(desc string) string {

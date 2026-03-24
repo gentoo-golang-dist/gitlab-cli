@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/cmd/gen-docs/urlwrapper"
 	"gitlab.com/gitlab-org/cli/internal/api"
@@ -93,6 +93,7 @@ func genWebDocs(glabCli *cobra.Command, basePath string) error {
 // Top-level commands always get their own folder with _index.md
 // Non-top-level commands with subcommands get their own folder with _index.md
 // Non-top-level commands without subcommands get a .md file in their parent's directory
+// and do not create their own directory
 func genCommandDocs(cmd *cobra.Command, basePath string, parentPath []string) error {
 	// Skip help commands and unavailable commands (hidden/deprecated)
 	if cmd.Name() == "help" || !cmd.IsAvailableCommand() {
@@ -105,9 +106,11 @@ func genCommandDocs(cmd *cobra.Command, basePath string, parentPath []string) er
 
 	fmt.Println("Generating docs for " + strings.Join(currentPath, " "))
 
-	// Create directory for this command
-	if err := os.MkdirAll(fullPath, 0o750); err != nil {
-		return err
+	// Only create directory if this command has subcommands or is top-level
+	if cmd.HasAvailableSubCommands() || len(parentPath) == 0 {
+		if err := os.MkdirAll(fullPath, 0o750); err != nil {
+			return err
+		}
 	}
 
 	// Generate the command documentation
@@ -170,21 +173,21 @@ func printSubcommands(cmd *cobra.Command, buf *bytes.Buffer) {
 		return
 	}
 
-	var subcommands string
+	var subcommands strings.Builder
 	// Generate children commands
 	for _, cmdC := range cmd.Commands() {
 		if cmdC.Name() != "help" && cmdC.IsAvailableCommand() {
 			if cmdC.HasAvailableSubCommands() {
-				subcommands += fmt.Sprintf("- [`%s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name())
+				subcommands.WriteString(fmt.Sprintf("- [`%s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name()))
 			} else {
-				subcommands += fmt.Sprintf("- [`%s`](%s.md)\n", cmdC.Name(), cmdC.Name())
+				subcommands.WriteString(fmt.Sprintf("- [`%s`](%s.md)\n", cmdC.Name(), cmdC.Name()))
 			}
 		}
 	}
 
-	if subcommands != "" {
+	if subcommands.String() != "" {
 		buf.WriteString("\n## Subcommands\n\n")
-		buf.WriteString(subcommands)
+		buf.WriteString(subcommands.String())
 	}
 }
 
@@ -193,18 +196,18 @@ func printRootSubcommands(cmd *cobra.Command, buf *bytes.Buffer) {
 		return
 	}
 
-	var subcommands string
+	var subcommands strings.Builder
 	// Generate children commands for root
 	// All top-level commands get directories and _index.md files based on the generation logic
 	for _, cmdC := range cmd.Commands() {
 		if cmdC.Name() != "help" && cmdC.IsAvailableCommand() {
-			subcommands += fmt.Sprintf("- [`glab %s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name())
+			subcommands.WriteString(fmt.Sprintf("- [`glab %s`](%s/_index.md)\n", cmdC.Name(), cmdC.Name()))
 		}
 	}
 
-	if subcommands != "" {
+	if subcommands.String() != "" {
 		buf.WriteString("\n## Commands\n\n")
-		buf.WriteString(subcommands)
+		buf.WriteString(subcommands.String())
 	}
 }
 
@@ -269,7 +272,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 	name := cmd.CommandPath()
 	// GitLab Specific Docs Metadata
 	buf.WriteString("---" + "\n")
-	buf.WriteString("title: " + name + "\n")
+	buf.WriteString("title: '`" + name + "`'\n")
 	buf.WriteString("stage: Create" + "\n")
 	buf.WriteString("group: Code Review" + "\n")
 	buf.WriteString("info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>" + "\n")
@@ -390,7 +393,7 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 	// Generate environment variables section from annotations with table formatting
 	if envHelp, ok := cmd.Annotations["help:environment"]; ok {
 		buf.WriteString("## Environment Variables\n\n")
-		buf.WriteString("<!-- markdownlint-disable MD044 MD034 -->\n")
+		buf.WriteString("<!-- markdownlint-disable MD044 MD034 -->\n\n")
 		buf.WriteString("| Variable | Description |\n")
 		buf.WriteString("|----------|-------------|\n")
 
@@ -421,7 +424,7 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 				}
 			}
 		}
-		buf.WriteString("<!-- markdownlint-enable MD044 MD034 -->\n")
+		buf.WriteString("\n<!-- markdownlint-enable MD044 MD034 -->\n")
 		buf.WriteString("\n")
 	}
 	if err := printRootOptions(buf, cmd); err != nil {

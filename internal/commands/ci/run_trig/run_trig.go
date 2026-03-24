@@ -9,7 +9,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
@@ -38,18 +38,17 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 		Short:   `Run a CI/CD pipeline trigger.`,
 		Aliases: []string{"run-trig"},
 		Example: heredoc.Doc(`
-			$ glab ci run-trig -t xxxx
-			$ glab ci run-trig -t xxxx -b main
+			glab ci run-trig -t xxxx
+			glab ci run-trig -t xxxx -b main
 
 			# Specify CI variables
-			$ glab ci run-trig -t xxxx -b main --variables key1:val1
-			$ glab ci run-trig -t xxxx -b main --variables key1:val1,key2:val2
-			$ glab ci run-trig -t xxxx -b main --variables key1:val1 --variables key2:val2
+			glab ci run-trig -t xxxx -b main --variables key1:val1
+			glab ci run-trig -t xxxx -b main --variables key1:val1,key2:val2
+			glab ci run-trig -t xxxx -b main --variables key1:val1 --variables key2:val2
 
 			# Specify CI inputs
-			$ glab ci run-trig -t xxxx -b main --input key1:val1 --input key2:val2
-			$ glab ci run-trig -t xxxx -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"
-		`),
+			glab ci run-trig -t xxxx -b main --input key1:val1 --input key2:val2
+			glab ci run-trig -t xxxx -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"`),
 		Long: cmdutils.PipelineInputsDescription,
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -98,13 +97,13 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 			if branch != "" {
-				c.Ref = gitlab.Ptr(branch)
+				c.Ref = new(branch)
 			} else if currentBranch, err := f.Branch(); err == nil {
-				c.Ref = gitlab.Ptr(currentBranch)
+				c.Ref = new(currentBranch)
 			} else {
 				// `ci run-trig` is running out of a git repo
 				fmt.Fprintln(f.IO().StdOut, "not in a Git repository. Using repository argument.")
-				c.Ref = gitlab.Ptr(ciutils.GetDefaultBranch(repo, client))
+				c.Ref = new(ciutils.GetDefaultBranch(repo, client))
 			}
 
 			token, err := cmd.Flags().GetString("token")
@@ -117,7 +116,7 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 			if token == "" {
 				return errors.New("`--token` parameter can be omitted only if `CI_JOB_TOKEN` environment variable is set.")
 			}
-			c.Token = &token
+			c.Token = new(token)
 
 			pipe, _, err := client.PipelineTriggers.RunPipelineTrigger(repo.FullName(), c)
 			if err != nil {

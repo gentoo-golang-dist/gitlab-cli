@@ -1,5 +1,5 @@
 ---
-title: glab ci view
+title: '`glab ci view`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -37,17 +37,16 @@ glab ci view [branch/tag] [flags]
 
 ```console
 # Uses current branch
-$ glab pipeline ci view
+glab pipeline ci view
 
 # Get latest pipeline on main branch
-$ glab pipeline ci view main
+glab pipeline ci view main
 
 # Just like the second example
-$ glab pipeline ci view -b main
+glab pipeline ci view -b main
 
 # Get latest pipeline on main branch of myusername/glab repo
-$ glab pipeline ci view -b main -R myusername/glab
-
+glab pipeline ci view -b main -R myusername/glab
 ```
 
 ## Options

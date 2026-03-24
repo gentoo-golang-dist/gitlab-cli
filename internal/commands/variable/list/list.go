@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -42,13 +42,11 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 		Aliases: []string{"ls"},
 		Args:    cobra.ExactArgs(0),
 		Example: heredoc.Doc(`
-			$ glab variable list
-			$ glab variable list -i
-			$ glab variable list --per-page 100 --page 1
-			$ glab variable list --group gitlab-org
-			$ glab variable list --group gitlab-org --per-page 100
-		`,
-		),
+			glab variable list
+			glab variable list -i
+			glab variable list --per-page 100 --page 1
+			glab variable list --group gitlab-org
+			glab variable list --group gitlab-org --per-page 100`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -67,7 +65,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 
 	cmdutils.EnableRepoOverride(cmd, f)
 	cmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repository argument is set.")
-	cmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().BoolVarP(&opts.instance, "instance", "i", false, "Display instance variables.")

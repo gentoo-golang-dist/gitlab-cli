@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
@@ -1334,7 +1334,7 @@ func TestCIView(t *testing.T) {
 							WebURL:    "https://gitlab.com/OWNER/REPO/-/pipelines/225",
 							CreatedAt: &createdAt,
 						},
-						Status: gitlab.Ptr(gitlab.Running),
+						Status: new(gitlab.Running),
 					}, nil, nil)
 			},
 			expectedOutput: "Opening gitlab.com/OWNER/REPO/-/pipelines/225 in your browser.\n",
@@ -1364,7 +1364,7 @@ func TestCIView(t *testing.T) {
 							WebURL:    "https://gitlab.com/OWNER/REPO/-/pipelines/225",
 							CreatedAt: &createdAt,
 						},
-						Status: gitlab.Ptr(gitlab.Running),
+						Status: new(gitlab.Running),
 					}, nil, nil)
 			},
 			expectedOutput: "Opening gitlab.com/OWNER/REPO/-/pipelines/5 in your browser.\n",

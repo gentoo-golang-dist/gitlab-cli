@@ -87,9 +87,15 @@ type ProofTokenClaims struct {
 func Reflect(v any) (any, error) {
 	switch v := v.(type) {
 	case *ecdsa.PublicKey:
+		ecdhKey, err := v.ECDH()
+		if err != nil {
+			return nil, err
+		}
+		b := ecdhKey.Bytes()
+		byteLen := (v.Curve.Params().BitSize + 7) / 8
 		return &ecdsaJWK{
-			X:   base64.RawURLEncoding.EncodeToString(v.X.Bytes()),
-			Y:   base64.RawURLEncoding.EncodeToString(v.Y.Bytes()),
+			X:   base64.RawURLEncoding.EncodeToString(b[1 : 1+byteLen]),
+			Y:   base64.RawURLEncoding.EncodeToString(b[1+byteLen:]),
 			Crv: v.Curve.Params().Name,
 			Kty: "EC",
 		}, nil

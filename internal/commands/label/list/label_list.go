@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -48,11 +48,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
-			$ glab label list
-			$ glab label ls
-			$ glab label list -R owner/repository
-			$ glab label list -g mygroup
-		`),
+			glab label list
+			glab label ls
+			glab label list -R owner/repository
+			glab label list -g mygroup`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -64,7 +63,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 	labelListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	labelListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	labelListCmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json.")
+	cmdutils.EnableJSONOutput(labelListCmd, &opts.outputFormat)
 	labelListCmd.Flags().StringVarP(&opts.group, "group", "g", "", "List labels for a group.")
 
 	return labelListCmd
@@ -110,7 +109,7 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	labelApiOpts := &listLabelsOptions{}
-	labelApiOpts.withCounts = gitlab.Ptr(true)
+	labelApiOpts.withCounts = new(true)
 
 	if o.page != 0 {
 		labelApiOpts.page = int64(o.page)

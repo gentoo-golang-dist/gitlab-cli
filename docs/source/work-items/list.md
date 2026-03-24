@@ -1,5 +1,5 @@
 ---
-title: glab work-items list
+title: '`glab work-items list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -22,7 +22,7 @@ for group-level work items or -R to specify a different project.
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
-[https://docs.gitlab.com/policy/development_stages_support/](https://docs.gitlab.com/policy/development_stages_support/).
+<https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
 glab work-items list [flags]
@@ -38,29 +38,28 @@ ls
 
 ```console
 # List first 20 open work items in current project
-$ glab work-items list
+glab work-items list
 
 # List open epics in a group (default: 20 items)
-$ glab work-items list --type epic -g gitlab-org
+glab work-items list --type epic -g gitlab-org
 
 # List first 50 open work items
-$ glab work-items list --per-page 50 -g gitlab-org
+glab work-items list --per-page 50 -g gitlab-org
 
 # Get next page using cursor from previous output
-$ glab work-items list --after "eyJpZCI6OTk5OX0" -g gitlab-org
+glab work-items list --after "eyJpZCI6OTk5OX0" -g gitlab-org
 
 # List closed work items
-$ glab work-items list --state closed -g gitlab-org
+glab work-items list --state closed -g gitlab-org
 
 # List all work items regardless of state
-$ glab work-items list --state all -g gitlab-org
+glab work-items list --state all -g gitlab-org
 
 # JSON output with pagination metadata
-$ glab work-items list --output json -g gitlab-org
+glab work-items list --output json -g gitlab-org
 
 # List issues in a specific project
-$ glab work-items list --type issue -R gitlab-org/cli
-
+glab work-items list --type issue -R gitlab-org/cli
 ```
 
 ## Options
@@ -68,7 +67,7 @@ $ glab work-items list --type issue -R gitlab-org/cli
 ```plaintext
       --after string      Fetch items after this cursor (for pagination)
   -g, --group string      List work items for a group or subgroup
-  -F, --output string     Format output as: text, json (default "text")
+  -F, --output string     Format output as: text, json. (default "text")
   -P, --per-page int      Number of items to list per page (max 100) (default 20)
   -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
       --state string      Filter by state: opened, closed, all (default "opened")

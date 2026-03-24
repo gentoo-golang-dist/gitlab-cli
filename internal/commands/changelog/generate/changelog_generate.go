@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
@@ -22,8 +22,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Generate a changelog
-			$ glab changelog generate
-		`),
+			glab changelog generate`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -43,7 +42,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 
 			// Set the version
 			if s, _ := cmd.Flags().GetString("version"); s != "" {
-				opts.Version = gitlab.Ptr(s)
+				opts.Version = new(s)
 			} else {
 				tags, err := git.ListTags()
 				if err != nil {
@@ -58,12 +57,12 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to determine version from `git describe`: %w..", err)
 				}
-				opts.Version = gitlab.Ptr(version)
+				opts.Version = new(version)
 			}
 
 			// Set the config file
 			if s, _ := cmd.Flags().GetString("config-file"); s != "" {
-				opts.ConfigFile = gitlab.Ptr(s)
+				opts.ConfigFile = new(s)
 			}
 
 			// Set the date
@@ -74,22 +73,22 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 				}
 
 				t := gitlab.ISOTime(parsedDate)
-				opts.Date = &t
+				opts.Date = new(t)
 			}
 
 			// Set the "from" attribute
 			if s, _ := cmd.Flags().GetString("from"); s != "" {
-				opts.From = gitlab.Ptr(s)
+				opts.From = new(s)
 			}
 
 			// Set the "to" attribute
 			if s, _ := cmd.Flags().GetString("to"); s != "" {
-				opts.To = gitlab.Ptr(s)
+				opts.To = new(s)
 			}
 
 			// Set the trailer
 			if s, _ := cmd.Flags().GetString("trailer"); s != "" {
-				opts.Trailer = gitlab.Ptr(s)
+				opts.Trailer = new(s)
 			}
 
 			project, err := repo.Project(client)

@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -45,10 +45,9 @@ func NewCmdReopen(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comma
 		Long:    ``,
 		Aliases: []string{"open"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s reopen 123
-			$ glab %[1]s open 123
-			$ glab %[1]s reopen https://gitlab.com/NAMESPACE/REPO/-/%s
-		`, issueType, examplePath)),
+			glab %[1]s reopen 123
+			glab %[1]s open 123
+			glab %[1]s reopen https://gitlab.com/NAMESPACE/REPO/-/%s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -69,7 +68,7 @@ func NewCmdReopen(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comma
 			}
 
 			l := &gitlab.UpdateIssueOptions{}
-			l.StateEvent = gitlab.Ptr("reopen")
+			l.StateEvent = new("reopen")
 
 			for _, issue := range issues {
 				valid, msg := issuable.ValidateIncidentCmd(issueType, "reopen", issue)

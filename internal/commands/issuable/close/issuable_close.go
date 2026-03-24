@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -40,9 +40,8 @@ func NewCmdClose(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comman
 		Long:    ``,
 		Aliases: aliases,
 		Example: heredoc.Doc(fmt.Sprintf(`
-			$ glab %[1]s close 123
-			$ glab %[1]s close https://gitlab.com/NAMESPACE/REPO/-/%s
-		`, issueType, examplePath)),
+			glab %[1]s close 123
+			glab %[1]s close https://gitlab.com/NAMESPACE/REPO/-/%s`, issueType, examplePath)),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -59,7 +58,7 @@ func NewCmdClose(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Comman
 			}
 
 			l := &gitlab.UpdateIssueOptions{}
-			l.StateEvent = gitlab.Ptr("close")
+			l.StateEvent = new("close")
 
 			c := f.IO().Color()
 

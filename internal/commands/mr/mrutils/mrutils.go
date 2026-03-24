@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -272,12 +272,12 @@ var GetMRForBranch = func(ctx context.Context, ios *iostreams.IOStreams, apiClie
 	owner, currentBranch := resolveOwnerAndBranch(mrOpts.Branch)
 
 	opts := gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.Ptr(currentBranch),
+		SourceBranch: new(currentBranch),
 	}
 
 	userAskedForSpecificState := mrOpts.State != "" && mrOpts.State != "any"
 	if userAskedForSpecificState {
-		opts.State = gitlab.Ptr(mrOpts.State)
+		opts.State = new(mrOpts.State)
 	}
 
 	mrs, err := api.ListMRs(apiClient, mrOpts.BaseRepo.FullName(), &opts)
@@ -339,7 +339,7 @@ func RebaseMR(ios *iostreams.IOStreams, apiClient *gitlab.Client, repo glrepo.In
 	ios.StopSpinner("")
 
 	opts := &gitlab.GetMergeRequestsOptions{}
-	opts.IncludeRebaseInProgress = gitlab.Ptr(true)
+	opts.IncludeRebaseInProgress = new(true)
 	ios.StartSpinner("Checking rebase status...")
 	errorMSG := ""
 	i := 0

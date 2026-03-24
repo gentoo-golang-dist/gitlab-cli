@@ -1,5 +1,5 @@
 ---
-title: glab runner unassign
+title: '`glab runner unassign`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -14,10 +14,11 @@ Unassign a runner from a project.
 
 ## Synopsis
 
-Unassigns a project runner from a project.
-Specify the project with -R (e.g. owner/repo).
-You cannot unassign a runner from the owner project. Use Delete a runner instead.
-Requires Maintainer or Owner of the project that you want to unassign the runner.
+Unassign a runner from a project.
+You cannot unassign a runner from the owner project.
+Use `glab runner delete` instead.
+
+Requires the Maintainer or Owner role for the project.
 
 ```plaintext
 glab runner unassign <runner-id> [flags]
@@ -27,11 +28,10 @@ glab runner unassign <runner-id> [flags]
 
 ```console
 # Unassign runner 9 from the current repository
-$ glab runner unassign 9
+glab runner unassign 9
 
 # Unassign runner 9 from a specific repository
-$ glab runner unassign 9 -R owner/repo
-
+glab runner unassign 9 -R owner/repo
 ```
 
 ## Options

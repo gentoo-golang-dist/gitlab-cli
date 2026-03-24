@@ -1,5 +1,5 @@
 ---
-title: glab mr subscribe
+title: '`glab mr subscribe`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,13 +26,12 @@ sub
 
 ```console
 # Subscribe to a merge request
-$ glab mr subscribe 123
-$ glab mr sub 123
-$ glab mr subscribe branch
+glab mr subscribe 123
+glab mr sub 123
+glab mr subscribe branch
 
 # Subscribe to multiple merge requests
-$ glab mr subscribe 123 branch
-
+glab mr subscribe 123 branch
 ```
 
 ## Options inherited from parent commands

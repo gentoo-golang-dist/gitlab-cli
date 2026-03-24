@@ -1,5 +1,5 @@
 ---
-title: glab auth login
+title: '`glab auth login`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -21,9 +21,9 @@ Stores your credentials in the global configuration file
 To store your token in your operating system's keyring instead, use `--use-keyring`.
 After authentication, all `glab` commands use the stored credentials.
 
-If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN`
-are set, they take precedence over the stored credentials.
-These variables are ignored when CI auto-login is enabled with `GLAB_ENABLE_CI_AUTOLOGIN`.
+If `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN`, or `OAUTH_TOKEN` are set,
+they take precedence over the stored credentials.
+When CI auto-login is enabled, these variables also override `CI_JOB_TOKEN`.
 
 To pass a token on standard input, use `--stdin`.
 
@@ -39,36 +39,41 @@ glab auth login [flags]
 ```console
 # Start interactive setup
 # (If in a Git repository, glab will detect and suggest GitLab instances from remotes)
-$ glab auth login
+glab auth login
 
 # Authenticate against `gitlab.com` by reading the token from a file
-$ glab auth login --stdin < myaccesstoken.txt
+glab auth login --stdin < myaccesstoken.txt
 
 # Authenticate with GitLab Self-Managed or GitLab Dedicated
-$ glab auth login --hostname salsa.debian.org
+glab auth login --hostname salsa.debian.org
 
 # Non-interactive setup
-$ glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
+glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
 
 # Non-interactive setup reading token from a file
-$ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+
+# Semi-interactive OAuth login, skipping all prompts except browser auth
+glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
 # Non-interactive CI/CD setup
-$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
-
+glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
 ```
 
 ## Options
 
 ```plaintext
-  -a, --api-host string       API host url.
-  -p, --api-protocol string   API protocol: https, http
-  -g, --git-protocol string   Git protocol: ssh, https, http
-      --hostname string       The hostname of the GitLab instance to authenticate with.
-  -j, --job-token string      CI job token.
-      --stdin                 Read token from standard input.
-  -t, --token string          Your GitLab access token.
-      --use-keyring           Store token in your operating system's keyring.
+  -a, --api-host string                     API host url.
+  -p, --api-protocol string                 API protocol: https, http
+      --container-registry-domains string   Container registry and image dependency proxy domains (comma-separated).
+  -g, --git-protocol string                 Git protocol: ssh, https, http
+      --hostname string                     The hostname of the GitLab instance to authenticate with.
+  -j, --job-token string                    CI job token.
+      --ssh-hostname string                 SSH hostname for instances with a different SSH endpoint.
+      --stdin                               Read token from standard input.
+  -t, --token string                        Your GitLab access token.
+      --use-keyring                         Store token in your operating system's keyring.
+      --web                                 Skip the login type prompt and use web/OAuth login.
 ```
 
 ## Options inherited from parent commands

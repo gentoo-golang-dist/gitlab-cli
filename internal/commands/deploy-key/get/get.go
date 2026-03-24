@@ -4,7 +4,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -19,7 +19,8 @@ type options struct {
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 
-	keyID int64
+	keyID        int64
+	outputFormat string
 }
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
@@ -34,8 +35,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Get deploy key with ID as argument
-			$ glab deploy-key get 1234
-		`),
+			glab deploy-key get 1234`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -46,6 +46,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			return opts.run()
 		},
 	}
+
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
@@ -70,6 +72,10 @@ func (o *options) run() error {
 	key, _, err := client.DeployKeys.GetDeployKey(baseRepo.FullName(), o.keyID, nil)
 	if err != nil {
 		return cmdutils.WrapError(err, "getting deploy key.")
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(key)
 	}
 
 	if key.ID != 0 {

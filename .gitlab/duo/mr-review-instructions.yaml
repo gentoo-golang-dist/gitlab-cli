@@ -25,6 +25,6 @@ instructions:
     instructions: |
       1. Use the `cmdtest` package for helper functions related to command execution or the factory.
       2. Ideally use the `cmdtest.SetupCmdForTest` function to setup the command under test for execution.
-      3. Use the GitLab client-go testing package imported as `gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"` to create a GitLab testing client for mocking the API calls. Do not use HTTP mocks directly when possible. The commands interface with the GitLab client-go package and usually not with an HTTP client directly.
+      3. Use the GitLab client-go testing package imported as `gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"` to create a GitLab testing client for mocking the API calls. Do not use HTTP mocks directly when possible. The commands interface with the GitLab client-go package and usually not with an HTTP client directly.
       4. Use `t.Parallel()` when possible.
       5. Use the testify require and assert package for assertions instead of the assertion functions of `testing.T`.

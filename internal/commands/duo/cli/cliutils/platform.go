@@ -9,6 +9,10 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
+// ErrUnsupportedPlatform is returned when the current OS or architecture
+// is not supported by the Duo CLI.
+var ErrUnsupportedPlatform = errors.New("unsupported platform")
+
 // platform represents the target operating system and architecture for the Duo CLI binary.
 type platform struct {
 	os   string // darwin, linux, windows
@@ -22,7 +26,7 @@ func detectPlatform() (platform, error) {
 	goarch := runtime.GOARCH
 
 	if !isSupportedOS(goos) {
-		return platform{}, fmt.Errorf("unsupported operating system: %s (supported: darwin, linux, windows)", goos)
+		return platform{}, fmt.Errorf("%w: operating system %s (supported: darwin, linux, windows)", ErrUnsupportedPlatform, goos)
 	}
 
 	arch, err := normalizeArch(goos, goarch)
@@ -93,10 +97,10 @@ func normalizeArch(goos, goarch string) (string, error) {
 		return "x64", nil
 	case "arm64", "aarch64":
 		if goos == "windows" {
-			return "", errors.New("Windows ARM64 is not supported by GitLab Duo CLI")
+			return "", fmt.Errorf("%w: Windows ARM64 is not supported by GitLab Duo CLI", ErrUnsupportedPlatform)
 		}
 		return "arm64", nil
 	default:
-		return "", fmt.Errorf("unsupported architecture: %s (supported: amd64/x64, arm64)", goarch)
+		return "", fmt.Errorf("%w: architecture %s (supported: amd64/x64, arm64)", ErrUnsupportedPlatform, goarch)
 	}
 }

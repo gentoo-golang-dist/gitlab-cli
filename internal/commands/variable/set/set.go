@@ -7,7 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -47,15 +47,14 @@ func NewCmdSet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 		Aliases: []string{"new", "create"},
 		Args:    cobra.RangeArgs(1, 2),
 		Example: heredoc.Doc(`
-			$ glab variable set WITH_ARG "some value"
-			$ glab variable set WITH_DESC "some value" --description "some description"
-			$ glab variable set FROM_FLAG -v "some value"
-			$ glab variable set FROM_ENV_WITH_ARG "${ENV_VAR}"
-			$ glab variable set FROM_ENV_WITH_FLAG -v"${ENV_VAR}"
-			$ glab variable set FROM_FILE < secret.txt
-			$ cat file.txt | glab variable set SERVER_TOKEN
-			$ cat token.txt | glab variable set GROUP_TOKEN -g mygroup --scope=prod
-		`),
+			glab variable set WITH_ARG "some value"
+			glab variable set WITH_DESC "some value" --description "some description"
+			glab variable set FROM_FLAG -v "some value"
+			glab variable set FROM_ENV_WITH_ARG "${ENV_VAR}"
+			glab variable set FROM_ENV_WITH_FLAG -v"${ENV_VAR}"
+			glab variable set FROM_FILE < secret.txt
+			cat file.txt | glab variable set SERVER_TOKEN
+			cat token.txt | glab variable set GROUP_TOKEN -g mygroup --scope=prod`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -132,15 +131,15 @@ func (o *options) run() error {
 	if o.group != "" {
 		// creating group-level variable
 		createVarOpts := &gitlab.CreateGroupVariableOptions{
-			Key:              gitlab.Ptr(o.key),
-			Value:            gitlab.Ptr(o.value),
-			EnvironmentScope: gitlab.Ptr(o.scope),
-			Masked:           gitlab.Ptr(o.masked),
-			MaskedAndHidden:  gitlab.Ptr(o.hidden),
-			Protected:        gitlab.Ptr(o.protected),
-			VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
-			Raw:              gitlab.Ptr(o.raw),
-			Description:      gitlab.Ptr(o.description),
+			Key:              new(o.key),
+			Value:            new(o.value),
+			EnvironmentScope: new(o.scope),
+			Masked:           new(o.masked),
+			MaskedAndHidden:  new(o.hidden),
+			Protected:        new(o.protected),
+			VariableType:     new(gitlab.VariableTypeValue(o.typ)),
+			Raw:              new(o.raw),
+			Description:      new(o.description),
 		}
 
 		_, _, err := client.GroupVariables.CreateVariable(o.group, createVarOpts)
@@ -158,15 +157,15 @@ func (o *options) run() error {
 		return err
 	}
 	createVarOpts := &gitlab.CreateProjectVariableOptions{
-		Key:              gitlab.Ptr(o.key),
-		Value:            gitlab.Ptr(o.value),
-		EnvironmentScope: gitlab.Ptr(o.scope),
-		Masked:           gitlab.Ptr(o.masked),
-		MaskedAndHidden:  gitlab.Ptr(o.hidden),
-		Protected:        gitlab.Ptr(o.protected),
-		VariableType:     gitlab.Ptr(gitlab.VariableTypeValue(o.typ)),
-		Raw:              gitlab.Ptr(o.raw),
-		Description:      gitlab.Ptr(o.description),
+		Key:              new(o.key),
+		Value:            new(o.value),
+		EnvironmentScope: new(o.scope),
+		Masked:           new(o.masked),
+		MaskedAndHidden:  new(o.hidden),
+		Protected:        new(o.protected),
+		VariableType:     new(gitlab.VariableTypeValue(o.typ)),
+		Raw:              new(o.raw),
+		Description:      new(o.description),
 	}
 	_, _, err = client.ProjectVariables.CreateVariable(baseRepo.FullName(), createVarOpts)
 	if err != nil {

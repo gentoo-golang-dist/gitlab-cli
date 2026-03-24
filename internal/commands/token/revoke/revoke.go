@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -55,21 +55,19 @@ func NewCmdRevoke(f cmdutils.Factory) *cobra.Command {
 
 		Example: heredoc.Doc(`
 		# Revoke a project access token of current project
-		$ glab token revoke my-project-token
+		glab token revoke my-project-token
 
 		# Revoke a project access token of a specific project
-		$ glab token revoke --repo user/my-repo my-project-token
+		glab token revoke --repo user/my-repo my-project-token
 
 		# Revoke a group access token
-		$ glab token revoke --group group/sub-group my-group-token
+		glab token revoke --group group/sub-group my-group-token
 
 		# Revoke my personal access token
-		$ glab token revoke --user @me my-personal-token
+		glab token revoke --user @me my-personal-token
 
 		# Revoke a personal access token of another user (administrator only)
-		$ glab token revoke --user johndoe johns-personal-token
-
-		`),
+		glab token revoke --user johndoe johns-personal-token`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -85,7 +83,7 @@ func NewCmdRevoke(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableRepoOverride(cmd, f)
 	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Revoke group access token. Ignored if a user or repository argument is set.")
 	cmd.Flags().StringVarP(&opts.user, "user", "U", "", "Revoke personal access token. Use @me for the current user.")
-	cmd.Flags().StringVarP(&opts.outputFormat, "output", "F", "text", "Format output as: text, json. 'text' provides the name and ID of the revoked token; 'json' outputs the token with metadata.")
+	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. 'text' provides the name and ID of the revoked token; 'json' outputs the token with metadata.")
 	cmd.MarkFlagsMutuallyExclusive("group", "user")
 	return cmd
 }

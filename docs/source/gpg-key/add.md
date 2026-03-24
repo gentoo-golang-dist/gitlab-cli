@@ -1,5 +1,5 @@
 ---
-title: glab gpg-key add
+title: '`glab gpg-key add`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -24,11 +24,10 @@ glab gpg-key add [key-file] [flags]
 
 ```console
 # Read GPG key from stdin and upload.
-$ glab gpg-key add
+glab gpg-key add
 
 # Read GPG key from specified key file and upload.
-$ glab gpg-key add ~/.gnupg/pubkey.asc
-
+glab gpg-key add ~/.gnupg/pubkey.asc
 ```
 
 ## Options inherited from parent commands

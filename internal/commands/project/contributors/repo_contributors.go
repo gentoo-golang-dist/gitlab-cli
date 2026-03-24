@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -17,10 +17,11 @@ import (
 )
 
 type options struct {
-	orderBy string
-	sort    string
-	perPage int
-	page    int
+	orderBy      string
+	sort         string
+	perPage      int
+	page         int
+	outputFormat string
 
 	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
@@ -38,11 +39,10 @@ func NewCmdContributors(f cmdutils.Factory) *cobra.Command {
 		Short: `Get repository contributors list.`,
 		Example: heredoc.Doc(`
 			# List contributors for the current repository
-			$ glab repo contributors
+			glab repo contributors
 
 			# List contributors for a specific repository
-			$ glab repo contributors -R gitlab-com/www-gitlab-com
-		`),
+			glab repo contributors -R gitlab-com/www-gitlab-com`),
 		Args:    cobra.ExactArgs(0),
 		Aliases: []string{"users"},
 		Annotations: map[string]string{
@@ -59,6 +59,7 @@ func NewCmdContributors(f cmdutils.Factory) *cobra.Command {
 	repoContributorsCmd.Flags().StringVarP(&opts.sort, "sort", "s", "", "Sort direction for --order field: asc or desc.")
 	repoContributorsCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoContributorsCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
+	cmdutils.EnableJSONOutput(repoContributorsCmd, &opts.outputFormat)
 	return repoContributorsCmd
 }
 
@@ -81,7 +82,7 @@ func (o *options) run() error {
 	}
 
 	l := &gitlab.ListContributorsOptions{
-		OrderBy: gitlab.Ptr(o.orderBy),
+		OrderBy: new(o.orderBy),
 		ListOptions: gitlab.ListOptions{
 			Page:    int64(o.page),
 			PerPage: int64(o.perPage),
@@ -89,12 +90,16 @@ func (o *options) run() error {
 	}
 
 	if o.sort != "" {
-		l.Sort = gitlab.Ptr(o.sort)
+		l.Sort = new(o.sort)
 	}
 
 	users, _, err := client.Repositories.Contributors(repo.FullName(), l)
 	if err != nil {
 		return err
+	}
+
+	if o.outputFormat == "json" {
+		return o.io.PrintJSON(users)
 	}
 
 	// Title

@@ -1,5 +1,5 @@
 ---
-title: glab deploy-key list
+title: '`glab deploy-key list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,16 +19,16 @@ glab deploy-key list [flags]
 ## Examples
 
 ```console
-- glab deploy-key list
-
+glab deploy-key list
 ```
 
 ## Options
 
 ```plaintext
-  -p, --page int       Page number. (default 1)
-  -P, --per-page int   Number of items to list per page. (default 30)
-      --show-id        Shows IDs of deploy keys.
+  -F, --output string   Format output as: text, json. (default "text")
+  -p, --page int        Page number. (default 1)
+  -P, --per-page int    Number of items to list per page. (default 30)
+      --show-id         Shows IDs of deploy keys.
 ```
 
 ## Options inherited from parent commands

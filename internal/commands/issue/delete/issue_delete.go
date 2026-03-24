@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
@@ -29,10 +29,9 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"del"},
 		Example: heredoc.Doc(`
-			$ glab issue delete 123
-			$ glab issue del 123
-			$ glab issue delete https://gitlab.com/profclems/glab/-/issues/123
-		`),
+			glab issue delete 123
+			glab issue del 123
+			glab issue delete https://gitlab.com/profclems/glab/-/issues/123`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

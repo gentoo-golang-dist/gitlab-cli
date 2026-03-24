@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 )
@@ -283,6 +284,48 @@ func Test_Less(t *testing.T) {
 	assert.False(t, r.Less(1, 2))
 	assert.False(t, r.Less(1, 3))
 	assert.False(t, r.Less(2, 3))
+}
+
+func TestTranslateRemotes_SplitHostSubfolder(t *testing.T) {
+	// This test verifies the split-host + subfolder bug (Issue #8197)
+	// where FromURL() fails to strip the subfolder because the URL hostname
+	// doesn't match the config key hostname in split-host setups
+
+	t.Run("split-host with subfolder - correct config pattern", func(t *testing.T) {
+		// Setup: Config keyed under API hostname with ssh_host and subfolder
+		defer config.StubConfig(`---
+hosts:
+  api.example.com:
+    token: TEST_TOKEN
+    ssh_host: git.example.com
+    subfolder: gitlab
+`, "")()
+
+		// Git remote URL includes the subfolder in the path
+		remoteURL, _ := url.Parse("https://api.example.com/gitlab/owner/repo.git")
+
+		gitRemotes := git.RemoteSet{
+			&git.Remote{
+				Name:     "origin",
+				FetchURL: remoteURL,
+			},
+		}
+
+		identityURL := func(u *url.URL) *url.URL {
+			return u
+		}
+
+		result := TranslateRemotes(gitRemotes, identityURL, "gitlab.com")
+
+		// Verify results
+		assert.Len(t, result, 1, "should translate one remote")
+		assert.Equal(t, "origin", result[0].Name, "remote name should be origin")
+
+		// The key assertion: FullName should be "owner/repo" (subfolder stripped)
+		// NOT "gitlab/owner/repo" (with subfolder included)
+		assert.Equal(t, "owner/repo", result[0].FullName(), "subfolder should be stripped from project path")
+		assert.Equal(t, "api.example.com", result[0].RepoHost(), "should use URL hostname as RepoHost")
+	})
 }
 
 func TestRemotes_UniqueHosts(t *testing.T) {

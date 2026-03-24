@@ -1,5 +1,5 @@
 ---
-title: glab ci cancel pipeline
+title: '`glab ci cancel pipeline`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,11 +19,10 @@ glab ci cancel pipeline <id> [flags]
 ## Examples
 
 ```console
-$ glab ci cancel pipeline 1504182795
-$ glab ci cancel pipeline 1504182795,1504182796
-$ glab ci cancel pipeline "1504182795 1504182796"
-$ glab ci cancel pipeline 1504182795,1504182796 --dry-run
-
+glab ci cancel pipeline 1504182795
+glab ci cancel pipeline 1504182795,1504182796
+glab ci cancel pipeline "1504182795 1504182796"
+glab ci cancel pipeline 1504182795,1504182796 --dry-run
 ```
 
 ## Options
