@@ -196,6 +196,7 @@ docs hugo_build:
   - chmod 755 trigger-build.rb
   variables:
     GIT_STRATEGY: none
+    DOCS_PROJECT: gitlab-org/cli
     DOCS_GITLAB_REPO_SUFFIX: cli
     # By default, deploy the Review App using the `main` branch of the `gitlab-org/gitlab-docs` project
     DOCS_BRANCH: main
