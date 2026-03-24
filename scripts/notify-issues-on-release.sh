@@ -1,5 +1,5 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 # This script comments on issues referenced in a release and closes them if needed
 # Usage: ./notify-issues-on-release.sh <version-tag>
@@ -17,7 +17,13 @@ version="${current_tag#v}" # Remove 'v' prefix if present
 echo "Finding previous release tag..."
 start_ref="$current_tag^"
 previous_tag=""
-while [[ -z $previous_tag || ( $previous_tag == *-* && $current_tag != *-* ) ]]; do
+is_prerelease() {
+  case "$1" in
+    *-*) return 0 ;;
+    *)   return 1 ;;
+  esac
+}
+while [ -z "$previous_tag" ] || { is_prerelease "$previous_tag" && ! is_prerelease "$current_tag"; }; do
   previous_tag="$(git describe --tags "$start_ref" --abbrev=0 2>/dev/null || echo "")"
   if [ -z "$previous_tag" ]; then
     echo "No previous tag found, using initial commit"
@@ -49,20 +55,14 @@ echo ""
 for issue in $issue_numbers; do
   echo "Processing issue #$issue..."
 
-  # Check current state (capture HTTP status for better error handling)
-  api_failed=0
-  response=$(glab api "/projects/:id/issues/$issue" 2>&1) || api_failed=$?
-
-  if [ "$api_failed" -ne 0 ]; then
-    echo "✗ API error fetching issue #$issue (may be authentication, rate limit, or network issue)"
-    echo ""
-    continue
+  # Check current state
+  state=""
+  if ! state=$(NO_COLOR=1 glab issue view "$issue" --output json | jq -r '.state // empty' 2>/dev/null); then
+    state=""
   fi
 
-  state=$(echo "$response" | jq -r '.state // empty')
-
   if [ -z "$state" ]; then
-    echo "✗ Could not find issue #$issue or parse response"
+    echo "✗ Could not fetch issue #$issue (may be authentication, rate limit, or network issue)"
     echo ""
     continue
   fi
