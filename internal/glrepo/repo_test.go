@@ -12,6 +12,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 )
@@ -248,6 +249,11 @@ hosts:
 		wantErr       error
 	}{
 		{
+			name:    "bare numeric project id",
+			input:   "12345",
+			wantErr: errors.New(`glrepo: bare numeric project ID "12345" requires a GitLab client; use FromProjectID`),
+		},
+		{
 			name:          "OWNER/REPO combo",
 			input:         "OWNER/REPO",
 			wantHost:      "gitlab.com",
@@ -389,6 +395,94 @@ hosts:
 			}
 		})
 	}
+}
+
+func TestParseBareProjectID(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int64
+		ok    bool
+	}{
+		{"12345", 12345, true},
+		{"1", 1, true},
+		{"", 0, false},
+		{"0", 0, false},
+		{"12a34", 0, false},
+		{"OWNER/REPO", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, ok := ParseBareProjectID(tt.input)
+			assert.Equal(t, tt.ok, ok)
+			if tt.ok {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestFromProjectID(t *testing.T) {
+	defer func(orig func(*gitlab.Client, any) (*gitlab.Project, error)) {
+		api.GetProject = orig
+	}(api.GetProject)
+
+	api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+		assert.EqualValues(t, int64(42), projectID)
+		return &gitlab.Project{HTTPURLToRepo: "https://gitlab.example.com/ns/app.git"}, nil
+	}
+
+	r, err := FromProjectID(nil, 42, glinstance.DefaultHostname)
+	assert.NoError(t, err)
+	assert.Equal(t, "ns/app", r.FullName())
+	assert.Equal(t, "gitlab.example.com", r.RepoHost())
+}
+
+func TestFromProjectID_HTTPURLToRepo_and_WebURL(t *testing.T) {
+	defer func(orig func(*gitlab.Client, any) (*gitlab.Project, error)) {
+		api.GetProject = orig
+	}(api.GetProject)
+
+	t.Run("prefers HTTPURLToRepo when both are set", func(t *testing.T) {
+		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+			assert.EqualValues(t, int64(1), projectID)
+			return &gitlab.Project{
+				HTTPURLToRepo: "https://gitlab.com/preferred/repo.git",
+				WebURL:        "https://gitlab.com/ignored/other",
+			}, nil
+		}
+		r, err := FromProjectID(nil, 1, glinstance.DefaultHostname)
+		assert.NoError(t, err)
+		assert.Equal(t, "preferred/repo", r.FullName())
+		assert.Equal(t, "gitlab.com", r.RepoHost())
+	})
+
+	t.Run("falls back to WebURL when HTTPURLToRepo is empty", func(t *testing.T) {
+		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+			assert.EqualValues(t, int64(2), projectID)
+			return &gitlab.Project{
+				HTTPURLToRepo: "",
+				WebURL:        "https://gitlab.example.com/group/sub/web-only",
+			}, nil
+		}
+		r, err := FromProjectID(nil, 2, glinstance.DefaultHostname)
+		assert.NoError(t, err)
+		assert.Equal(t, "group/sub/web-only", r.FullName())
+		assert.Equal(t, "gitlab.example.com", r.RepoHost())
+	})
+
+	t.Run("error when both URLs are empty", func(t *testing.T) {
+		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+			assert.EqualValues(t, int64(99), projectID)
+			return &gitlab.Project{
+				HTTPURLToRepo: "",
+				WebURL:        "",
+			}, nil
+		}
+		_, err := FromProjectID(nil, 99, glinstance.DefaultHostname)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "no HTTPURLToRepo or WebURL")
+		assert.ErrorContains(t, err, "99")
+	})
 }
 
 func TestFullNameFromURL(t *testing.T) {

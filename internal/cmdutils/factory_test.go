@@ -10,8 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/glinstance"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )
 
 func TestFactory_ResolveHostNameFromConfig(t *testing.T) {
@@ -109,4 +113,31 @@ func mustURL(t *testing.T, s string) *url.URL {
 	require.NoError(t, err)
 
 	return u
+}
+
+func TestFactory_RepoOverride_numericProjectID(t *testing.T) {
+	defer func(orig func(*gitlab.Client, any) (*gitlab.Project, error)) {
+		api.GetProject = orig
+	}(api.GetProject)
+
+	api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+		assert.EqualValues(t, int64(99), projectID)
+		return &gitlab.Project{HTTPURLToRepo: "https://gitlab.com/acme/widgets.git"}, nil
+	}
+
+	cfg := config.NewFromString(heredoc.Doc(`
+		hosts:
+		  gitlab.com:
+		    token: test-token
+	`))
+	f := NewFactory(nil, false, cfg, api.BuildInfo{})
+
+	err := f.RepoOverride("99")
+	require.NoError(t, err)
+
+	baseRepo, err := f.BaseRepo()
+	require.NoError(t, err)
+	assert.Equal(t, "acme/widgets", baseRepo.FullName())
+	assert.False(t, glrepo.IsProjectIDOnly(baseRepo))
+	assert.Equal(t, glinstance.DefaultHostname, baseRepo.RepoHost())
 }

@@ -88,12 +88,24 @@ func (f *DefaultFactory) RepoOverride(repo string) error {
 	if repo == "" {
 		return nil
 	}
-
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	baseRepo, err := glrepo.FromFullName(repo, f.defaultHostname)
+	repo = strings.TrimSpace(repo)
+
+	var baseRepo glrepo.Interface
+	var err error
+	if id, ok := glrepo.ParseBareProjectID(repo); ok {
+		var ac *api.Client
+		ac, err = api.NewClientFromConfig(f.defaultHostname, f.config, false, f.buildInfo.UserAgent())
+		if err != nil {
+			return err
+		}
+		baseRepo, err = glrepo.FromProjectID(ac.Lab(), id, f.defaultHostname)
+	} else {
+		baseRepo, err = glrepo.FromFullName(repo, f.defaultHostname)
+	}
 	if err != nil {
-		return err // return the error if repo was overridden.
+		return err
 	}
 	f.cachedBaseRepo = baseRepo
 	return nil

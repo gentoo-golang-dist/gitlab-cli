@@ -1,10 +1,12 @@
 package glrepo
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -94,6 +96,41 @@ func NewWithHost(owner, repo, hostname string) Interface {
 		rp.namespace = owner
 	}
 	return rp
+}
+
+// ParseBareProjectID returns a positive GitLab project ID when nwo is a non-empty string of decimal digits.
+func ParseBareProjectID(nwo string) (int64, bool) {
+	if nwo == "" {
+		return 0, false
+	}
+	for _, r := range nwo {
+		if r < '0' || r > '9' {
+			return 0, false
+		}
+	}
+	id, err := strconv.ParseInt(nwo, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
+// FromProjectID fetches the project by ID and returns the same repository representation as FromURL
+// (using the project's HTTP clone URL from the API).
+func FromProjectID(client *gitlab.Client, projectID int64, defaultHostname string) (Interface, error) {
+	p, err := api.GetProject(client, projectID)
+	if err != nil {
+		return nil, err
+	}
+	repoURL := cmp.Or(p.HTTPURLToRepo, p.WebURL)
+	if repoURL == "" {
+		return nil, fmt.Errorf("glrepo: project %d has no HTTPURLToRepo or WebURL", projectID)
+	}
+	u, err := url.Parse(repoURL)
+	if err != nil {
+		return nil, err
+	}
+	return FromURL(u, defaultHostname)
 }
 
 // FromFullName extracts the GitLab repository information from the following
