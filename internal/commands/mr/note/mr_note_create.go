@@ -3,14 +3,12 @@ package note
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -66,36 +64,19 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			}
 
 			// Create note (existing behavior)
-			body, _ := cmd.Flags().GetString("message")
-
-			if strings.TrimSpace(body) == "" {
-				editor, err := cmdutils.GetEditor(f.Config)
-				if err != nil {
-					return err
-				}
-
-				err = f.IO().Editor(cmd.Context(), &body, "Note message:", "Enter the note message for the merge request.", "", editor)
-				if err != nil {
-					return err
-				}
-			}
-			if strings.TrimSpace(body) == "" {
-				return fmt.Errorf("aborted... Note has an empty message.")
+			body, err := readNoteBody(f, cmd)
+			if err != nil {
+				return err
 			}
 
 			uniqueNoteEnabled, _ := cmd.Flags().GetBool("unique")
-
 			if uniqueNoteEnabled {
-				opts := &gitlab.ListMergeRequestNotesOptions{ListOptions: gitlab.ListOptions{PerPage: api.DefaultListLimit}}
-				notes, _, err := client.Notes.ListMergeRequestNotes(repo.FullName(), mr.IID, opts)
+				found, err := deduplicateNote(client, repo.FullName(), mr.IID, body, mr.WebURL, f.IO().StdOut)
 				if err != nil {
-					return fmt.Errorf("running merge request note deduplication: %v", err)
+					return err
 				}
-				for _, noteInfo := range notes {
-					if noteInfo.Body == strings.TrimSpace(body) {
-						fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, noteInfo.ID)
-						return nil
-					}
+				if found {
+					return nil
 				}
 			}
 
@@ -121,6 +102,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("resolve", "use `glab mr note resolve` instead."))
 	cobra.CheckErr(mrCreateNoteCmd.Flags().MarkDeprecated("unresolve", "use `glab mr note reopen` instead."))
 
+	mrCreateNoteCmd.AddCommand(NewCmdCreate(f))
 	mrCreateNoteCmd.AddCommand(NewCmdList(f))
 	mrCreateNoteCmd.AddCommand(NewCmdResolve(f))
 	mrCreateNoteCmd.AddCommand(NewCmdReopen(f))
