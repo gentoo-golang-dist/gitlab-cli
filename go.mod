@@ -43,7 +43,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/pretty v1.2.1
-	github.com/zalando/go-keyring v0.2.7
+	github.com/zalando/go-keyring v0.2.8
 	gitlab.com/gitlab-org/api/client-go/v2 v2.6.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/mock v0.6.0
