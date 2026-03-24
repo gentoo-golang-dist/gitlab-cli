@@ -21,49 +21,27 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func TestMain(m *testing.M) {
-	cmdtest.InitTest(m, "mr_note_create_test")
-}
-
-func Test_NewCmdNote(t *testing.T) {
+func Test_NewCmdCreate(t *testing.T) {
 	t.Parallel()
 
 	t.Run("--message flag specified", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := gitlabtesting.NewTestClient(t)
+		testClient := setupMR(t)
 
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
-
-		// Mock CreateMergeRequestNote
-		testClient.MockNotes.EXPECT().
-			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
 				assert.Equal(t, "Here is my note", *opts.Body)
-				return &gitlab.Note{
-					ID:           301,
-					NoteableID:   1,
-					NoteableType: "MergeRequest",
-					NoteableIID:  1,
+				return &gitlab.Discussion{
+					ID: "disc1",
+					Notes: []*gitlab.Note{
+						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
 				}, nil, nil
 			})
 
-		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
-		}, true,
-			cmdtest.WithGitLabClient(testClient.Client),
-			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		)
+		exec := setupCreateExec(t, testClient)
 
 		output, err := exec(`1 --message "Here is my note"`)
 		require.NoError(t, err)
@@ -74,23 +52,9 @@ func Test_NewCmdNote(t *testing.T) {
 	t.Run("merge request not found", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := gitlabtesting.NewTestClient(t)
+		testClient := setupMRNotFound(t)
 
-		// Mock GetMergeRequest - returns 404
-		notFoundResp := &gitlab.Response{
-			Response: &http.Response{StatusCode: http.StatusNotFound},
-		}
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(122), gomock.Any()).
-			Return(nil, notFoundResp, gitlab.ErrNotFound)
-
-		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
-		}, true,
-			cmdtest.WithGitLabClient(testClient.Client),
-			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		)
+		exec := setupCreateExec(t, testClient)
 
 		_, err := exec(`122`)
 		require.Error(t, err)
@@ -98,74 +62,44 @@ func Test_NewCmdNote(t *testing.T) {
 	})
 }
 
-func Test_NewCmdNote_error(t *testing.T) {
+func Test_NewCmdCreate_error(t *testing.T) {
 	t.Parallel()
 
 	t.Run("note could not be created", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := gitlabtesting.NewTestClient(t)
+		testClient := setupMR(t)
 
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
-
-		// Mock CreateMergeRequestNote - returns 401
 		unauthorizedResp := &gitlab.Response{
 			Response: &http.Response{StatusCode: http.StatusUnauthorized},
 		}
-		testClient.MockNotes.EXPECT().
-			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(nil, unauthorizedResp, errors.New("401 Unauthorized"))
 
-		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
-		}, true,
-			cmdtest.WithGitLabClient(testClient.Client),
-			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		)
+		exec := setupCreateExec(t, testClient)
 
 		_, err := exec(`1 -m "Some message"`)
 		require.Error(t, err)
 	})
 }
 
-func Test_mrNoteCreate_prompt(t *testing.T) {
+func Test_cmdCreate_prompt(t *testing.T) {
 	// NOTE: This test cannot run in parallel because the huh form library
 	// uses global state (charmbracelet/bubbles runeutil sanitizer).
 
-	t.Run("message provided", func(t *testing.T) {
-		testClient := gitlabtesting.NewTestClient(t)
+	t.Run("message provided via prompt", func(t *testing.T) {
+		testClient := setupMR(t)
 
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
-
-		// Mock CreateMergeRequestNote
-		testClient.MockNotes.EXPECT().
-			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
 				assert.Contains(t, *opts.Body, "some note message")
-				return &gitlab.Note{
-					ID:           301,
-					NoteableID:   1,
-					NoteableType: "MergeRequest",
-					NoteableIID:  1,
+				return &gitlab.Discussion{
+					ID: "disc1",
+					Notes: []*gitlab.Note{
+						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
 				}, nil, nil
 			})
 
@@ -174,7 +108,7 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 			Do(ugh.Type("some note message"))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
+			return NewCmdCreate(f)
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
@@ -189,25 +123,14 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 	})
 
 	t.Run("message is empty", func(t *testing.T) {
-		testClient := gitlabtesting.NewTestClient(t)
-
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
+		testClient := setupMR(t)
 
 		c := ugh.New(t)
 		c.Expect(ugh.Input("Note message:")).
 			Do(ugh.Type(""))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
+			return NewCmdCreate(f)
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
@@ -221,25 +144,13 @@ func Test_mrNoteCreate_prompt(t *testing.T) {
 	})
 }
 
-func Test_mrNoteCreate_no_duplicate(t *testing.T) {
+func Test_cmdCreate_unique_prompt(t *testing.T) {
 	// NOTE: This test cannot run in parallel because the huh form library
 	// uses global state (charmbracelet/bubbles runeutil sanitizer).
 
-	t.Run("message provided", func(t *testing.T) {
-		testClient := gitlabtesting.NewTestClient(t)
+	t.Run("duplicate found", func(t *testing.T) {
+		testClient := setupMR(t)
 
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
-
-		// Mock ListMergeRequestNotes - returns existing notes including the duplicate
 		testClient.MockNotes.EXPECT().
 			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
 			Return([]*gitlab.Note{
@@ -254,7 +165,7 @@ func Test_mrNoteCreate_no_duplicate(t *testing.T) {
 			Do(ugh.Type("some note message"))
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
+			return NewCmdCreate(f)
 		}, true,
 			cmdtest.WithGitLabClient(testClient.Client),
 			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
@@ -269,158 +180,138 @@ func Test_mrNoteCreate_no_duplicate(t *testing.T) {
 	})
 }
 
-func Test_mrNote_resolve(t *testing.T) {
+func Test_cmdCreate_unique(t *testing.T) {
 	t.Parallel()
 
-	t.Run("resolve discussion by note ID", func(t *testing.T) {
+	t.Run("no duplicate creates new note", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := gitlabtesting.NewTestClient(t)
+		testClient := setupMR(t)
 
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
+		testClient.MockNotes.EXPECT().
+			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Note{
+				{ID: 100, Body: "other note"},
 			}, nil, nil)
 
-		// Mock ListMergeRequestDiscussions
 		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-			Return([]*gitlab.Discussion{
-				{
-					ID: "abc123",
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "brand new note", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc1",
 					Notes: []*gitlab.Note{
-						{ID: 100, Body: "First discussion"},
+						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
 					},
-				},
-				{
-					ID: "def456",
-					Notes: []*gitlab.Note{
-						{ID: 200, Body: "Second discussion"},
-						{ID: 201, Body: "Reply to second"},
-					},
-				},
-			}, nil, nil)
+				}, nil, nil
+			})
 
-		// Mock ResolveMergeRequestDiscussion
-		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "def456", gomock.Any(), gomock.Any()).
-			Return(&gitlab.Discussion{ID: "def456"}, nil, nil)
+		exec := setupCreateExec(t, testClient)
 
-		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
-		}, true,
-			cmdtest.WithGitLabClient(testClient.Client),
-			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		)
-
-		output, err := exec(`1 --resolve 200`)
+		output, err := exec(`1 -m "brand new note" --unique`)
 		require.NoError(t, err)
-		assert.Empty(t, output.Stderr())
-		assert.Contains(t, output.String(), "✓ Discussion resolved (note #200 in !1)")
-	})
-
-	t.Run("note not found", func(t *testing.T) {
-		t.Parallel()
-
-		testClient := gitlabtesting.NewTestClient(t)
-
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
-
-		// Mock ListMergeRequestDiscussions - note 999 doesn't exist
-		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-			Return([]*gitlab.Discussion{
-				{
-					ID: "abc123",
-					Notes: []*gitlab.Note{
-						{ID: 100, Body: "First discussion"},
-					},
-				},
-			}, nil, nil)
-
-		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
-		}, true,
-			cmdtest.WithGitLabClient(testClient.Client),
-			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		)
-
-		_, err := exec(`1 --resolve 999`)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "note 999 not found in merge request !1")
+		assert.Contains(t, output.String(), "#note_301")
 	})
 }
 
-func Test_mrNote_unresolve(t *testing.T) {
+func Test_cmdCreate_stdin(t *testing.T) {
 	t.Parallel()
 
-	t.Run("unresolve discussion by note ID", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name        string
+		stdin       string
+		wantErr     string
+		expectedOut string
+	}{
+		{
+			name:        "reads body from stdin when not a TTY",
+			stdin:       "Message from stdin\n",
+			expectedOut: "https://gitlab.com/OWNER/REPO/merge_requests/1#note_700\n",
+		},
+		{
+			name:    "empty stdin produces error",
+			stdin:   "",
+			wantErr: "aborted... Note has an empty message.",
+		},
+	}
 
-		testClient := gitlabtesting.NewTestClient(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		// Mock GetMergeRequest
-		testClient.MockMergeRequests.EXPECT().
-			GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-			Return(&gitlab.MergeRequest{
-				BasicMergeRequest: gitlab.BasicMergeRequest{
-					ID:     1,
-					IID:    1,
-					WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-				},
-			}, nil, nil)
+			testClient := setupMR(t)
 
-		// Mock ListMergeRequestDiscussions
-		testClient.MockDiscussions.EXPECT().
-			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-			Return([]*gitlab.Discussion{
-				{
-					ID: "abc123",
-					Notes: []*gitlab.Note{
-						{ID: 100, Body: "First discussion"},
-					},
-				},
-				{
-					ID: "ghi789",
-					Notes: []*gitlab.Note{
-						{ID: 300, Body: "Third discussion"},
-					},
-				},
-			}, nil, nil)
+			if tt.wantErr == "" {
+				testClient.MockDiscussions.EXPECT().
+					CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+						assert.Equal(t, "Message from stdin", *opts.Body)
+						return &gitlab.Discussion{
+							ID: "disc-stdin",
+							Notes: []*gitlab.Note{
+								{ID: 700, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+							},
+						}, nil, nil
+					})
+			}
 
-		// Mock ResolveMergeRequestDiscussion with Resolved: false
-		testClient.MockDiscussions.EXPECT().
-			ResolveMergeRequestDiscussion("OWNER/REPO", int64(1), "ghi789", gomock.Any(), gomock.Any()).
-			Return(&gitlab.Discussion{ID: "ghi789"}, nil, nil)
+			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+				return NewCmdCreate(f)
+			}, false,
+				cmdtest.WithGitLabClient(testClient.Client),
+				cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+				cmdtest.WithConfig(config.NewFromString("editor: vi")),
+				cmdtest.WithStdin(tt.stdin),
+			)
 
-		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdNote(f)
-		}, true,
-			cmdtest.WithGitLabClient(testClient.Client),
-			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
-			cmdtest.WithConfig(config.NewFromString("editor: vi")),
-		)
+			output, err := exec(`1`)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Equal(t, tt.wantErr, err.Error())
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedOut, output.String())
+		})
+	}
+}
 
-		output, err := exec(`1 --unresolve 300`)
-		require.NoError(t, err)
-		assert.Empty(t, output.Stderr())
-		assert.Contains(t, output.String(), "✓ Discussion unresolved (note #300 in !1)")
-	})
+// --- test helpers ---
+
+func setupMR(t *testing.T) *gitlabtesting.TestClient {
+	t.Helper()
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:     1,
+				IID:    1,
+				WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
+			},
+		}, nil, nil)
+	return testClient
+}
+
+func setupMRNotFound(t *testing.T) *gitlabtesting.TestClient {
+	t.Helper()
+	testClient := gitlabtesting.NewTestClient(t)
+	notFoundResp := &gitlab.Response{
+		Response: &http.Response{StatusCode: http.StatusNotFound},
+	}
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(122), gomock.Any()).
+		Return(nil, notFoundResp, gitlab.ErrNotFound)
+	return testClient
+}
+
+func setupCreateExec(t *testing.T, testClient *gitlabtesting.TestClient) cmdtest.CmdExecFunc {
+	t.Helper()
+	return cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdCreate(f)
+	}, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		cmdtest.WithConfig(config.NewFromString("editor: vi")),
+	)
 }
