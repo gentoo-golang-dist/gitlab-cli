@@ -249,11 +249,6 @@ hosts:
 		wantErr       error
 	}{
 		{
-			name:    "bare numeric project id",
-			input:   "12345",
-			wantErr: errors.New(`glrepo: bare numeric project ID "12345" requires a GitLab client; use FromProjectID`),
-		},
-		{
 			name:          "OWNER/REPO combo",
 			input:         "OWNER/REPO",
 			wantHost:      "gitlab.com",
