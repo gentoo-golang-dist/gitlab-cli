@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	goversion "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -132,6 +133,34 @@ func TestBinaryManager_verifyChecksum(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestDuoMaxCompatibleMajorVersion(t *testing.T) {
+	t.Parallel()
+
+	// Verify that the version library correctly identifies which versions are
+	// blocked by the major version ceiling.
+	tests := []struct {
+		version       string
+		expectBlocked bool
+	}{
+		{"8.0.0", false},
+		{"8.79.0", false},
+		{"v8.5.0", false},
+		{"9.0.0", true},
+		{"9.1.2", true},
+		{"10.0.0", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.version, func(t *testing.T) {
+			t.Parallel()
+			v, err := goversion.NewVersion(tc.version)
+			require.NoError(t, err)
+			blocked := v.Segments()[0] > duoMaxCompatibleMajorVersion
+			assert.Equal(t, tc.expectBlocked, blocked)
 		})
 	}
 }
