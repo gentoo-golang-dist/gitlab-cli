@@ -111,7 +111,11 @@ func (m *BinaryManager) CheckForUpdate(ctx context.Context, currentVersion strin
 		return false, "", "", newCheckTime, fmt.Errorf("invalid latest version: %w", err)
 	}
 
-	if latestV.Segments()[0] > duoMaxCompatibleMajorVersion {
+	segments := latestV.Segments()
+	if len(segments) == 0 {
+		return false, "", "", newCheckTime, fmt.Errorf("invalid latest version: %q", latestPkg.Version)
+	}
+	if segments[0] > duoMaxCompatibleMajorVersion {
 		return false, "", latestPkg.Version, newCheckTime, nil
 	}
 
@@ -249,7 +253,7 @@ func (m *BinaryManager) fetchLatestPackage(ctx context.Context) (*gitlab.Package
 func (m *BinaryManager) fetchPackageAsset(ctx context.Context, platform platform) (*packageAsset, error) {
 	pkg, err := m.fetchLatestPackage(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch packages: %w", err)
+		return nil, err
 	}
 
 	latestV, err := version.NewVersion(pkg.Version)
