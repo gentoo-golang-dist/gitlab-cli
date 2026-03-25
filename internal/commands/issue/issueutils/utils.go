@@ -57,7 +57,10 @@ func DisplayIssue(c *iostreams.ColorPalette, i *gitlab.Issue, isTTY bool) string
 	issueID := IssueState(c, i)
 
 	if isTTY {
-		return fmt.Sprintf("%s %s (%s)\n %s\n", issueID, i.Title, duration, i.WebURL)
+		if duration != "" {
+			return fmt.Sprintf("%s %s (%s)\n %s\n", issueID, i.Title, duration, i.WebURL)
+		}
+		return fmt.Sprintf("%s %s\n %s\n", issueID, i.Title, i.WebURL)
 	} else {
 		return i.WebURL
 	}
