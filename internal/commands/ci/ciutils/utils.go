@@ -162,8 +162,10 @@ func DisplayMultiplePipelines(s *iostreams.IOStreams, p []*gitlab.PipelineInfo, 
 			duration = c.Magenta("(" + utils.TimeToPrettyTimeAgo(*pipeline.CreatedAt) + ")")
 		}
 
-	 	pipeState := fmt.Sprintf("(%s) • #%s", pipeline.Status, makeHyperlink(s, pipeline))
+		pipeState := fmt.Sprintf("(%s) • #%s", pipeline.Status, makeHyperlink(s, pipeline))
 		switch pipeline.Status {
+		case "running":
+			pipeState = c.Blue(pipeState)
 		case "success":
 			pipeState = c.Green(pipeState)
 		case "failed":
