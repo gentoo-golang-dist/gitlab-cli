@@ -38,7 +38,11 @@ func DisplayIssueList(streams *iostreams.IOStreams, issues []*gitlab.Issue, proj
 			table.AddCell("")
 		}
 
-		table.AddCell(c.Gray(utils.TimeToPrettyTimeAgo(*issue.CreatedAt)))
+		if issue.CreatedAt != nil {
+			table.AddCell(c.Gray(utils.TimeToPrettyTimeAgo(*issue.CreatedAt)))
+		} else {
+			table.AddCell("")
+		}
 		table.EndRow()
 	}
 
@@ -46,11 +50,17 @@ func DisplayIssueList(streams *iostreams.IOStreams, issues []*gitlab.Issue, proj
 }
 
 func DisplayIssue(c *iostreams.ColorPalette, i *gitlab.Issue, isTTY bool) string {
-	duration := utils.TimeToPrettyTimeAgo(*i.CreatedAt)
+	var duration string
+	if i.CreatedAt != nil {
+		duration = utils.TimeToPrettyTimeAgo(*i.CreatedAt)
+	}
 	issueID := IssueState(c, i)
 
 	if isTTY {
-		return fmt.Sprintf("%s %s (%s)\n %s\n", issueID, i.Title, duration, i.WebURL)
+		if duration != "" {
+			return fmt.Sprintf("%s %s (%s)\n %s\n", issueID, i.Title, duration, i.WebURL)
+		}
+		return fmt.Sprintf("%s %s\n %s\n", issueID, i.Title, i.WebURL)
 	} else {
 		return i.WebURL
 	}
