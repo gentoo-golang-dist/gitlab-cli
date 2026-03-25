@@ -6,6 +6,7 @@ RUN <<SCRIPT
 apk update
 apk add --no-cache \
         git \
+        jq \
         nano \
         openssh \
         ca-certificates
