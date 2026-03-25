@@ -27,6 +27,11 @@ type options struct {
 	openInBrowser  bool
 	outputFormat   string
 
+	// MR state filters
+	opened bool
+	merged bool
+	closed bool
+
 	commentPageNujmber int
 	commentLimit       int
 
@@ -60,14 +65,22 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	mrViewCmd.Flags().BoolVarP(&opts.showComments, "comments", "c", false, "Show merge request comments and activities.")
-	mrViewCmd.Flags().BoolVarP(&opts.showSystemLogs, "system-logs", "s", false, "Show system activities and logs.")
-	mrViewCmd.Flags().BoolVar(&opts.showResolved, "resolved", false, "Show only resolved discussions (implies --comments).")
-	mrViewCmd.Flags().BoolVar(&opts.showUnresolved, "unresolved", false, "Show only unresolved discussions (implies --comments).")
+	fl := mrViewCmd.Flags()
+	fl.BoolVarP(&opts.showComments, "comments", "c", false, "Show merge request comments and activities.")
+	fl.BoolVarP(&opts.showSystemLogs, "system-logs", "s", false, "Show system activities and logs.")
+	fl.BoolVar(&opts.showResolved, "resolved", false, "Show only resolved discussions (implies --comments).")
+	fl.BoolVar(&opts.showUnresolved, "unresolved", false, "Show only unresolved discussions (implies --comments).")
+	fl.BoolVar(&opts.opened, "opened", false, "Get only opened merge requests.")
+	fl.BoolVarP(&opts.merged, "merged", "M", false, "Get only merged merge requests.")
+	fl.BoolVar(&opts.closed, "closed", false, "Get only closed merge requests.")
+
 	cmdutils.EnableJSONOutput(mrViewCmd, &opts.outputFormat)
-	mrViewCmd.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open merge request in a browser. Uses default browser or browser specified in BROWSER variable.")
-	mrViewCmd.Flags().IntVarP(&opts.commentPageNujmber, "page", "p", 0, "Page number.")
-	mrViewCmd.Flags().IntVarP(&opts.commentLimit, "per-page", "P", 20, "Number of items to list per page.")
+
+	fl.BoolVarP(&opts.openInBrowser, "web", "w", false, "Open merge request in a browser. Uses default browser or browser specified in BROWSER variable.")
+	fl.IntVarP(&opts.commentPageNujmber, "page", "p", 0, "Page number.")
+	fl.IntVarP(&opts.commentLimit, "per-page", "P", 20, "Number of items to list per page.")
+
+	mrViewCmd.MarkFlagsMutuallyExclusive("opened", "merged", "closed")
 
 	return mrViewCmd
 }
@@ -78,11 +91,21 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 		return err
 	}
 
+	// Determine the MR state to filter by
+	state := "any" // default to any state (preserves existing behavior)
+	if o.opened {
+		state = "opened"
+	} else if o.merged {
+		state = "merged"
+	} else if o.closed {
+		state = "closed"
+	}
+
 	mr, baseRepo, err := mrutils.MRFromArgsWithOpts(ctx, f, args, &gitlab.GetMergeRequestsOptions{
 		IncludeDivergedCommitsCount: new(true),
 		RenderHTML:                  new(true),
 		IncludeRebaseInProgress:     new(true),
-	}, "any")
+	}, state)
 	if err != nil {
 		return err
 	}

@@ -280,13 +280,34 @@ var GetMRForBranch = func(ctx context.Context, ios *iostreams.IOStreams, apiClie
 		opts.State = new(mrOpts.State)
 	}
 
+	// Determine the state description for error messages
+	var stateDesc string
+	switch mrOpts.State {
+	case "merged":
+		stateDesc = "merged"
+	case "closed":
+		stateDesc = "closed"
+	case "opened":
+		stateDesc = "open"
+	case "any", "":
+		stateDesc = ""
+	default:
+		stateDesc = mrOpts.State
+	}
+
 	mrs, err := api.ListMRs(apiClient, mrOpts.BaseRepo.FullName(), &opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get open merge request for %q: %w", currentBranch, err)
+		if stateDesc != "" {
+			return nil, fmt.Errorf("failed to get %s merge request for %q: %w", stateDesc, currentBranch, err)
+		}
+		return nil, fmt.Errorf("failed to get merge request for %q: %w", currentBranch, err)
 	}
 
 	if len(mrs) == 0 {
-		return nil, fmt.Errorf("no open merge request available for %q", currentBranch)
+		if stateDesc != "" {
+			return nil, fmt.Errorf("no %s merge request available for %q", stateDesc, currentBranch)
+		}
+		return nil, fmt.Errorf("no merge request available for %q", currentBranch)
 	}
 
 	userAskedForSpecificOwner := owner != ""
@@ -298,7 +319,10 @@ var GetMRForBranch = func(ctx context.Context, ios *iostreams.IOStreams, apiClie
 				return mr, nil
 			}
 		}
-		return nil, fmt.Errorf("no open merge request available for %q owned by @%s", currentBranch, owner)
+		if stateDesc != "" {
+			return nil, fmt.Errorf("no %s merge request available for %q owned by @%s", stateDesc, currentBranch, owner)
+		}
+		return nil, fmt.Errorf("no merge request available for %q owned by @%s", currentBranch, owner)
 	}
 
 	// This is done after the 'OWNER:' check because we don't want to give the wrong MR

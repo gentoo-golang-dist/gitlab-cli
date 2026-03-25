@@ -170,7 +170,7 @@ func TestMRDiff_no_current_mr(t *testing.T) {
 
 	_, err := exec("")
 	require.Error(t, err)
-	assert.Equal(t, `no open merge request available for "feature"`, err.Error())
+	assert.Equal(t, `no merge request available for "feature"`, err.Error())
 }
 
 func TestMRDiff_argument_not_found(t *testing.T) {

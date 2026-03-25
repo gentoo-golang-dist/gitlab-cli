@@ -25,7 +25,10 @@ show
 ## Options
 
 ```plaintext
+      --closed          Get only closed merge requests.
   -c, --comments        Show merge request comments and activities.
+  -M, --merged          Get only merged merge requests.
+      --opened          Get only opened merge requests.
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number.
   -P, --per-page int    Number of items to list per page. (default 20)
