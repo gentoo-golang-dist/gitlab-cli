@@ -26,14 +26,13 @@ glab runner jobs <runner-id> [flags]
 
 ```console
 # List all jobs for runner 9
-$ glab runner jobs 9
+glab runner jobs 9
 
 # List only running jobs
-$ glab runner jobs 9 --status running
+glab runner jobs 9 --status running
 
 # List jobs as JSON
-$ glab runner jobs 9 --output json
-
+glab runner jobs 9 --output json
 ```
 
 ## Options
