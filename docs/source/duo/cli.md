@@ -26,8 +26,10 @@ You only need to authenticate once.
 
 Prerequisites:
 
-- Authenticate by running `glab auth login`.
+- Use GitLab 18.11 or later.
+- Run `glab auth login` to authenticate.
 - Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
 Configuration options:
 
@@ -36,6 +38,8 @@ Configuration options:
 
 All arguments and flags are passed through to the GitLab Duo CLI binary.
 Use `--update` to check for and install updates to the binary.
+
+For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

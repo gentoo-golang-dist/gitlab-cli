@@ -47,9 +47,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		You only need to authenticate once.
 
 		Prerequisites:
-
-		- Authenticate by running %[1]sglab auth login%[1]s.
+		
+		- Use GitLab 18.11 or later.
+		- Run %[1]sglab auth login%[1]s to authenticate.
 		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+		- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
 		Configuration options:
 
@@ -58,6 +60,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
+
+		For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
 	`, "`") + text.ExperimentalString,
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
