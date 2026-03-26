@@ -56,6 +56,12 @@ on the format of the value:
 For GraphQL requests, all fields other than `query` and `operationName` are
 interpreted as GraphQL variables.
 
+Use `--form` to send data as `multipart/form-data` instead of JSON. This is
+required for API endpoints that accept file uploads, such as wiki attachments.
+Pass one or more `--form` values in `key=value` format. To upload a file,
+prefix the value with `@` followed by the file path. Pass `-` to read from
+standard input. Cannot be combined with `--field`, `--raw-field`, or `--input`.
+
 Raw request body can be passed from the outside via a file specified by `--input`.
 Pass `-` to read from standard input. In this mode, parameters specified with
 `--field` flags are serialized into URL query parameters.
@@ -83,6 +89,7 @@ glab api <endpoint> [flags]
 ```console
 $ glab api projects/:fullpath/releases
 $ glab api projects/gitlab-com%2Fwww-gitlab-com/issues
+$ glab api --method POST projects/:fullpath/wikis/attachments --form "file=@./image.png" --form "branch=main"
 $ glab api issues --paginate
 $ glab api issues --paginate --output ndjson
 $ glab api issues --paginate --output ndjson | jq 'select(.state == "opened")'
@@ -130,6 +137,7 @@ $ glab api graphql --paginate -f query='
 
 ```plaintext
   -F, --field stringArray       Add a parameter of inferred type. Changes the default HTTP method to "POST".
+      --form stringArray        Add a multipart form field. Use @filepath to upload a file, or @- to read from standard input (at most once). Changes the default HTTP method to "POST".
   -H, --header stringArray      Add an additional HTTP request header.
       --hostname string         The GitLab hostname for the request. Defaults to 'gitlab.com', or the authenticated host in the current Git directory.
   -i, --include                 Include HTTP response headers in the output.

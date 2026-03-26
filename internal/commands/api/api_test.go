@@ -235,6 +235,40 @@ func Test_NewCmdApi(t *testing.T) {
 			},
 			wantsErr: false,
 		},
+		{
+			name: "with form fields",
+			cli:  `projects/:fullpath/wikis/attachments --form "file=@image.png" --form "branch=main"`,
+			wants: options{
+				requestMethod:       http.MethodGet,
+				requestMethodPassed: false,
+				requestPath:         "projects/:fullpath/wikis/attachments",
+				rawFields:           []string(nil),
+				magicFields:         []string(nil),
+				formFields:          []string{"file=@image.png", "branch=main"},
+				requestHeaders:      []string(nil),
+			},
+			wantsErr: false,
+		},
+		{
+			name:     "form and field are mutually exclusive",
+			cli:      `projects --form "file=@foo.png" --field "name=test"`,
+			wantsErr: true,
+		},
+		{
+			name:     "form and raw-field are mutually exclusive",
+			cli:      `projects --form "file=@foo.png" --raw-field "name=test"`,
+			wantsErr: true,
+		},
+		{
+			name:     "form and input are mutually exclusive",
+			cli:      `projects --form "file=@foo.png" --input body.json`,
+			wantsErr: true,
+		},
+		{
+			name:     "form stdin used twice is invalid",
+			cli:      `projects --form "file=@-" --form "other=@-"`,
+			wantsErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -246,6 +280,7 @@ func Test_NewCmdApi(t *testing.T) {
 				assert.Equal(t, tt.wants.requestInputFile, o.requestInputFile)
 				assert.Equal(t, tt.wants.rawFields, o.rawFields)
 				assert.Equal(t, tt.wants.magicFields, o.magicFields)
+				assert.Equal(t, tt.wants.formFields, o.formFields)
 				assert.Equal(t, tt.wants.requestHeaders, o.requestHeaders)
 				assert.Equal(t, tt.wants.showResponseHeaders, o.showResponseHeaders)
 				return nil
