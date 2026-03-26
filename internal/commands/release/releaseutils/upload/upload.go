@@ -3,6 +3,7 @@ package upload
 import (
 	"fmt"
 	"io"
+	"net/url"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -122,7 +123,7 @@ func (c *Context) uploadAsGenericPackage(projectID, tagName string, packageName 
 	return &ReleaseAsset{
 		Name:            new(file.Label),
 		URL:             new(assetURL.String()),
-		DirectAssetPath: new("/" + file.Name),
+		DirectAssetPath: new("/" + url.PathEscape(file.Name)),
 		LinkType:        file.Type,
 	}, nil
 }
@@ -163,7 +164,7 @@ func (c *Context) uploadAsProjectMarkdownFile(projectID string, file *ReleaseFil
 	return &ReleaseAsset{
 		Name:            new(file.Label),
 		URL:             new(assetURL.String()),
-		DirectAssetPath: new("/" + file.Name),
+		DirectAssetPath: new("/" + url.PathEscape(file.Name)),
 		LinkType:        file.Type,
 	}, nil
 }
