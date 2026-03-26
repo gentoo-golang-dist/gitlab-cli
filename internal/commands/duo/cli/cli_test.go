@@ -3,9 +3,12 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -51,10 +54,67 @@ func TestDevDuoCLIPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("DEV_DUO_CLI_PATH", tt.envValue)
+			t.Setenv("GLAB_DUO_CLI_PATH", tt.envValue)
 			assert.Equal(t, tt.expected, devDuoCLIPath())
 		})
 	}
+}
+
+func TestRunWithCustomPath_Validation(t *testing.T) {
+	t.Run("non-existent path returns clear error", func(t *testing.T) {
+		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+		factory := cmdtest.NewTestFactory(ios)
+		opts := &options{
+			io:  factory.IO(),
+			cfg: factory.Config(),
+		}
+
+		t.Setenv("GLAB_DUO_CLI_PATH", "/nonexistent/path/to/duo")
+		err := opts.run(t.Context())
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "$GLAB_DUO_CLI_PATH is set to")
+		assert.Contains(t, err.Error(), "/nonexistent/path/to/duo")
+		assert.Contains(t, err.Error(), "file was not found")
+	})
+
+	t.Run("directory path returns clear error", func(t *testing.T) {
+		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+		factory := cmdtest.NewTestFactory(ios)
+		opts := &options{
+			io:  factory.IO(),
+			cfg: factory.Config(),
+		}
+
+		dir := t.TempDir()
+		t.Setenv("GLAB_DUO_CLI_PATH", dir)
+		err := opts.run(t.Context())
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "$GLAB_DUO_CLI_PATH is set to")
+		assert.Contains(t, err.Error(), "it is a directory, not an executable file")
+	})
+
+	t.Run("non-executable file returns clear error", func(t *testing.T) {
+		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+		factory := cmdtest.NewTestFactory(ios)
+		opts := &options{
+			io:  factory.IO(),
+			cfg: factory.Config(),
+		}
+
+		dir := t.TempDir()
+		nonExecFile := filepath.Join(dir, "duo")
+		require.NoError(t, os.WriteFile(nonExecFile, []byte("#!/bin/sh\n"), 0o644))
+
+		t.Setenv("GLAB_DUO_CLI_PATH", nonExecFile)
+		err := opts.run(t.Context())
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "$GLAB_DUO_CLI_PATH is set to")
+		assert.Contains(t, err.Error(), "file is not executable")
+		assert.Contains(t, err.Error(), "chmod +x")
+	})
 }
 
 func TestShouldForceUpdateCheck(t *testing.T) {
