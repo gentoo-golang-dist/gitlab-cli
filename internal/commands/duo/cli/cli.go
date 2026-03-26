@@ -35,7 +35,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "cli [command]",
-		Short: "Run the GitLab Duo CLI (EXPERIMENTAL)",
+		Short: "Run the GitLab Duo CLI (Beta)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
 		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
@@ -47,7 +47,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		You only need to authenticate once.
 
 		Prerequisites:
-		
+
 		- Use GitLab 18.11 or later.
 		- Run %[1]sglab auth login%[1]s to authenticate.
 		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
