@@ -61,7 +61,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		Environment variables:
 
-		- %[1]sDEV_DUO_CLI_PATH%[1]s: Use a local binary instead of the managed one.
+		- %[1]sGLAB_DUO_CLI_PATH%[1]s: Use a local binary instead of the managed one.
 		  Skips download, version checks, and updates.
 	`, "`") + text.ExperimentalString,
 		Example: heredoc.Docf(`
@@ -102,10 +102,10 @@ func shouldForceUpdateCheck() bool {
 	return os.Getenv("GLAB_DUO_CLI_CHECK_UPDATE") == "true"
 }
 
-// devDuoCLIPath returns the path from DEV_DUO_CLI_PATH if set.
+// devDuoCLIPath returns the path from GLAB_DUO_CLI_PATH if set.
 // When non-empty, all binary management (download, version checks) is skipped.
 func devDuoCLIPath() string {
-	return os.Getenv("DEV_DUO_CLI_PATH")
+	return os.Getenv("GLAB_DUO_CLI_PATH")
 }
 
 // updateCheckResult contains the result of an update check.
@@ -161,6 +161,21 @@ func (o *options) complete(args []string) {
 
 func (o *options) run(ctx context.Context) error {
 	if customPath := devDuoCLIPath(); customPath != "" {
+		info, err := os.Stat(customPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but the file was not found. Check that the path is correct.", customPath)
+			}
+			return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but it could not be accessed: %w", customPath, err)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but it is a directory, not an executable file.", customPath)
+		}
+
+		if info.Mode()&0o111 == 0 {
+			return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but the file is not executable. Run: chmod +x %s", customPath, customPath)
+		}
+
 		color := o.io.Color()
 		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), customPath)
 		if err := o.checkAutoRun(ctx); err != nil {

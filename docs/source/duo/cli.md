@@ -39,7 +39,7 @@ Use `--update` to check for and install updates to the binary.
 
 Environment variables:
 
-- `DEV_DUO_CLI_PATH`: Use a local binary instead of the managed one.
+- `GLAB_DUO_CLI_PATH`: Use a local binary instead of the managed one.
   Skips download, version checks, and updates.
 
 This feature is an experiment and is not ready for production use.
