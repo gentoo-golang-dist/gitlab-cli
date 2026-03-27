@@ -588,6 +588,8 @@ func Test_ParseMilestoneTitleToID(t *testing.T) {
 }
 
 func Test_PickMetadata(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		name       string
 		values     []int
@@ -636,6 +638,8 @@ func Test_PickMetadata(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.name, func(t *testing.T) {
+			t.Parallel()
+
 			if tC.skipReason != "" {
 				t.Skip(tC.skipReason)
 			}
