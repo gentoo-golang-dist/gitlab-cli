@@ -196,7 +196,9 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 	}
 
 	fmt.Fprintln(w, "Getting job trace...")
-	for range time.NewTicker(pollInterval).C {
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for range ticker.C {
 		if ctx.Err() == context.Canceled {
 			break
 		}
