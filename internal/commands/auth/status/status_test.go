@@ -263,9 +263,10 @@ hosts:
 	assert.NotNil(t, err)
 	assert.Empty(t, stdout.String())
 	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. A wrapper may be injecting a different or expired token.")
-	assert.Contains(t, stderr.String(), "type glab")
-	assert.Contains(t, stderr.String(), "env | grep -E")
+	assert.Contains(t, stderr.String(), "To investigate, run in your shell: type glab")
+	assert.Contains(t, stderr.String(), "To see the token value in use, run: env | grep -E 'GITLAB_TOKEN|GITLAB_ACCESS_TOKEN|OAUTH_TOKEN'")
 	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. This takes precedence over tokens stored in config or keyring.")
+	assert.Contains(t, stderr.String(), "If a wrapper (e.g., 'op plugin run -- glab') is setting this, run type glab in your shell to check.")
 }
 
 func Test_statusRun_noHostnameSpecified(t *testing.T) {
