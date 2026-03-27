@@ -246,6 +246,74 @@ hosts:
 				headers: "Accept: application/json\r\nContent-Type: application/json\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
 			},
 		},
+		{
+			name: "PUT with array containing hyphens and uppercase",
+			args: args{
+				host:    "gitlab.com",
+				method:  http.MethodPut,
+				p:       "projects/123",
+				params:  map[string]any{"topics": "[my-topic, GitLab, CI]"},
+				headers: []string{},
+			},
+			wantErr: false,
+			want: expects{
+				method:  http.MethodPut,
+				u:       "https://gitlab.com/api/v4/projects/123",
+				body:    `{"topics":["my-topic","GitLab","CI"]}`,
+				headers: "Content-Type: application/json; charset=utf-8\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
+			},
+		},
+		{
+			name: "PUT with array containing digits",
+			args: args{
+				host:    "gitlab.com",
+				method:  http.MethodPut,
+				p:       "projects/123",
+				params:  map[string]any{"topics": "[topic1, v2]"},
+				headers: []string{},
+			},
+			wantErr: false,
+			want: expects{
+				method:  http.MethodPut,
+				u:       "https://gitlab.com/api/v4/projects/123",
+				body:    `{"topics":["topic1","v2"]}`,
+				headers: "Content-Type: application/json; charset=utf-8\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
+			},
+		},
+		{
+			name: "PUT with single-element array",
+			args: args{
+				host:    "gitlab.com",
+				method:  http.MethodPut,
+				p:       "projects/123",
+				params:  map[string]any{"topics": "[nomograph]"},
+				headers: []string{},
+			},
+			wantErr: false,
+			want: expects{
+				method:  http.MethodPut,
+				u:       "https://gitlab.com/api/v4/projects/123",
+				body:    `{"topics":["nomograph"]}`,
+				headers: "Content-Type: application/json; charset=utf-8\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
+			},
+		},
+		{
+			name: "POST with non-array string value unchanged",
+			args: args{
+				host:    "gitlab.com",
+				method:  http.MethodPost,
+				p:       "projects",
+				params:  map[string]any{"name": "my-project"},
+				headers: []string{},
+			},
+			wantErr: false,
+			want: expects{
+				method:  http.MethodPost,
+				u:       "https://gitlab.com/api/v4/projects",
+				body:    `{"name":"my-project"}`,
+				headers: "Content-Type: application/json; charset=utf-8\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
+			},
+		},
 	}
 	for _, tt := range tests {
 		var options []api.ClientOption

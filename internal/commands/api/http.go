@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	// stringArrayRegexPattern represents a pattern to find strings like: [item, item_two]
-	stringArrayRegexPattern = `^\[\s*([[:lower:]_]+(\s*,\s*[[:lower:]_]+)*)?\s*\]$`
+	// stringArrayRegexPattern matches unquoted bracket syntax like: [item, my-item, GitLab2]
+	stringArrayRegexPattern = `^\[\s*([^\[\],\s]+(\s*,\s*[^\[\],\s]+)*)?\s*\]$`
 )
 
 var strArrayRegex = regexp.MustCompile(stringArrayRegexPattern)
