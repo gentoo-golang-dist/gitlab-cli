@@ -174,7 +174,8 @@ hosts:
   ✓ GraphQL Endpoint: https://gitlab3.example.com/api/graphql/
   ✓ Token found: **************************
 
-! One of GITLAB_TOKEN, GITLAB_ACCESS_TOKEN, OAUTH_TOKEN environment variables is set. It will be used for all authentication.
+! Token is from environment variable GITLAB_TOKEN. This takes precedence over tokens stored in config or keyring.
+  If a wrapper (e.g., 'op plugin run -- glab') is setting this, run type glab in your shell to check.
 `,
 		},
 	}
@@ -223,6 +224,48 @@ hosts:
 			}
 		})
 	}
+}
+
+func Test_statusRun_authFailureWithEnvToken(t *testing.T) {
+	defer config.StubConfig(`---
+hosts:
+  gitlab.example.com:
+    token: xxxxxxxxxxxxxxxxxxxx
+    git_protocol: ssh
+    api_protocol: https
+`, "")()
+
+	tc := gitlabtesting.NewTestClient(t)
+	tc.MockUsers.EXPECT().CurrentUser().Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}}, errors.New("GET https://gitlab.example.com/api/v4/user: 401 {error: invalid_token}"))
+
+	client := func(token, hostname string) (*api.Client, error) { // nolint:unparam
+		return cmdtest.NewTestApiClient(t, nil, token, hostname, api.WithGitLabClient(tc.Client)), nil
+	}
+
+	t.Setenv("GITLAB_TOKEN", "glpat-expired-token")
+	configs, err := config.ParseConfig("config.yml")
+	assert.Nil(t, err)
+	io, _, stdout, stderr := cmdtest.TestIOStreams()
+
+	opts := &options{
+		hostname: "gitlab.example.com",
+		config: func() config.Config {
+			return configs
+		},
+		apiClient: func(repoHost string) (*api.Client, error) {
+			return client("", repoHost)
+		},
+		httpClientOverride: client,
+		io:                 io,
+	}
+
+	err = opts.run()
+	assert.NotNil(t, err)
+	assert.Empty(t, stdout.String())
+	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. A wrapper may be injecting a different or expired token.")
+	assert.Contains(t, stderr.String(), "type glab")
+	assert.Contains(t, stderr.String(), "env | grep -E")
+	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. This takes precedence over tokens stored in config or keyring.")
 }
 
 func Test_statusRun_noHostnameSpecified(t *testing.T) {
