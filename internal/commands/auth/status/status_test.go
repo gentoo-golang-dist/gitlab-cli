@@ -13,6 +13,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -244,7 +245,7 @@ hosts:
 
 	t.Setenv("GITLAB_TOKEN", "glpat-expired-token")
 	configs, err := config.ParseConfig("config.yml")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	io, _, stdout, stderr := cmdtest.TestIOStreams()
 
 	opts := &options{
@@ -260,7 +261,7 @@ hosts:
 	}
 
 	err = opts.run()
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Empty(t, stdout.String())
 	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. A wrapper may be injecting a different or expired token.")
 	assert.Contains(t, stderr.String(), "To investigate, run in your shell: type glab")

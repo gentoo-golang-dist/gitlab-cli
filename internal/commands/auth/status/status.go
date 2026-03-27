@@ -111,11 +111,11 @@ func (o *options) run() error {
 			apiClient, _ = o.httpClientOverride(token, instance)
 		}
 		if err == nil {
-			user, _, err := apiClient.Lab().Users.CurrentUser()
+			user, resp, err := apiClient.Lab().Users.CurrentUser()
 			if err != nil {
 				failedAuth = true
 				addMsg("%s %s: API call failed: %s", c.FailedIcon(), instance, err)
-				if slices.Contains(config.EnvKeyEquivalence("token"), tokenSource) {
+				if resp != nil && resp.StatusCode == 401 && slices.Contains(config.EnvKeyEquivalence("token"), tokenSource) {
 					addMsg("  %s Token is from environment variable %s. A wrapper may be injecting a different or expired token.", c.WarnIcon(), tokenSource)
 					addMsg("  %s To investigate, run in your shell: %s", c.WarnIcon(), c.Bold("type glab"))
 					addMsg("  %s To see the token value in use, run: %s", c.WarnIcon(), c.Bold("env | grep -E 'GITLAB_TOKEN|GITLAB_ACCESS_TOKEN|OAUTH_TOKEN'"))
