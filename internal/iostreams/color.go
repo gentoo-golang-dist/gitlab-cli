@@ -55,9 +55,17 @@ func NewColorable(out io.Writer) io.Writer {
 }
 
 func makeColorFunc(isColorfulOutput bool, isDarkBackground bool, color string) func(string) string {
-	if isColorfulOutput && color == "black+h" && is256ColorSupported() {
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
+	if isColorfulOutput && is256ColorSupported() {
+		if r, g, b, ok := gitlabAccessibleColor(color, !isDarkBackground); ok {
+			return func(t string) string {
+				return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
+			}
+		}
+
+		if color == "black+h" {
+			return func(t string) string {
+				return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
+			}
 		}
 	}
 
@@ -68,6 +76,28 @@ func makeColorFunc(isColorfulOutput bool, isDarkBackground bool, color string) f
 		}
 		return arg
 	}
+}
+
+func gitlabAccessibleColor(name string, darkVariant bool) (r, g, b uint8, ok bool) {
+	type pair struct{ dark, light string }
+	palette := map[string]pair{
+		"blue":    {"#1068BF", "#4285F4"},
+		"green":   {"#217645", "#34D058"},
+		"red":     {"#C91C00", "#F97583"},
+		"magenta": {"#7759C2", "#A989F5"},
+		"cyan":    {"#008B96", "#73D3C3"},
+	}
+	p, found := palette[name]
+	if !found {
+			return 0, 0, 0, false
+	}
+	hex := p.light
+	if darkVariant {
+			hex = p.dark
+	}
+
+	r, g, b, err := hexToRGB(hex)
+	return r, g, b, err == nil
 }
 
 func hexToRGB(hex string) (r, g, b uint8, err error) {
