@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
@@ -78,7 +78,7 @@ func makeColorFunc(isColorfulOutput bool, isDarkBackground bool, color string) f
 	}
 }
 
-func gitlabAccessibleColor(name string, darkVariant bool) (r, g, b uint8, ok bool) {
+func gitlabAccessibleColor(name string, darkVariant bool) (uint8, uint8, uint8, bool) {
 	type pair struct{ dark, light string }
 	palette := map[string]pair{
 		"blue":    {"#1068BF", "#4285F4"},
@@ -89,19 +89,19 @@ func gitlabAccessibleColor(name string, darkVariant bool) (r, g, b uint8, ok boo
 	}
 	p, found := palette[name]
 	if !found {
-			return 0, 0, 0, false
+		return 0, 0, 0, false
 	}
 	hex := p.light
 	if darkVariant {
-			hex = p.dark
+		hex = p.dark
 	}
 
 	r, g, b, err := hexToRGB(hex)
 	return r, g, b, err == nil
 }
 
-func hexToRGB(hex string) (r, g, b uint8, err error) {
-	// Remove # if present
+func hexToRGB(hex string) (uint8, uint8, uint8, error) {
+	// Remove `#` if present
 	if hex[0] == '#' {
 		hex = hex[1:]
 	}
