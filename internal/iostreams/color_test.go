@@ -44,6 +44,7 @@ func Test_makeColorFunc(t *testing.T) {
 		name         string
 		color        string
 		colorEnabled bool
+		darkTerminal bool
 		term         string
 		want         string
 	}{
@@ -51,6 +52,7 @@ func Test_makeColorFunc(t *testing.T) {
 			name:         "gray 16 colors",
 			color:        "black+h",
 			colorEnabled: true,
+			darkTerminal: true,
 			term:         "xterm-16color",
 			want:         "\x1b[0;90mtext\x1b[0m",
 		},
@@ -58,6 +60,7 @@ func Test_makeColorFunc(t *testing.T) {
 			name:         "gray 256 colors",
 			color:        "black+h",
 			colorEnabled: true,
+			darkTerminal: true,
 			term:         "xterm-256color",
 			want:         "\x1b[38;5;242mtext\x1b[m",
 		},
@@ -65,8 +68,25 @@ func Test_makeColorFunc(t *testing.T) {
 			name:         "no colors",
 			color:        "black+h",
 			colorEnabled: false,
+			darkTerminal: true,
 			term:         "",
 			want:         "text",
+		},
+		{
+			name:         "green on dark background",
+			color:        "green",
+			colorEnabled: true,
+			darkTerminal: true,
+			term:         "xterm-24bit",
+			want:         "\x1b[38;2;52;208;88mtext\x1b[m",
+		},
+		{
+			name:         "green on light background",
+			color:        "green",
+			colorEnabled: true,
+			darkTerminal: false,
+			term:         "xterm-24bit",
+			want:         "\x1b[38;2;33;118;69mtext\x1b[m",
 		},
 	}
 
@@ -75,7 +95,7 @@ func Test_makeColorFunc(t *testing.T) {
 			t.Setenv("COLORTERM", "")
 			t.Setenv("TERM", tt.term)
 
-			fn := makeColorFunc(tt.colorEnabled, false, tt.color)
+			fn := makeColorFunc(tt.colorEnabled, tt.darkTerminal, tt.color)
 			got := fn("text")
 
 			require.Equal(t, tt.want, got)
