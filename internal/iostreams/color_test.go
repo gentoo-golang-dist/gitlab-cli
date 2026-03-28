@@ -75,7 +75,7 @@ func Test_makeColorFunc(t *testing.T) {
 			t.Setenv("COLORTERM", "")
 			t.Setenv("TERM", tt.term)
 
-			fn := makeColorFunc(tt.colorEnabled, tt.color)
+			fn := makeColorFunc(tt.colorEnabled, false, tt.color)
 			got := fn("text")
 
 			require.Equal(t, tt.want, got)

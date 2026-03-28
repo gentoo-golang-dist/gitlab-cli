@@ -8,6 +8,7 @@ import (
 
 	"github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
+	"github.com/muesli/termenv"
 )
 
 type ColorPalette struct {
@@ -31,15 +32,16 @@ type ColorPalette struct {
 
 func (s *IOStreams) Color() *ColorPalette {
 	isColorfulOutput := s.ColorEnabled() && s.IsaTTY
+	isDarkBackground := termenv.HasDarkBackground()
 	return &ColorPalette{
-		Magenta: makeColorFunc(isColorfulOutput, "magenta"),
-		Cyan:    makeColorFunc(isColorfulOutput, "cyan"),
-		Red:     makeColorFunc(isColorfulOutput, "red"),
-		Yellow:  makeColorFunc(isColorfulOutput, "yellow"),
-		Blue:    makeColorFunc(isColorfulOutput, "blue"),
-		Green:   makeColorFunc(isColorfulOutput, "green"),
-		Gray:    makeColorFunc(isColorfulOutput, "black+h"),
-		Bold:    makeColorFunc(isColorfulOutput, "default+b"),
+		Magenta: makeColorFunc(isColorfulOutput, isDarkBackground, "magenta"),
+		Cyan:    makeColorFunc(isColorfulOutput, isDarkBackground, "cyan"),
+		Red:     makeColorFunc(isColorfulOutput, isDarkBackground, "red"),
+		Yellow:  makeColorFunc(isColorfulOutput, isDarkBackground, "yellow"),
+		Blue:    makeColorFunc(isColorfulOutput, isDarkBackground, "blue"),
+		Green:   makeColorFunc(isColorfulOutput, isDarkBackground, "green"),
+		Gray:    makeColorFunc(isColorfulOutput, isDarkBackground, "black+h"),
+		Bold:    makeColorFunc(isColorfulOutput, isDarkBackground, "default+b"),
 	}
 }
 
@@ -51,10 +53,10 @@ func NewColorable(out io.Writer) io.Writer {
 	return out
 }
 
-func makeColorFunc(isColorfulOutput bool, color string) func(string) string {
+func makeColorFunc(isColorfulOutput bool, isDarkBackground bool, color string) func(string) string {
 	if isColorfulOutput && color == "black+h" && is256ColorSupported() {
 		return func(t string) string {
-			return fmt.Sprintf("\x1b[%d;5;%dm%s\x1b[m", 38, 242, t)
+			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
 		}
 	}
 
