@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"strconv"
 
 	"github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
@@ -67,6 +68,31 @@ func makeColorFunc(isColorfulOutput bool, isDarkBackground bool, color string) f
 		}
 		return arg
 	}
+}
+
+func hexToRGB(hex string) (r, g, b uint8, err error) {
+	// Remove # if present
+	if hex[0] == '#' {
+		hex = hex[1:]
+	}
+
+	// Convert each component to decimal
+	r64, err := strconv.ParseUint(hex[0:2], 16, 8)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	g64, err := strconv.ParseUint(hex[2:4], 16, 8)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	b64, err := strconv.ParseUint(hex[4:6], 16, 8)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	return uint8(r64), uint8(g64), uint8(b64), nil
 }
 
 // detectIsColorEnabled determines whether color output should be enabled based on environment variables.
