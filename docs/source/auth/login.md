@@ -58,6 +58,9 @@ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-regis
 
 # Non-interactive CI/CD setup
 glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
+
+# Non-interactive OAuth login skipping confirmation prompts (--force)
+glab auth login --hostname gitlab.com --web --use-keyring --force
 ```
 
 ## Options
@@ -66,6 +69,7 @@ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
   -a, --api-host string                     API host url.
   -p, --api-protocol string                 API protocol: https, http
       --container-registry-domains string   Container registry and image dependency proxy domains (comma-separated).
+  -f, --force                               Skip all confirmation prompts (re-authentication and Git credential setup). Useful for automated workflows.
   -g, --git-protocol string                 Git protocol: ssh, https, http
       --hostname string                     The hostname of the GitLab instance to authenticate with.
   -j, --job-token string                    CI job token.

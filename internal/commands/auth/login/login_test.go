@@ -260,6 +260,34 @@ func Test_NewCmdLogin(t *testing.T) {
 				GitProtocol:              "ssh",
 			},
 		},
+		{
+			name: "force flag with token",
+			cli:  "--hostname gl.io --token foo --force",
+			wants: LoginOptions{
+				Hostname: "gl.io",
+				Token:    "foo",
+				Force:    true,
+			},
+		},
+		{
+			name: "force flag short form with token",
+			cli:  "--hostname gl.io --token foo -f",
+			wants: LoginOptions{
+				Hostname: "gl.io",
+				Token:    "foo",
+				Force:    true,
+			},
+		},
+		{
+			name: "force flag with stdin",
+			cli:  "--hostname gl.io --stdin --force",
+			stdin: "token123\n",
+			wants: LoginOptions{
+				Hostname: "gl.io",
+				Token:    "token123",
+				Force:    true,
+			},
+		},
 	}
 
 	// Enable keyring mocking, so no changes are made to it accidentally and to prevent failing in some environments
@@ -308,6 +336,7 @@ func Test_NewCmdLogin(t *testing.T) {
 			assert.Equal(t, tt.wants.WebLogin, opts.WebLogin)
 			assert.Equal(t, tt.wants.SSHHostname, opts.SSHHostname)
 			assert.Equal(t, tt.wants.ContainerRegistryDomains, opts.ContainerRegistryDomains)
+			assert.Equal(t, tt.wants.Force, opts.Force)
 		})
 	}
 }
