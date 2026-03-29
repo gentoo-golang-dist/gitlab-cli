@@ -106,6 +106,10 @@ func hexToRGB(hex string) (uint8, uint8, uint8, error) {
 		hex = hex[1:]
 	}
 
+	if len(hex) != 6 {
+		return 0, 0, 0, fmt.Errorf("hex string must be exactly 6 characters, got %d", len(hex))
+	}
+
 	// Convert each component to decimal
 	r64, err := strconv.ParseUint(hex[0:2], 16, 8)
 	if err != nil {
