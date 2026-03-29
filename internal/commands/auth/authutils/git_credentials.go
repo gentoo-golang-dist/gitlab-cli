@@ -23,6 +23,17 @@ type GitCredentialFlow struct {
 	helper      string
 }
 
+// AutoSetup configures the flow for non-interactive use, equivalent to
+// answering "yes" to Prompt. It still skips setup if glab is already the
+// configured credential helper.
+func (gc *GitCredentialFlow) AutoSetup(hostname, protocol string) {
+	gc.helper, _ = gitCredentialHelper(hostname, protocol)
+	if isOurCredentialHelper(gc.helper) {
+		return
+	}
+	gc.shouldSetup = true
+}
+
 func (gc *GitCredentialFlow) Prompt(ctx context.Context, io *iostreams.IOStreams, hostname, protocol string) error {
 	gc.helper, _ = gitCredentialHelper(hostname, protocol)
 	if isOurCredentialHelper(gc.helper) {
