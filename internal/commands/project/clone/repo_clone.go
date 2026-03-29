@@ -129,7 +129,7 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 					opts.dir = args[0]
 				} else {
 					ctxOpts.Repo = args[0]
-					if nArgs > 1 && !opts.preserveNamespace {
+					if nArgs > 1 {
 						opts.dir = args[1]
 					}
 				}
@@ -297,14 +297,10 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 		ctxOpts.Repo += ".git"
 	}
 	localDir := opts.dir
-	if opts.dir != "" && opts.groupName != "" {
-		if opts.preserveNamespace {
-			localDir = filepath.Join(opts.dir, ctxOpts.Project.PathWithNamespace)
-		} else {
-			localDir = filepath.Join(opts.dir, filepath.Base(ctxOpts.Project.PathWithNamespace))
-		}
-	} else if opts.preserveNamespace {
-		localDir = ctxOpts.Project.PathWithNamespace
+	if opts.preserveNamespace {
+		localDir = filepath.Join(opts.dir, ctxOpts.Project.PathWithNamespace)
+	} else if opts.dir != "" && opts.groupName != "" {
+		localDir = filepath.Join(opts.dir, ctxOpts.Project.Path)
 	}
 	_, err := git.RunClone(ctxOpts.Repo, localDir, opts.gitFlags)
 	if err != nil {
