@@ -3,7 +3,7 @@ package clone
 import (
 	"errors"
 	"fmt"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -299,9 +299,9 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 	localDir := opts.dir
 	if opts.dir != "" && opts.groupName != "" {
 		if opts.preserveNamespace {
-			localDir = opts.dir + "/" + ctxOpts.Project.PathWithNamespace
+			localDir = filepath.Join(opts.dir, ctxOpts.Project.PathWithNamespace)
 		} else {
-			localDir = opts.dir + "/" + path.Base(ctxOpts.Project.PathWithNamespace)
+			localDir = filepath.Join(opts.dir, filepath.Base(ctxOpts.Project.PathWithNamespace))
 		}
 	} else if opts.preserveNamespace {
 		localDir = ctxOpts.Project.PathWithNamespace
