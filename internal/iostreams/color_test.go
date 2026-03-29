@@ -102,3 +102,21 @@ func Test_makeColorFunc(t *testing.T) {
 		})
 	}
 }
+
+func Test_hexToRGB_HappyPath(t *testing.T) {
+	r, g, b, err := hexToRGB("#abcdef")
+	assert.Nil(t, err)
+	assert.Equal(t, uint8(0xab), r)
+	assert.Equal(t, uint8(0xcd), g)
+	assert.Equal(t, uint8(0xef), b)
+}
+
+func Test_hexToRGB_CodeNotHexadecimal(t *testing.T) {
+	_, _, _, err := hexToRGB("#efghij")
+	assert.NotNil(t, err)
+}
+
+func Test_hexToRGB_CodeTooShort(t *testing.T) {
+	_, _, _, err := hexToRGB("#ab")
+	assert.NotNil(t, err)
+}
