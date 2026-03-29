@@ -22,6 +22,8 @@ import (
 )
 
 func TestDisplayMultiplePipelines_UsesSinglePipelineInfo(t *testing.T) {
+	t.Parallel()
+
 	pipelines := []*gitlab.PipelineInfo{
 		{
 			ID:     456,
@@ -43,6 +45,8 @@ func TestDisplayMultiplePipelines_UsesSinglePipelineInfo(t *testing.T) {
 }
 
 func TestDisplayMultiplePipelines_UsesMultiplePipelinesInfo(t *testing.T) {
+	t.Parallel()
+
 	pipelines := []*gitlab.PipelineInfo{
 		{
 			ID:     900,
@@ -70,12 +74,14 @@ func TestDisplayMultiplePipelines_UsesMultiplePipelinesInfo(t *testing.T) {
 }
 
 func TestDisplayMultiplePipelines_HandlesEmptyPipelines(t *testing.T) {
+	t.Parallel()
+
 	pipelines := []*gitlab.PipelineInfo{}
 	ios, _, _, _ := cmdtest.TestIOStreams()
 
 	result := DisplayMultiplePipelines(ios, pipelines, "group/project")
 
-	assert.Equal(t, result, "No Pipelines available on group/project")
+	assert.Equal(t, "No Pipelines available on group/project", result)
 }
 
 func TestGetJobId(t *testing.T) {
