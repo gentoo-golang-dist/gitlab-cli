@@ -298,7 +298,7 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 	}
 	localDir := opts.dir
 	if opts.preserveNamespace {
-		localDir = filepath.Join(opts.dir, ctxOpts.Project.PathWithNamespace)
+		localDir = filepath.Join(opts.dir, filepath.FromSlash(ctxOpts.Project.PathWithNamespace))
 	} else if opts.dir != "" && opts.groupName != "" {
 		localDir = filepath.Join(opts.dir, ctxOpts.Project.Path)
 	}
