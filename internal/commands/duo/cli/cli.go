@@ -61,8 +61,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		Environment variables:
 
-		- %[1]sGLAB_DUO_CLI_PATH%[1]s: Use a local binary instead of the managed one.
-		  Skips download, version checks, and updates.
+		- %[1]sGITLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
+		  Skips download, version checks, and updates. Can also be set via the
+		  %[1]sduo_cli_binary_path%[1]s configuration key.
 	`, "`") + text.ExperimentalString,
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
@@ -101,12 +102,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 // shouldForceUpdateCheck returns true if update checks should ignore the 24h delay.
 func shouldForceUpdateCheck() bool {
 	return os.Getenv("GLAB_DUO_CLI_CHECK_UPDATE") == "true"
-}
-
-// devDuoCLIPath returns the path from GLAB_DUO_CLI_PATH if set.
-// When non-empty, all binary management (download, version checks) is skipped.
-func devDuoCLIPath() string {
-	return os.Getenv("GLAB_DUO_CLI_PATH")
 }
 
 // updateCheckResult contains the result of an update check.
@@ -159,28 +154,17 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) run(ctx context.Context) error {
-	if customPath := devDuoCLIPath(); customPath != "" {
-		info, err := os.Stat(customPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but the file was not found. Check that the path is correct.", customPath)
-			}
-			return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but it could not be accessed: %w", customPath, err)
-		}
-		if info.IsDir() {
-			return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but it is a directory, not an executable file.", customPath)
-		}
+	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
 
-		if info.Mode()&0o111 == 0 {
-			return fmt.Errorf("$GLAB_DUO_CLI_PATH is set to %q, but the file is not executable. Run: chmod +x %s", customPath, customPath)
-		}
+	managedPath, err := cliutils.ManagedBinaryPath()
+	if err != nil {
+		return err
+	}
 
+	if installedPath != "" && installedPath != managedPath && o.update {
 		color := o.io.Color()
-		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), customPath)
-		if err := o.checkAutoRun(ctx); err != nil {
-			return err
-		}
-		return o.executeDuoCLI(ctx, customPath, o.args)
+		o.io.LogInfof("%s Updates are not applicable when using a custom binary path (%s).\n", color.DotWarnIcon(), installedPath)
+		return nil
 	}
 
 	if o.update {
@@ -188,7 +172,6 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	installedVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
-	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
 	autoDownload, _ := o.cfg.Get("", "duo_cli_auto_download")
 
 	info, err := o.manager.EnsureInstalled(ctx, installedVersion, installedPath, autoDownload)
@@ -196,12 +179,16 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	if err := o.saveBinaryInfo(info); err != nil {
+	if info.Path == managedPath {
+		if err := o.saveBinaryInfo(info); err != nil {
+			color := o.io.Color()
+			o.io.LogInfof("%s Failed to save binary metadata: %v\n", color.DotWarnIcon(), err)
+		}
+		o.checkForUpdates(ctx)
+	} else {
 		color := o.io.Color()
-		o.io.LogInfof("%s Failed to save binary metadata: %v\n", color.DotWarnIcon(), err)
+		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), info.Path)
 	}
-
-	o.checkForUpdates(ctx)
 
 	if err := o.checkAutoRun(ctx); err != nil {
 		return err

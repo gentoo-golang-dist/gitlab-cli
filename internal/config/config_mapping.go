@@ -118,6 +118,8 @@ func EnvKeyEquivalence(key string) []string {
 		return []string{"GITLAB_CLIENT_ID"}
 	case "is_oauth2":
 		return []string{"GLAB_IS_OAUTH2"}
+	case "duo_cli_binary_path":
+		return []string{"GITLAB_DUO_CLI_BINARY_PATH"}
 	default:
 		return []string{strings.ToUpper(key)}
 	}
