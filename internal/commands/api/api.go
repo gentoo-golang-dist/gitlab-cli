@@ -626,7 +626,8 @@ func magicFieldValue(v string, opts *options) (any, error) {
 		var parsed any
 		if err := json.Unmarshal([]byte(v), &parsed); err != nil {
 			return nil, fmt.Errorf(
-				"invalid JSON. Use proper JSON syntax (e.g. -F 'key=[\"value1\",\"value2\"]') or -f to pass a literal string",
+				"invalid JSON: %w. Use proper JSON syntax (e.g. -F 'key=[\"value1\",\"value2\"]') or -f to pass a literal string",
+				err,
 			)
 		}
 		return parsed, nil
