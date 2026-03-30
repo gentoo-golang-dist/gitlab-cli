@@ -260,7 +260,8 @@ func (m *BinaryManager) fetchPackageAsset(ctx context.Context, platform platform
 	if err != nil {
 		return nil, fmt.Errorf("invalid package version %q: %w", pkg.Version, err)
 	}
-	if latestV.Segments()[0] > duoMaxCompatibleMajorVersion {
+	segs := latestV.Segments()
+	if len(segs) == 0 || segs[0] > duoMaxCompatibleMajorVersion {
 		return nil, fmt.Errorf("no compatible Duo CLI version found (major version %d supported; %s requires a newer glab)", duoMaxCompatibleMajorVersion, pkg.Version)
 	}
 
