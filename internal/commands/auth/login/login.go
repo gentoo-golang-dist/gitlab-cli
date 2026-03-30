@@ -75,11 +75,35 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s are set,
 			they take precedence over the stored credentials.
 			When CI auto-login is enabled, these variables also override %[1]sCI_JOB_TOKEN%[1]s.
-			
+
 			To pass a token on standard input, use %[1]s--stdin%[1]s.
-			
+
 			In interactive mode, %[1]sglab%[1]s detects GitLab instances from your Git remotes
 			and lists them as options, so you do not have to type the hostname manually.
+
+			## Dynamic token fetching with %[1]stoken_command%[1]s
+
+			For advanced integrations — such as using tokens managed by a separate secrets
+			manager or OAuth CLI — you can configure glab to fetch its authentication token
+			by running an external command. This avoids storing static tokens in the config file.
+
+			Set %[1]stoken_command%[1]s per host in %[1]s~/.config/glab-cli/config.yml%[1]s:
+
+			  %[1]shosts:%[1]s
+			    %[1]sgitlab.com:%[1]s
+			      %[1]stoken_command: /usr/local/bin/my-token-cli get-token --instance gitlab.com --environment production%[1]s
+
+			The arguments you pass are up to you — the command receives them directly, so you
+			can use them to target a specific instance, environment, or secret path.
+
+			Or set it via the %[1]sGLAB_TOKEN_COMMAND%[1]s environment variable.
+
+			The command must print a JSON object to stdout:
+			  %[1]s{"type": "pat", "token": "glpat-xxxx"}%[1]s
+
+			Valid types: %[1]spat%[1]s, %[1]soauth2%[1]s, %[1]sjob-token%[1]s.
+			The external command is responsible for its own token caching and refresh.
+			%[1]stoken_command%[1]s is used when no %[1]stoken%[1]s or OAuth2 credentials are configured for the host.
 		`, "`"),
 		Example: heredoc.Docf(`
 			# Start interactive setup
@@ -102,7 +126,10 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
 			# Non-interactive CI/CD setup
-			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
+			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
+
+			# Configure dynamic token fetching, passing context args to the command
+			glab config set --host gitlab.com token_command "/usr/local/bin/my-token-cli get-token --instance gitlab.com --environment production"`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},

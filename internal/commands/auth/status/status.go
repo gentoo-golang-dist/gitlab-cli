@@ -106,7 +106,11 @@ func (o *options) run() error {
 			statusInfo[instance] = append(statusInfo[instance], fmt.Sprintf(x, ys...))
 		}
 
+		tokenCommand, tokenCommandSource, _ := cfg.GetWithSource(instance, "token_command", true)
 		token, tokenSource, _ := cfg.GetWithSource(instance, "token", true)
+		if tokenCommand != "" {
+			tokenSource = tokenCommandSource
+		}
 		apiClient, err := o.apiClient(instance)
 		if o.httpClientOverride != nil {
 			apiClient, _ = o.httpClientOverride(token, instance)
@@ -122,6 +126,9 @@ func (o *options) run() error {
 		} else {
 			failedAuth = true
 			addMsg("%s %s: failed to initialize api client: %s", c.FailedIcon(), instance, err)
+		}
+		if tokenCommand != "" {
+			addMsg("%s Token sourced dynamically from command: %s", c.GreenCheck(), c.Bold(tokenCommand))
 		}
 		proto, _ := cfg.Get(instance, "git_protocol")
 		if proto != "" {
@@ -148,7 +155,9 @@ func (o *options) run() error {
 		if sshHost != "" {
 			addMsg("%s SSH Host: %s", c.GreenCheck(), c.Bold(sshHost))
 		}
-		if api.IsTokenConfigured(token) {
+		if tokenCommand != "" {
+			// token_command is the auth source; suppress the static token check.
+		} else if api.IsTokenConfigured(token) {
 			tokenDisplay := "**************************"
 			if o.showToken {
 				tokenDisplay = token
@@ -177,6 +186,10 @@ func (o *options) run() error {
 	envToken := config.GetFromEnv("token")
 	if envToken != "" {
 		fmt.Fprintf(stderr, "\n%s One of %s environment variables is set. It will be used for all authentication.\n", c.WarnIcon(), strings.Join(config.EnvKeyEquivalence("token"), ", "))
+	}
+	envTokenCommand := config.GetFromEnv("token_command")
+	if envTokenCommand != "" {
+		fmt.Fprintf(stderr, "\n%s %s environment variable is set. It will be used to fetch tokens for all authentication.\n", c.WarnIcon(), strings.Join(config.EnvKeyEquivalence("token_command"), ", "))
 	}
 
 	if failedAuth {

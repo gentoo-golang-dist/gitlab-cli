@@ -219,6 +219,15 @@ func rootConfig() *yaml.Node {
 										Value: "",
 									},
 									{
+										HeadComment: "# External command to run to dynamically fetch an authentication token.\n# The command's stdout must be a JSON object with \"type\" and \"token\" fields:\n#   {\"type\": \"pat\", \"token\": \"glpat-xxxx\"}\n# Valid types: \"pat\" (PRIVATE-TOKEN header), \"oauth2\" (Authorization: Bearer), \"job-token\" (JOB-TOKEN).\n# The command is responsible for its own caching and token refresh — glab invokes it on every request.\n# Supports quoted arguments, e.g.: token_command: my-token-cli get-token --host gitlab.com\n# Can also be set via the GLAB_TOKEN_COMMAND environment variable.\n# When set, takes priority over the token field and glab's own OAuth2 flow.",
+										Kind:        yaml.ScalarNode,
+										Value:       "token_command",
+									},
+									{
+										Kind:  yaml.ScalarNode,
+										Value: "",
+									},
+									{
 										HeadComment: "# Custom proxy for this host. Overrides environment proxy settings when set.",
 										Kind:        yaml.ScalarNode,
 										Value:       "proxy",

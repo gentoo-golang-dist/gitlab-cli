@@ -30,6 +30,30 @@ To pass a token on standard input, use `--stdin`.
 In interactive mode, `glab` detects GitLab instances from your Git remotes
 and lists them as options, so you do not have to type the hostname manually.
 
+## Dynamic token fetching with `token_command`
+
+For advanced integrations — such as using tokens managed by a separate secrets
+manager or OAuth CLI — you can configure glab to fetch its authentication token
+by running an external command. This avoids storing static tokens in the config file.
+
+Set `token_command` per host in `~/.config/glab-cli/config.yml`:
+
+  `hosts:`
+    `gitlab.com:`
+      `token_command: /usr/local/bin/my-token-cli get-token --instance gitlab.com --environment production`
+
+The arguments you pass are up to you — the command receives them directly, so you
+can use them to target a specific instance, environment, or secret path.
+
+Or set it via the `GLAB_TOKEN_COMMAND` environment variable.
+
+The command must print a JSON object to stdout:
+  `{"type": "pat", "token": "glpat-xxxx"}`
+
+Valid types: `pat`, `oauth2`, `job-token`.
+The external command is responsible for its own token caching and refresh.
+`token_command` is used when no `token` or OAuth2 credentials are configured for the host.
+
 ```plaintext
 glab auth login [flags]
 ```
@@ -58,6 +82,9 @@ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-regis
 
 # Non-interactive CI/CD setup
 glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
+
+# Configure dynamic token fetching, passing context args to the command
+glab config set --host gitlab.com token_command "/usr/local/bin/my-token-cli get-token --instance gitlab.com --environment production"
 ```
 
 ## Options

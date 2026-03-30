@@ -1,6 +1,8 @@
 package api
 
 import (
+	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +27,7 @@ func TestNewClientFromConfig(t *testing.T) {
 	t.Setenv("GITLAB_HOST", "")
 	t.Setenv("GITLAB_API_HOST", "")
 	t.Setenv("API_PROTOCOL", "")
+	t.Setenv("GLAB_TOKEN_COMMAND", "")
 
 	tests := []struct {
 		name            string
@@ -154,6 +157,75 @@ func TestNewClientFromConfig(t *testing.T) {
 			assert.Equal(t, tt.expectedBaseURL, client.BaseURL())
 		})
 	}
+}
+
+func TestNewClientFromConfig_TokenCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("cat not available on Windows")
+	}
+
+	clearEnv := func(t *testing.T) {
+		t.Helper()
+		for _, k := range []string{"GITLAB_TOKEN", "GITLAB_ACCESS_TOKEN", "OAUTH_TOKEN", "GLAB_IS_OAUTH2", "GLAB_TOKEN_COMMAND"} {
+			t.Setenv(k, "")
+		}
+	}
+
+	// writeTokenFile writes JSON to a temp file and returns the path.
+	writeTokenFile := func(t *testing.T, json string) string {
+		t.Helper()
+		f, err := os.CreateTemp(t.TempDir(), "glab-test-token-*.json")
+		require.NoError(t, err)
+		_, err = f.WriteString(json)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+		return f.Name()
+	}
+
+	t.Run("provides PAT from token_command env var", func(t *testing.T) {
+		clearEnv(t)
+		path := writeTokenFile(t, `{"type":"pat","token":"cmd-pat"}`)
+		t.Setenv("GLAB_TOKEN_COMMAND", "cat "+path)
+
+		client, err := NewClientFromConfig("example.com", config.NewBlankConfig(), false, "test-agent")
+		require.NoError(t, err)
+
+		key, val, err := client.AuthSource().Header(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, "PRIVATE-TOKEN", key)
+		assert.Equal(t, "cmd-pat", val)
+	})
+
+	t.Run("token wins over token_command", func(t *testing.T) {
+		clearEnv(t)
+		path := writeTokenFile(t, `{"type":"pat","token":"cmd-pat"}`)
+		t.Setenv("GLAB_TOKEN_COMMAND", "cat "+path)
+		t.Setenv("GITLAB_TOKEN", "static-token")
+
+		client, err := NewClientFromConfig("example.com", config.NewBlankConfig(), false, "test-agent")
+		require.NoError(t, err)
+
+		key, val, err := client.AuthSource().Header(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, gitlab.AccessTokenHeaderName, key)
+		assert.Equal(t, "static-token", val)
+	})
+
+	t.Run("oauth2 wins over token_command", func(t *testing.T) {
+		clearEnv(t)
+		path := writeTokenFile(t, `{"type":"pat","token":"cmd-pat"}`)
+		t.Setenv("GLAB_TOKEN_COMMAND", "cat "+path)
+		t.Setenv("GLAB_IS_OAUTH2", "true")
+		t.Setenv("GITLAB_TOKEN", "oauth2-access-token")
+
+		client, err := NewClientFromConfig("example.com", config.NewBlankConfig(), false, "test-agent")
+		require.NoError(t, err)
+
+		key, val, err := client.AuthSource().Header(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, "Authorization", key)
+		assert.Equal(t, "Bearer oauth2-access-token", val)
+	})
 }
 
 func TestNewClientFromConfig_OAuth2NoTokenReturnsError(t *testing.T) {
