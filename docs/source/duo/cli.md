@@ -39,8 +39,9 @@ Use `--update` to check for and install updates to the binary.
 
 Environment variables:
 
-- `GLAB_DUO_CLI_PATH`: Use a local binary instead of the managed one.
-  Skips download, version checks, and updates.
+- `GITLAB_DUO_CLI_BINARY_PATH`: Use a local binary instead of the managed one.
+  Skips download, version checks, and updates. Can also be set via the
+  `duo_cli_binary_path` configuration key.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

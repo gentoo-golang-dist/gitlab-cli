@@ -34,32 +34,6 @@ func TestNewCmd_Help(t *testing.T) {
 	assert.NotNil(t, cmd.RunE, "RunE should be set to handle flag transformation")
 }
 
-func TestDevDuoCLIPath(t *testing.T) {
-	tests := []struct {
-		name     string
-		envValue string
-		expected string
-	}{
-		{
-			name:     "env var set to a path",
-			envValue: "/usr/local/bin/duo",
-			expected: "/usr/local/bin/duo",
-		},
-		{
-			name:     "env var empty",
-			envValue: "",
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("GLAB_DUO_CLI_PATH", tt.envValue)
-			assert.Equal(t, tt.expected, devDuoCLIPath())
-		})
-	}
-}
-
 func TestRunWithCustomPath_Validation(t *testing.T) {
 	t.Run("non-existent path returns clear error", func(t *testing.T) {
 		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
@@ -69,11 +43,11 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 			cfg: factory.Config(),
 		}
 
-		t.Setenv("GLAB_DUO_CLI_PATH", "/nonexistent/path/to/duo")
+		t.Setenv("GITLAB_DUO_CLI_BINARY_PATH", "/nonexistent/path/to/duo")
 		err := opts.run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "$GLAB_DUO_CLI_PATH is set to")
+		assert.Contains(t, err.Error(), "GITLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "/nonexistent/path/to/duo")
 		assert.Contains(t, err.Error(), "file was not found")
 	})
@@ -87,11 +61,11 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		}
 
 		dir := t.TempDir()
-		t.Setenv("GLAB_DUO_CLI_PATH", dir)
+		t.Setenv("GITLAB_DUO_CLI_BINARY_PATH", dir)
 		err := opts.run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "$GLAB_DUO_CLI_PATH is set to")
+		assert.Contains(t, err.Error(), "GITLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "it is a directory, not an executable file")
 	})
 
@@ -107,11 +81,11 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		nonExecFile := filepath.Join(dir, "duo")
 		require.NoError(t, os.WriteFile(nonExecFile, []byte("#!/bin/sh\n"), 0o644))
 
-		t.Setenv("GLAB_DUO_CLI_PATH", nonExecFile)
+		t.Setenv("GITLAB_DUO_CLI_BINARY_PATH", nonExecFile)
 		err := opts.run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "$GLAB_DUO_CLI_PATH is set to")
+		assert.Contains(t, err.Error(), "GITLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "file is not executable")
 		assert.Contains(t, err.Error(), "chmod +x")
 	})
