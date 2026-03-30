@@ -19,6 +19,7 @@ type StackRef struct {
 	SHA         string `json:"sha"`
 	Next        string `json:"next"`
 	MR          string `json:"mr"`
+	MRIID       int64  `json:"mr_iid,omitempty"`
 	Description string `json:"description"`
 }
 
