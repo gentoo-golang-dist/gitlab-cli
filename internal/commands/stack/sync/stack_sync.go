@@ -193,7 +193,7 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 			// remove the MR from the stack if it's merged
 			// do not remove the MR from the stack if it is closed,
 			// but alert the user
-			err = removeOldMrs(o.io, &ref, mr, &stack, gr)
+			err = removeOldMrs(o.io, &ref, mr, &stack, o, client, gr)
 			if err != nil {
 				return fmt.Errorf("error removing merged merge request: %v", err)
 			}
@@ -366,14 +366,44 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		return &gitlab.MergeRequest{}, fmt.Errorf("error creating merge request with the API: %v", err)
 	}
 
+	if !ref.IsFirst() {
+		prevRef := opts.stack.Refs[ref.Prev]
+		if prevRef.MRIID != 0 {
+			_, _, err = client.MergeRequests.CreateMergeRequestDependency(
+				opts.source.FullName(),
+				mr.IID,
+				gitlab.CreateMergeRequestDependencyOptions{
+					BlockingMergeRequestID: &prevRef.MRIID,
+				},
+			)
+			if err != nil {
+				return mr, fmt.Errorf("error creating merge request dependency: %v", err)
+			}
+		}
+	}
+
 	return mr, nil
 }
 
-func removeOldMrs(io *iostreams.IOStreams, ref *git.StackRef, mr *gitlab.MergeRequest, stack *git.Stack, gr git.GitRunner) error {
+func removeOldMrs(io *iostreams.IOStreams, ref *git.StackRef, mr *gitlab.MergeRequest, stack *git.Stack, opts *options, client *gitlab.Client, gr git.GitRunner) error {
 	switch mr.State {
 	case mergedStatus:
 		progress := fmt.Sprintf("Merge request !%v has merged. Removing reference...", mr.IID)
 		fmt.Println(progressString(io, progress))
+
+		if ref.Next != "" {
+			nextRef := stack.Refs[ref.Next]
+			if nextRef.MRIID != 0 && ref.MRIID != 0 {
+				_, err := client.MergeRequests.DeleteMergeRequestDependency(
+					opts.source.FullName(),
+					nextRef.MRIID,
+					ref.MRIID,
+				)
+				if err != nil {
+					return fmt.Errorf("error removing merge request dependency: %v", err)
+				}
+			}
+		}
 
 		err := stack.RemoveRef(*ref, gr)
 		if err != nil {
@@ -446,6 +476,7 @@ func populateMR(io *iostreams.IOStreams, ref *git.StackRef, opts *options, clien
 
 	// update the ref
 	ref.MR = mr.WebURL
+	ref.MRIID = mr.IID
 	err = git.UpdateStackRefFile(opts.stack.Title, *ref)
 	if err != nil {
 		return fmt.Errorf("error updating stack ref files: %v", err)

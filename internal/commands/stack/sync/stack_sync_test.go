@@ -30,6 +30,7 @@ type SyncScenario struct {
 	noVerify    bool
 	updateBase  bool
 	rebaseError bool
+	mergedRefs  []string
 }
 
 type TestRef struct {
@@ -260,6 +261,7 @@ func Test_stackSync(t *testing.T) {
 							},
 						}, nil, nil
 					})
+
 			},
 		},
 
@@ -667,6 +669,135 @@ func Test_stackSync(t *testing.T) {
 		},
 
 		{
+			name: "dependency created when previous MR IID is known",
+			args: args{
+				stack: SyncScenario{
+					title: "my cool stack",
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR:    "http://gitlab.com/stack_guy/stackproject/-/merge_requests/10",
+								MRIID: 10,
+							},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: "", Description: "second change"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						return []*gitlab.BasicMergeRequest{
+							{IID: 10, SourceBranch: "Branch1", State: "opened"},
+						}, nil, nil
+					})
+
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(10), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 10, SourceBranch: "Branch1", State: "opened"},
+					}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch2", *opts.SourceBranch)
+						assert.Equal(t, "Branch1", *opts.TargetBranch)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{IID: 20, SourceBranch: "Branch2", TargetBranch: "Branch1"},
+						}, nil, nil
+					})
+
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequestDependency("stack_guy/stackproject", int64(20), gomock.Any()).
+					DoAndReturn(func(pid any, mrIID int64, opts gitlab.CreateMergeRequestDependencyOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequestDependency, *gitlab.Response, error) {
+						assert.Equal(t, int64(10), *opts.BlockingMergeRequestID)
+						return &gitlab.MergeRequestDependency{}, nil, nil
+					})
+			},
+		},
+
+		{
+			name: "dependency removed when blocking MR is merged",
+			args: args{
+				stack: SyncScenario{
+					title:      "my cool stack",
+					mergedRefs: []string{"1"},
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR:    "http://gitlab.com/stack_guy/stackproject/-/merge_requests/10",
+								MRIID: 10,
+							},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref: git.StackRef{
+								SHA: "2", Prev: "1", Next: "", Branch: "Branch2",
+								MR:    "http://gitlab.com/stack_guy/stackproject/-/merge_requests/20",
+								MRIID: 20,
+							},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						return []*gitlab.BasicMergeRequest{
+							{IID: 10, SourceBranch: "Branch1", State: "merged"},
+						}, nil, nil
+					})
+
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(10), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 10, SourceBranch: "Branch1", State: "merged"},
+					}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					DeleteMergeRequestDependency("stack_guy/stackproject", int64(20), int64(10)).
+					Return(nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch2", *opts.SourceBranch)
+						return []*gitlab.BasicMergeRequest{
+							{IID: 20, SourceBranch: "Branch2", State: "opened"},
+						}, nil, nil
+					})
+
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(20), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 20, SourceBranch: "Branch2", State: "opened"},
+					}, nil, nil)
+			},
+		},
+
+		{
 			name: "update-base rebase failure includes target branch name in error",
 			args: args{
 				stack: SyncScenario{
@@ -747,6 +878,11 @@ func Test_stackSync(t *testing.T) {
 				}
 			}
 
+			mergedRefSet := make(map[string]bool)
+			for _, sha := range tc.args.stack.mergedRefs {
+				mergedRefSet[sha] = true
+			}
+
 			if !tc.args.stack.rebaseError {
 				for ref := range stack.Iter() {
 					state := tc.args.stack.refs[ref.SHA].state
@@ -763,6 +899,19 @@ func Test_stackSync(t *testing.T) {
 						mockCmd.EXPECT().Git([]string{"rebase", "--fork-point", "--update-refs", ref.Branch})
 
 					case NothingToCommit:
+					}
+
+					if mergedRefSet[ref.SHA] {
+						// RemoveBranch: checkout base branch then delete
+						if ref.IsFirst() {
+							mockCmd.EXPECT().Git([]string{"remote", "show", "origin"}).Return("HEAD branch: main", nil)
+							mockCmd.EXPECT().Git([]string{"checkout", "main"})
+						} else {
+							prevBranch := stack.Refs[ref.Prev].Branch
+							mockCmd.EXPECT().Git([]string{"checkout", prevBranch})
+						}
+						mockCmd.EXPECT().Git([]string{"branch", "-D", ref.Branch})
+						continue
 					}
 
 					if ref.MR == "" {
