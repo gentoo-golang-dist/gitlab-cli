@@ -99,9 +99,10 @@ func shouldForceUpdateCheck() bool {
 
 // updateCheckResult contains the result of an update check.
 type updateCheckResult struct {
-	hasUpdate      bool
-	currentVersion string
-	latestVersion  string
+	hasUpdate       bool
+	currentVersion  string
+	latestVersion   string
+	newMajorVersion string // non-empty when a newer incompatible major is available
 }
 
 // performUpdateCheck checks for available updates and saves the check timestamp.
@@ -119,7 +120,7 @@ func (o *options) performUpdateCheck(ctx context.Context, forceCheck bool) (*upd
 		lastCheckTime, _ = time.Parse(time.RFC3339, lastCheckStr)
 	}
 
-	hasUpdate, latestVersion, newCheckTime, err := o.manager.CheckForUpdate(ctx, currentVersion, lastCheckTime, forceCheck)
+	hasUpdate, latestVersion, newMajorVersion, newCheckTime, err := o.manager.CheckForUpdate(ctx, currentVersion, lastCheckTime, forceCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +137,10 @@ func (o *options) performUpdateCheck(ctx context.Context, forceCheck bool) (*upd
 	}
 
 	return &updateCheckResult{
-		hasUpdate:      hasUpdate,
-		currentVersion: currentVersion,
-		latestVersion:  latestVersion,
+		hasUpdate:       hasUpdate,
+		currentVersion:  currentVersion,
+		latestVersion:   latestVersion,
+		newMajorVersion: newMajorVersion,
 	}, nil
 }
 
@@ -207,7 +209,11 @@ func (o *options) handleUpdate(ctx context.Context) error {
 
 	if !result.hasUpdate {
 		color := o.io.Color()
-		o.io.LogInfof("%s You are already using the latest version (%s)\n", color.GreenCheck(), result.currentVersion)
+		o.io.LogInfof("%s You are already using the latest compatible version (%s)\n", color.GreenCheck(), result.currentVersion)
+		if result.newMajorVersion != "" {
+			o.io.LogInfof("%s Duo CLI %s is available but requires a newer version of glab.\n", color.DotWarnIcon(), result.newMajorVersion)
+			o.io.LogInfof("Run 'glab check-update' to upgrade glab.\n")
+		}
 		return nil
 	}
 
@@ -274,9 +280,13 @@ func (o *options) checkForUpdates(ctx context.Context) {
 		return
 	}
 
+	color := o.io.Color()
 	if result.hasUpdate {
-		color := o.io.Color()
 		o.io.LogInfof("\n%s New Duo CLI version available: %s → %s\n", color.DotWarnIcon(), result.currentVersion, result.latestVersion)
 		o.io.LogInfof("Run 'glab duo cli --update' to upgrade\n")
+	}
+	if result.newMajorVersion != "" {
+		o.io.LogInfof("\n%s Duo CLI %s is available but requires a newer version of glab.\n", color.DotWarnIcon(), result.newMajorVersion)
+		o.io.LogInfof("Run 'glab check-update' to upgrade glab.\n")
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"os"
 	"runtime"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/go-version"
@@ -25,6 +24,11 @@ const (
 	duoProjectID            = "46519181"
 	duoPackageName          = "duo-cli"
 	defaultUpdateCheckDelay = 24 * time.Hour
+
+	// duoMaxCompatibleMajorVersion is the maximum Duo CLI major version this build of glab
+	// supports. Auto-updates are bounded to this major version. When Duo CLI releases a new
+	// major version, glab must be updated to increment this value after validating compatibility.
+	duoMaxCompatibleMajorVersion = 8
 )
 
 // BinaryInfo represents metadata about the installed Duo CLI binary.
@@ -86,36 +90,45 @@ func (m *BinaryManager) EnsureInstalled(ctx context.Context, installedVersion, i
 	return m.downloadAndInstall(ctx, platform)
 }
 
-// CheckForUpdate checks if a newer version of Duo CLI is available.
-// Returns (hasUpdate, latestVersion, newCheckTime, error).
+// CheckForUpdate checks if a newer version of Duo CLI is available within the supported major version.
+// Returns (hasUpdate, latestVersion, newMajorVersion, newCheckTime, error).
+// newMajorVersion is non-empty when the latest release has a higher major than supported.
 // Caller should save newCheckTime to config if non-zero.
-func (m *BinaryManager) CheckForUpdate(ctx context.Context, currentVersion string, lastCheckTime time.Time, forceCheck bool) (bool, string, time.Time, error) {
+func (m *BinaryManager) CheckForUpdate(ctx context.Context, currentVersion string, lastCheckTime time.Time, forceCheck bool) (bool, string, string, time.Time, error) {
 	if !forceCheck && !lastCheckTime.IsZero() && time.Since(lastCheckTime) < defaultUpdateCheckDelay {
-		return false, "", time.Time{}, nil
+		return false, "", "", time.Time{}, nil
 	}
 
-	latestVersion, err := m.getLatestVersion(ctx)
+	latestPkg, err := m.fetchLatestPackage(ctx)
 	if err != nil {
-		return false, "", time.Time{}, err
+		return false, "", "", time.Time{}, err
 	}
 
 	newCheckTime := time.Now()
 
-	current, err := version.NewVersion(strings.TrimPrefix(currentVersion, "v"))
+	latestV, err := version.NewVersion(latestPkg.Version)
 	if err != nil {
-		return false, "", newCheckTime, fmt.Errorf("invalid current version: %w", err)
+		return false, "", "", newCheckTime, fmt.Errorf("invalid latest version: %w", err)
 	}
 
-	latest, err := version.NewVersion(strings.TrimPrefix(latestVersion, "v"))
+	segments := latestV.Segments()
+	if len(segments) == 0 {
+		return false, "", "", newCheckTime, fmt.Errorf("invalid latest version: %q", latestPkg.Version)
+	}
+	if segments[0] > duoMaxCompatibleMajorVersion {
+		return false, "", latestPkg.Version, newCheckTime, nil
+	}
+
+	current, err := version.NewVersion(currentVersion)
 	if err != nil {
-		return false, "", newCheckTime, fmt.Errorf("invalid latest version: %w", err)
+		return false, "", "", newCheckTime, fmt.Errorf("invalid current version: %w", err)
 	}
 
-	if latest.GreaterThan(current) {
-		return true, latestVersion, newCheckTime, nil
+	if latestV.GreaterThan(current) {
+		return true, latestPkg.Version, "", newCheckTime, nil
 	}
 
-	return false, latestVersion, newCheckTime, nil
+	return false, latestPkg.Version, "", newCheckTime, nil
 }
 
 // update downloads and installs the latest version of Duo CLI.
@@ -217,33 +230,42 @@ func (m *BinaryManager) downloadAndInstall(ctx context.Context, platform platfor
 	}, nil
 }
 
-// latestPackageOptions returns options for fetching the latest Duo CLI package.
-func latestPackageOptions() *gitlab.ListProjectPackagesOptions {
-	return &gitlab.ListProjectPackagesOptions{
+// fetchLatestPackage fetches the single latest Duo CLI package from the registry.
+func (m *BinaryManager) fetchLatestPackage(ctx context.Context) (*gitlab.Package, error) {
+	opts := &gitlab.ListProjectPackagesOptions{
 		PackageType: new("generic"),
 		PackageName: new(duoPackageName),
 		OrderBy:     new("version"),
 		Sort:        new("desc"),
-		ListOptions: gitlab.ListOptions{
-			PerPage: 1,
-		},
+		ListOptions: gitlab.ListOptions{PerPage: 1},
 	}
+	packages, _, err := m.client.Packages.ListProjectPackages(duoProjectID, opts, gitlab.WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch packages: %w", err)
+	}
+	if len(packages) == 0 {
+		return nil, errors.New("no packages found")
+	}
+	return packages[0], nil
 }
 
 // fetchPackageAsset fetches the package asset information from GitLab API using gitlab.Client.
 func (m *BinaryManager) fetchPackageAsset(ctx context.Context, platform platform) (*packageAsset, error) {
-	packages, _, err := m.client.Packages.ListProjectPackages(duoProjectID, latestPackageOptions(), gitlab.WithContext(ctx))
+	pkg, err := m.fetchLatestPackage(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch packages: %w", err)
+		return nil, err
 	}
 
-	if len(packages) == 0 {
-		return nil, errors.New("no Duo CLI packages found")
+	latestV, err := version.NewVersion(pkg.Version)
+	if err != nil {
+		return nil, fmt.Errorf("invalid package version %q: %w", pkg.Version, err)
+	}
+	segs := latestV.Segments()
+	if len(segs) == 0 || segs[0] > duoMaxCompatibleMajorVersion {
+		return nil, fmt.Errorf("no compatible Duo CLI version found (major version %d supported; %s requires a newer glab)", duoMaxCompatibleMajorVersion, pkg.Version)
 	}
 
-	latestPackage := packages[0]
-
-	files, _, err := m.client.Packages.ListPackageFiles(duoProjectID, latestPackage.ID, &gitlab.ListPackageFilesOptions{}, gitlab.WithContext(ctx))
+	files, _, err := m.client.Packages.ListPackageFiles(duoProjectID, pkg.ID, &gitlab.ListPackageFilesOptions{}, gitlab.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch package files: %w", err)
 	}
@@ -259,7 +281,7 @@ func (m *BinaryManager) fetchPackageAsset(ctx context.Context, platform platform
 
 	file := files[idx]
 	return &packageAsset{
-		version:  latestPackage.Version,
+		version:  pkg.Version,
 		filename: file.FileName,
 		checksum: file.FileSHA256,
 	}, nil
@@ -358,18 +380,4 @@ func (m *BinaryManager) installBinary(tempPath string, platform platform) error 
 	}
 
 	return nil
-}
-
-// getLatestVersion fetches the latest version from GitLab API using gitlab.Client.
-func (m *BinaryManager) getLatestVersion(ctx context.Context) (string, error) {
-	packages, _, err := m.client.Packages.ListProjectPackages(duoProjectID, latestPackageOptions(), gitlab.WithContext(ctx))
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch packages: %w", err)
-	}
-
-	if len(packages) == 0 {
-		return "", errors.New("no packages found")
-	}
-
-	return packages[0].Version, nil
 }

@@ -8,9 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -134,4 +139,84 @@ func TestBinaryManager_verifyChecksum(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBinaryManager_CheckForUpdate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                string
+		latestVersion       string
+		currentVersion      string
+		wantHasUpdate       bool
+		wantLatestVersion   string
+		wantNewMajorVersion string
+		wantErr             bool
+	}{
+		{
+			name:              "compatible major, newer version available",
+			latestVersion:     "8.5.0",
+			currentVersion:    "8.0.0",
+			wantHasUpdate:     true,
+			wantLatestVersion: "8.5.0",
+		},
+		{
+			name:              "compatible major, already up to date",
+			latestVersion:     "8.5.0",
+			currentVersion:    "8.5.0",
+			wantHasUpdate:     false,
+			wantLatestVersion: "8.5.0",
+		},
+		{
+			name:                "incompatible major, update blocked",
+			latestVersion:       "9.0.0",
+			currentVersion:      "8.5.0",
+			wantHasUpdate:       false,
+			wantNewMajorVersion: "9.0.0",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://gitlab.com"))
+			testClient.MockPackages.EXPECT().
+				ListProjectPackages(duoProjectID, gomock.Any(), gomock.Any()).
+				Return([]*gitlab.Package{{ID: 1, Version: tc.latestVersion}}, nil, nil)
+
+			ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+			manager := &BinaryManager{io: ios, client: testClient.Client}
+
+			hasUpdate, latestVersion, newMajorVersion, _, err := manager.CheckForUpdate(
+				t.Context(), tc.currentVersion, time.Time{}, true,
+			)
+
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantHasUpdate, hasUpdate)
+			assert.Equal(t, tc.wantLatestVersion, latestVersion)
+			assert.Equal(t, tc.wantNewMajorVersion, newMajorVersion)
+		})
+	}
+}
+
+func TestBinaryManager_fetchPackageAsset_majorVersionBlocked(t *testing.T) {
+	t.Parallel()
+
+	testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://gitlab.com"))
+	testClient.MockPackages.EXPECT().
+		ListProjectPackages(duoProjectID, gomock.Any(), gomock.Any()).
+		Return([]*gitlab.Package{{ID: 1, Version: "9.0.0"}}, nil, nil)
+
+	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+	manager := &BinaryManager{io: ios, client: testClient.Client}
+
+	_, err := manager.fetchPackageAsset(t.Context(), platform{os: "linux", arch: "amd64"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires a newer glab")
 }
