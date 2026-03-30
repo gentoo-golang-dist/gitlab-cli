@@ -48,6 +48,8 @@ on the format of the value:
 
 - Literal values `true`, `false`, `null`, and integer numbers are converted to
   appropriate JSON types.
+- Values starting with `[` or `{` are parsed as JSON arrays or objects
+  (e.g. `-F 'topics=["my-topic","GitLab"]'`). Invalid JSON returns an error.
 - Placeholder values `:namespace`, `:repo`, and `:branch` are populated with values
   from the repository of the current directory.
 - If the value starts with `@`, the rest of the value is interpreted as a

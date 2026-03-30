@@ -11,18 +11,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 )
-
-const (
-	// stringArrayRegexPattern represents a pattern to find strings like: [item, item_two]
-	stringArrayRegexPattern = `^\[\s*([[:lower:]_]+(\s*,\s*[[:lower:]_]+)*)?\s*\]$`
-)
-
-var strArrayRegex = regexp.MustCompile(stringArrayRegexPattern)
 
 func httpRequest(ctx context.Context, client *api.Client, method, p string, params any, headers []string) (*http.Response, error) {
 	var err error
@@ -52,10 +44,6 @@ func httpRequest(ctx context.Context, client *api.Client, method, p string, para
 			for key, value := range pp {
 				if vv, ok := value.([]byte); ok {
 					pp[key] = string(vv)
-				}
-
-				if strValue, ok := value.(string); ok && strArrayRegex.MatchString(strValue) {
-					pp[key] = parseStringArrayField(strValue)
 				}
 			}
 			if isGraphQL {
@@ -201,19 +189,4 @@ func copyFileField(w *multipart.Writer, key, path string, stdin io.ReadCloser) e
 	}
 	_, err = io.Copy(fw, r)
 	return err
-}
-
-func parseStringArrayField(strValue string) []string {
-	strValue = strings.TrimPrefix(strValue, "[")
-	strValue = strings.TrimSuffix(strValue, "]")
-	strArrayElements := strings.Split(strValue, ",")
-
-	var strSlice []string
-	for _, element := range strArrayElements {
-		element = strings.TrimSpace(element)
-		element = strings.Trim(element, `"`)
-		strSlice = append(strSlice, element)
-	}
-
-	return strSlice
 }

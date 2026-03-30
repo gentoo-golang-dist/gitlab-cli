@@ -82,6 +82,32 @@ func Test_groupGraphQLVariables(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "query + JSON array variable",
+			args: map[string]any{
+				"query":  "QUERY",
+				"topics": []any{"my-topic", "GitLab"},
+			},
+			want: map[string]any{
+				"query": "QUERY",
+				"variables": map[string]any{
+					"topics": []any{"my-topic", "GitLab"},
+				},
+			},
+		},
+		{
+			name: "query + JSON object variable",
+			args: map[string]any{
+				"query":  "QUERY",
+				"config": map[string]any{"enabled": true},
+			},
+			want: map[string]any{
+				"query": "QUERY",
+				"variables": map[string]any{
+					"config": map[string]any{"enabled": true},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -227,12 +253,12 @@ hosts:
 			},
 		},
 		{
-			name: "POST with string array field and type",
+			name: "POST with JSON array field",
 			args: args{
 				host:   "gitlab.com",
 				method: http.MethodPost,
 				p:      "projects",
-				params: map[string]any{"scopes": "[api, read_api]"},
+				params: map[string]any{"scopes": []any{"api", "read_api"}},
 				headers: []string{
 					"content-type: application/json",
 					"accept: application/json",
@@ -244,6 +270,40 @@ hosts:
 				u:       "https://gitlab.com/api/v4/projects",
 				body:    `{"scopes":["api","read_api"]}`,
 				headers: "Accept: application/json\r\nContent-Type: application/json\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
+			},
+		},
+		{
+			name: "POST with JSON object field",
+			args: args{
+				host:    "gitlab.com",
+				method:  http.MethodPost,
+				p:       "projects",
+				params:  map[string]any{"config": map[string]any{"enabled": true, "mode": "strict"}},
+				headers: []string{},
+			},
+			wantErr: false,
+			want: expects{
+				method:  http.MethodPost,
+				u:       "https://gitlab.com/api/v4/projects",
+				body:    `{"config":{"enabled":true,"mode":"strict"}}`,
+				headers: "Content-Type: application/json; charset=utf-8\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
+			},
+		},
+		{
+			name: "POST with non-array string value unchanged",
+			args: args{
+				host:    "gitlab.com",
+				method:  http.MethodPost,
+				p:       "projects",
+				params:  map[string]any{"name": "my-project"},
+				headers: []string{},
+			},
+			wantErr: false,
+			want: expects{
+				method:  http.MethodPost,
+				u:       "https://gitlab.com/api/v4/projects",
+				body:    `{"name":"my-project"}`,
+				headers: "Content-Type: application/json; charset=utf-8\r\nPrivate-Token: OTOKEN\r\nUser-Agent: glab test client\r\n",
 			},
 		},
 	}
