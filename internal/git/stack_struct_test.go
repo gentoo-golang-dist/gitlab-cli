@@ -98,7 +98,7 @@ func Test_StackRemoveRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := InitGitRepoWithCommit(t)
+			InitGitRepoWithCommit(t)
 
 			ctrl := gomock.NewController(t)
 			mockCmd := git_testing.NewMockGitRunner(ctrl)
@@ -117,7 +117,9 @@ func Test_StackRemoveRef(t *testing.T) {
 
 			require.Equal(t, tt.expected, tt.args.stack.Refs)
 
-			wantpath := path.Join(dir, StackLocation, tt.args.remove.Branch, ".json")
+			stackLoc, locErr := StackLocation()
+			require.NoError(t, locErr)
+			wantpath := path.Join(stackLoc, tt.args.remove.Branch, ".json")
 			require.False(t, config.CheckFileExists(wantpath))
 		})
 	}

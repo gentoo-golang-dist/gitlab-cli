@@ -58,31 +58,40 @@ func TestSetLocalConfig(t *testing.T) {
 
 func Test_AddStackRefDir(t *testing.T) {
 	tests := []struct {
-		name   string
-		branch string
-		want   string
+		name     string
+		branch   string
+		worktree bool
 	}{
 		{
 			name:   "normal filename",
 			branch: "thing",
-			want:   "thing",
 		},
 		{
 			name:   "advanced filename",
 			branch: "something-with-dashes",
-			want:   "something-with-dashes",
+		},
+		{
+			name:     "normal filename in worktree",
+			branch:   "thing",
+			worktree: true,
+		},
+		{
+			name:     "advanced filename in worktree",
+			branch:   "something-with-dashes",
+			worktree: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			baseDir := InitGitRepo(t)
+			InitGitRepoOrWorktree(t, tt.worktree)
 
 			_, err := AddStackRefDir(tt.branch)
 			require.NoError(t, err)
 
-			refDir := filepath.Join(baseDir, "/.git/stacked/")
+			stackLoc, locErr := StackLocation()
+			require.NoError(t, locErr)
 
-			_, err = os.Stat(filepath.Join(refDir, tt.branch))
+			_, err = os.Stat(filepath.Join(stackLoc, tt.branch))
 			require.NoError(t, err)
 		})
 	}
@@ -90,8 +99,9 @@ func Test_AddStackRefDir(t *testing.T) {
 
 func Test_StackRootDir(t *testing.T) {
 	tests := []struct {
-		name  string
-		title string
+		name     string
+		title    string
+		worktree bool
 	}{
 		{
 			name:  "valid title",
@@ -101,18 +111,22 @@ func Test_StackRootDir(t *testing.T) {
 			name:  "empty title",
 			title: "",
 		},
+		{
+			name:     "valid title in worktree",
+			title:    "test-stack",
+			worktree: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			baseDir := InitGitRepo(t)
-			defer os.RemoveAll(baseDir)
+			InitGitRepoOrWorktree(t, tt.worktree)
 
 			got, err := StackRootDir(tt.title)
 			require.NoError(t, err)
 
 			// Verify the path contains the expected components
-			require.Contains(t, got, StackLocation, "StackRootDir() should contain StackLocation")
+			require.Contains(t, got, "stacked", "StackRootDir() should contain stacked dir name")
 			require.Contains(t, got, tt.title, "StackRootDir() should contain title")
 		})
 	}
@@ -124,9 +138,10 @@ func Test_AddStackRefFile(t *testing.T) {
 		stackRef StackRef
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name     string
+		args     args
+		worktree bool
+		wantErr  bool
 	}{
 		{
 			name: "no message",
@@ -142,15 +157,32 @@ func Test_AddStackRefFile(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:     "no message in worktree",
+			worktree: true,
+			args: args{
+				title: "sweet-title-123",
+				stackRef: StackRef{
+					Prev:   "hello",
+					Branch: "gmh-feature-3ab3da",
+					Next:   "goodbye",
+					SHA:    "1a2b3c4d",
+					MR:     "https://gitlab.com/",
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := InitGitRepo(t)
+			InitGitRepoOrWorktree(t, tt.worktree)
 
 			err := AddStackRefFile(tt.args.title, tt.args.stackRef)
 			require.Nil(t, err)
 
-			file := filepath.Join(dir, StackLocation, tt.args.title, tt.args.stackRef.SHA+".json")
+			stackLoc, locErr := StackLocation()
+			require.NoError(t, locErr)
+			file := filepath.Join(stackLoc, tt.args.title, tt.args.stackRef.SHA+".json")
 			require.True(t, config.CheckFileExists(file))
 
 			stackRef := StackRef{}
@@ -175,9 +207,10 @@ func Test_UpdateStackRefFile(t *testing.T) {
 		stackRef StackRef
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name     string
+		args     args
+		worktree bool
+		wantErr  bool
 	}{
 		{
 			name: "no message",
@@ -193,10 +226,25 @@ func Test_UpdateStackRefFile(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:     "no message in worktree",
+			worktree: true,
+			args: args{
+				title: "sweet-title-123",
+				stackRef: StackRef{
+					Prev:   "hello",
+					Branch: "gmh-feature-3ab3da",
+					Next:   "goodbye",
+					SHA:    "1a2b3c4d",
+					MR:     "https://gitlab.com/",
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := InitGitRepo(t)
+			InitGitRepoOrWorktree(t, tt.worktree)
 
 			// add the initial data
 			initial := StackRef{Prev: "123", Branch: "gmh"}
@@ -207,7 +255,9 @@ func Test_UpdateStackRefFile(t *testing.T) {
 
 			require.Nil(t, err)
 
-			file := filepath.Join(dir, StackLocation, tt.args.title, tt.args.stackRef.SHA+".json")
+			stackLoc, locErr := StackLocation()
+			require.NoError(t, locErr)
+			file := filepath.Join(stackLoc, tt.args.title, tt.args.stackRef.SHA+".json")
 			require.True(t, config.CheckFileExists(file))
 
 			stackRef := StackRef{}
@@ -223,45 +273,53 @@ func Test_UpdateStackRefFile(t *testing.T) {
 }
 
 func Test_GetStacks(t *testing.T) {
-	t.Run("two stacks", func(t *testing.T) {
-		stacks := []Stack{
-			{
-				Title: "stack-0",
-				Refs: map[string]StackRef{
-					"0": {
-						Description: "stack-0 initial commit",
-					},
+	stacks := []Stack{
+		{
+			Title: "stack-0",
+			Refs: map[string]StackRef{
+				"0": {
+					Description: "stack-0 initial commit",
 				},
 			},
-			{
-				Title: "stack-1",
-				Refs: map[string]StackRef{
-					"0": {
-						Description: "stack-1 initial commit",
-					},
+		},
+		{
+			Title: "stack-1",
+			Refs: map[string]StackRef{
+				"0": {
+					Description: "stack-1 initial commit",
 				},
 			},
+		},
+	}
+
+	for _, worktree := range []bool{false, true} {
+		suffix := ""
+		if worktree {
+			suffix = " in worktree"
 		}
-		InitGitRepo(t)
-		var want []Stack
-		for _, v := range stacks {
-			for _, ref := range v.Refs {
-				err := AddStackRefFile(v.Title, ref)
-				require.Nil(t, err)
+
+		t.Run("two stacks"+suffix, func(t *testing.T) {
+			InitGitRepoOrWorktree(t, worktree)
+			var want []Stack
+			for _, v := range stacks {
+				for _, ref := range v.Refs {
+					err := AddStackRefFile(v.Title, ref)
+					require.Nil(t, err)
+				}
+				want = append(want, Stack{Title: v.Title})
 			}
-			want = append(want, Stack{Title: v.Title})
-		}
-		got, err := GetStacks()
-		require.Nil(t, err)
-		require.Equal(t, want, got)
-	})
-	t.Run("no stacks", func(t *testing.T) {
-		InitGitRepo(t)
-		got, err := GetStacks()
-		var want []Stack = nil
-		require.NotNil(t, err)
-		require.Equal(t, want, got)
-	})
+			got, err := GetStacks()
+			require.Nil(t, err)
+			require.Equal(t, want, got)
+		})
+		t.Run("no stacks"+suffix, func(t *testing.T) {
+			InitGitRepoOrWorktree(t, worktree)
+			got, err := GetStacks()
+			var want []Stack = nil
+			require.NotNil(t, err)
+			require.Equal(t, want, got)
+		})
+	}
 }
 
 func TestStandardGitCommand_Git_SetsLocale(t *testing.T) {

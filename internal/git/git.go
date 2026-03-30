@@ -304,6 +304,18 @@ var ToplevelDir = func() (string, error) {
 	return firstLine(output), err
 }
 
+// GitDir returns the path to the .git directory (or the worktree-specific git dir).
+// In a normal repo this returns "<toplevel>/.git".
+// In a worktree this returns something like "<main-repo>/.git/worktrees/<name>".
+var GitDir = func() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	output, err := run.PrepareCmd(cmd).Output()
+	if err != nil {
+		return "", err
+	}
+	return firstLine(output), nil
+}
+
 func outputLines(output []byte) []string {
 	lines := strings.TrimSuffix(string(output), "\n")
 	return strings.Split(lines, "\n")
