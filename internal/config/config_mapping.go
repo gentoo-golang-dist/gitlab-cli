@@ -119,7 +119,7 @@ func EnvKeyEquivalence(key string) []string {
 	case "is_oauth2":
 		return []string{"GLAB_IS_OAUTH2"}
 	case "duo_cli_binary_path":
-		return []string{"GITLAB_DUO_CLI_BINARY_PATH"}
+		return []string{"GLAB_DUO_CLI_BINARY_PATH"}
 	default:
 		return []string{strings.ToUpper(key)}
 	}
