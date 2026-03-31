@@ -65,7 +65,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			  Skips download, version checks, and updates. Can also be set via the
 			  %[1]sduo_cli_binary_path%[1]s configuration key.
 			`, "`"),
-	},
+		},
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
 		$ glab duo cli
