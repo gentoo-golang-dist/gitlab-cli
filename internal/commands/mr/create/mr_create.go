@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -398,7 +399,7 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.TargetBranch == "" {
-		o.TargetBranch = o.TargetProject.DefaultBranch
+		o.TargetBranch = getTargetBranch(client, o.TargetProject, o.SourceBranch)
 	}
 
 	if o.RelatedIssue != "" {
@@ -909,6 +910,34 @@ func repoRemote(opts *options, repo glrepo.Interface, project *gitlab.Project, r
 	}
 
 	return repoRemote, nil
+}
+
+func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourceBranch string) string {
+	if sourceBranch != "" && client != nil && targetProject != nil {
+		rules, _, err := client.Projects.ListProjectTargetBranchRules(targetProject.PathWithNamespace)
+		if err == nil {
+			for _, rule := range rules {
+				if matched, _ := matchBranchPattern(rule.Name, sourceBranch); matched {
+					return rule.TargetBranch
+				}
+			}
+		}
+	}
+	if targetProject != nil {
+		return targetProject.DefaultBranch
+	}
+	return ""
+}
+
+// matchBranchPattern reports whether branch matches a GitLab branch name
+// pattern. GitLab patterns are glob-style where '*' matches any sequence of
+// characters, including '/'.
+func matchBranchPattern(pattern, branch string) (bool, error) {
+	re, err := regexp.Compile("^" + strings.ReplaceAll(regexp.QuoteMeta(pattern), `\*`, `.*`) + "$")
+	if err != nil {
+		return false, err
+	}
+	return re.MatchString(branch), nil
 }
 
 // createRecoverSaveFile will try save the issue create options to a file
