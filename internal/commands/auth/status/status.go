@@ -3,7 +3,6 @@ package status
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -112,10 +111,15 @@ func (o *options) run() error {
 			apiClient, _ = o.httpClientOverride(token, instance)
 		}
 		if err == nil {
-			user, _, err := apiClient.Lab().Users.CurrentUser()
+			user, resp, err := apiClient.Lab().Users.CurrentUser()
 			if err != nil {
 				failedAuth = true
 				addMsg("%s %s: API call failed: %s", c.FailedIcon(), instance, err)
+				if resp != nil && resp.StatusCode == 401 && slices.Contains(config.EnvKeyEquivalence("token"), tokenSource) {
+					addMsg("  %s Token is from environment variable %s. A wrapper may be injecting a different or expired token.", c.WarnIcon(), tokenSource)
+					addMsg("  %s To investigate, run in your shell: %s", c.WarnIcon(), c.Bold("type glab"))
+					addMsg("  %s To see the token value in use, run: %s", c.WarnIcon(), c.Bold("env | grep -E 'GITLAB_TOKEN|GITLAB_ACCESS_TOKEN|OAUTH_TOKEN'"))
+				}
 			} else {
 				addMsg("%s Logged in to %s as %s (%s)", c.GreenCheck(), instance, c.Bold(user.Username), tokenSource)
 			}
@@ -174,9 +178,10 @@ func (o *options) run() error {
 		}
 	}
 
-	envToken := config.GetFromEnv("token")
+	envToken, envTokenSource := config.GetFromEnvWithSource("token")
 	if envToken != "" {
-		fmt.Fprintf(stderr, "\n%s One of %s environment variables is set. It will be used for all authentication.\n", c.WarnIcon(), strings.Join(config.EnvKeyEquivalence("token"), ", "))
+		fmt.Fprintf(stderr, "\n%s Token is from environment variable %s. This takes precedence over tokens stored in config or keyring.\n", c.WarnIcon(), envTokenSource)
+		fmt.Fprintf(stderr, "  If a wrapper (e.g., 'op plugin run -- glab') is setting this, run %s in your shell to check.\n", c.Bold("type glab"))
 	}
 
 	if failedAuth {
