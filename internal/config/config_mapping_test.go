@@ -230,6 +230,12 @@ func TestEnvKeyEquivalence(t *testing.T) {
 			givenKey:         "ssh_host",
 			expectedKeys:     []string{"GITLAB_SSH_HOST", "CI_SERVER_SHELL_SSH_HOST"},
 		},
+		{
+			autologinEnabled: false,
+			inCi:             false,
+			givenKey:         "duo_cli_binary_path",
+			expectedKeys:     []string{"GLAB_DUO_CLI_BINARY_PATH"},
+		},
 	}
 
 	// clear potentially set keys that we use during tests

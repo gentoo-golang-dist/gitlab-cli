@@ -111,15 +111,15 @@ func validateBinaryPath(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("GITLAB_DUO_CLI_BINARY_PATH is set to %q, but the file was not found. Check that the path is correct.", path)
+			return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but the file was not found. Check that the path is correct", path)
 		}
-		return fmt.Errorf("GITLAB_DUO_CLI_BINARY_PATH is set to %q, but it could not be accessed: %w", path, err)
+		return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but it could not be accessed: %w", path, err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("GITLAB_DUO_CLI_BINARY_PATH is set to %q, but it is a directory, not an executable file.", path)
+		return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but it is a directory, not an executable file", path)
 	}
 	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
-		return fmt.Errorf("GITLAB_DUO_CLI_BINARY_PATH is set to %q, but the file is not executable. Run: chmod +x %s", path, path)
+		return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but the file is not executable. Run: chmod +x %s", path, path)
 	}
 	return nil
 }

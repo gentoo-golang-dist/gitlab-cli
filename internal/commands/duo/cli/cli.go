@@ -58,13 +58,14 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
-
-		Environment variables:
-
-		- %[1]sGITLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
-		  Skips download, version checks, and updates. Can also be set via the
-		  %[1]sduo_cli_binary_path%[1]s configuration key.
-	`, "`") + text.ExperimentalString,
+		`, "`") + text.ExperimentalString,
+		Annotations: map[string]string{
+			"help:environment": heredoc.Docf(`
+			- %[1]sGLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
+			  Skips download, version checks, and updates. Can also be set via the
+			  %[1]sduo_cli_binary_path%[1]s configuration key.
+			`, "`"),
+	},
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
 		$ glab duo cli
@@ -154,12 +155,12 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) run(ctx context.Context) error {
-	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
-
 	managedPath, err := cliutils.ManagedBinaryPath()
 	if err != nil {
 		return err
 	}
+
+	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
 
 	if installedPath != "" && installedPath != managedPath && o.update {
 		color := o.io.Color()
