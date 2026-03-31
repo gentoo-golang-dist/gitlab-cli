@@ -181,7 +181,7 @@ docs hugo_build:
     #- make check-index-pages SEARCH_DIR="../doc-locale/source" # Enable when translation is added
 
 .review-docs:
-  image: ruby:3.3-alpine3.23
+  image: ruby:3.4-alpine3.23
   extends: .documentation
   stage: review
   cache: {}
