@@ -43,11 +43,11 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 			cfg: factory.Config(),
 		}
 
-		t.Setenv("GITLAB_DUO_CLI_BINARY_PATH", "/nonexistent/path/to/duo")
+		t.Setenv("GLAB_DUO_CLI_BINARY_PATH", "/nonexistent/path/to/duo")
 		err := opts.run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GITLAB_DUO_CLI_BINARY_PATH is set to")
+		assert.Contains(t, err.Error(), "GLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "/nonexistent/path/to/duo")
 		assert.Contains(t, err.Error(), "file was not found")
 	})
@@ -61,11 +61,11 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		}
 
 		dir := t.TempDir()
-		t.Setenv("GITLAB_DUO_CLI_BINARY_PATH", dir)
+		t.Setenv("GLAB_DUO_CLI_BINARY_PATH", dir)
 		err := opts.run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GITLAB_DUO_CLI_BINARY_PATH is set to")
+		assert.Contains(t, err.Error(), "GLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "it is a directory, not an executable file")
 	})
 
@@ -81,11 +81,11 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		nonExecFile := filepath.Join(dir, "duo")
 		require.NoError(t, os.WriteFile(nonExecFile, []byte("#!/bin/sh\n"), 0o644))
 
-		t.Setenv("GITLAB_DUO_CLI_BINARY_PATH", nonExecFile)
+		t.Setenv("GLAB_DUO_CLI_BINARY_PATH", nonExecFile)
 		err := opts.run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GITLAB_DUO_CLI_BINARY_PATH is set to")
+		assert.Contains(t, err.Error(), "GLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "file is not executable")
 		assert.Contains(t, err.Error(), "chmod +x")
 	})
