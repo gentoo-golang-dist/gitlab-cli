@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	gitlab "gitlab.com/gitlab-org/api/client-go"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/testing"
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -608,7 +608,7 @@ func TestCIGetJSON(t *testing.T) {
 							Username:  "OWNER",
 							Name:      "Some User",
 							State:     "active",
-							Locked:    false,
+							CreatedAt: &createdAt,
 							AvatarURL: "https://gitlab.com/uploads/-/system/user/avatar/8814129/avatar.png",
 							WebURL:    "https://gitlab.com/OWNER",
 						},
