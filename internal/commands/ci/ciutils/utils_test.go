@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ import (
 )
 
 func TestGetJobId(t *testing.T) {
+	t.Parallel()
 	// Response indicating last page
 	lastPageResponse := &gitlab.Response{
 		Response: &http.Response{StatusCode: http.StatusOK},
@@ -190,6 +192,8 @@ func TestGetJobId(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
 
@@ -280,6 +284,7 @@ func TestParseCSVToIntSlice(t *testing.T) {
 }
 
 func TestTraceJob(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name          string
 		jobName       string
@@ -340,6 +345,8 @@ func TestTraceJob(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
 
@@ -357,9 +364,10 @@ func TestTraceJob(t *testing.T) {
 				PipelineId: tc.pipelineId,
 				Branch:     "main",
 			}, &JobOptions{
-				IO:     f.IO(),
-				Repo:   repo,
-				Client: client,
+				IO:           f.IO(),
+				Repo:         repo,
+				Client:       client,
+				PollInterval: time.Millisecond,
 			})
 
 			if tc.expectedError == "" {
