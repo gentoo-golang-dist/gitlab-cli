@@ -261,7 +261,6 @@ func Test_stackSync(t *testing.T) {
 							},
 						}, nil, nil
 					})
-
 			},
 		},
 
