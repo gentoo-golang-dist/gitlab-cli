@@ -88,9 +88,10 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 		},
 	}
 
-	stackSaveCmd.Flags().BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
-	stackSaveCmd.Flags().BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
-	stackSaveCmd.Flags().StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
+	fl := stackSaveCmd.Flags()
+	fl.BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
+	fl.BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
+	fl.StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -428,7 +429,7 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 	if len(opts.assignees) > 0 {
 		users, err := api.UsersByNames(client, opts.assignees)
 		if err != nil {
-			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving assignee usernames: %v", err)
+			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving assignee usernames: %w", err)
 		}
 		l.AssigneeIDs = cmdutils.IDsFromUsers(users)
 	} else {
