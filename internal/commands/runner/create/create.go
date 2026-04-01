@@ -85,7 +85,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.BoolVarP(&opts.paused, "paused", "p", false, "When set, the runner ignores new jobs.")
 	fl.BoolVarP(&opts.locked, "locked", "l", false, "When set, the runner is locked to the current project.")
 	fl.BoolVarP(&opts.runUntagged, "run-untagged", "u", false, "When set, the runner processes jobs without tags.")
-	fl.StringSliceVar(&opts.tagList, "tag", nil, "Runner tags. Repeat the flag or use a comma-separated list.")
+	fl.StringSliceVar(&opts.tagList, "tag", nil, "Runner tags. For multiple tags, repeat the flag or use a comma-separated list.")
 	fl.StringVar(&opts.accessLevel, "access-level", "", `Access level: "not_protected" or "ref_protected".`)
 	fl.StringVar(&opts.maintenanceNote, "maintenance-note", "", "Maintenance note (up to 1024 characters).")
 	fl.Int64Var(&opts.maximumTimeout, "maximum-timeout", 0, "Maximum job duration in seconds for this runner.")
