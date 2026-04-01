@@ -101,9 +101,10 @@ func TestNewCmdClone(t *testing.T) {
 			name: "group clone with directory argument and preserve namespace",
 			args: "-p -g NAMESPACE/REPO mydir",
 			wantOpts: options{
-				gitFlags:  []string{},
-				groupName: "NAMESPACE/REPO",
-				dir:       "mydir",
+				gitFlags:          []string{},
+				groupName:         "NAMESPACE/REPO",
+				dir:               "mydir",
+				preserveNamespace: true,
 			},
 			wantCtxOpts: ContextOpts{
 				Repo: "",
@@ -113,9 +114,10 @@ func TestNewCmdClone(t *testing.T) {
 			name: "nested group clone with directory argument and preserve namespace",
 			args: "-p -g NAMESPACE/NESTED/SUBGROUP mydir",
 			wantOpts: options{
-				gitFlags:  []string{},
-				groupName: "NAMESPACE/NESTED/SUBGROUP",
-				dir:       "mydir",
+				gitFlags:          []string{},
+				groupName:         "NAMESPACE/NESTED/SUBGROUP",
+				dir:               "mydir",
+				preserveNamespace: true,
 			},
 			wantCtxOpts: ContextOpts{
 				Repo: "",
@@ -206,6 +208,7 @@ func TestNewCmdClone(t *testing.T) {
 			assert.Equal(t, tt.wantOpts.active, opts.active)
 			assert.Equal(t, tt.wantOpts.activeSet, opts.activeSet)
 			assert.Equal(t, tt.wantOpts.dir, opts.dir)
+			assert.Equal(t, tt.wantOpts.preserveNamespace, opts.preserveNamespace)
 		})
 	}
 }

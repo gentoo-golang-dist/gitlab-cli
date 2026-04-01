@@ -277,6 +277,7 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 }
 
 func cloneRun(opts *options, ctxOpts *ContextOpts) error {
+	localDir := opts.dir
 	if !git.IsValidURL(ctxOpts.Repo) {
 		// Assuming that repo is a project ID if it is an integer
 		if _, err := strconv.ParseInt(ctxOpts.Repo, 10, 64); err != nil {
@@ -293,14 +294,13 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 			ctxOpts.Project = p
 		}
 		ctxOpts.Repo = glrepo.RemoteURL(ctxOpts.Project, opts.protocol)
+		if opts.preserveNamespace {
+			localDir = filepath.Join(opts.dir, filepath.FromSlash(ctxOpts.Project.PathWithNamespace))
+		} else if opts.dir != "" && opts.groupName != "" {
+			localDir = filepath.Join(opts.dir, ctxOpts.Project.Path)
+		}
 	} else if !strings.HasSuffix(ctxOpts.Repo, ".git") {
 		ctxOpts.Repo += ".git"
-	}
-	localDir := opts.dir
-	if opts.preserveNamespace {
-		localDir = filepath.Join(opts.dir, filepath.FromSlash(ctxOpts.Project.PathWithNamespace))
-	} else if opts.dir != "" && opts.groupName != "" {
-		localDir = filepath.Join(opts.dir, ctxOpts.Project.Path)
 	}
 	_, err := git.RunClone(ctxOpts.Repo, localDir, opts.gitFlags)
 	if err != nil {

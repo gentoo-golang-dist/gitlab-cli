@@ -65,6 +65,19 @@ func Test_repoClone_preserve_Integration(t *testing.T) {
 	repoCloneTest(t, name, url, additionalCli)
 }
 
+func Test_repoClone_http__Integration(t *testing.T) {
+	name := "https://gitlab.com/gitlab-org/cli"
+	url := "git clone https://gitlab.com/gitlab-org/cli.git"
+	repoCloneTest(t, name, url, "")
+}
+
+func Test_repoClone_http__preserve_Integration(t *testing.T) {
+	name := "https://gitlab.com/gitlab-org/cli"
+	url := "git clone https://gitlab.com/gitlab-org/cli.git"
+	additionalCli := "-p"
+	repoCloneTest(t, name, url, additionalCli)
+}
+
 func Test_repoClone_dir_Integration(t *testing.T) {
 	name := "gitlab-org/cli"
 	url := "git clone git@gitlab.com:gitlab-org/cli.git tmp"
@@ -101,7 +114,11 @@ func repoCloneTest(t *testing.T, expectedRepoName string, expectedRepoUrl string
 	defer restore()
 
 	cmd := NewCmdClone(fac, nil)
-	out, err := runCommand(cmd, expectedRepoName + " " + additionalCli, stdin, stdout, stderr)
+	cli := expectedRepoName
+	if additionalCli != "" {
+		cli += " " + additionalCli
+	}
+	out, err := runCommand(cmd, cli, stdin, stdout, stderr)
 	if err != nil {
 		t.Errorf("unexpected error: %q", err)
 		return
@@ -177,7 +194,9 @@ func repoCloneGroupTest(t *testing.T, expectedRepoNames []string, expectedRepoUr
 	if paginate {
 		cli += " --paginate"
 	}
-	cli += " " + additionalCli
+	if additionalCli != "" {
+		cli += " " + additionalCli
+	}
 
 	// TODO: stub api.ListGroupProjects endpoint
 	out, err := runCommand(cmd, cli, stdin, stdout, stderr)
