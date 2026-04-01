@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -96,6 +97,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	projectCreateCmd.Flags().BoolP("public", "P", false, "Make project public: visible without any authentication.")
 	projectCreateCmd.Flags().Bool("readme", false, "Initialize project with `README.md`.")
 	projectCreateCmd.Flags().BoolP("skipGitInit", "s", false, "Skip run 'git init'.")
+	projectCreateCmd.Flags().BoolP("yes", "y", false, "Skip interactive prompts and use defaults.")
 
 	return projectCreateCmd
 }
@@ -228,6 +230,56 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 		visibility = gitlab.PrivateVisibility
 	} else if public, _ := cmd.Flags().GetBool("public"); public {
 		visibility = gitlab.PublicVisibility
+	}
+
+	// Interactive prompts for project details
+	yesFlag, _ := cmd.Flags().GetBool("yes")
+	visibilityChanged := cmd.Flags().Changed("internal") || cmd.Flags().Changed("private") || cmd.Flags().Changed("public")
+	if f.IO().IsInteractive() && !yesFlag {
+		var fields []huh.Field
+
+		// Prompt for project name if not explicitly set via --name flag
+		if !cmd.Flags().Changed("name") && len(args) == 0 {
+			fields = append(fields, huh.NewInput().
+				Title("Project name").
+				Value(&name))
+		}
+
+		// Prompt for description if not explicitly set
+		if !cmd.Flags().Changed("description") {
+			fields = append(fields, huh.NewInput().
+				Title("Project description (optional)").
+				Value(&description))
+		}
+
+		// Prompt for visibility if not explicitly set
+		if !visibilityChanged {
+			var visibilityChoice string
+			if visibility != "" {
+				visibilityChoice = string(visibility)
+			} else {
+				visibilityChoice = string(gitlab.PrivateVisibility)
+			}
+			fields = append(fields, huh.NewSelect[string]().
+				Title("Visibility").
+				Options(
+					huh.NewOption("Private - visible only to project members", string(gitlab.PrivateVisibility)),
+					huh.NewOption("Internal - visible to any authenticated user", string(gitlab.InternalVisibility)),
+					huh.NewOption("Public - visible without any authentication", string(gitlab.PublicVisibility)),
+				).
+				Value(&visibilityChoice))
+
+			if len(fields) > 0 {
+				if err := f.IO().RunForm(cmd.Context(), fields...); err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
+				visibility = gitlab.VisibilityValue(visibilityChoice)
+			}
+		} else if len(fields) > 0 {
+			if err := f.IO().RunForm(cmd.Context(), fields...); err != nil {
+				return fmt.Errorf("could not prompt: %w", err)
+			}
+		}
 	}
 
 	tags, _ := cmd.Flags().GetStringArray("tag")
