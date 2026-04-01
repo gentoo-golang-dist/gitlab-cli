@@ -25,17 +25,18 @@ import (
 )
 
 type options struct {
-	io         *iostreams.IOStreams
-	stack      git.Stack
-	target     glrepo.Interface
-	source     glrepo.Interface
-	labClient  *gitlab.Client
-	baseRepo   func() (glrepo.Interface, error)
-	remotes    func() (glrepo.Remotes, error)
-	user       gitlab.User
-	noVerify   bool
-	updateBase bool
-	assignees  []string
+	io          *iostreams.IOStreams
+	stack       git.Stack
+	target      glrepo.Interface
+	source      glrepo.Interface
+	labClient   *gitlab.Client
+	baseRepo    func() (glrepo.Interface, error)
+	remotes     func() (glrepo.Remotes, error)
+	user        gitlab.User
+	noVerify    bool
+	updateBase  bool
+	assignees   []string
+	assigneeIDs *[]int64
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -132,11 +133,7 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	o.source = source
 	o.user = *user
 
-	if err := o.validate(); err != nil {
-		return err
-	}
-
-	if err := o.complete(client); err != nil {
+	if err := o.validate(client); err != nil {
 		return err
 	}
 
@@ -226,37 +223,16 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 func filterEmpty(s []string) []string {
 	result := make([]string, 0, len(s))
 	for _, v := range s {
-		if trimmed := strings.TrimSpace(v); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
-}
-
-func dedupe(s []string) []string {
-	seen := make(map[string]struct{}, len(s))
-	result := make([]string, 0, len(s))
-	for _, v := range s {
-		if _, ok := seen[v]; !ok {
-			seen[v] = struct{}{}
+		if strings.TrimSpace(v) != "" {
 			result = append(result, v)
 		}
 	}
 	return result
 }
 
-func (o *options) validate() error {
-	raw := o.assignees
-	o.assignees = dedupe(filterEmpty(o.assignees))
+func (o *options) validate(client *gitlab.Client) error {
+	o.assignees = filterEmpty(o.assignees)
 
-	if len(raw) > 0 && len(o.assignees) == 0 {
-		return fmt.Errorf("--assignee (-a) flag requires at least one valid username")
-	}
-
-	return nil
-}
-
-func (o *options) complete(client *gitlab.Client) error {
 	if len(o.assignees) > 0 {
 		users, err := api.UsersByNames(client, o.assignees)
 		if err != nil {
@@ -417,12 +393,8 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		TargetProjectID:    new(targetProject.ID),
 	}
 
-	if len(opts.assignees) > 0 {
-		users, err := api.UsersByNames(client, opts.assignees)
-		if err != nil {
-			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving assignee usernames: %v", err)
-		}
-		l.AssigneeIDs = cmdutils.IDsFromUsers(users)
+	if opts.assigneeIDs != nil {
+		l.AssigneeIDs = opts.assigneeIDs
 	} else {
 		l.AssigneeID = new(opts.user.ID)
 	}
