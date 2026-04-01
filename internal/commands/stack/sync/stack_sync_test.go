@@ -32,6 +32,7 @@ type SyncScenario struct {
 	rebaseError bool
 	assignees   []string
 	labels      []string
+	reviewers   []string
 }
 
 type TestRef struct {
@@ -122,6 +123,12 @@ func TestNewCmdSyncStack_Flags(t *testing.T) {
 	assert.Equal(t, "[]", labelFlag.DefValue)
 	assert.Equal(t, "l", labelFlag.Shorthand)
 	assert.Contains(t, labelFlag.Usage, "name")
+
+	// Test --reviewer flag exists
+	reviewerFlag := cmd.Flag("reviewer")
+	require.NotNil(t, reviewerFlag)
+	assert.Equal(t, "[]", reviewerFlag.DefValue)
+	assert.Contains(t, reviewerFlag.Usage, "usernames")
 }
 
 func Test_stackSync(t *testing.T) {
@@ -806,6 +813,53 @@ func Test_stackSync(t *testing.T) {
 					})
 			},
 		},
+
+		{
+			name: "single branch with custom reviewers",
+			args: args{
+				stack: SyncScenario{
+					title:     "reviewer stack",
+					reviewers: []string{"reviewer1", "reviewer2"},
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "", Branch: "Branch1", MR: "", Description: "test MR with reviewers"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy", ID: 100}, nil, nil)
+
+				testClient.MockUsers.EXPECT().
+					ListUsers(gomock.Any()).
+					Return([]*gitlab.User{{ID: 201, Username: "reviewer1"}}, nil, nil)
+				testClient.MockUsers.EXPECT().
+					ListUsers(gomock.Any()).
+					Return([]*gitlab.User{{ID: 202, Username: "reviewer2"}}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						assert.Equal(t, "main", *opts.TargetBranch)
+						assert.Equal(t, "test MR with reviewers", *opts.Title)
+						assert.NotNil(t, opts.ReviewerIDs)
+						assert.ElementsMatch(t, []int64{201, 202}, *opts.ReviewerIDs)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          47,
+								SourceBranch: "Branch1",
+								TargetBranch: "main",
+								Title:        "test MR with reviewers",
+							},
+						}, nil, nil
+					})
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -825,6 +879,7 @@ func Test_stackSync(t *testing.T) {
 			opts.updateBase = tc.args.stack.updateBase
 			opts.assignees = tc.args.stack.assignees
 			opts.labels = tc.args.stack.labels
+			opts.reviewers = tc.args.stack.reviewers
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)
