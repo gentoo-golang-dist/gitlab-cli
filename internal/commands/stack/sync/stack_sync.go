@@ -11,6 +11,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/auth"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/create"
@@ -34,6 +35,7 @@ type options struct {
 	user       gitlab.User
 	noVerify   bool
 	updateBase bool
+	assignees  []string
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -70,7 +72,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 		Example: heredoc.Doc(`
 			glab stack sync
 			glab stack sync --no-verify
-			glab stack sync --update-base`),
+			glab stack sync --update-base
+			glab stack sync --assignee user1,user2`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -86,6 +89,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 
 	stackSaveCmd.Flags().BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
 	stackSaveCmd.Flags().BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
+	stackSaveCmd.Flags().StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -356,9 +360,18 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		Description:        new(description),
 		SourceBranch:       new(ref.Branch),
 		TargetBranch:       new(previousBranch),
-		AssigneeID:         new(opts.user.ID),
 		RemoveSourceBranch: new(true),
 		TargetProjectID:    new(targetProject.ID),
+	}
+
+	if len(opts.assignees) > 0 {
+		users, err := api.UsersByNames(client, opts.assignees)
+		if err != nil {
+			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving assignee usernames: %v", err)
+		}
+		l.AssigneeIDs = cmdutils.IDsFromUsers(users)
+	} else {
+		l.AssigneeID = new(opts.user.ID)
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)
