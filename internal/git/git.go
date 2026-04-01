@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -302,6 +303,26 @@ var ToplevelDir = func() (string, error) {
 	showCmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	output, err := run.PrepareCmd(showCmd).Output()
 	return firstLine(output), err
+}
+
+// GitDir returns the absolute path to the .git directory of the current repository.
+// For normal repos it returns <toplevel>/.git; for worktrees it returns the
+// worktree-specific git directory (e.g. <main-repo>/.git/worktrees/<name>).
+var GitDir = func() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	output, err := run.PrepareCmd(cmd).Output()
+	if err != nil {
+		return "", err
+	}
+	dir := firstLine(output)
+	if filepath.IsAbs(dir) {
+		return dir, nil
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getting working directory: %w", err)
+	}
+	return filepath.Join(wd, dir), nil
 }
 
 func outputLines(output []byte) []string {

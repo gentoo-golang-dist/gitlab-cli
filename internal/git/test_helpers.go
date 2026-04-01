@@ -106,3 +106,29 @@ func CreateBranches(t *testing.T, branches []string) {
 		require.Nil(t, err)
 	}
 }
+
+// InitGitWorktree creates a git worktree from an existing repo (which must have
+// at least one commit) and chdir's into it. Returns the worktree directory path.
+func InitGitWorktree(t *testing.T) string {
+	t.Helper()
+
+	repoDir := InitGitRepoWithCommit(t)
+	worktreeDir := t.TempDir()
+	addCmd := GitCommand("worktree", "add", worktreeDir, "-b", "worktree-branch")
+	addCmd.Dir = repoDir
+	_, err := run.PrepareCmd(addCmd).Output()
+	require.NoError(t, err)
+	t.Chdir(worktreeDir)
+	return worktreeDir
+}
+
+// InitGitRepoOrWorktree dispatches to either InitGitWorktree or InitGitRepo
+// based on the worktree flag.
+func InitGitRepoOrWorktree(t *testing.T, worktree bool) string {
+	t.Helper()
+
+	if worktree {
+		return InitGitWorktree(t)
+	}
+	return InitGitRepo(t)
+}
