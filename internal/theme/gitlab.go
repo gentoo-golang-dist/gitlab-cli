@@ -111,27 +111,19 @@ func HuhTheme() huh.ThemeFunc {
 		theme.Blurred.Description = theme.Blurred.Description.Foreground(gitlabSubtle)
 		theme.Blurred.TextInput.Prompt = theme.Blurred.TextInput.Prompt.Foreground(gitlabSubtle)
 
-		// Confirm button styles
-		// Focused button: GitLab orange background with dark text for strong visual distinction
-		// Using dark text (#171321) instead of white for better contrast on orange
+		// Confirm button styles: filled = selected, outlined = not selected.
+		// This "filled vs hollow" pattern makes the active button immediately obvious.
 		theme.Focused.FocusedButton = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#171321")).
 			Background(gitlabOrange).
 			Bold(true).
-			Padding(0, 2).
+			Padding(0, 1).
 			MarginRight(1)
-		// Blurred button: subtle gray background with white text
-		// Using a very subtle background so both buttons have similar visual weight
-		var subtleBackground color.Color
-		if isDark {
-			subtleBackground = lipgloss.Color("#3a3a3a") // Subtle gray for dark terminals
-		} else {
-			subtleBackground = lipgloss.Color("#e0e0e0") // Subtle gray for light terminals
-		}
 		theme.Focused.BlurredButton = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFFFF")).
-			Background(subtleBackground).
-			Padding(0, 2).
+			Foreground(gitlabSubtle).
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(gitlabSubtle).
+			Padding(0, 1).
 			MarginRight(1)
 
 		// Error styling

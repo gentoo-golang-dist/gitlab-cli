@@ -170,7 +170,7 @@ func (m *BinaryManager) promptDownload(ctx context.Context, autoDownload string)
 	}
 
 	// "false" means "don't auto-download", not "never download"
-	var confirm bool
+	confirm := true // Default to yes so users can press Enter to proceed
 	if err := m.io.Confirm(ctx, &confirm, "Download GitLab Duo CLI binary?"); err != nil {
 		return false, "", err
 	}
