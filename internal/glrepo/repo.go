@@ -1,7 +1,6 @@
 package glrepo
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"net/url"
@@ -117,16 +116,23 @@ func ParseBareProjectID(nwo string) (int64, bool) {
 
 // FromProjectID fetches the project by ID and returns the same repository representation as FromURL
 // (using the project's HTTP clone URL from the API).
+// It calls the client directly so tests can inject a mock client without relying on api.GetProject,
+// which other packages may replace in tests.
 func FromProjectID(client *gitlab.Client, projectID int64, defaultHostname string) (Interface, error) {
-	p, err := api.GetProject(client, projectID)
+	license := true
+	withCustomAttrs := true
+	opts := &gitlab.GetProjectOptions{
+		License:              &license,
+		WithCustomAttributes: &withCustomAttrs,
+	}
+	p, _, err := client.Projects.GetProject(projectID, opts)
 	if err != nil {
 		return nil, err
 	}
-	repoURL := cmp.Or(p.HTTPURLToRepo, p.WebURL)
-	if repoURL == "" {
-		return nil, fmt.Errorf("glrepo: project %d has no HTTPURLToRepo or WebURL", projectID)
+	if p.HTTPURLToRepo == "" {
+		return nil, fmt.Errorf("glrepo: project %d has no HTTPURLToRepo", projectID)
 	}
-	u, err := url.Parse(repoURL)
+	u, err := url.Parse(p.HTTPURLToRepo)
 	if err != nil {
 		return nil, err
 	}

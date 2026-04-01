@@ -9,10 +9,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 )
@@ -417,65 +419,50 @@ func TestParseBareProjectID(t *testing.T) {
 }
 
 func TestFromProjectID(t *testing.T) {
-	defer func(orig func(*gitlab.Client, any) (*gitlab.Project, error)) {
-		api.GetProject = orig
-	}(api.GetProject)
+	t.Parallel()
 
-	api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
-		assert.EqualValues(t, int64(42), projectID)
-		return &gitlab.Project{HTTPURLToRepo: "https://gitlab.example.com/ns/app.git"}, nil
-	}
+	tc := gitlabtesting.NewTestClient(t)
+	tc.MockProjects.EXPECT().
+		GetProject(int64(42), gomock.Any()).
+		Return(&gitlab.Project{HTTPURLToRepo: "https://gitlab.example.com/ns/app.git"}, nil, nil)
 
-	r, err := FromProjectID(nil, 42, glinstance.DefaultHostname)
-	assert.NoError(t, err)
+	r, err := FromProjectID(tc.Client, 42, glinstance.DefaultHostname)
+	require.NoError(t, err)
 	assert.Equal(t, "ns/app", r.FullName())
 	assert.Equal(t, "gitlab.example.com", r.RepoHost())
 }
 
-func TestFromProjectID_HTTPURLToRepo_and_WebURL(t *testing.T) {
-	defer func(orig func(*gitlab.Client, any) (*gitlab.Project, error)) {
-		api.GetProject = orig
-	}(api.GetProject)
+func TestFromProjectID_HTTPURLToRepo(t *testing.T) {
+	t.Parallel()
 
-	t.Run("prefers HTTPURLToRepo when both are set", func(t *testing.T) {
-		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
-			assert.EqualValues(t, int64(1), projectID)
-			return &gitlab.Project{
+	t.Run("uses HTTPURLToRepo", func(t *testing.T) {
+		t.Parallel()
+		tc := gitlabtesting.NewTestClient(t)
+		tc.MockProjects.EXPECT().
+			GetProject(int64(1), gomock.Any()).
+			Return(&gitlab.Project{
 				HTTPURLToRepo: "https://gitlab.com/preferred/repo.git",
-				WebURL:        "https://gitlab.com/ignored/other",
-			}, nil
-		}
-		r, err := FromProjectID(nil, 1, glinstance.DefaultHostname)
-		assert.NoError(t, err)
+			}, nil, nil)
+
+		r, err := FromProjectID(tc.Client, 1, glinstance.DefaultHostname)
+		require.NoError(t, err)
 		assert.Equal(t, "preferred/repo", r.FullName())
 		assert.Equal(t, "gitlab.com", r.RepoHost())
 	})
 
-	t.Run("falls back to WebURL when HTTPURLToRepo is empty", func(t *testing.T) {
-		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
-			assert.EqualValues(t, int64(2), projectID)
-			return &gitlab.Project{
+	t.Run("error when HTTPURLToRepo is empty", func(t *testing.T) {
+		t.Parallel()
+		tc := gitlabtesting.NewTestClient(t)
+		tc.MockProjects.EXPECT().
+			GetProject(int64(99), gomock.Any()).
+			Return(&gitlab.Project{
 				HTTPURLToRepo: "",
 				WebURL:        "https://gitlab.example.com/group/sub/web-only",
-			}, nil
-		}
-		r, err := FromProjectID(nil, 2, glinstance.DefaultHostname)
-		assert.NoError(t, err)
-		assert.Equal(t, "group/sub/web-only", r.FullName())
-		assert.Equal(t, "gitlab.example.com", r.RepoHost())
-	})
+			}, nil, nil)
 
-	t.Run("error when both URLs are empty", func(t *testing.T) {
-		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
-			assert.EqualValues(t, int64(99), projectID)
-			return &gitlab.Project{
-				HTTPURLToRepo: "",
-				WebURL:        "",
-			}, nil
-		}
-		_, err := FromProjectID(nil, 99, glinstance.DefaultHostname)
+		_, err := FromProjectID(tc.Client, 99, glinstance.DefaultHostname)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "no HTTPURLToRepo or WebURL")
+		assert.ErrorContains(t, err, "no HTTPURLToRepo")
 		assert.ErrorContains(t, err, "99")
 	})
 }
