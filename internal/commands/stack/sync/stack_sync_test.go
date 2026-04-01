@@ -89,6 +89,7 @@ func setupTestFactory(t *testing.T, testClient *gitlabtesting.TestClient) (cmdut
 }
 
 func TestNewCmdSyncStack_Flags(t *testing.T) {
+	t.Parallel()
 	ios, _, _, _ := cmdtest.TestIOStreams()
 	f := cmdtest.NewTestFactory(ios)
 	var gr git.StandardGitCommand
