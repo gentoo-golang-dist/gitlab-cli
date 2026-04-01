@@ -14,7 +14,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/duo/cli/cliutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -35,7 +34,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "cli [command]",
-		Short: "Run the GitLab Duo CLI (EXPERIMENTAL)",
+		Short: "Run the GitLab Duo CLI (Beta)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
 		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
@@ -48,8 +47,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		Prerequisites:
 
-		- Authenticate by running %[1]sglab auth login%[1]s.
+		- Use GitLab 18.11 or later.
+		- Run %[1]sglab auth login%[1]s to authenticate.
 		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+		- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
 		Configuration options:
 
@@ -58,7 +59,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
-	`, "`") + text.ExperimentalString,
+
+		For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
+	`, "`"),
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
 		glab duo cli
