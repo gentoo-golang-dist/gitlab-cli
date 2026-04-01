@@ -43,13 +43,13 @@ glab runner create --runner-type project_type --project-id 456 --tag docker --ta
   -l, --locked                    When set, the runner is locked to the current project.
       --maintenance-note string   Maintenance note (up to 1024 characters).
       --maximum-timeout int       Maximum job duration in seconds for this runner.
-  -F, --output string             Format output as: "text", or "json". (default "text")
+  -F, --output string             Format output as: text, json. (default "text")
   -p, --paused                    When set, the runner ignores new jobs.
       --project-id int            Project ID (required when runner-type is project_type).
   -R, --repo OWNER/REPO           Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
   -u, --run-untagged              When set, the runner processes jobs without tags.
       --runner-type string        Runner scope: "instance_type", "group_type", or "project_type".
-      --tag strings               Runner tags. Repeat the flag or use a comma-separated list.
+      --tag strings               Runner tags. For multiple tags, repeat the flag or use a comma-separated list.
 ```
 
 ## Options inherited from parent commands
