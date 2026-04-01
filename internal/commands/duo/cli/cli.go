@@ -14,6 +14,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/duo/cli/cliutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -61,7 +62,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
 
 		For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
-	`, "`"),
+	`, "`") + text.BetaString,
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
 		glab duo cli
