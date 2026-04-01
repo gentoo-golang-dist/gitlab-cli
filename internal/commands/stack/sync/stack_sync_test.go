@@ -731,17 +731,12 @@ func Test_stackSync(t *testing.T) {
 					CurrentUser(gomock.Any()).
 					Return(&gitlab.User{Username: "stack_guy", ID: 100}, nil, nil)
 
-				originalUsersByNames := api.UsersByNames
-				api.UsersByNames = func(client *gitlab.Client, names []string) ([]*gitlab.User, error) {
-					assert.ElementsMatch(t, []string{"reviewer1", "reviewer2"}, names)
-					return []*gitlab.User{
-						{ID: 201, Username: "reviewer1"},
-						{ID: 202, Username: "reviewer2"},
-					}, nil
-				}
-				t.Cleanup(func() {
-					api.UsersByNames = originalUsersByNames
-				})
+				testClient.MockUsers.EXPECT().
+					ListUsers(gomock.Any()).
+					Return([]*gitlab.User{{ID: 201, Username: "reviewer1"}}, nil, nil)
+				testClient.MockUsers.EXPECT().
+					ListUsers(gomock.Any()).
+					Return([]*gitlab.User{{ID: 202, Username: "reviewer2"}}, nil, nil)
 
 				testClient.MockMergeRequests.EXPECT().
 					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
