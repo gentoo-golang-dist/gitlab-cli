@@ -111,19 +111,17 @@ func HuhTheme() huh.ThemeFunc {
 		theme.Blurred.Description = theme.Blurred.Description.Foreground(gitlabSubtle)
 		theme.Blurred.TextInput.Prompt = theme.Blurred.TextInput.Prompt.Foreground(gitlabSubtle)
 
-		// Confirm button styles: filled = selected, outlined = not selected.
-		// This "filled vs hollow" pattern makes the active button immediately obvious.
+		// Confirm button styles: filled = selected, plain text = not selected.
+		// Both are single-row height; the filled orange block makes the active button obvious.
 		theme.Focused.FocusedButton = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#171321")).
 			Background(gitlabOrange).
 			Bold(true).
-			Padding(0, 1).
+			Padding(0, 2).
 			MarginRight(1)
 		theme.Focused.BlurredButton = lipgloss.NewStyle().
 			Foreground(gitlabSubtle).
-			Border(lipgloss.NormalBorder(), false, true, false, true).
-			BorderForeground(gitlabSubtle).
-			Padding(0, 1).
+			Padding(0, 2).
 			MarginRight(1)
 
 		// Error styling
