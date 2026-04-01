@@ -245,7 +245,7 @@ func (o *options) checkAutoRun(ctx context.Context) error {
 	}
 
 	// "false" means "don't auto-run", not "never run"
-	var confirm bool
+	confirm := true // Default to yes so users can press Enter to proceed
 	if err := o.io.Confirm(ctx, &confirm, "Run the GitLab Duo CLI?"); err != nil {
 		return err
 	}
