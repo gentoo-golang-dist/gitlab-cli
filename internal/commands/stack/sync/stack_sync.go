@@ -135,7 +135,11 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	o.source = source
 	o.user = *user
 
-	if err := o.validate(client); err != nil {
+	if err := o.validate(); err != nil {
+		return err
+	}
+
+	if err := o.complete(client); err != nil {
 		return err
 	}
 
@@ -232,16 +236,34 @@ func filterEmpty(s []string) []string {
 	return result
 }
 
-func (o *options) validate(client *gitlab.Client) error {
-	o.assignees = filterEmpty(o.assignees)
+func dedupe(s []string) []string {
+	seen := make(map[string]bool, len(s))
+	result := make([]string, 0, len(s))
+	for _, v := range s {
+		if !seen[v] {
+			seen[v] = true
+			result = append(result, v)
+		}
+	}
+	return result
+}
 
+func (o *options) validate() error {
+	raw := o.assignees
+	o.assignees = dedupe(filterEmpty(o.assignees))
+
+	if len(raw) > 0 && len(o.assignees) == 0 {
+		return fmt.Errorf("--assignee flag requires at least one valid username")
+	}
+
+	return nil
+}
+
+func (o *options) complete(client *gitlab.Client) error {
 	if len(o.assignees) > 0 {
 		users, err := api.UsersByNames(client, o.assignees)
 		if err != nil {
 			return fmt.Errorf("error resolving assignee usernames: %w", err)
-		}
-		if len(users) != len(o.assignees) {
-			return fmt.Errorf("expected %d assignees but resolved %d", len(o.assignees), len(users))
 		}
 		o.assigneeIDs = cmdutils.IDsFromUsers(users)
 	}
