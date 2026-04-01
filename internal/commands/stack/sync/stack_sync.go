@@ -225,8 +225,8 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 func filterEmpty(s []string) []string {
 	result := make([]string, 0, len(s))
 	for _, v := range s {
-		if strings.TrimSpace(v) != "" {
-			result = append(result, v)
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
 	return result
@@ -239,6 +239,9 @@ func (o *options) validate(client *gitlab.Client) error {
 		users, err := api.UsersByNames(client, o.assignees)
 		if err != nil {
 			return fmt.Errorf("error resolving assignee usernames: %w", err)
+		}
+		if len(users) != len(o.assignees) {
+			return fmt.Errorf("expected %d assignees but resolved %d", len(o.assignees), len(users))
 		}
 		o.assigneeIDs = cmdutils.IDsFromUsers(users)
 	}
