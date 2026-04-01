@@ -121,7 +121,7 @@ func HuhTheme() huh.ThemeFunc {
 			MarginRight(1)
 		theme.Focused.BlurredButton = lipgloss.NewStyle().
 			Foreground(gitlabSubtle).
-			Border(lipgloss.NormalBorder()).
+			Border(lipgloss.NormalBorder(), false, true, false, true).
 			BorderForeground(gitlabSubtle).
 			Padding(0, 1).
 			MarginRight(1)
