@@ -25,19 +25,17 @@ import (
 )
 
 type options struct {
-	io          *iostreams.IOStreams
-	stack       git.Stack
-	target      glrepo.Interface
-	source      glrepo.Interface
-	labClient   *gitlab.Client
-	baseRepo    func() (glrepo.Interface, error)
-	remotes     func() (glrepo.Remotes, error)
-	user        gitlab.User
-	noVerify    bool
-	updateBase  bool
-	assignees   []string
-	assigneeIDs *[]int64
-	labels      []string
+	io         *iostreams.IOStreams
+	stack      git.Stack
+	target     glrepo.Interface
+	source     glrepo.Interface
+	labClient  *gitlab.Client
+	baseRepo   func() (glrepo.Interface, error)
+	remotes    func() (glrepo.Remotes, error)
+	user       gitlab.User
+	noVerify   bool
+	updateBase bool
+	assignees  []string
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -90,11 +88,9 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 		},
 	}
 
-	fl := stackSaveCmd.Flags()
-	fl.BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
-	fl.BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
-	fl.StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
-	fl.StringSliceVarP(&opts.labels, "label", "l", []string{}, "Add label by `name`. Multiple labels can be comma-separated or specified by repeating the flag.")
+	stackSaveCmd.Flags().BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
+	stackSaveCmd.Flags().BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
+	stackSaveCmd.Flags().StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -429,8 +425,12 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		TargetProjectID:    new(targetProject.ID),
 	}
 
-	if opts.assigneeIDs != nil {
-		l.AssigneeIDs = opts.assigneeIDs
+	if len(opts.assignees) > 0 {
+		users, err := api.UsersByNames(client, opts.assignees)
+		if err != nil {
+			return &gitlab.MergeRequest{}, fmt.Errorf("error resolving assignee usernames: %v", err)
+		}
+		l.AssigneeIDs = cmdutils.IDsFromUsers(users)
 	} else {
 		l.AssigneeID = new(opts.user.ID)
 	}
