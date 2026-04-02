@@ -36,7 +36,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cli [command]",
 		Short: "Run the GitLab Duo CLI (Beta)",
-		Long: heredoc.Docf(`Run the GitLab Duo CLI.
+		Long: heredoc.Docf(`
+		Run the GitLab Duo CLI.
 
 		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
 		Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
@@ -61,8 +62,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
 
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
-For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
-`, "`") + text.BetaString,
+		For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
+		`, "`") + text.BetaString,
 		Annotations: map[string]string{
 			"help:environment": heredoc.Docf(`
 			- %[1]sGLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
