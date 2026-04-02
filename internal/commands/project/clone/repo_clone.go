@@ -3,6 +3,7 @@ package clone
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -123,9 +124,13 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 			dbg.Debug("Args:", strings.Join(args, " "))
 			dbg.Debug("GitFlags:", strings.Join(opts.gitFlags, " "))
 			if nArgs := len(args); nArgs > 0 {
-				ctxOpts.Repo = args[0]
-				if nArgs > 1 && !opts.preserveNamespace {
-					opts.dir = args[1]
+				if opts.groupName != "" {
+					opts.dir = args[0]
+				} else {
+					ctxOpts.Repo = args[0]
+					if nArgs > 1 {
+						opts.dir = args[1]
+					}
 				}
 			}
 			dbg.Debug("Dir:", opts.dir)
@@ -271,6 +276,7 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 }
 
 func cloneRun(opts *options, ctxOpts *ContextOpts) error {
+	localDir := opts.dir
 	if !git.IsValidURL(ctxOpts.Repo) {
 		// Assuming that repo is a project ID if it is an integer
 		if _, err := strconv.ParseInt(ctxOpts.Repo, 10, 64); err != nil {
@@ -287,15 +293,15 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 			ctxOpts.Project = p
 		}
 		ctxOpts.Repo = glrepo.RemoteURL(ctxOpts.Project, opts.protocol)
+		if opts.preserveNamespace {
+			localDir = filepath.Join(opts.dir, filepath.FromSlash(ctxOpts.Project.PathWithNamespace))
+		} else if opts.dir != "" && opts.groupName != "" {
+			localDir = filepath.Join(opts.dir, ctxOpts.Project.Path)
+		}
 	} else if !strings.HasSuffix(ctxOpts.Repo, ".git") {
 		ctxOpts.Repo += ".git"
 	}
-	// To preserve namespaces, we deep copy gitFlags for group clones
-	if opts.preserveNamespace {
-		namespacedDir := ctxOpts.Project.PathWithNamespace
-		opts.dir = namespacedDir
-	}
-	_, err := git.RunClone(ctxOpts.Repo, opts.dir, opts.gitFlags)
+	_, err := git.RunClone(ctxOpts.Repo, localDir, opts.gitFlags)
 	if err != nil {
 		return err
 	}
@@ -304,15 +310,15 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 	// to forked repo's ssh/https url depending on the users preferred protocol
 	if ctxOpts.Project != nil {
 		if ctxOpts.Project.ForkedFromProject != nil && strings.Contains(ctxOpts.Project.PathWithNamespace, opts.currentUser.Username) {
-			if opts.dir == "" {
-				opts.dir = "./" + ctxOpts.Project.Path
+			if localDir == "" {
+				localDir = "./" + ctxOpts.Project.Path
 			}
 			fProject, err := api.GetProject(opts.apiClient.Lab(), ctxOpts.Project.ForkedFromProject.PathWithNamespace)
 			if err != nil {
 				return err
 			}
 			repoURL := glrepo.RemoteURL(fProject, opts.protocol)
-			err = git.AddUpstreamRemote(repoURL, opts.dir)
+			err = git.AddUpstreamRemote(repoURL, localDir)
 			if err != nil {
 				return err
 			}

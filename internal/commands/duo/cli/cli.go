@@ -35,7 +35,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "cli [command]",
-		Short: "Run the GitLab Duo CLI (EXPERIMENTAL)",
+		Short: "Run the GitLab Duo CLI (Beta)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
 		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
@@ -48,8 +48,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		Prerequisites:
 
-		- Authenticate by running %[1]sglab auth login%[1]s.
+		- Use GitLab 18.11 or later.
+		- Run %[1]sglab auth login%[1]s to authenticate.
 		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+		- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
 		Configuration options:
 
@@ -58,7 +60,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
-		`, "`") + text.ExperimentalString,
+For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
+`, "`") + text.BetaString,
 		Annotations: map[string]string{
 			"help:environment": heredoc.Docf(`
 			- %[1]sGLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
@@ -66,6 +69,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			  %[1]sduo_cli_binary_path%[1]s configuration key.
 			`, "`"),
 		},
+
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
 		glab duo cli
@@ -265,7 +269,7 @@ func (o *options) checkAutoRun(ctx context.Context) error {
 	}
 
 	// "false" means "don't auto-run", not "never run"
-	var confirm bool
+	confirm := true // Default to yes so users can press Enter to proceed
 	if err := o.io.Confirm(ctx, &confirm, "Run the GitLab Duo CLI?"); err != nil {
 		return err
 	}

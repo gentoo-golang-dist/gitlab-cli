@@ -261,6 +261,9 @@ func Test_helperRun(t *testing.T) {
 			wantStdout:      nil,
 			wantStderr:      "",
 			testOAuth2:      true,
+			apiResponse: func(req *http.Request) (*http.Response, error) {
+				return nil, fmt.Errorf("connection refused")
+			},
 		},
 		{
 			// Additional test case for gitlab.com, as it does not require

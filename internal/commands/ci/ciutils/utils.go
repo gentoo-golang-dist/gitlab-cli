@@ -184,17 +184,21 @@ func RunTraceSha(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid
 	if err != nil || job == nil {
 		return errors.Wrap(err, "failed to find job")
 	}
-	return runTrace(ctx, apiClient, w, pid, job.ID)
+	return runTrace(ctx, apiClient, w, pid, job.ID, 3*time.Second)
 }
 
-func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, jobId int64) error {
+func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, jobId int64, pollInterval time.Duration) error {
 	var once sync.Once
 	var offset int64
 
 	fmt.Fprintln(w, "Getting job trace...")
-	for range time.NewTicker(time.Second * 3).C {
-		if ctx.Err() == context.Canceled {
-			break
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
 		}
 		job, _, err := apiClient.Jobs.GetJob(pid, jobId)
 		if err != nil {
@@ -230,7 +234,6 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 			return nil
 		}
 	}
-	return nil
 }
 
 func GetJobId(ctx context.Context, inputs *JobInputs, opts *JobOptions) (int64, error) {
@@ -423,10 +426,11 @@ type JobInputs struct {
 }
 
 type JobOptions struct {
-	Client     *gitlab.Client
-	Repo       glrepo.Interface
-	IO         *iostreams.IOStreams
-	BranchFunc func() (string, error)
+	Client       *gitlab.Client
+	Repo         glrepo.Interface
+	IO           *iostreams.IOStreams
+	BranchFunc   func() (string, error)
+	PollInterval time.Duration // interval between trace polls; defaults to 3s if zero
 }
 
 func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {
@@ -438,8 +442,12 @@ func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {
 	if jobID == 0 {
 		return nil
 	}
+	pollInterval := opts.PollInterval
+	if pollInterval == 0 {
+		pollInterval = 3 * time.Second
+	}
 	fmt.Fprintln(opts.IO.StdOut)
-	return runTrace(ctx, opts.Client, opts.IO.StdOut, opts.Repo.FullName(), jobID)
+	return runTrace(ctx, opts.Client, opts.IO.StdOut, opts.Repo.FullName(), jobID, pollInterval)
 }
 
 // IDsFromArgs parses list of IDs from space or comma-separated values
