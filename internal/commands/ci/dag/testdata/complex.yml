@@ -1,0 +1,52 @@
+stages:
+  - build
+  - test
+  - staging
+  - deploy
+
+variables:
+  CI_DEBUG: "true"
+
+.template:
+  before_script:
+    - echo "setup"
+
+compile:
+  stage: build
+  script: make build
+
+build-docker:
+  stage: build
+  script: docker build .
+
+unit-tests:
+  stage: test
+  script: make test
+  needs:
+    - compile
+  dependencies:
+    - compile
+
+lint:
+  stage: test
+  script: make lint
+
+deploy-staging:
+  stage: staging
+  script: make deploy-staging
+  needs:
+    - unit-tests
+    - build-docker
+
+trigger-downstream:
+  stage: deploy
+  trigger:
+    project: other/project
+  needs:
+    - deploy-staging
+
+deploy-prod:
+  stage: deploy
+  script: make deploy
+  needs:
+    - deploy-staging

@@ -1,0 +1,41 @@
+stages:
+  - documentation
+  - test
+  - build
+
+.documentation:
+  stage: documentation
+  needs: []
+  dependencies: []
+
+.test:
+  stage: test
+
+.go-cache:
+  variables:
+    GOPATH: .go
+
+check_docs_update:
+  extends: .documentation
+  script: make check-docs
+
+check_docs_markdown:
+  extends: .documentation
+  script: make lint-docs
+
+lint:
+  extends:
+    - .go-cache
+    - .test
+  script: make lint
+
+tests:unit:
+  extends:
+    - .go-cache
+    - .test
+  script: make test
+
+build_windows:
+  extends: .go-cache
+  stage: build
+  script: make build-windows
