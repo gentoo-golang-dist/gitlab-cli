@@ -522,6 +522,7 @@ sign_windows_glab:
   artifacts:
     paths:
       - "signed/glab.exe"
+    expire_in: 7 days
 
 sign_windows_installer:
   extends: .sign_windows_base
@@ -533,6 +534,7 @@ sign_windows_installer:
   artifacts:
     paths:
       - "signed/glab_*Windows_x86_64_installer.exe"
+    expire_in: 7 days
 
 .snapcraft_base:
   image:
