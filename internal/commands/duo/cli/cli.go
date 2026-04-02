@@ -59,6 +59,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
 
 		All arguments and flags are passed through to the GitLab Duo CLI binary.
+
 		Use %[1]s--update%[1]s to check for and install updates to the binary.
 For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
 `, "`") + text.BetaString,

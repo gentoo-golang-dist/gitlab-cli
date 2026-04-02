@@ -16,29 +16,29 @@ Run the GitLab Duo CLI (Beta)
 
 Run the GitLab Duo CLI.
 
-Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
-Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
-on your behalf.
+		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
+		Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
+		on your behalf.
 
-When you use the GitLab Duo CLI in the GitLab CLI, `glab` handles
-authentication for you automatically.
-You only need to authenticate once.
+		When you use the GitLab Duo CLI in the GitLab CLI, `glab` handles
+		authentication for you automatically.
+		You only need to authenticate once.
 
-Prerequisites:
+		Prerequisites:
 
-- Use GitLab 18.11 or later.
-- Run `glab auth login` to authenticate.
-- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
-- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
+		- Use GitLab 18.11 or later.
+		- Run `glab auth login` to authenticate.
+		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+		- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
-Configuration options:
+		Configuration options:
 
-- `duo_cli_auto_run`: Skip the run confirmation prompt.
-- `duo_cli_auto_download`: Skip the download confirmation prompt.
+		- `duo_cli_auto_run`: Skip the run confirmation prompt.
+		- `duo_cli_auto_download`: Skip the download confirmation prompt.
 
-All arguments and flags are passed through to the GitLab Duo CLI binary.
-Use `--update` to check for and install updates to the binary.
+		All arguments and flags are passed through to the GitLab Duo CLI binary.
 
+		Use `--update` to check for and install updates to the binary.
 For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
 
 This feature is in beta and might not be ready for production use.
