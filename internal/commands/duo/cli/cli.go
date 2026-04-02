@@ -38,28 +38,30 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "Run the GitLab Duo CLI (Beta)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
-		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
-		Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
-		on your behalf.
+Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
+Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
+on your behalf.
 
-		When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
-		authentication for you automatically.
-		You only need to authenticate once.
+When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
+authentication for you automatically.
+You only need to authenticate once.
 
-		Prerequisites:
+Prerequisites:
 
-		- Use GitLab 18.11 or later.
-		- Run %[1]sglab auth login%[1]s to authenticate.
-		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
-		- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
+- Use GitLab 18.11 or later.
+- Run %[1]sglab auth login%[1]s to authenticate.
+- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
-		Configuration options:
+Configuration options:
 
-		- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
-		- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
+- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
+- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
 
-		All arguments and flags are passed through to the GitLab Duo CLI binary.
-		Use %[1]s--update%[1]s to check for and install updates to the binary.
+All arguments and flags are passed through to the GitLab Duo CLI binary.
+
+Use %[1]s--update%[1]s to check for and install updates to the binary.
+
 For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
 `, "`") + text.BetaString,
 		Annotations: map[string]string{
