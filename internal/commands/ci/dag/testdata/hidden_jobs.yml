@@ -1,0 +1,19 @@
+stages:
+  - build
+  - test
+
+.base:
+  before_script:
+    - echo "setup"
+
+.test-template:
+  stage: test
+  script: make test
+
+compile:
+  stage: build
+  script: make build
+
+test:
+  stage: test
+  script: make test

@@ -1,0 +1,4 @@
+stages:
+  - build
+variables:
+  FOO: bar
