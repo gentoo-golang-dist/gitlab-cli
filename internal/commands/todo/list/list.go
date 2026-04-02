@@ -1,6 +1,8 @@
 package list
 
 import (
+	"fmt"
+
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
@@ -12,6 +14,14 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"gitlab.com/gitlab-org/cli/internal/utils"
+)
+
+var (
+	validStates  = map[string]bool{"pending": true, "done": true, "all": true}
+	validActions = map[string]bool{
+		"assigned": true, "mentioned": true, "build_failed": true,
+		"marked": true, "approval_required": true, "directly_addressed": true,
+	}
 )
 
 type options struct {
@@ -50,6 +60,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := opts.validate(); err != nil {
+				return err
+			}
 			return opts.run()
 		},
 	}
@@ -63,6 +76,30 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
+}
+
+func (o *options) validate() error {
+	if !validStates[o.state] {
+		return cmdutils.FlagError{
+			Err: fmt.Errorf("invalid --state %q: must be one of: pending, done, all", o.state),
+		}
+	}
+	if o.action != "" && !validActions[o.action] {
+		return cmdutils.FlagError{
+			Err: fmt.Errorf("invalid --action %q: must be one of: assigned, mentioned, build_failed, marked, approval_required, directly_addressed", o.action),
+		}
+	}
+	if o.page < 1 {
+		return cmdutils.FlagError{
+			Err: fmt.Errorf("--page must be >= 1"),
+		}
+	}
+	if o.perPage < 1 || o.perPage > 100 {
+		return cmdutils.FlagError{
+			Err: fmt.Errorf("--per-page must be between 1 and 100"),
+		}
+	}
+	return nil
 }
 
 func (o *options) run() error {
@@ -80,14 +117,14 @@ func (o *options) run() error {
 	}
 
 	if o.state != "all" {
-		listOpts.State = new(o.state)
+		listOpts.State = &o.state
 	}
 	if o.action != "" {
 		action := gitlab.TodoAction(o.action)
 		listOpts.Action = &action
 	}
 	if o.typ != "" {
-		listOpts.Type = new(o.typ)
+		listOpts.Type = &o.typ
 	}
 
 	todos, _, err := client.Todos.ListTodos(listOpts)
