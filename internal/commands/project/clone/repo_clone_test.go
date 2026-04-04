@@ -74,6 +74,56 @@ func TestNewCmdClone(t *testing.T) {
 			},
 		},
 		{
+			name: "group clone with directory argument",
+			args: "-g NAMESPACE/REPO mydir",
+			wantOpts: options{
+				gitFlags:  []string{},
+				groupName: "NAMESPACE/REPO",
+				dir:       "mydir",
+			},
+			wantCtxOpts: ContextOpts{
+				Repo: "",
+			},
+		},
+		{
+			name: "nested group clone with directory argument",
+			args: "-g NAMESPACE/NESTED/SUBGROUP mydir",
+			wantOpts: options{
+				gitFlags:  []string{},
+				groupName: "NAMESPACE/NESTED/SUBGROUP",
+				dir:       "mydir",
+			},
+			wantCtxOpts: ContextOpts{
+				Repo: "",
+			},
+		},
+		{
+			name: "group clone with directory argument and preserve namespace",
+			args: "-p -g NAMESPACE/REPO mydir",
+			wantOpts: options{
+				gitFlags:          []string{},
+				groupName:         "NAMESPACE/REPO",
+				dir:               "mydir",
+				preserveNamespace: true,
+			},
+			wantCtxOpts: ContextOpts{
+				Repo: "",
+			},
+		},
+		{
+			name: "nested group clone with directory argument and preserve namespace",
+			args: "-p -g NAMESPACE/NESTED/SUBGROUP mydir",
+			wantOpts: options{
+				gitFlags:          []string{},
+				groupName:         "NAMESPACE/NESTED/SUBGROUP",
+				dir:               "mydir",
+				preserveNamespace: true,
+			},
+			wantCtxOpts: ContextOpts{
+				Repo: "",
+			},
+		},
+		{
 			name:    "unknown argument",
 			args:    "NAMESPACE/REPO --depth 1",
 			wantErr: "unknown flag: --depth\nSeparate Git clone flags with '--'.",
@@ -157,6 +207,8 @@ func TestNewCmdClone(t *testing.T) {
 			assert.Equal(t, tt.wantOpts.groupName, opts.groupName)
 			assert.Equal(t, tt.wantOpts.active, opts.active)
 			assert.Equal(t, tt.wantOpts.activeSet, opts.activeSet)
+			assert.Equal(t, tt.wantOpts.dir, opts.dir)
+			assert.Equal(t, tt.wantOpts.preserveNamespace, opts.preserveNamespace)
 		})
 	}
 }
