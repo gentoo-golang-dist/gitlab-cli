@@ -95,3 +95,60 @@ func TestNewCmdDag_NoStageEdges(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, result.String(), "<svg")
 }
+
+func TestNewCmdDag_BranchSimulation(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdDag, false)
+
+	result, err := exec(testdataPath("rules_basic.yml") + " --output svg --branch main")
+
+	require.NoError(t, err)
+	assert.Contains(t, result.String(), "<svg")
+}
+
+func TestNewCmdDag_MRSimulation(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdDag, false)
+
+	result, err := exec(testdataPath("rules_basic.yml") + " --output svg --source-branch feat/x")
+
+	require.NoError(t, err)
+	assert.Contains(t, result.String(), "<svg")
+}
+
+func TestNewCmdDag_TagSimulation(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdDag, false)
+
+	result, err := exec(testdataPath("rules_basic.yml") + " --output svg --tag v1.0.0")
+
+	require.NoError(t, err)
+	assert.Contains(t, result.String(), "<svg")
+}
+
+func TestNewCmdDag_SourceFlag(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdDag, false)
+
+	result, err := exec(testdataPath("rules_basic.yml") + " --output svg --source web --branch main")
+
+	require.NoError(t, err)
+	assert.Contains(t, result.String(), "<svg")
+}
+
+func TestNewCmdDag_WorkflowRejectsSchedule(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdDag, false)
+
+	// rules_basic.yml workflow only allows MR, tag, and default branch.
+	// Schedule on non-default branch should be rejected.
+	_, err := exec(testdataPath("rules_basic.yml") + " --source schedule --branch develop")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no workflow:rules matched")
+}

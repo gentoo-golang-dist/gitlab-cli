@@ -10,8 +10,9 @@ import (
 
 // Pipeline represents the parsed structure of a .gitlab-ci.yml file.
 type Pipeline struct {
-	Stages []string
-	Jobs   []Job
+	Stages        []string
+	Jobs          []Job
+	WorkflowRules []RuleClause
 }
 
 // Job represents a single CI job in the pipeline.
@@ -21,6 +22,10 @@ type Job struct {
 	Needs        []string
 	Dependencies []string
 	IsTrigger    bool
+	Rules        []RuleClause
+	Only         *OnlyExcept
+	Except       *OnlyExcept
+	When         string
 }
 
 var defaultStages = []string{".pre", "build", "test", "deploy", ".post"}
@@ -46,6 +51,7 @@ func ParsePipeline(yamlContent []byte) (*Pipeline, error) {
 	}
 
 	stages := parseStages(raw)
+	workflowRules := parseWorkflowRules(raw)
 	jobs := parseJobs(raw, stages)
 
 	// Filter stages to only those that have at least one job.
@@ -61,8 +67,9 @@ func ParsePipeline(yamlContent []byte) (*Pipeline, error) {
 	}
 
 	return &Pipeline{
-		Stages: filteredStages,
-		Jobs:   jobs,
+		Stages:        filteredStages,
+		Jobs:          jobs,
+		WorkflowRules: workflowRules,
 	}, nil
 }
 
@@ -85,6 +92,79 @@ func parseStages(raw map[string]any) []string {
 		return defaultStages
 	}
 	return stages
+}
+
+func parseWorkflowRules(raw map[string]any) []RuleClause {
+	workflow, ok := raw["workflow"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	rulesRaw, ok := workflow["rules"].([]any)
+	if !ok {
+		return nil
+	}
+	return parseRulesClauses(rulesRaw)
+}
+
+func parseRulesClauses(rulesRaw []any) []RuleClause {
+	var rules []RuleClause
+	for _, r := range rulesRaw {
+		rMap, ok := r.(map[string]any)
+		if !ok {
+			// A bare "when:" entry like `- when: on_success`.
+			continue
+		}
+		clause := RuleClause{
+			When: "on_success",
+		}
+		if ifExpr, ok := rMap["if"].(string); ok {
+			clause.If = ifExpr
+		}
+		if when, ok := rMap["when"].(string); ok {
+			clause.When = when
+		}
+		if changes, ok := rMap["changes"]; ok {
+			clause.Changes = parseChangesField(changes)
+		}
+		if exists, ok := rMap["exists"]; ok {
+			clause.Exists = parseStringList(exists)
+		}
+		rules = append(rules, clause)
+	}
+	return rules
+}
+
+func parseChangesField(raw any) []string {
+	// Simple list form: changes: [list of globs]
+	if list := parseStringList(raw); len(list) > 0 {
+		return list
+	}
+	// Extended form: changes: { paths: [...] }
+	if m, ok := raw.(map[string]any); ok {
+		if paths, ok := m["paths"]; ok {
+			return parseStringList(paths)
+		}
+	}
+	return nil
+}
+
+func parseOnlyExcept(raw any) *OnlyExcept {
+	if raw == nil {
+		return nil
+	}
+	result := &OnlyExcept{}
+	switch v := raw.(type) {
+	case []any:
+		result.Refs = parseStringList(raw)
+	case map[string]any:
+		if refs, ok := v["refs"]; ok {
+			result.Refs = parseStringList(refs)
+		}
+		if vars, ok := v["variables"]; ok {
+			result.Variables = parseStringList(vars)
+		}
+	}
+	return result
 }
 
 // resolveExtends merges a job map with its extends templates, resolving chains recursively.
@@ -195,6 +275,20 @@ func parseJobs(raw map[string]any, stages []string) []Job {
 		// Detect trigger/bridge jobs.
 		if _, ok := resolved["trigger"]; ok {
 			job.IsTrigger = true
+		}
+
+		// Parse rules.
+		if rulesRaw, ok := resolved["rules"].([]any); ok {
+			job.Rules = parseRulesClauses(rulesRaw)
+		}
+		if onlyRaw, ok := resolved["only"]; ok {
+			job.Only = parseOnlyExcept(onlyRaw)
+		}
+		if exceptRaw, ok := resolved["except"]; ok {
+			job.Except = parseOnlyExcept(exceptRaw)
+		}
+		if when, ok := resolved["when"].(string); ok {
+			job.When = when
 		}
 
 		jobs = append(jobs, job)
