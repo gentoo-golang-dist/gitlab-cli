@@ -42,6 +42,12 @@ type options struct {
 	showStageEdges bool
 	listenAddr     string
 	output         string
+	source         string
+	branch         string
+	tagName        string
+	sourceBranch   string
+	targetBranch   string
+	vars           []string
 }
 
 func NewCmdDag(f cmdutils.Factory) *cobra.Command {
@@ -82,6 +88,18 @@ func NewCmdDag(f cmdutils.Factory) *cobra.Command {
 		"Address for the local HTTP server.")
 	fl.StringVarP(&opts.output, "output", "o", opts.output,
 		"Output mode: 'browser' to open in browser, 'svg' to print SVG to stdout.")
+	fl.StringVar(&opts.source, "source", "",
+		"Set CI_PIPELINE_SOURCE to simulate a pipeline type (e.g. push, merge_request_event, schedule, web, api).")
+	fl.StringVar(&opts.branch, "branch", "",
+		"Set CI_COMMIT_BRANCH. Implies --source push if no --source is set.")
+	fl.StringVar(&opts.tagName, "tag", "",
+		"Set CI_COMMIT_TAG. Implies --source push if no --source is set.")
+	fl.StringVar(&opts.sourceBranch, "source-branch", "",
+		"Set CI_MERGE_REQUEST_SOURCE_BRANCH_NAME. Implies --source merge_request_event.")
+	fl.StringVar(&opts.targetBranch, "target-branch", "",
+		"Set CI_MERGE_REQUEST_TARGET_BRANCH_NAME. Implies --source merge_request_event.")
+	fl.StringArrayVar(&opts.vars, "var", nil,
+		"Set a CI variable as KEY=VALUE. Can be specified multiple times.")
 
 	return cmd
 }
@@ -98,7 +116,19 @@ func (o *options) validate() error {
 	if o.output != "browser" && o.output != "svg" {
 		return cmdutils.FlagError{Err: fmt.Errorf("invalid output mode %q: must be 'browser' or 'svg'", o.output)}
 	}
+
+	for _, v := range o.vars {
+		if !strings.Contains(v, "=") {
+			return cmdutils.FlagError{Err: fmt.Errorf("invalid --var format %q: expected KEY=VALUE", v)}
+		}
+	}
+
 	return nil
+}
+
+func (o *options) hasSimulationFlags() bool {
+	return o.source != "" || o.branch != "" || o.tagName != "" ||
+		o.sourceBranch != "" || o.targetBranch != "" || len(o.vars) > 0
 }
 
 func (o *options) run(ctx context.Context) error {
@@ -113,6 +143,12 @@ func (o *options) run(ctx context.Context) error {
 	}
 	if len(pipeline.Jobs) == 0 {
 		return fmt.Errorf("no jobs found in %s", o.path)
+	}
+
+	if o.hasSimulationFlags() {
+		if err := o.applyRulesFilter(pipeline); err != nil {
+			return err
+		}
 	}
 
 	d2Source := BuildD2Source(pipeline, o.showStageEdges)
@@ -194,6 +230,66 @@ func (o *options) loadCompiledYAML() ([]byte, error) {
 	}
 
 	return []byte(result.MergedYaml), nil
+}
+
+func (o *options) applyRulesFilter(pipeline *Pipeline) error {
+	cfg := o.buildSimulationConfig()
+	vars := BuildVariables(cfg)
+
+	if err := EvalWorkflowRules(pipeline.WorkflowRules, vars); err != nil {
+		return err
+	}
+
+	pipeline.Jobs = FilterJobs(pipeline.Jobs, vars)
+	if len(pipeline.Jobs) == 0 {
+		return fmt.Errorf("no jobs would run for this pipeline configuration")
+	}
+
+	// Re-filter stages to only those with remaining jobs.
+	usedStages := make(map[string]bool)
+	for _, j := range pipeline.Jobs {
+		usedStages[j.Stage] = true
+	}
+	var filteredStages []string
+	for _, s := range pipeline.Stages {
+		if usedStages[s] {
+			filteredStages = append(filteredStages, s)
+		}
+	}
+	pipeline.Stages = filteredStages
+
+	// Clean up needs references to filtered-out jobs.
+	jobExists := make(map[string]bool)
+	for _, j := range pipeline.Jobs {
+		jobExists[j.Name] = true
+	}
+	for i, j := range pipeline.Jobs {
+		var validNeeds []string
+		for _, n := range j.Needs {
+			if jobExists[n] {
+				validNeeds = append(validNeeds, n)
+			}
+		}
+		pipeline.Jobs[i].Needs = validNeeds
+	}
+
+	return nil
+}
+
+func (o *options) buildSimulationConfig() SimulationConfig {
+	cfg := SimulationConfig{
+		Source:       o.source,
+		Branch:       o.branch,
+		Tag:          o.tagName,
+		SourceBranch: o.sourceBranch,
+		TargetBranch: o.targetBranch,
+		ExtraVars:    make(map[string]string),
+	}
+	for _, v := range o.vars {
+		parts := strings.SplitN(v, "=", 2)
+		cfg.ExtraVars[parts[0]] = parts[1]
+	}
+	return cfg
 }
 
 func renderSVG(ctx context.Context, d2Source string) ([]byte, error) {
