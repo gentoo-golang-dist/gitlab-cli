@@ -60,25 +60,31 @@ func NewColorable(out io.Writer) io.Writer {
 }
 
 func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName string) func(string) string {
-	if isColorfulOutput && brandColor != nil && isTrueColorSupported() {
+	// don't bother doing terminal capacity checks and calculations if color is disabled
+	if !isColorfulOutput {
+		return func(arg string) string {
+			return arg
+		}
+	}
+
+	// 24-bit truecolor and we got a color from lipgloss'd theme
+	if brandColor != nil && isTrueColorSupported() {
 		r16, g16, b16, _ := brandColor.RGBA() // standard Go interface, 16-bit per channel
 		r, g, b := uint8(r16>>8), uint8(g16>>8), uint8(b16>>8)
 		return func(t string) string {
 			return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
 		}
 	}
-	if isColorfulOutput && ansiName == "black+h" && is256ColorSupported() {
+
+	// 256 colors gray
+	if ansiName == "black+h" && is256ColorSupported() {
 		return func(t string) string {
 			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
 		}
 	}
-	cf := ansi.ColorFunc(ansiName)
-	return func(arg string) string {
-		if isColorfulOutput {
-			return cf(arg)
-		}
-		return arg
-	}
+
+	// basic ANSI colors
+	return ansi.ColorFunc(ansiName)
 }
 
 // detectIsColorEnabled determines whether color output should be enabled based on environment variables.
