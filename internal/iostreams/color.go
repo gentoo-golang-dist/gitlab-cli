@@ -2,14 +2,16 @@ package iostreams
 
 import (
 	"fmt"
+	"image/color"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
-	"github.com/muesli/termenv"
+
+	"gitlab.com/gitlab-org/cli/internal/theme"
 )
 
 type ColorPalette struct {
@@ -33,16 +35,19 @@ type ColorPalette struct {
 
 func (s *IOStreams) Color() *ColorPalette {
 	isColorfulOutput := s.ColorEnabled() && s.IsaTTY
-	isDarkBackground := termenv.HasDarkBackground()
+	isDark := s.BackgroundColor() == "dark" // already cached, no second terminal query
+	lightDark := lipgloss.LightDark(isDark)
+	glc := theme.NewGitLabColors(lightDark) // reuse existing palette
+
 	return &ColorPalette{
-		Magenta: makeColorFunc(isColorfulOutput, isDarkBackground, "magenta"),
-		Cyan:    makeColorFunc(isColorfulOutput, isDarkBackground, "cyan"),
-		Red:     makeColorFunc(isColorfulOutput, isDarkBackground, "red"),
-		Yellow:  makeColorFunc(isColorfulOutput, isDarkBackground, "yellow"),
-		Blue:    makeColorFunc(isColorfulOutput, isDarkBackground, "blue"),
-		Green:   makeColorFunc(isColorfulOutput, isDarkBackground, "green"),
-		Gray:    makeColorFunc(isColorfulOutput, isDarkBackground, "black+h"),
-		Bold:    makeColorFunc(isColorfulOutput, isDarkBackground, "default+b"),
+		Magenta: makeColorFunc(isColorfulOutput, glc.Purple, "magenta"),
+		Cyan:    makeColorFunc(isColorfulOutput, nil, "cyan"), // not in theme, falls back to ANSI
+		Red:     makeColorFunc(isColorfulOutput, glc.Red, "red"),
+		Yellow:  makeColorFunc(isColorfulOutput, nil, "yellow"), // not in theme, falls back to ANSI
+		Blue:    makeColorFunc(isColorfulOutput, glc.Blue, "blue"),
+		Green:   makeColorFunc(isColorfulOutput, glc.Green, "green"),
+		Gray:    makeColorFunc(isColorfulOutput, nil, "black+h"),
+		Bold:    makeColorFunc(isColorfulOutput, nil, "default+b"),
 	}
 }
 
@@ -54,79 +59,26 @@ func NewColorable(out io.Writer) io.Writer {
 	return out
 }
 
-func makeColorFunc(isColorfulOutput bool, isDarkBackground bool, color string) func(string) string {
-	if isColorfulOutput && is256ColorSupported() {
-		if r, g, b, ok := gitlabAccessibleColor(color, !isDarkBackground); ok {
-			return func(t string) string {
-				return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
-			}
-		}
-
-		if color == "black+h" {
-			return func(t string) string {
-				return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
-			}
+func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName string) func(string) string {
+	if isColorfulOutput && brandColor != nil && isTrueColorSupported() {
+		r16, g16, b16, _ := brandColor.RGBA() // standard Go interface, 16-bit per channel
+		r, g, b := uint8(r16>>8), uint8(g16>>8), uint8(b16>>8)
+		return func(t string) string {
+			return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
 		}
 	}
-
-	cf := ansi.ColorFunc(color)
+	if isColorfulOutput && ansiName == "black+h" && is256ColorSupported() {
+		return func(t string) string {
+			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
+		}
+	}
+	cf := ansi.ColorFunc(ansiName)
 	return func(arg string) string {
 		if isColorfulOutput {
 			return cf(arg)
 		}
 		return arg
 	}
-}
-
-func gitlabAccessibleColor(name string, darkVariant bool) (uint8, uint8, uint8, bool) {
-	type pair struct{ dark, light string }
-	palette := map[string]pair{
-		"blue":    {"#1068BF", "#4285F4"},
-		"green":   {"#217645", "#34D058"},
-		"red":     {"#C91C00", "#F97583"},
-		"magenta": {"#7759C2", "#A989F5"},
-		"cyan":    {"#008B96", "#73D3C3"},
-	}
-	p, found := palette[name]
-	if !found {
-		return 0, 0, 0, false
-	}
-	hex := p.light
-	if darkVariant {
-		hex = p.dark
-	}
-
-	r, g, b, err := hexToRGB(hex)
-	return r, g, b, err == nil
-}
-
-func hexToRGB(hex string) (uint8, uint8, uint8, error) {
-	// Remove `#` if present
-	if hex[0] == '#' {
-		hex = hex[1:]
-	}
-
-	if len(hex) != 6 {
-		return 0, 0, 0, fmt.Errorf("hex string must be exactly 6 characters, got %d", len(hex))
-	}
-
-	// Convert each component to decimal
-	r64, err := strconv.ParseUint(hex[0:2], 16, 8)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-
-	g64, err := strconv.ParseUint(hex[2:4], 16, 8)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-
-	b64, err := strconv.ParseUint(hex[4:6], 16, 8)
-	if err != nil {
-		return 0, 0, 0, err
-	}
-
-	return uint8(r64), uint8(g64), uint8(b64), nil
 }
 
 // detectIsColorEnabled determines whether color output should be enabled based on environment variables.
@@ -152,14 +104,16 @@ func detectIsColorEnabled() bool {
 	return true
 }
 
-func is256ColorSupported() bool {
-	term := os.Getenv("TERM")
-	colorterm := os.Getenv("COLORTERM")
+func isTrueColorSupported() bool {
+	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
 
-	return strings.Contains(term, "256") ||
-		strings.Contains(term, "24bit") ||
-		strings.Contains(term, "truecolor") ||
-		strings.Contains(colorterm, "256") ||
-		strings.Contains(colorterm, "24bit") ||
-		strings.Contains(colorterm, "truecolor")
+	return strings.Contains(term, "24bit") || strings.Contains(term, "truecolor") ||
+		strings.Contains(colorterm, "24bit") || strings.Contains(colorterm, "truecolor")
+}
+
+func is256ColorSupported() bool {
+	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
+
+	return strings.Contains(term, "256") || strings.Contains(colorterm, "256") ||
+		isTrueColorSupported()
 }
