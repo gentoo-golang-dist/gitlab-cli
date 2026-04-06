@@ -398,7 +398,7 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.TargetBranch == "" {
-		o.TargetBranch = getTargetBranch(baseRepoRemote)
+		o.TargetBranch = o.TargetProject.DefaultBranch
 	}
 
 	if o.RelatedIssue != "" {
@@ -909,13 +909,6 @@ func repoRemote(opts *options, repo glrepo.Interface, project *gitlab.Project, r
 	}
 
 	return repoRemote, nil
-}
-
-func getTargetBranch(baseRepoRemote *glrepo.Remote) string {
-	br, _ := git.GetDefaultBranch(baseRepoRemote.Name)
-	// we ignore the error since git.GetDefaultBranch returns master and an error
-	// if the default branch cannot be determined
-	return br
 }
 
 // createRecoverSaveFile will try save the issue create options to a file

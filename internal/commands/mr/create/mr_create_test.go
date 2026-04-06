@@ -303,10 +303,9 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 	cs, csTeardown := test.InitCmdStubber()
 	defer csTeardown()
 
-	cs.Stub("HEAD branch: main\n") // git remote show <name>
-	cs.Stub("/")                   // git rev-parse --show-toplevel
+	cs.Stub("/") // git rev-parse --show-toplevel
 
-	// git -c log.ShowSignature=false log --pretty=format:%H,%s --cherry upstream/main...feat-new-mr
+	// git -c log.ShowSignature=false log --pretty=format:%H,%s --cherry upstream/master...feat-new-mr
 	cs.Stub(heredoc.Doc(`
 			deadb00f,commit msg 2
 			deadbeef,commit msg 1

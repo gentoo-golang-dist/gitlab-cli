@@ -12,7 +12,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
-	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -56,20 +55,15 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			remotes, err := f.Remotes()
-			if err != nil {
-				return err
-			}
-			repoRemote, err := remotes.FindByRepo(repo.RepoOwner(), repo.RepoName())
-			if err != nil {
-				return err
-			}
-
 			var targetBranch string
 			if t, _ := cmd.Flags().GetString("target-branch"); t != "" {
 				targetBranch = strings.TrimSpace(t)
 			} else {
-				targetBranch, _ = git.GetDefaultBranch(repoRemote.Name)
+				project, err := api.GetProject(client, repo.FullName())
+				if err != nil {
+					return fmt.Errorf("error getting project details: %w", err)
+				}
+				targetBranch = project.DefaultBranch
 			}
 
 			sourceBranch := fmt.Sprintf("%d-%s", issue.IID, utils.ReplaceNonAlphaNumericChars(strings.ToLower(issue.Title), "-"))

@@ -259,7 +259,7 @@ func TestGetDefaultBranch(t *testing.T) {
 		},
 		{
 			name:    "Invalid repo",
-			want:    "master",
+			want:    "main",
 			args:    "testssz",
 			wantErr: true,
 		},
