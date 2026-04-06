@@ -100,8 +100,6 @@ func TestConfig_marshal(t *testing.T) {
 		Expiry:       time.Now().Add(60 * time.Second),
 	}
 
-	expectedDate := time.Now().Add(60 * time.Second)
-
 	err := marshal("gitlab.com", cfg, token)
 	require.Nil(t, err)
 
@@ -110,7 +108,7 @@ func TestConfig_marshal(t *testing.T) {
 			"is_oauth2":            "true",
 			"oauth2_refresh_token": "refresh_token",
 			"token":                "access_token",
-			"oauth2_expiry_date":   expectedDate.Format(time.RFC3339),
+			"oauth2_expiry_date":   token.Expiry.Format(time.RFC3339),
 		},
 	})
 }
