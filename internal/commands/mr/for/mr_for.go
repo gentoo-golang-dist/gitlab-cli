@@ -12,6 +12,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -63,7 +64,11 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("error getting project details: %w", err)
 				}
-				targetBranch = project.DefaultBranch
+				if project.DefaultBranch != "" {
+					targetBranch = project.DefaultBranch
+				} else {
+					targetBranch = git.DefaultBranchName
+				}
 			}
 
 			sourceBranch := fmt.Sprintf("%d-%s", issue.IID, utils.ReplaceNonAlphaNumericChars(strings.ToLower(issue.Title), "-"))

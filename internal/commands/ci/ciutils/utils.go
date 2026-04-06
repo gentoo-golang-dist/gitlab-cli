@@ -310,7 +310,7 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int64, error) {
 }
 
 // GetDefaultBranch fetches the repository's default branch from GitLab API.
-// Falls back to "main" if the API call fails or returns empty.
+// Falls back to git.DefaultBranchName if the API call fails or returns empty.
 func GetDefaultBranch(repo glrepo.Interface, client *gitlab.Client) string {
 	if repo == nil || client == nil {
 		return git.DefaultBranchName
