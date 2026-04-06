@@ -7,20 +7,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/auth/authutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
-
-// fieldsToClear a collection of all fields to clear from the config when logging out.
-var fieldsToClear = []string{
-	"token",
-	"job_token",
-	"is_oauth2",
-	"oauth2_refresh_token",
-	"oauth2_expiry_date",
-	"use_keyring",
-}
 
 type options struct {
 	io       *iostreams.IOStreams
@@ -62,11 +53,13 @@ func NewCmdLogout(f cmdutils.Factory) *cobra.Command {
 func (o *options) run() error {
 	cfg := o.config()
 
-	// Clear config entries (cfg.Set will handle keyring deletion if use_keyring is enabled)
-	for _, key := range fieldsToClear {
-		if err := cfg.Set(o.hostname, key, ""); err != nil {
-			return err
-		}
+	// Clear credential fields first (cfg.Set will handle keyring deletion if use_keyring is enabled),
+	// then clear the use_keyring preference so the host entry is fully reset.
+	if err := authutils.ClearAuthFields(cfg, o.hostname); err != nil {
+		return err
+	}
+	if err := cfg.Set(o.hostname, "use_keyring", ""); err != nil {
+		return err
 	}
 
 	if err := cfg.Write(); err != nil {

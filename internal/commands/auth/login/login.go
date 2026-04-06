@@ -193,6 +193,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		// Split hostname and subfolder
 		hostname, subfolder := splitHostnameAndSubfolder(opts.Hostname)
 
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
+			return err
+		}
+
 		err := cfg.Set(hostname, "token", opts.Token)
 		if err != nil {
 			return err
@@ -240,6 +244,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 
 		// Split hostname and subfolder
 		hostname, subfolder := splitHostnameAndSubfolder(opts.Hostname)
+
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
+			return err
+		}
 
 		err := cfg.Set(hostname, "job_token", opts.JobToken)
 		if err != nil {
@@ -490,6 +498,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 
 	// Re-split hostname in case it was changed by prompts
 	hostname, subfolder = splitHostnameAndSubfolder(hostname)
+
+	if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
+		return err
+	}
 
 	if err := cfg.Set(hostname, "token", token); err != nil {
 		return err
