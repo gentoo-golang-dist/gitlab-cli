@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
@@ -225,6 +226,15 @@ func (s *mcpServer) buildToolFromCommand(toolName, description string, cmd *cobr
 	// Determine if this is a destructive command
 	isDestructive := s.isDestructiveCommand(cmd)
 
+	// Derive args description from cmd.Use (e.g. "api <endpoint>" → "Positional arguments: <endpoint>")
+	argsDesc := "Positional arguments"
+	if parts := strings.SplitN(cmd.Use, " ", 2); len(parts) == 2 {
+		hint := strings.TrimSpace(strings.ReplaceAll(parts[1], "[flags]", ""))
+		if hint != "" {
+			argsDesc = "Positional arguments: " + hint
+		}
+	}
+
 	// Build the input schema manually
 	inputSchema := map[string]any{
 		"type": "object",
@@ -232,7 +242,7 @@ func (s *mcpServer) buildToolFromCommand(toolName, description string, cmd *cobr
 			argsParam: map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
-				"description": "Positional arguments",
+				"description": argsDesc,
 			},
 			flagsParam: map[string]any{
 				"type":        "object",
@@ -313,6 +323,11 @@ func (s *mcpServer) buildFlagSchema(flag *pflag.Flag) map[string]any {
 
 	default:
 		schema["type"] = "string"
+	}
+
+	// Add enum constraint if the flag value has a fixed set of allowed values.
+	if av, ok := flag.Value.(cmdutils.AllowedValuer); ok {
+		schema["enum"] = av.AllowedValues()
 	}
 
 	return schema
