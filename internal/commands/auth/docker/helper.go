@@ -43,6 +43,8 @@ func (h *Helper) Get(registryURL string) (string, string, error) {
 		return "", "", err
 	}
 
+	// Skip env var lookup: GITLAB_TOKEN should not override per-host credentials
+	// stored in config when acting as a Docker credential helper.
 	token, _, err := h.cfg.GetWithSource(hostname, "token", false)
 	if err != nil {
 		return "", "", err
