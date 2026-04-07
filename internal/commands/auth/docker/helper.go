@@ -38,16 +38,13 @@ func (h *Helper) Get(registryURL string) (string, string, error) {
 		return "", "", fmt.Errorf("refreshing oauth2 token: %w", err)
 	}
 
-	// Config.Get will automatically search the env which will return
-	// the $USER variable in *nix like systems which we do not want.
-	user, _, err := h.cfg.GetWithSource(hostname, "user", false)
+	user, err := h.cfg.Get(hostname, "user")
 	if err != nil {
 		return "", "", err
 	}
 
-	// Config.Get will automatically search the env which will return
-	// the $GITLAB_TOKEN variable which we do not want. We want to
-	// get the token from the config file!
+	// Skip env var lookup: GITLAB_TOKEN should not override per-host credentials
+	// stored in config when acting as a Docker credential helper.
 	token, _, err := h.cfg.GetWithSource(hostname, "token", false)
 	if err != nil {
 		return "", "", err
