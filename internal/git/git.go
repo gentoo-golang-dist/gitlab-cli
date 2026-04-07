@@ -32,7 +32,7 @@ func GetDefaultBranch(remote string) (string, error) {
 
 	output, err := run.PrepareCmd(getDefBranch).Output()
 	if err != nil {
-		return "master", err
+		return DefaultBranchName, err
 	}
 
 	return ParseDefaultBranch(output)
@@ -50,7 +50,7 @@ func ParseDefaultBranch(output []byte) (string, error) {
 		o = strings.TrimSpace(o)
 		r, err := regexp.Compile(`(HEAD branch:)\s+`)
 		if err != nil {
-			return "master", err
+			return DefaultBranchName, err
 		}
 		if r.MatchString(o) {
 			headBranch = strings.TrimPrefix(o, "HEAD branch: ")
