@@ -303,6 +303,7 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 
 	token, _ := cfg.Get(repoHost, "token")
 	jobToken, _ := cfg.Get(repoHost, "job_token")
+	tokenCommand, _ := cfg.Get(repoHost, "token_command")
 	tlsVerify, _ := cfg.Get(repoHost, "skip_tls_verify")
 	skipTlsVerify := tlsVerify == "true" || tlsVerify == "1"
 	caCert, _ := cfg.Get(repoHost, "ca_cert")
@@ -329,6 +330,12 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 	}
 
 	// determine auth source
+	// Priority (highest to lowest):
+	//   1. OAuth2 (is_oauth2=true; uses refresh token if available, access token otherwise)
+	//   2. token — env var (e.g. GITLAB_TOKEN) or config file; cfg.Get handles env-vs-config ordering
+	//   3. token_command — env var (GLAB_TOKEN_COMMAND) or config file
+	//   4. job_token
+	//   5. unauthenticated
 	var newAuthSource newAuthSource
 	switch {
 	case isOAuth2Cfg == "true":
@@ -354,6 +361,10 @@ func NewClientFromConfig(repoHost string, cfg config.Config, isGraphQL bool, use
 		// Check for PAT first since it's more common than job tokens
 		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
 			return gitlab.AccessTokenAuthSource{Token: token}, nil
+		}
+	case tokenCommand != "":
+		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
+			return NewCommandTokenAuthSource(tokenCommand, repoHost)
 		}
 	case jobToken != "":
 		newAuthSource = func(*http.Client) (gitlab.AuthSource, error) {
