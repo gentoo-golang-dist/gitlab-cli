@@ -226,10 +226,11 @@ func (s *mcpServer) buildToolFromCommand(toolName, description string, cmd *cobr
 	// Determine if this is a destructive command
 	isDestructive := s.isDestructiveCommand(cmd)
 
-	// Derive args description from cmd.Use (e.g. "api <endpoint>" → "Positional arguments: <endpoint>")
+	// Derive args description from cmd.Use (e.g. "api <endpoint>" → "Positional arguments: <endpoint>").
+	// strings.Fields handles irregular whitespace; joining the tail reconstructs multi-word arg specs cleanly.
 	argsDesc := "Positional arguments"
-	if parts := strings.SplitN(cmd.Use, " ", 2); len(parts) == 2 {
-		hint := strings.TrimSpace(strings.ReplaceAll(parts[1], "[flags]", ""))
+	if use := strings.Fields(cmd.Use); len(use) > 1 {
+		hint := strings.TrimSpace(strings.ReplaceAll(strings.Join(use[1:], " "), "[flags]", ""))
 		if hint != "" {
 			argsDesc = "Positional arguments: " + hint
 		}

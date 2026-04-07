@@ -398,6 +398,9 @@ func TestBuildFlagSchema_EnumValues(t *testing.T) {
 }
 
 // TestBuildToolFromCommand_ArgsDescription verifies that the args description is derived from cmd.Use.
+// Direct *cobra.Command construction is intentional: buildToolFromCommand operates purely on the
+// cobra.Command struct (Use, Flags, Annotations) and requires no factory, IO, or GitLab API wiring,
+// so cmdtest helpers would add overhead without benefit.
 func TestBuildToolFromCommand_ArgsDescription(t *testing.T) {
 	t.Parallel()
 
