@@ -93,10 +93,11 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmdutils.EnableRepoOverride(cmd, f)
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Rotate group access token. Ignored if a user or repository argument is set.")
-	cmd.Flags().StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
-	cmd.Flags().VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at midnight UTC on the calculated date.")
-	cmd.Flags().VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.group, "group", "g", "", "Rotate group access token. Ignored if a user or repository argument is set.")
+	fl.StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
+	fl.VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at midnight UTC on the calculated date.")
+	fl.VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
 	cmd.MarkFlagsMutuallyExclusive("duration", "expires-at")
 	return cmd
