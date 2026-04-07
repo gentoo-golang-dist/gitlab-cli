@@ -312,6 +312,14 @@ func Test_updateMRs(t *testing.T) {
 					// 2. GetMergeRequest
 					// 3. UpdateMergeRequest (to change target branch)
 
+					// GetProject is called once for the first ref (Prev == "") to get the default branch
+					testClient.MockProjects.EXPECT().
+						GetProject("stack_guy/stackproject", gomock.Any()).
+						Return(&gitlab.Project{
+							ID:            3,
+							DefaultBranch: "main",
+						}, nil, nil)
+
 					branchesToUpdate := []struct {
 						branch    string
 						iid       int64

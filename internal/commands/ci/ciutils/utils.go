@@ -15,6 +15,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
@@ -309,19 +310,16 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int64, error) {
 }
 
 // GetDefaultBranch fetches the repository's default branch from GitLab API.
-// Falls back to "main" if the API call fails or returns empty.
+// Falls back to git.DefaultBranchName if the API call fails or returns empty.
 func GetDefaultBranch(repo glrepo.Interface, client *gitlab.Client) string {
 	if repo == nil || client == nil {
-		return "main"
+		return git.DefaultBranchName
 	}
-	project, _, err := client.Projects.GetProject(repo.FullName(), nil)
-	if err != nil {
-		return "main"
+	project, err := api.GetProject(client, repo.FullName())
+	if err != nil || project.DefaultBranch == "" {
+		return git.DefaultBranchName
 	}
-	if project.DefaultBranch != "" {
-		return project.DefaultBranch
-	}
-	return "main"
+	return project.DefaultBranch
 }
 
 // GetBranch returns the specified branch, current git branch, or the default branch from API

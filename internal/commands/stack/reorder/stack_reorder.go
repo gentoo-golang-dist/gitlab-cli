@@ -199,10 +199,15 @@ func updateMRs(ctx context.Context, f cmdutils.Factory, newStack git.Stack, oldS
 			var previousBranch string
 
 			if ref.Prev == "" {
-				previousBranch, err = git.GetDefaultBranch(git.DefaultRemote)
+				baseRepo, err := f.BaseRepo()
 				if err != nil {
-					return fmt.Errorf("error getting default branch: %v", err)
+					return fmt.Errorf("error getting base repo: %w", err)
 				}
+				project, err := api.GetProject(client, baseRepo.FullName())
+				if err != nil {
+					return fmt.Errorf("error getting project details: %w", err)
+				}
+				previousBranch = project.DefaultBranch
 			} else {
 				previousBranch = newStack.Refs[ref.Prev].Branch
 			}
