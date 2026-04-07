@@ -11,9 +11,17 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
 
-var StackLocation = filepath.Join(".git", "stacked")
+const stackDirName = "stacked"
 
 const BaseBranchFile = "BASE_BRANCH"
+
+func StackBaseDir() (string, error) {
+	gitDir, err := GitCommonDir()
+	if err != nil {
+		return "", fmt.Errorf("finding git common directory: %w", err)
+	}
+	return filepath.Join(gitDir, stackDirName), nil
+}
 
 type GitRunner interface {
 	Git(args ...string) (string, error)
@@ -59,12 +67,12 @@ func GetCurrentStackTitle() (string, error) {
 }
 
 func AddStackRefDir(dir string) (string, error) {
-	baseDir, err := ToplevelDir()
+	base, err := StackBaseDir()
 	if err != nil {
-		return "", fmt.Errorf("finding top-level Git directory: %w", err)
+		return "", fmt.Errorf("finding stack base directory: %w", err)
 	}
 
-	createdDir := filepath.Join(baseDir, "/.git/stacked/", dir)
+	createdDir := filepath.Join(base, dir)
 
 	err = os.MkdirAll(createdDir, 0o755)
 	if err != nil {
@@ -75,12 +83,12 @@ func AddStackRefDir(dir string) (string, error) {
 }
 
 func StackRootDir(title string) (string, error) {
-	baseDir, err := ToplevelDir()
+	base, err := StackBaseDir()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(baseDir, StackLocation, title), nil
+	return filepath.Join(base, title), nil
 }
 
 func AddStackRefFile(title string, stackRef StackRef) error {
@@ -149,11 +157,10 @@ func UpdateStackRefFile(title string, s StackRef) error {
 }
 
 func GetStacks() ([]Stack, error) {
-	topLevelDir, err := ToplevelDir()
+	stackLocationDir, err := StackBaseDir()
 	if err != nil {
 		return nil, err
 	}
-	stackLocationDir := filepath.Join(topLevelDir, StackLocation)
 	entries, err := os.ReadDir(stackLocationDir)
 	if err != nil {
 		return nil, err

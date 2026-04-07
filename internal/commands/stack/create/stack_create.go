@@ -16,14 +16,14 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
-var longString = `Create a new stacked diff. Adds metadata to your "./.git/stacked" directory.
+var longString = `Create a new stacked diff. Adds metadata to the git directory.
 ` + text.ExperimentalString
 
 func NewCmdCreateStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	stackCreateCmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Create a new stacked diff. (EXPERIMENTAL)",
-		Long:    strings.Replace(longString, "\"./.git/stacked\"", "`./.git/stacked`", 1),
+		Long:    longString,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
 			glab stack create cool-new-feature

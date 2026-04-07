@@ -75,12 +75,13 @@ func Test_AddStackRefDir(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			baseDir := InitGitRepo(t)
+			InitGitRepo(t)
 
 			_, err := AddStackRefDir(tt.branch)
 			require.NoError(t, err)
 
-			refDir := filepath.Join(baseDir, "/.git/stacked/")
+			refDir, err := StackBaseDir()
+			require.NoError(t, err)
 
 			_, err = os.Stat(filepath.Join(refDir, tt.branch))
 			require.NoError(t, err)
@@ -112,7 +113,7 @@ func Test_StackRootDir(t *testing.T) {
 			require.NoError(t, err)
 
 			// Verify the path contains the expected components
-			require.Contains(t, got, StackLocation, "StackRootDir() should contain StackLocation")
+			require.Contains(t, got, stackDirName, "StackRootDir() should contain stack directory name")
 			require.Contains(t, got, tt.title, "StackRootDir() should contain title")
 		})
 	}
@@ -145,12 +146,14 @@ func Test_AddStackRefFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := InitGitRepo(t)
+			InitGitRepo(t)
 
 			err := AddStackRefFile(tt.args.title, tt.args.stackRef)
 			require.Nil(t, err)
 
-			file := filepath.Join(dir, StackLocation, tt.args.title, tt.args.stackRef.SHA+".json")
+			stackRoot, err := StackRootDir(tt.args.title)
+			require.NoError(t, err)
+			file := filepath.Join(stackRoot, tt.args.stackRef.SHA+".json")
 			require.True(t, config.CheckFileExists(file))
 
 			stackRef := StackRef{}
@@ -196,7 +199,7 @@ func Test_UpdateStackRefFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := InitGitRepo(t)
+			InitGitRepo(t)
 
 			// add the initial data
 			initial := StackRef{Prev: "123", Branch: "gmh"}
@@ -207,7 +210,9 @@ func Test_UpdateStackRefFile(t *testing.T) {
 
 			require.Nil(t, err)
 
-			file := filepath.Join(dir, StackLocation, tt.args.title, tt.args.stackRef.SHA+".json")
+			stackRoot, err := StackRootDir(tt.args.title)
+			require.NoError(t, err)
+			file := filepath.Join(stackRoot, tt.args.stackRef.SHA+".json")
 			require.True(t, config.CheckFileExists(file))
 
 			stackRef := StackRef{}
