@@ -103,7 +103,7 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 }
 
 func (o *options) complete(cmd *cobra.Command, args []string) error {
-	if name, err := strconv.Atoi(args[0]); err != nil {
+	if name, err := strconv.ParseInt(args[0], 10, 64); err != nil {
 		o.name = args[0]
 	} else {
 		o.name = name
@@ -120,6 +120,13 @@ func (o *options) complete(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func (o *options) nameKind() string {
+	if _, ok := o.name.(int64); ok {
+		return "ID"
+	}
+	return "name"
 }
 
 func (o *options) validate() error {
@@ -173,7 +180,7 @@ func (o *options) run() error {
 		case 1:
 			token = tokens[0]
 		case 0:
-			return cmdutils.FlagError{Err: fmt.Errorf("no token found with the name '%v'", o.name)}
+			return cmdutils.FlagError{Err: fmt.Errorf("no active token found with the %s '%v'", o.nameKind(), o.name)}
 		default:
 			return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v'. Use the ID instead.", o.name)}
 		}
@@ -202,7 +209,7 @@ func (o *options) run() error {
 			case 1:
 				token = tokens[0]
 			case 0:
-				return cmdutils.FlagError{Err: fmt.Errorf("no token found with the name '%v'", o.name)}
+				return cmdutils.FlagError{Err: fmt.Errorf("no active token found with the %s '%v'", o.nameKind(), o.name)}
 			default:
 				return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v', use the ID instead", o.name)}
 			}
@@ -235,7 +242,7 @@ func (o *options) run() error {
 			case 1:
 				token = tokens[0]
 			case 0:
-				return cmdutils.FlagError{Err: fmt.Errorf("no token found with the name '%v'", o.name)}
+				return cmdutils.FlagError{Err: fmt.Errorf("no active token found with the %s '%v'", o.nameKind(), o.name)}
 			default:
 				return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v', use the ID instead", o.name)}
 			}
