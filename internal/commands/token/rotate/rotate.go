@@ -93,17 +93,18 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmdutils.EnableRepoOverride(cmd, f)
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Rotate group access token. Ignored if a user or repository argument is set.")
-	cmd.Flags().StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
-	cmd.Flags().VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at midnight UTC on the calculated date.")
-	cmd.Flags().VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.group, "group", "g", "", "Rotate group access token. Ignored if a user or repository argument is set.")
+	fl.StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
+	fl.VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at midnight UTC on the calculated date.")
+	fl.VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
 	cmd.MarkFlagsMutuallyExclusive("duration", "expires-at")
 	return cmd
 }
 
 func (o *options) complete(cmd *cobra.Command, args []string) error {
-	if name, err := strconv.Atoi(args[0]); err != nil {
+	if name, err := strconv.ParseInt(args[0], 10, 64); err != nil {
 		o.name = args[0]
 	} else {
 		o.name = name
@@ -120,6 +121,13 @@ func (o *options) complete(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func (o *options) nameKind() string {
+	if _, ok := o.name.(int64); ok {
+		return "ID"
+	}
+	return "name"
 }
 
 func (o *options) validate() error {
@@ -173,7 +181,7 @@ func (o *options) run() error {
 		case 1:
 			token = tokens[0]
 		case 0:
-			return cmdutils.FlagError{Err: fmt.Errorf("no token found with the name '%v'", o.name)}
+			return cmdutils.FlagError{Err: fmt.Errorf("no active token found with the %s '%v'", o.nameKind(), o.name)}
 		default:
 			return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v'. Use the ID instead.", o.name)}
 		}
@@ -202,7 +210,7 @@ func (o *options) run() error {
 			case 1:
 				token = tokens[0]
 			case 0:
-				return cmdutils.FlagError{Err: fmt.Errorf("no token found with the name '%v'", o.name)}
+				return cmdutils.FlagError{Err: fmt.Errorf("no active token found with the %s '%v'", o.nameKind(), o.name)}
 			default:
 				return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v', use the ID instead", o.name)}
 			}
@@ -235,7 +243,7 @@ func (o *options) run() error {
 			case 1:
 				token = tokens[0]
 			case 0:
-				return cmdutils.FlagError{Err: fmt.Errorf("no token found with the name '%v'", o.name)}
+				return cmdutils.FlagError{Err: fmt.Errorf("no active token found with the %s '%v'", o.nameKind(), o.name)}
 			default:
 				return cmdutils.FlagError{Err: fmt.Errorf("multiple tokens found with the name '%v', use the ID instead", o.name)}
 			}
