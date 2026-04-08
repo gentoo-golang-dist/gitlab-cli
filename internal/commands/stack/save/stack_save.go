@@ -71,6 +71,11 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 				return fmt.Errorf("error adding files: %v", err)
 			}
 
+			headSHA, err := currentHeadSHA()
+			if err != nil {
+				return fmt.Errorf("error getting current HEAD: %v", err)
+			}
+
 			// get stack title
 			title, err := git.GetCurrentStackTitle()
 			if err != nil {
@@ -136,9 +141,9 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 					return fmt.Errorf("error updating old ref: %v", err)
 				}
 
-				stackRef = git.StackRef{Prev: lastRef.SHA, SHA: sha, Branch: branch, Description: description}
+				stackRef = git.StackRef{Prev: lastRef.SHA, SHA: sha, Branch: branch, Description: description, Base: headSHA}
 			} else {
-				stackRef = git.StackRef{SHA: sha, Branch: branch, Description: description}
+				stackRef = git.StackRef{SHA: sha, Branch: branch, Description: description, Base: headSHA}
 			}
 
 			err = git.AddStackRefFile(title, stackRef)
@@ -168,6 +173,15 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 	stackSaveCmd.Flags().BoolVarP(&stageAll, "all", "a", false, "Automatically stage modified and deleted tracked files.")
 
 	return stackSaveCmd
+}
+
+func currentHeadSHA() (string, error) {
+	cmd := git.GitCommand("rev-parse", "HEAD")
+	output, err := run.PrepareCmd(cmd).Output()
+	if err != nil {
+		return "", fmt.Errorf("error running git rev-parse HEAD: %v", err)
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 func checkForChanges() error {

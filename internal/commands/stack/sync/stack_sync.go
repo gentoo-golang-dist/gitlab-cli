@@ -165,6 +165,12 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 		if err != nil {
 			return err
 		}
+
+		err = refreshBaseRefs(&stack, gr)
+		if err != nil {
+			return fmt.Errorf("error updating stack base refs: %v", err)
+		}
+
 		pushAfterSync = true
 	}
 
@@ -187,6 +193,10 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 			}
 
 			if needsPush {
+				err = refreshBaseRefs(&stack, gr)
+				if err != nil {
+					return fmt.Errorf("error updating stack base refs: %v", err)
+				}
 				pushAfterSync = true
 			}
 		case strings.Contains(status, NothingToCommit):
@@ -280,6 +290,35 @@ func (o *options) complete(client *gitlab.Client) error {
 	return nil
 }
 
+func refreshBaseRefs(stack *git.Stack, gr git.GitRunner) error {
+	var prevBranch string
+	for ref := range stack.Iter() {
+		if ref.IsFirst() {
+			baseBranch, err := stack.BaseBranch(gr)
+			if err != nil {
+				return fmt.Errorf("error getting base branch: %w", err)
+			}
+			prevBranch = baseBranch
+		}
+
+		newBase, err := gr.Git("rev-parse", prevBranch)
+		if err != nil {
+			return fmt.Errorf("error getting commit SHA for %s: %v", prevBranch, err)
+		}
+		newBase = strings.TrimSpace(newBase)
+
+		ref.Base = newBase
+		err = git.UpdateStackRefFile(stack.Title, ref)
+		if err != nil {
+			return fmt.Errorf("error updating stack ref file: %v", err)
+		}
+
+		stack.Refs[ref.SHA] = ref
+		prevBranch = ref.Branch
+	}
+	return nil
+}
+
 func getStack() (git.Stack, error) {
 	title, err := git.GetCurrentStackTitle()
 	if err != nil {
@@ -339,11 +378,46 @@ func rebaseWithUpdateRefs(io *iostreams.IOStreams, target string, stack *git.Sta
 	}
 	dbg.Debug("Checked out:", checkout)
 
-	rebase, err := gr.Git("rebase", "--fork-point", "--update-refs", target)
+	firstRef := stack.First()
+	if firstRef.Base != "" {
+		rebase, err := gr.Git("rebase", "--onto", target, firstRef.Base, lastRef.Branch, "--update-refs")
+		if err != nil {
+			return errors.New(errorString(
+				io,
+				"could not rebase onto "+target+", likely due to a merge conflict.",
+				"Fix the issues with Git and run `glab stack sync` again.",
+			))
+		}
+		dbg.Debug("Rebased:", rebase)
+	} else {
+		rebase, err := gr.Git("rebase", "--fork-point", "--update-refs", target)
+		if err != nil {
+			return errors.New(errorString(
+				io,
+				"could not rebase onto "+target+", likely due to a merge conflict.",
+				"Fix the issues with Git and run `glab stack sync` again.",
+			))
+		}
+		dbg.Debug("Rebased:", rebase)
+	}
+
+	return nil
+}
+
+func rebaseOntoWithUpdateRefs(io *iostreams.IOStreams, onto string, base string, stack *git.Stack, gr git.GitRunner) error {
+	lastRef := stack.Last()
+
+	checkout, err := gr.Git("checkout", lastRef.Branch)
+	if err != nil {
+		return err
+	}
+	dbg.Debug("Checked out:", checkout)
+
+	rebase, err := gr.Git("rebase", "--onto", onto, base, lastRef.Branch, "--update-refs")
 	if err != nil {
 		return errors.New(errorString(
 			io,
-			"could not rebase onto "+target+", likely due to a merge conflict.",
+			"could not rebase onto "+onto+", likely due to a merge conflict.",
 			"Fix the issues with Git and run `glab stack sync` again.",
 		))
 	}
@@ -488,6 +562,17 @@ func progressString(io *iostreams.IOStreams, lines ...string) string {
 
 func branchDiverged(io *iostreams.IOStreams, ref *git.StackRef, stack *git.Stack, gr git.GitRunner) (bool, error) {
 	fmt.Println(progressString(io, ref.Branch+" has diverged. Rebasing..."))
+
+	if !ref.IsLast() {
+		nextRef := stack.Refs[ref.Next]
+		if nextRef.Base != "" {
+			err := rebaseOntoWithUpdateRefs(io, ref.Branch, nextRef.Base, stack, gr)
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		}
+	}
 
 	err := rebaseWithUpdateRefs(io, ref.Branch, stack, gr)
 	if err != nil {
