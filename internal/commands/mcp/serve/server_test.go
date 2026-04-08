@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
@@ -371,6 +372,84 @@ func TestBuildFlagSchema(t *testing.T) {
 			assert.NotContains(t, schema, "default")
 			assert.NotContains(t, schema, "description")
 			assert.NotContains(t, schema, "minimum")
+		})
+	}
+}
+
+// TestBuildFlagSchema_EnumValues verifies that flags backed by enumValue produce an "enum" constraint in the schema.
+func TestBuildFlagSchema_EnumValues(t *testing.T) {
+	t.Parallel()
+
+	server := &mcpServer{}
+
+	cmd := &cobra.Command{Use: "test", Short: "Test", RunE: func(cmd *cobra.Command, args []string) error { return nil }}
+
+	var outputFormat string
+	cmd.Flags().Var(cmdutils.NewEnumValue([]string{"json", "ndjson"}, "json", &outputFormat), "output", "Format output as: json, ndjson.")
+
+	flag := cmd.Flags().Lookup("output")
+	require.NotNil(t, flag)
+
+	schema := server.buildFlagSchema(flag)
+	require.NotNil(t, schema)
+
+	assert.Equal(t, "string", schema["type"])
+	assert.Equal(t, []string{"json", "ndjson"}, schema["enum"], "enum constraint should list allowed values in sorted order")
+}
+
+// TestBuildToolFromCommand_ArgsDescription verifies that the args description is derived from cmd.Use.
+// Direct *cobra.Command construction is intentional: buildToolFromCommand operates purely on the
+// cobra.Command struct (Use, Flags, Annotations) and requires no factory, IO, or GitLab API wiring,
+// so cmdtest helpers would add overhead without benefit.
+func TestBuildToolFromCommand_ArgsDescription(t *testing.T) {
+	t.Parallel()
+
+	server := &mcpServer{}
+
+	tests := []struct {
+		use          string
+		expectedDesc string
+	}{
+		{
+			use:          "api <endpoint>",
+			expectedDesc: "Positional arguments: <endpoint>",
+		},
+		{
+			use:          "view <id>",
+			expectedDesc: "Positional arguments: <id>",
+		},
+		{
+			use:          "list",
+			expectedDesc: "Positional arguments",
+		},
+		{
+			use:          "run [flags]",
+			expectedDesc: "Positional arguments",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.use, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := &cobra.Command{
+				Use:         tt.use,
+				Short:       "Test",
+				Annotations: map[string]string{mcpannotations.Safe: "true"},
+				RunE:        func(cmd *cobra.Command, args []string) error { return nil },
+			}
+
+			tool := server.buildToolFromCommand("test_tool", "desc", cmd)
+			require.NotNil(t, tool)
+
+			schema, ok := tool.InputSchema.(map[string]any)
+			require.True(t, ok)
+			properties, ok := schema["properties"].(map[string]any)
+			require.True(t, ok)
+			argsSchema, ok := properties["args"].(map[string]any)
+			require.True(t, ok)
+
+			assert.Equal(t, tt.expectedDesc, argsSchema["description"])
 		})
 	}
 }
