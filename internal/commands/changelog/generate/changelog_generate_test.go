@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
@@ -19,16 +18,11 @@ import (
 
 func TestChangelogGenerate(t *testing.T) {
 	tc := gitlabtesting.NewTestClient(t)
-	gomock.InOrder(
-		tc.MockProjects.EXPECT().
-			GetProject("OWNER/REPO", gomock.Any()).
-			Return(&gitlab.Project{ID: int64(37777023)}, nil, nil),
-		tc.MockRepositories.EXPECT().
-			GenerateChangelogData(int64(37777023), gitlab.GenerateChangelogDataOptions{Version: new("1.0.0")}).
-			Return(&gitlab.ChangelogData{
-				Notes: "## 1.0.0 (2023-04-02)\n\n### FirstName LastName firstname@lastname.com (1 changes)\n\n- [initial commit](gitlab-org/cli@somehash ([merge request](gitlab-org/cli!1))\n",
-			}, nil, nil),
-	)
+	tc.MockRepositories.EXPECT().
+		GenerateChangelogData("OWNER/REPO", gitlab.GenerateChangelogDataOptions{Version: new("1.0.0")}).
+		Return(&gitlab.ChangelogData{
+			Notes: "## 1.0.0 (2023-04-02)\n\n### FirstName LastName firstname@lastname.com (1 changes)\n\n- [initial commit](gitlab-org/cli@somehash ([merge request](gitlab-org/cli!1))\n",
+		}, nil, nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
@@ -67,14 +61,9 @@ func TestChangelogGenerateWithError(t *testing.T) {
 	for name, v := range cases {
 		t.Run(name, func(t *testing.T) {
 			tc := gitlabtesting.NewTestClient(t)
-			gomock.InOrder(
-				tc.MockProjects.EXPECT().
-					GetProject("OWNER/REPO", gomock.Any()).
-					Return(&gitlab.Project{ID: int64(37777023)}, nil, nil),
-				tc.MockRepositories.EXPECT().
-					GenerateChangelogData(int64(37777023), gitlab.GenerateChangelogDataOptions{Version: new("1.0.0")}).
-					Return(nil, nil, errors.New(v.errorMsg)),
-			)
+			tc.MockRepositories.EXPECT().
+				GenerateChangelogData("OWNER/REPO", gitlab.GenerateChangelogDataOptions{Version: new("1.0.0")}).
+				Return(nil, nil, errors.New(v.errorMsg))
 
 			exec := cmdtest.SetupCmdForTest(
 				t,

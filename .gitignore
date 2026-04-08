@@ -77,3 +77,6 @@ scripts/commit-lint/node_modules/
 
 # fd utility
 .fdignore
+
+# Claude Code personal settings
+.claude/settings.local.json

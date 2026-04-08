@@ -236,6 +236,12 @@ func TestEnvKeyEquivalence(t *testing.T) {
 			givenKey:         "duo_cli_binary_path",
 			expectedKeys:     []string{"GLAB_DUO_CLI_BINARY_PATH"},
 		},
+		{
+			autologinEnabled: false,
+			inCi:             false,
+			givenKey:         "user",
+			expectedKeys:     []string{"GLAB_USER"},
+		},
 	}
 
 	// clear potentially set keys that we use during tests
