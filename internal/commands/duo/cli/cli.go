@@ -38,31 +38,40 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "Run the GitLab Duo CLI (Beta)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
-		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
-		Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
-		on your behalf.
+Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
+Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
+on your behalf.
 
-		When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
-		authentication for you automatically.
-		You only need to authenticate once.
+When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
+authentication for you automatically.
+You only need to authenticate once.
 
-		Prerequisites:
+Prerequisites:
 
-		- Use GitLab 18.11 or later.
-		- Run %[1]sglab auth login%[1]s to authenticate.
-		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
-		- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
+- Use GitLab 18.11 or later.
+- Run %[1]sglab auth login%[1]s to authenticate.
+- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
-		Configuration options:
+Configuration options:
 
-		- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
-		- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
+- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
+- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
 
-		All arguments and flags are passed through to the GitLab Duo CLI binary.
-		Use %[1]s--update%[1]s to check for and install updates to the binary.
+All arguments and flags are passed through to the GitLab Duo CLI binary.
 
-		For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
-	`, "`") + text.BetaString,
+Use %[1]s--update%[1]s to check for and install updates to the binary.
+
+For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
+`, "`") + text.BetaString,
+		Annotations: map[string]string{
+			"help:environment": heredoc.Docf(`
+			- %[1]sGLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
+			  Skips download, version checks, and updates. Can also be set via the
+			  %[1]sduo_cli_binary_path%[1]s configuration key.
+			`, "`"),
+		},
+
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
 		glab duo cli
@@ -153,12 +162,24 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) run(ctx context.Context) error {
+	managedPath, err := cliutils.ManagedBinaryPath()
+	if err != nil {
+		return err
+	}
+
+	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
+
+	if installedPath != "" && installedPath != managedPath && o.update {
+		color := o.io.Color()
+		o.io.LogInfof("%s Updates are not applicable when using a custom binary path (%s).\n", color.DotWarnIcon(), installedPath)
+		return nil
+	}
+
 	if o.update {
 		return o.handleUpdate(ctx)
 	}
 
 	installedVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
-	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
 	autoDownload, _ := o.cfg.Get("", "duo_cli_auto_download")
 
 	info, err := o.manager.EnsureInstalled(ctx, installedVersion, installedPath, autoDownload)
@@ -166,12 +187,16 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	if err := o.saveBinaryInfo(info); err != nil {
+	if info.Path == managedPath {
+		if err := o.saveBinaryInfo(info); err != nil {
+			color := o.io.Color()
+			o.io.LogInfof("%s Failed to save binary metadata: %v\n", color.DotWarnIcon(), err)
+		}
+		o.checkForUpdates(ctx)
+	} else {
 		color := o.io.Color()
-		o.io.LogInfof("%s Failed to save binary metadata: %v\n", color.DotWarnIcon(), err)
+		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), info.Path)
 	}
-
-	o.checkForUpdates(ctx)
 
 	if err := o.checkAutoRun(ctx); err != nil {
 		return err

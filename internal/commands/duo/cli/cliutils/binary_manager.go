@@ -60,9 +60,19 @@ func NewBinaryManager(io *iostreams.IOStreams) *BinaryManager {
 	}
 }
 
+// ManagedBinaryPath returns the path where the managed Duo CLI binary is installed.
+func ManagedBinaryPath() (string, error) {
+	platform, err := detectPlatform()
+	if err != nil {
+		return "", err
+	}
+	return platform.binaryPath(), nil
+}
+
 // EnsureInstalled ensures the Duo CLI binary is installed and returns metadata.
-// If the binary is not installed, it prompts the user and downloads it.
-// The caller should check if binaryPath matches expectedPath and if binary is valid.
+// If installedPath points to a custom location (outside the managed install dir),
+// it validates the path and returns it directly without downloading.
+// Otherwise, if the managed binary is missing or invalid, it prompts and downloads it.
 func (m *BinaryManager) EnsureInstalled(ctx context.Context, installedVersion, installedPath string, autoDownload string) (*BinaryInfo, error) {
 	platform, err := detectPlatform()
 	if err != nil {
@@ -71,11 +81,21 @@ func (m *BinaryManager) EnsureInstalled(ctx context.Context, installedVersion, i
 
 	binaryPath := platform.binaryPath()
 
-	if installedVersion != "" && installedPath == binaryPath && m.isBinaryValid(binaryPath) {
+	// Custom path: user has explicitly configured a path outside the managed install dir.
+	if installedPath != "" && installedPath != binaryPath {
+		if err := validateBinaryPath(installedPath); err != nil {
+			return nil, err
+		}
 		return &BinaryInfo{
-			Path:     binaryPath,
-			Version:  installedVersion,
-			Checksum: "",
+			Path:    installedPath,
+			Version: installedVersion,
+		}, nil
+	}
+
+	if installedVersion != "" && m.isBinaryValid(binaryPath) {
+		return &BinaryInfo{
+			Path:    binaryPath,
+			Version: installedVersion,
 		}, nil
 	}
 
@@ -88,6 +108,24 @@ func (m *BinaryManager) EnsureInstalled(ctx context.Context, installedVersion, i
 	}
 
 	return m.downloadAndInstall(ctx, platform)
+}
+
+// validateBinaryPath checks that the given path exists and is an executable file.
+func validateBinaryPath(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but the file was not found. Check that the path is correct", path)
+		}
+		return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but it could not be accessed: %w", path, err)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but it is a directory, not an executable file", path)
+	}
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
+		return fmt.Errorf("GLAB_DUO_CLI_BINARY_PATH is set to %q, but the file is not executable. Run: chmod +x %s", path, path)
+	}
+	return nil
 }
 
 // CheckForUpdate checks if a newer version of Duo CLI is available within the supported major version.
