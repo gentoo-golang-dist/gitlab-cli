@@ -34,10 +34,10 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			glab mr note 123
 
 			# Resolve a discussion by note ID
-			glab mr note 123 --resolve 3107030349
+			glab mr note resolve 123 3107030349
 
-			# Unresolve a discussion by note ID
-			glab mr note 123 --unresolve 3107030349`),
+			# Reopen a discussion by note ID
+			glab mr note reopen 123 3107030349`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
