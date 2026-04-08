@@ -91,12 +91,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 				opts.Trailer = new(s)
 			}
 
-			project, err := repo.Project(client)
-			if err != nil {
-				return err
-			}
-
-			changelog, _, err := client.Repositories.GenerateChangelogData(project.ID, opts)
+			changelog, _, err := client.Repositories.GenerateChangelogData(repo.FullName(), opts)
 			if err != nil {
 				return err
 			}
