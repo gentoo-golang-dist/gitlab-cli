@@ -32,7 +32,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.21
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/modelcontextprotocol/go-sdk v1.4.1
+	github.com/modelcontextprotocol/go-sdk v1.5.0
 	github.com/muesli/termenv v0.16.0
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
