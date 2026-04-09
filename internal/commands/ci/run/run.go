@@ -16,7 +16,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
@@ -240,9 +239,6 @@ If used with merge request pipelines, the command fails with a message like ` + 
 
 ` + cmdutils.PipelineInputsDescription,
 		Args: cobra.ExactArgs(0),
-		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 

@@ -24,7 +24,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -173,7 +172,6 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 			  }'
 		`),
 		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
 			"help:environment": heredoc.Doc(`
 				GITLAB_TOKEN, OAUTH_TOKEN (in order of precedence): an authentication token for API requests.
 				GITLAB_HOST, GITLAB_URI, GITLAB_URL: specify a GitLab host to make request to.

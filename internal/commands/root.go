@@ -26,7 +26,6 @@ import (
 	iterationCmd "gitlab.com/gitlab-org/cli/internal/commands/iteration"
 	jobCmd "gitlab.com/gitlab-org/cli/internal/commands/job"
 	labelCmd "gitlab.com/gitlab-org/cli/internal/commands/label"
-	mcpCmd "gitlab.com/gitlab-org/cli/internal/commands/mcp"
 	milestoneCmd "gitlab.com/gitlab-org/cli/internal/commands/milestone"
 	mrCmd "gitlab.com/gitlab-org/cli/internal/commands/mr"
 	opentofuCmd "gitlab.com/gitlab-org/cli/internal/commands/opentofu"
@@ -158,7 +157,6 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(iterationCmd.NewCmdIteration(f))
 	rootCmd.AddCommand(jobCmd.NewCmdJob(f))
 	rootCmd.AddCommand(labelCmd.NewCmdLabel(f))
-	rootCmd.AddCommand(mcpCmd.NewCmdMCP(f))
 	rootCmd.AddCommand(milestoneCmd.NewCmdMilestone(f))
 	rootCmd.AddCommand(mrCmd.NewCmdMR(f))
 	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
