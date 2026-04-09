@@ -17,7 +17,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
 
@@ -97,10 +96,7 @@ func NewCmdAsk(f cmdutils.Factory) *cobra.Command {
 
 			# Explain how to display files changed in the last commit
 			glab duo ask show me files changed in the last commit`),
-		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(cmd *cobra.Command, args []string) error {
 			if !opts.Git {
 				return nil
 			}

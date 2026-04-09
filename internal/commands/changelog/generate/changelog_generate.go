@@ -12,7 +12,6 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
@@ -24,9 +23,6 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 			# Generate a changelog
 			glab changelog generate`),
 		Args: cobra.ExactArgs(0),
-		Annotations: map[string]string{
-			mcpannotations.Destructive: "true",
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := f.GitLabClient()
 			if err != nil {

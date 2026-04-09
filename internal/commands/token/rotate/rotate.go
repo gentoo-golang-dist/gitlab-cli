@@ -19,7 +19,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/token/tokenduration"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
 type options struct {
@@ -76,9 +75,6 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 
 		# Rotate a personal access token of another user (administrator only)
 		glab token rotate --user johndoe johns-personal-token --duration 90d`),
-		Annotations: map[string]string{
-			mcpannotations.Exclude: "true",
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(cmd, args); err != nil {
 				return err
