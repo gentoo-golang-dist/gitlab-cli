@@ -94,7 +94,6 @@ in the main README.
 - [`glab iteration`](iteration/_index.md)
 - [`glab job`](job/_index.md)
 - [`glab label`](label/_index.md)
-- [`glab mcp`](mcp/_index.md)
 - [`glab milestone`](milestone/_index.md)
 - [`glab mr`](mr/_index.md)
 - [`glab opentofu`](opentofu/_index.md)
