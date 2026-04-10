@@ -27,7 +27,7 @@ func Test_NewCmdCreate(t *testing.T) {
 	t.Run("--message flag specified", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		testClient.MockDiscussions.EXPECT().
 			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
@@ -52,7 +52,7 @@ func Test_NewCmdCreate(t *testing.T) {
 	t.Run("merge request not found", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := setupMRNotFound(t)
+		testClient := setupCreateMRNotFound(t)
 
 		exec := setupCreateExec(t, testClient)
 
@@ -68,7 +68,7 @@ func Test_NewCmdCreate_error(t *testing.T) {
 	t.Run("note could not be created", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		unauthorizedResp := &gitlab.Response{
 			Response: &http.Response{StatusCode: http.StatusUnauthorized},
@@ -89,7 +89,7 @@ func Test_cmdCreate_prompt(t *testing.T) {
 	// uses global state (charmbracelet/bubbles runeutil sanitizer).
 
 	t.Run("message provided via prompt", func(t *testing.T) {
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		testClient.MockDiscussions.EXPECT().
 			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
@@ -123,7 +123,7 @@ func Test_cmdCreate_prompt(t *testing.T) {
 	})
 
 	t.Run("message is empty", func(t *testing.T) {
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		c := ugh.New(t)
 		c.Expect(ugh.Input("Note message:")).
@@ -149,7 +149,7 @@ func Test_cmdCreate_unique_prompt(t *testing.T) {
 	// uses global state (charmbracelet/bubbles runeutil sanitizer).
 
 	t.Run("duplicate found", func(t *testing.T) {
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		testClient.MockNotes.EXPECT().
 			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
@@ -186,7 +186,7 @@ func Test_cmdCreate_unique(t *testing.T) {
 	t.Run("no duplicate creates new note", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		testClient.MockNotes.EXPECT().
 			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
@@ -220,7 +220,7 @@ func Test_cmdCreate_stdin(t *testing.T) {
 	t.Run("reads body from stdin when not a TTY", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		testClient.MockDiscussions.EXPECT().
 			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
@@ -251,7 +251,7 @@ func Test_cmdCreate_stdin(t *testing.T) {
 	t.Run("empty stdin produces error", func(t *testing.T) {
 		t.Parallel()
 
-		testClient := setupMR(t)
+		testClient := setupCreateMR(t)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdCreate(f)
@@ -270,7 +270,7 @@ func Test_cmdCreate_stdin(t *testing.T) {
 
 // --- test helpers ---
 
-func setupMR(t *testing.T) *gitlabtesting.TestClient {
+func setupCreateMR(t *testing.T) *gitlabtesting.TestClient {
 	t.Helper()
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockMergeRequests.EXPECT().
@@ -285,7 +285,7 @@ func setupMR(t *testing.T) *gitlabtesting.TestClient {
 	return testClient
 }
 
-func setupMRNotFound(t *testing.T) *gitlabtesting.TestClient {
+func setupCreateMRNotFound(t *testing.T) *gitlabtesting.TestClient {
 	t.Helper()
 	testClient := gitlabtesting.NewTestClient(t)
 	notFoundResp := &gitlab.Response{
