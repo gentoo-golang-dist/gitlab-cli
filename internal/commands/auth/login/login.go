@@ -477,6 +477,17 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		loginType = promptLoginTypeWeb
 	}
 
+	// Re-split hostname in case it was changed by prompts
+	hostname, subfolder = splitHostnameAndSubfolder(hostname)
+
+	// Clear any stale credentials before obtaining new ones, so that switching
+	// auth methods (e.g. OAuth → PAT or PAT → OAuth) never leaves orphaned fields
+	// behind. For the OAuth path this must happen before oauth2.StartFlow, which
+	// calls marshal() to write all OAuth fields; clearing afterwards would erase them.
+	if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
+		return err
+	}
+
 	var token string
 	var err error
 	if strings.EqualFold(loginType, promptLoginTypeToken) {
@@ -494,13 +505,6 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	// Re-split hostname in case it was changed by prompts
-	hostname, subfolder = splitHostnameAndSubfolder(hostname)
-
-	if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
-		return err
 	}
 
 	if err := cfg.Set(hostname, "token", token); err != nil {
