@@ -34,7 +34,7 @@ glab ci get --mr=42 --failed-jobs-only
 
 ```plaintext
   -b, --branch string      Check pipeline status for a branch. (default current branch)
-      --failed-jobs-only   Show only failed jobs. Implies --with-job-details.
+      --failed-jobs-only   Show only failed jobs, including in JSON output. Implies --with-job-details for text output.
       --mr int             Show the pipeline for the given merge request IID.
   -F, --output string      Format output. Options: text, json. (default "text")
   -p, --pipeline-id int    Provide pipeline ID.
