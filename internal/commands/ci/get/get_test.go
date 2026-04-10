@@ -206,8 +206,8 @@ started:	2023-10-10 00:00:00 +0000 UTC
 updated:	2023-10-10 00:00:00 +0000 UTC
 
 # Jobs:
-ID	Name	Status	Duration	Failure reason
-123	publish	failed	0	bad timing
+ID	Name	Stage	Status	Duration	Failure reason	URL
+123	publish		failed	0	bad timing	
 
 `,
 			setupMock: func(tc *gitlabtesting.TestClient) {
@@ -421,6 +421,106 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
 					Return([]*gitlab.Job{}, lastPageResponse, nil)
+			},
+		},
+		{
+			name: "when --mr flag is used to get pipeline from merge request",
+			args: "--mr=42",
+			expectedOut: `# Pipeline:
+id:	123
+status:	failed
+source:	merge_request_event
+ref:	feature-branch
+sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
+tag:	false
+yaml Errors:	-
+user:	test
+created:	2023-10-10 00:00:00 +0000 UTC
+started:	2023-10-10 00:00:00 +0000 UTC
+updated:	2023-10-10 00:00:00 +0000 UTC
+
+# Jobs:
+build:	success
+test:	failed
+
+`,
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockMergeRequests.EXPECT().
+					GetMergeRequest("OWNER/REPO", int64(42), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 42},
+						HeadPipeline: &gitlab.Pipeline{
+							ID: 123,
+						},
+					}, nil, nil)
+				tc.MockPipelines.EXPECT().
+					GetPipeline("OWNER/REPO", int64(123)).
+					Return(&gitlab.Pipeline{
+						ID:         123,
+						IID:        123,
+						Status:     "failed",
+						Source:     "merge_request_event",
+						Ref:        "feature-branch",
+						SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						User:       &gitlab.BasicUser{Username: "test"},
+						YamlErrors: "-",
+						CreatedAt:  &createdAt,
+						StartedAt:  &startedAt,
+						UpdatedAt:  &updatedAt,
+					}, nil, nil)
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "build", Status: "success"},
+						{ID: 2, Name: "test", Status: "failed"},
+					}, lastPageResponse, nil)
+			},
+		},
+		{
+			name: "when --failed-jobs-only shows only failed jobs with details",
+			args: "-p=123 --failed-jobs-only",
+			expectedOut: `# Pipeline:
+id:	123
+status:	failed
+source:	push
+ref:	main
+sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
+tag:	false
+yaml Errors:	-
+user:	test
+created:	2023-10-10 00:00:00 +0000 UTC
+started:	2023-10-10 00:00:00 +0000 UTC
+updated:	2023-10-10 00:00:00 +0000 UTC
+
+# Jobs:
+ID	Name	Stage	Status	Duration	Failure reason	URL
+2	test	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/2
+3	lint	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/3
+
+`,
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockPipelines.EXPECT().
+					GetPipeline("OWNER/REPO", int64(123)).
+					Return(&gitlab.Pipeline{
+						ID:         123,
+						IID:        123,
+						Status:     "failed",
+						Source:     "push",
+						Ref:        "main",
+						SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						User:       &gitlab.BasicUser{Username: "test"},
+						YamlErrors: "-",
+						CreatedAt:  &createdAt,
+						StartedAt:  &startedAt,
+						UpdatedAt:  &updatedAt,
+					}, nil, nil)
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 1, Name: "build", Stage: "build", Status: "success", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/1"},
+						{ID: 2, Name: "test", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/2"},
+						{ID: 3, Name: "lint", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/3"},
+					}, lastPageResponse, nil)
 			},
 		},
 	}
