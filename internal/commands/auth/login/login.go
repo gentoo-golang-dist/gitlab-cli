@@ -477,11 +477,22 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		loginType = promptLoginTypeWeb
 	}
 
+	// Re-split hostname in case it was changed by prompts
+	hostname, subfolder = splitHostnameAndSubfolder(hostname)
+
 	var token string
 	var err error
 	if strings.EqualFold(loginType, promptLoginTypeToken) {
 		token, err = showTokenPrompt(ctx, opts.IO, hostname)
 		if err != nil {
+			return err
+		}
+
+		// Clear stale OAuth fields only after the prompt succeeds, so that a
+		// cancelled or failed login leaves existing credentials intact.
+		// This handles the OAuth → PAT switch: is_oauth2 / refresh / expiry fields
+		// that were set by a previous OAuth login are removed before the PAT is saved.
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
 			return err
 		}
 	} else {
@@ -490,17 +501,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
+		// StartFlow calls marshal() internally, which writes is_oauth2, token,
+		// oauth2_refresh_token, and oauth2_expiry_date.  No explicit ClearAuthFields
+		// is needed: marshal() overwrites every field it owns, and is_oauth2=true
+		// ensures the OAuth auth source wins over any residual job_token.
 		token, err = oauth2.StartFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
 		if err != nil {
 			return err
 		}
-	}
-
-	// Re-split hostname in case it was changed by prompts
-	hostname, subfolder = splitHostnameAndSubfolder(hostname)
-
-	if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
-		return err
 	}
 
 	if err := cfg.Set(hostname, "token", token); err != nil {
