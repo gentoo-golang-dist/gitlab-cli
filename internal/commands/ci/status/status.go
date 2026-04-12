@@ -45,7 +45,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 		       glab ci status --live
 
-			   # Wait to return until the pipeline is finished
+			   # Wait to return until the pipeline is finished, and provide output without a prompt.
 			   glab ci status --wait
 
 		       # A more compact view
@@ -271,7 +271,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
 	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
-	pipelineStatusCmd.Flags().BoolP("wait", "w", false, "Wait to return until the pipeline is finished.")
+	pipelineStatusCmd.Flags().BoolP("wait", "w", false, "Wait to return until the pipeline is finished, and provide output without a prompt.")
 	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
 	cmdutils.EnableJSONOutput(pipelineStatusCmd, &opts.outputFormat, "Format output as: text, json. Note: JSON output is not compatible with --live, --wait, or --compact flags.")
 
