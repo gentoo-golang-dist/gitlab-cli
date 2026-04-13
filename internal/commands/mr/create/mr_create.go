@@ -913,7 +913,7 @@ func repoRemote(opts *options, repo glrepo.Interface, project *gitlab.Project, r
 }
 
 func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourceBranch string) string {
-	if sourceBranch != "" && client != nil && targetProject != nil {
+	if sourceBranch != "" {
 		rules, _, err := client.Projects.ListProjectTargetBranchRules(targetProject.PathWithNamespace)
 		if err == nil {
 			for _, rule := range rules {
@@ -923,10 +923,7 @@ func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourc
 			}
 		}
 	}
-	if targetProject != nil {
-		return targetProject.DefaultBranch
-	}
-	return ""
+	return targetProject.DefaultBranch
 }
 
 // matchBranchPattern reports whether branch matches a GitLab branch name
