@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
+	"github.com/muesli/termenv"
 
 	"gitlab.com/gitlab-org/cli/internal/theme"
 )
@@ -35,7 +36,15 @@ type ColorPalette struct {
 
 func (s *IOStreams) Color() *ColorPalette {
 	isColorfulOutput := s.ColorEnabled() && s.IsaTTY
-	isDark := s.BackgroundColor() == "dark" // already cached, no second terminal query
+	var isDark bool
+	switch s.BackgroundColor() { // could be simplified if commands like `ci list` called `ResolveBackgroundColor()`
+	case "dark":
+		isDark = true
+	case "light":
+		isDark = false
+	default: // "none" — not yet resolved, detect now if color is enabled
+		isDark = isColorfulOutput && termenv.HasDarkBackground()
+	}
 	lightDark := lipgloss.LightDark(isDark)
 	glc := theme.NewGitLabColors(lightDark) // reuse existing palette
 
