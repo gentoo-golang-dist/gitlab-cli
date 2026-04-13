@@ -402,7 +402,7 @@ func (o *options) run(ctx context.Context) error {
 		var err error
 		o.TargetBranch, err = getTargetBranch(client, o.TargetProject, o.SourceBranch)
 		if err != nil {
-			fmt.Fprintf(o.io.StdErr, "warning: failed to fetch target branch rules: %v\n", err)
+			o.io.LogErrorf("warning: failed to fetch target branch rules: %v\n", err)
 		}
 	}
 
