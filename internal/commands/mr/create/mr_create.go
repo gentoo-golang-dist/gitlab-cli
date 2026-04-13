@@ -399,7 +399,11 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.TargetBranch == "" {
-		o.TargetBranch = getTargetBranch(client, o.TargetProject, o.SourceBranch)
+		var err error
+		o.TargetBranch, err = getTargetBranch(client, o.TargetProject, o.SourceBranch)
+		if err != nil {
+			fmt.Fprintf(o.io.StdErr, "warning: failed to fetch target branch rules: %v\n", err)
+		}
 	}
 
 	if o.RelatedIssue != "" {
@@ -912,18 +916,19 @@ func repoRemote(opts *options, repo glrepo.Interface, project *gitlab.Project, r
 	return repoRemote, nil
 }
 
-func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourceBranch string) string {
+func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourceBranch string) (string, error) {
 	if sourceBranch != "" {
 		rules, _, err := client.Projects.ListProjectTargetBranchRules(targetProject.PathWithNamespace)
-		if err == nil {
-			for _, rule := range rules {
-				if matched, _ := matchBranchPattern(rule.Name, sourceBranch); matched {
-					return rule.TargetBranch
-				}
+		if err != nil {
+			return targetProject.DefaultBranch, err
+		}
+		for _, rule := range rules {
+			if matched, _ := matchBranchPattern(rule.Name, sourceBranch); matched {
+				return rule.TargetBranch, nil
 			}
 		}
 	}
-	return targetProject.DefaultBranch
+	return targetProject.DefaultBranch, nil
 }
 
 // matchBranchPattern reports whether branch matches a GitLab branch name
