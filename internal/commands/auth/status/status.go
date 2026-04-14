@@ -1,11 +1,15 @@
 package status
 
 import (
+	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -54,7 +58,7 @@ func NewCmdStatus(f cmdutils.Factory, runE func(*options) error) *cobra.Command 
 				return runE(opts)
 			}
 
-			return opts.run()
+			return opts.run(cmd.Context())
 		},
 	}
 
@@ -67,7 +71,7 @@ func NewCmdStatus(f cmdutils.Factory, runE func(*options) error) *cobra.Command 
 	return cmd
 }
 
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	c := o.io.Color()
 	cfg := o.config()
 
@@ -111,7 +115,9 @@ func (o *options) run() error {
 			apiClient, _ = o.httpClientOverride(token, instance)
 		}
 		if err == nil {
-			user, resp, err := apiClient.Lab().Users.CurrentUser()
+			authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			user, resp, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
+			cancel()
 			if err != nil {
 				failedAuth = true
 				addMsg("%s %s: API call failed: %s", c.FailedIcon(), instance, err)

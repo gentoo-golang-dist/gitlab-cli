@@ -10,10 +10,13 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -422,7 +425,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
-		user, _, err := apiClient.Lab().Users.CurrentUser()
+		authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 		if err == nil {
 			username := user.Username
 			keepGoing := false // default value
@@ -613,7 +618,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		return err
 	}
 
-	user, _, err := apiClient.Lab().Users.CurrentUser()
+	authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 	if err != nil {
 		return fmt.Errorf("error using API: %w", err)
 	}
