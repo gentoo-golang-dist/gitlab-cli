@@ -77,7 +77,7 @@ glab release create v1.0.1 --assets-links='
 # In a CI/CD pipeline, write the tag message to a file before passing it
 # to avoid shell quoting failures when the message contains both single
 # and double quotes (for example, when using $CI_COMMIT_MESSAGE).
-printf '`' "$CI_COMMIT_MESSAGE" > tag_message.txt
+printf '%s' "$CI_COMMIT_MESSAGE" > tag_message.txt
 glab release create v1.0.1 --tag-message "$(cat tag_message.txt)"
 
 # (EXPERIMENTAL) Create a release and publish it to the GitLab CI/CD catalog
