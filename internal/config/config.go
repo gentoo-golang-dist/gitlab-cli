@@ -32,10 +32,12 @@ func keyringGet(service, user string) (string, error) {
 		v, err := keyring.Get(service, user)
 		ch <- result{v, err}
 	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
 	select {
 	case r := <-ch:
 		return r.val, r.err
-	case <-time.After(keyringTimeout):
+	case <-timer.C:
 		return "", errors.New("keyring operation timed out: the secret service daemon may not be running or is locked")
 	}
 }
@@ -46,10 +48,12 @@ func keyringSet(service, user, password string) error {
 	go func() {
 		ch <- keyring.Set(service, user, password)
 	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
 	select {
 	case err := <-ch:
 		return err
-	case <-time.After(keyringTimeout):
+	case <-timer.C:
 		return errors.New("keyring operation timed out: the secret service daemon may not be running or is locked")
 	}
 }
@@ -62,9 +66,11 @@ func keyringDelete(service, user string) {
 		_ = keyring.Delete(service, user)
 		ch <- struct{}{}
 	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
 	select {
 	case <-ch:
-	case <-time.After(keyringTimeout):
+	case <-timer.C:
 	}
 }
 
