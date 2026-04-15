@@ -76,9 +76,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`Search for issues on GitLab at the instance, group, or project level.
 
 Scope is resolved in the following order:
+
   1. Explicit project (-R / --repo) → project-level search.
   2. Explicit group (-g / --group)  → group-level search.
-  3. Current git repo with a GitLab remote → project-level search.
+  3. Current Git repo with a GitLab remote → project-level search.
   4. Otherwise                      → instance-level search.
 `),
 		Example: heredoc.Doc(`

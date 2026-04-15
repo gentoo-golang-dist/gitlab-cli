@@ -15,7 +15,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "Search for GitLab resources.",
 		Long: heredoc.Doc(`Search for GitLab resources across the instance, a group, or a project.
 
-Scope is resolved automatically from context (git remote, -g, or -R flags).
+Scope is resolved automatically from context (Git remote, -g, or -R flags).
 `),
 		Annotations: map[string]string{
 			"help:group": "search",
