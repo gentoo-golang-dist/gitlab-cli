@@ -16,8 +16,7 @@ Search for GitLab resources.
 
 Search for GitLab resources across the instance, a group, or a project.
 
-Scope is resolved automatically from context (git remote, -g, or -R flags).
-
+Scope is resolved automatically from context (Git remote, -g, or -R flags).
 
 ## Options inherited from parent commands
 

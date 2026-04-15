@@ -17,11 +17,11 @@ Search for issues on GitLab.
 Search for issues on GitLab at the instance, group, or project level.
 
 Scope is resolved in the following order:
+
   1. Explicit project (-R / --repo) → project-level search.
   2. Explicit group (-g / --group)  → group-level search.
-  3. Current git repo with a GitLab remote → project-level search.
+  3. Current Git repo with a GitLab remote → project-level search.
   4. Otherwise                      → instance-level search.
-
 
 ```plaintext
 glab search issues <query> [flags]
@@ -56,17 +56,18 @@ glab search issues "secret" --confidential
 
 # Use advanced search
 glab search issues "label:~bug" --search-type advanced
+
 ```
 
 ## Options
 
 ```plaintext
-      --confidential        Filter confidential issues.
-  -g, --group string        Search within a specific group or subgroup.
-  -F, --output string       Format output as: text, json. (default "text")
-  -p, --page int            Page number. (default 1)
-  -P, --per-page int        Number of results per page. (default 20)
-  -R, --repo OWNER/REPO     Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+      --confidential         Filter confidential issues.
+  -g, --group string         Search within a specific group or subgroup.
+  -F, --output string        Format output as: text, json. (default "text")
+  -p, --page int             Page number. (default 1)
+  -P, --per-page int         Number of results per page. (default 20)
+  -R, --repo OWNER/REPO      Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
       --search-type string   Search type: basic, advanced, zoekt. Defaults to basic.
       --state string         Filter by state: opened, closed, all. Defaults to all states.
 ```
