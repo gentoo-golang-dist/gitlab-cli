@@ -9,8 +9,10 @@
 - [ ] The `Short` field is written in the imperative mood and ends with a period.
 - [ ] The command includes a `Long` field (Synopsis). It does not repeat the `Short` field.
 - [ ] Experimental or beta features use `text.ExperimentalString` or `text.BetaString`.
-      `(EXPERIMENTAL)` appears in both the `Short` field and any affected flag descriptions.
-- [ ] Flag descriptions start with a capital letter, end with a period, and state defaults
+- [ ] Experimental or beta commands use `text.ExperimentalString` or `text.BetaString` in the
+      `Long` field, and append `(EXPERIMENTAL)` to the `Short` field.
+- [ ] Experimental flags prepend `(EXPERIMENTAL)` to the flag description and include a note in
+      the `Long` field. The `Short` field is not modified for flag-only experimental features.
       for boolean flags.
 - [ ] The `Example` field includes at least one non-trivial example. Non-obvious examples
       are annotated with a `# Comment text` line.
