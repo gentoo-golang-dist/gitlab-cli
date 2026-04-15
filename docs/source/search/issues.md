@@ -36,6 +36,7 @@ issue
 ## Examples
 
 ```console
+
 # Instance-level search
 glab search issues "authentication bug"
 
