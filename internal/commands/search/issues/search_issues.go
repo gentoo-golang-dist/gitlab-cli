@@ -3,7 +3,6 @@ package issues
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
@@ -109,9 +108,9 @@ Scope is resolved in the following order:
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of results per page.")
 
 	// Filters
-	cmd.Flags().StringVar(&opts.state, "state", "opened", "Filter by state: opened, closed, all.")
+	cmd.Flags().StringVar(&opts.state, "state", "", "Filter by state: opened, closed, all. Defaults to all states.")
 	cmd.Flags().BoolVar(&opts.confidential, "confidential", false, "Filter confidential issues.")
-	cmd.Flags().StringVar(&opts.searchType, "search-type", "basic", "Search type: basic, advanced, zoekt.")
+	cmd.Flags().StringVar(&opts.searchType, "search-type", "", "Search type: basic, advanced, zoekt. Defaults to basic.")
 
 	return cmd
 }
@@ -144,13 +143,13 @@ func (o *options) run() error {
 
 	// Build extra RequestOptionFuncs for params that SearchOptions doesn't carry.
 	var extraOpts []gitlab.RequestOptionFunc
-	if o.state != "" && o.state != "all" {
+	if o.state != "" {
 		extraOpts = append(extraOpts, withQueryParam("state", o.state))
 	}
 	if o.confidential {
 		extraOpts = append(extraOpts, withQueryParam("confidential", "true"))
 	}
-	if o.searchType != "" && o.searchType != "basic" {
+	if o.searchType != "" {
 		extraOpts = append(extraOpts, withQueryParam("search_type", o.searchType))
 	}
 
@@ -192,10 +191,12 @@ func (o *options) run() error {
 }
 
 // withQueryParam returns a RequestOptionFunc that appends a query parameter.
+// Note: q.Encode() already percent-encodes values, so we pass value directly
+// without pre-escaping.
 func withQueryParam(key, value string) gitlab.RequestOptionFunc {
 	return func(req *retryablehttp.Request) error {
 		q := req.URL.Query()
-		q.Set(key, url.QueryEscape(value))
+		q.Set(key, value)
 		req.URL.RawQuery = q.Encode()
 		return nil
 	}

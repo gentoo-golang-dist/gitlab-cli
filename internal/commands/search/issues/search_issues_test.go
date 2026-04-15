@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -255,12 +256,27 @@ func TestSearchIssues_InstanceScope_JSONOutput(t *testing.T) {
 
 // ---- flags and filters -----
 
+// TestSearchIssues_ClosedState verifies that passing --state closed forwards
+// state=closed as a query parameter to the API. We use the mock's Do() callback
+// to fire the RequestOptionFunc against a synthetic URL and inspect the result.
 func TestSearchIssues_ClosedState(t *testing.T) {
 	t.Setenv("NO_COLOR", "true")
+
+	var capturedState string
 
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockSearch.EXPECT().
 		IssuesByProject("OWNER/REPO", "bug", gomock.Any(), gomock.Any()).
+		Do(func(_ any, _ string, _ *gitlab.SearchOptions, opts ...gitlab.RequestOptionFunc) ([]*gitlab.Issue, *gitlab.Response, error) {
+			// Apply every RequestOptionFunc to a fake request and read back
+			// the resulting query string to confirm state=closed was set.
+			req, _ := retryablehttp.NewRequest("GET", "https://gitlab.example.com/api/v4/search", nil)
+			for _, opt := range opts {
+				_ = opt(req)
+			}
+			capturedState = req.URL.Query().Get("state")
+			return nil, nil, nil
+		}).
 		Return(testIssues(), nil, nil)
 
 	exec := cmdtest.SetupCmdForTest(t, newCmd, false,
@@ -271,6 +287,7 @@ func TestSearchIssues_ClosedState(t *testing.T) {
 	out, err := exec(`bug --state closed`)
 	require.NoError(t, err)
 	assert.Contains(t, out.OutBuf.String(), "issue(s) matching")
+	assert.Equal(t, "closed", capturedState, "expected state=closed to be forwarded as a query param")
 }
 
 func TestSearchIssues_Pagination(t *testing.T) {

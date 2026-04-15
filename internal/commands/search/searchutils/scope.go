@@ -23,6 +23,9 @@ const (
 //  1. If group is non-empty → ScopeGroup (repo flag was already handled by cmdutils)
 //  2. If baseRepo returns a valid repo → ScopeProject
 //  3. Otherwise → ScopeInstance
+//
+// Note: when both -g and -R are set, group takes precedence.
+// This matches the behavior of other glab commands and can be revisited.
 func DetectScope(group string, baseRepo func() (glrepo.Interface, error)) (SearchScope, string, glrepo.Interface, error) {
 	if group != "" {
 		return ScopeGroup, group, nil, nil
