@@ -8,8 +8,8 @@ import (
 	searchIssuesCmd "gitlab.com/gitlab-org/cli/internal/commands/search/issues"
 )
 
-// NewCmdSearch creates the top-level `glab search` command.
-func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
+// NewCmd creates the top-level `glab search` command.
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	searchCmd := &cobra.Command{
 		Use:   "search <command> [flags]",
 		Short: "Search for GitLab resources.",
@@ -22,7 +22,7 @@ Scope is resolved automatically from context (git remote, -g, or -R flags).
 		},
 	}
 
-	searchCmd.AddCommand(searchIssuesCmd.NewCmdSearchIssues(f))
+	searchCmd.AddCommand(searchIssuesCmd.NewCmd(f))
 
 	return searchCmd
 }

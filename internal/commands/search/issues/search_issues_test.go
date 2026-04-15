@@ -49,9 +49,9 @@ func testIssues() []*gitlab.Issue {
 	}
 }
 
-// newCmd is a helper that wraps NewCmdSearchIssues to match cmdtest.CmdFunc signature.
+// newCmd is a helper that wraps NewCmd to match cmdtest.CmdFunc signature.
 func newCmd(f cmdutils.Factory) *cobra.Command {
-	return NewCmdSearchIssues(f)
+	return NewCmd(f)
 }
 
 // ---- command registration tests -----
@@ -62,7 +62,7 @@ func TestNewCmdSearchIssues_Flags(t *testing.T) {
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
 	f := cmdtest.NewTestFactory(ios)
 
-	cmd := NewCmdSearchIssues(f)
+	cmd := NewCmd(f)
 	require.NotNil(t, cmd)
 
 	assert.Equal(t, []string{"issue"}, cmd.Aliases)
@@ -80,12 +80,10 @@ func TestNewCmdSearchIssues_Flags(t *testing.T) {
 }
 
 func TestNewCmdSearchIssues_RequiresArg(t *testing.T) {
-	t.Parallel()
-
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
 	f := cmdtest.NewTestFactory(ios)
 
-	cmd := NewCmdSearchIssues(f)
+	cmd := NewCmd(f)
 	cmd.SetArgs([]string{})
 	err := cmd.Execute()
 	assert.Error(t, err)
@@ -121,8 +119,6 @@ func TestSearchIssues_ProjectScope_TableOutput(t *testing.T) {
 }
 
 func TestSearchIssues_ProjectScope_JSONOutput(t *testing.T) {
-	t.Parallel()
-
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockSearch.EXPECT().
 		IssuesByProject("OWNER/REPO", "auth", gomock.Any(), gomock.Any()).
@@ -137,7 +133,7 @@ func TestSearchIssues_ProjectScope_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	var issues []*gitlab.Issue
-	require.NoError(t, json.Unmarshal([]byte(out.OutBuf.String()), &issues))
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &issues))
 	assert.Len(t, issues, 2)
 	assert.Equal(t, int64(10), issues[0].IID)
 	assert.Equal(t, "First issue", issues[0].Title)
@@ -188,8 +184,6 @@ func TestSearchIssues_GroupScope_TableOutput(t *testing.T) {
 }
 
 func TestSearchIssues_GroupScope_JSONOutput(t *testing.T) {
-	t.Parallel()
-
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockSearch.EXPECT().
 		IssuesByGroup("my-group", "login", gomock.Any(), gomock.Any()).
@@ -204,7 +198,7 @@ func TestSearchIssues_GroupScope_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	var issues []*gitlab.Issue
-	require.NoError(t, json.Unmarshal([]byte(out.OutBuf.String()), &issues))
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &issues))
 	assert.Len(t, issues, 2)
 }
 
@@ -234,8 +228,6 @@ func TestSearchIssues_InstanceScope_TableOutput(t *testing.T) {
 }
 
 func TestSearchIssues_InstanceScope_JSONOutput(t *testing.T) {
-	t.Parallel()
-
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockSearch.EXPECT().
 		Issues("crash", gomock.Any(), gomock.Any()).
@@ -250,7 +242,7 @@ func TestSearchIssues_InstanceScope_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	var issues []*gitlab.Issue
-	require.NoError(t, json.Unmarshal([]byte(out.OutBuf.String()), &issues))
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &issues))
 	assert.Len(t, issues, 2)
 }
 
@@ -291,8 +283,6 @@ func TestSearchIssues_ClosedState(t *testing.T) {
 }
 
 func TestSearchIssues_Pagination(t *testing.T) {
-	t.Parallel()
-
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockSearch.EXPECT().
 		IssuesByProject("OWNER/REPO", "bug", gomock.Any(), gomock.Any()).

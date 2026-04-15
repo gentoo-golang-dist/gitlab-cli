@@ -19,9 +19,9 @@ import (
 )
 
 type options struct {
-	io           *iostreams.IOStreams
-	baseRepo     func() (glrepo.Interface, error)
-	apiClient    func(repoHost string) (*api.Client, error)
+	io        *iostreams.IOStreams
+	baseRepo  func() (glrepo.Interface, error)
+	apiClient func(repoHost string) (*api.Client, error)
 
 	query        string
 	group        string
@@ -35,8 +35,34 @@ type options struct {
 	searchType   string
 }
 
-// NewCmdSearchIssues creates the `glab search issues` subcommand.
-func NewCmdSearchIssues(f cmdutils.Factory) *cobra.Command {
+func (o *options) complete(cmd *cobra.Command, args []string) error {
+	o.query = args[0]
+
+	group, err := cmdutils.GroupOverride(cmd)
+	if err != nil {
+		return err
+	}
+	o.group = group
+
+	return nil
+}
+
+func (o *options) validate() error {
+	validStates := map[string]bool{"": true, "opened": true, "closed": true, "all": true}
+	if !validStates[o.state] {
+		return fmt.Errorf("invalid --state %q: must be one of: opened, closed, all", o.state)
+	}
+
+	validSearchTypes := map[string]bool{"": true, "basic": true, "advanced": true, "zoekt": true}
+	if !validSearchTypes[o.searchType] {
+		return fmt.Errorf("invalid --search-type %q: must be one of: basic, advanced, zoekt", o.searchType)
+	}
+
+	return nil
+}
+
+// NewCmd creates the `glab search issues` subcommand.
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io:        f.IO(),
 		baseRepo:  f.BaseRepo,
@@ -82,14 +108,12 @@ Scope is resolved in the following order:
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.query = args[0]
-
-			group, err := cmdutils.GroupOverride(cmd)
-			if err != nil {
+			if err := opts.complete(cmd, args); err != nil {
 				return err
 			}
-			opts.group = group
-
+			if err := opts.validate(); err != nil {
+				return err
+			}
 			return opts.run()
 		},
 	}
@@ -97,20 +121,24 @@ Scope is resolved in the following order:
 	// -R / --repo is handled by EnableRepoOverride (PersistentPreRunE + factory)
 	cmdutils.EnableRepoOverride(cmd, f)
 
+	fl := cmd.Flags()
+
 	// -g / --group
-	cmd.Flags().StringP("group", "g", "", "Search within a specific group or subgroup.")
+	fl.StringP("group", "g", "", "Search within a specific group or subgroup.")
 
 	// -F / --output
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	// Pagination
-	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of results per page.")
+	fl.IntVarP(&opts.page, "page", "p", 1, "Page number.")
+	fl.IntVarP(&opts.perPage, "per-page", "P", 20, "Number of results per page.")
 
 	// Filters
-	cmd.Flags().StringVar(&opts.state, "state", "", "Filter by state: opened, closed, all. Defaults to all states.")
-	cmd.Flags().BoolVar(&opts.confidential, "confidential", false, "Filter confidential issues.")
-	cmd.Flags().StringVar(&opts.searchType, "search-type", "", "Search type: basic, advanced, zoekt. Defaults to basic.")
+	fl.StringVar(&opts.state, "state", "", "Filter by state: opened, closed, all. Defaults to all states.")
+	fl.BoolVar(&opts.confidential, "confidential", false, "Filter confidential issues.")
+	fl.StringVar(&opts.searchType, "search-type", "", "Search type: basic, advanced, zoekt. Defaults to basic.")
+
+	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
