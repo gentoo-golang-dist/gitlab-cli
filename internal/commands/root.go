@@ -35,11 +35,11 @@ import (
 	runnerCmd "gitlab.com/gitlab-org/cli/internal/commands/runner"
 	runnerControllerCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
+	searchCmd "gitlab.com/gitlab-org/cli/internal/commands/search"
 	securefileCmd "gitlab.com/gitlab-org/cli/internal/commands/securefile"
 	snippetCmd "gitlab.com/gitlab-org/cli/internal/commands/snippet"
 	sshCmd "gitlab.com/gitlab-org/cli/internal/commands/ssh-key"
 	stackCmd "gitlab.com/gitlab-org/cli/internal/commands/stack"
-	todoCmd "gitlab.com/gitlab-org/cli/internal/commands/todo"
 	tokenCmd "gitlab.com/gitlab-org/cli/internal/commands/token"
 	updateCmd "gitlab.com/gitlab-org/cli/internal/commands/update"
 	userCmd "gitlab.com/gitlab-org/cli/internal/commands/user"
@@ -168,12 +168,12 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
 	rootCmd.AddCommand(runnerCmd.NewCmdRunner(f))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
+	rootCmd.AddCommand(searchCmd.NewCmdSearch(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
 	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
 	rootCmd.AddCommand(stackCmd.NewCmdStack(f))
 	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
-	rootCmd.AddCommand(todoCmd.NewCmd(f))
 	rootCmd.AddCommand(userCmd.NewCmdUser(f))
 	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 	rootCmd.AddCommand(runnerControllerCmd.NewCmd(f))
