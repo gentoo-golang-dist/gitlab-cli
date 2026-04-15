@@ -30,6 +30,7 @@ type SyncScenario struct {
 	noVerify    bool
 	updateBase  bool
 	rebaseError bool
+	assignees   []string
 }
 
 type TestRef struct {
@@ -88,6 +89,7 @@ func setupTestFactory(t *testing.T, testClient *gitlabtesting.TestClient) (cmdut
 }
 
 func TestNewCmdSyncStack_Flags(t *testing.T) {
+	t.Parallel()
 	ios, _, _, _ := cmdtest.TestIOStreams()
 	f := cmdtest.NewTestFactory(ios)
 	var gr git.StandardGitCommand
@@ -105,6 +107,13 @@ func TestNewCmdSyncStack_Flags(t *testing.T) {
 	require.NotNil(t, updateBaseFlag)
 	assert.Equal(t, "false", updateBaseFlag.DefValue)
 	assert.Contains(t, updateBaseFlag.Usage, "base branch")
+
+	// Test --assignee flag exists
+	assigneeFlag := cmd.Flag("assignee")
+	require.NotNil(t, assigneeFlag)
+	assert.Equal(t, "[]", assigneeFlag.DefValue)
+	assert.Equal(t, "a", assigneeFlag.Shorthand)
+	assert.Contains(t, assigneeFlag.Usage, "usernames")
 }
 
 func Test_stackSync(t *testing.T) {
@@ -701,6 +710,54 @@ func Test_stackSync(t *testing.T) {
 			wantErr:    true,
 			wantErrMsg: "could not rebase onto origin/feature-branch",
 		},
+
+		{
+			name: "single branch with custom assignees",
+			args: args{
+				stack: SyncScenario{
+					title:     "assignee stack",
+					assignees: []string{"reviewer1", "reviewer2"},
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "", Branch: "Branch1", MR: "", Description: "test MR"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy", ID: 100}, nil, nil)
+
+				testClient.MockUsers.EXPECT().
+					ListUsers(gomock.Any()).
+					Return([]*gitlab.User{{ID: 201, Username: "reviewer1"}}, nil, nil)
+				testClient.MockUsers.EXPECT().
+					ListUsers(gomock.Any()).
+					Return([]*gitlab.User{{ID: 202, Username: "reviewer2"}}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					CreateMergeRequest("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						assert.Equal(t, "main", *opts.TargetBranch)
+						assert.Equal(t, "test MR", *opts.Title)
+						assert.NotNil(t, opts.AssigneeIDs)
+						assert.ElementsMatch(t, []int64{201, 202}, *opts.AssigneeIDs)
+						assert.Nil(t, opts.AssigneeID)
+						return &gitlab.MergeRequest{
+							BasicMergeRequest: gitlab.BasicMergeRequest{
+								IID:          47,
+								SourceBranch: "Branch1",
+								TargetBranch: "main",
+								Title:        "test MR",
+							},
+						}, nil, nil
+					})
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -718,6 +775,7 @@ func Test_stackSync(t *testing.T) {
 			// Set options from test case
 			opts.noVerify = tc.args.stack.noVerify
 			opts.updateBase = tc.args.stack.updateBase
+			opts.assignees = tc.args.stack.assignees
 
 			err := git.SetConfig("glab.currentstack", tc.args.stack.title)
 			require.NoError(t, err)

@@ -11,6 +11,7 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/auth"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/create"
@@ -24,16 +25,18 @@ import (
 )
 
 type options struct {
-	io         *iostreams.IOStreams
-	stack      git.Stack
-	target     glrepo.Interface
-	source     glrepo.Interface
-	labClient  *gitlab.Client
-	baseRepo   func() (glrepo.Interface, error)
-	remotes    func() (glrepo.Remotes, error)
-	user       gitlab.User
-	noVerify   bool
-	updateBase bool
+	io          *iostreams.IOStreams
+	stack       git.Stack
+	target      glrepo.Interface
+	source      glrepo.Interface
+	labClient   *gitlab.Client
+	baseRepo    func() (glrepo.Interface, error)
+	remotes     func() (glrepo.Remotes, error)
+	user        gitlab.User
+	noVerify    bool
+	updateBase  bool
+	assignees   []string
+	assigneeIDs *[]int64
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -70,7 +73,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 		Example: heredoc.Doc(`
 			glab stack sync
 			glab stack sync --no-verify
-			glab stack sync --update-base`),
+			glab stack sync --update-base
+			glab stack sync --assignee user1,user2`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -84,8 +88,10 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 		},
 	}
 
-	stackSaveCmd.Flags().BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
-	stackSaveCmd.Flags().BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
+	fl := stackSaveCmd.Flags()
+	fl.BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
+	fl.BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
+	fl.StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -127,6 +133,14 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	o.target = repo
 	o.source = source
 	o.user = *user
+
+	if err := o.validate(); err != nil {
+		return err
+	}
+
+	if err := o.complete(client); err != nil {
+		return err
+	}
 
 	err = fetchOrigin(gr)
 	if err != nil {
@@ -208,6 +222,51 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	}
 
 	fmt.Print(progressString(o.io, "Sync finished!"))
+	return nil
+}
+
+func filterEmpty(s []string) []string {
+	result := make([]string, 0, len(s))
+	for _, v := range s {
+		if trimmed := strings.TrimSpace(v); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+func dedupe(s []string) []string {
+	seen := make(map[string]struct{}, len(s))
+	result := make([]string, 0, len(s))
+	for _, v := range s {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func (o *options) validate() error {
+	raw := o.assignees
+	o.assignees = dedupe(filterEmpty(o.assignees))
+
+	if len(raw) > 0 && len(o.assignees) == 0 {
+		return fmt.Errorf("--assignee (-a) flag requires at least one valid username")
+	}
+
+	return nil
+}
+
+func (o *options) complete(client *gitlab.Client) error {
+	if len(o.assignees) > 0 {
+		users, err := api.UsersByNames(client, o.assignees)
+		if err != nil {
+			return fmt.Errorf("error resolving assignee usernames: %w", err)
+		}
+		o.assigneeIDs = cmdutils.IDsFromUsers(users)
+	}
+
 	return nil
 }
 
@@ -356,9 +415,14 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 		Description:        new(description),
 		SourceBranch:       new(ref.Branch),
 		TargetBranch:       new(previousBranch),
-		AssigneeID:         new(opts.user.ID),
 		RemoveSourceBranch: new(true),
 		TargetProjectID:    new(targetProject.ID),
+	}
+
+	if opts.assigneeIDs != nil {
+		l.AssigneeIDs = opts.assigneeIDs
+	} else {
+		l.AssigneeID = new(opts.user.ID)
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)
