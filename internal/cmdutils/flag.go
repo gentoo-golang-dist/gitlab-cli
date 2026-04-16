@@ -5,17 +5,21 @@ import (
 	"github.com/spf13/viper"
 )
 
-func init() {
-	// One-time setup of viper env binding. Called automatically by Go when the
-	// package is first loaded — once per process — so concurrent callers of
-	// GroupOverride never race on global viper state.
-	viper.SetEnvPrefix("GITLAB")
-	viper.MustBindEnv("group")
-}
+// groupViper is a dedicated viper instance for resolving the GITLAB_GROUP
+// environment variable. Using a private instance instead of the global viper
+// avoids concurrent writes to shared state when GroupOverride is called from
+// parallel goroutines, and ensures the setup is unaffected by any call to
+// viper.Reset() elsewhere.
+var groupViper = func() *viper.Viper {
+	inst := viper.New()
+	inst.SetEnvPrefix("GITLAB")
+	inst.MustBindEnv("group")
+	return inst
+}()
 
 func GroupOverride(cmd *cobra.Command) (string, error) {
 	// Get group from env
-	groupFromEnv := viper.GetString("group")
+	groupFromEnv := groupViper.GetString("group")
 
 	// Get group/repo flags
 	group, err := cmd.Flags().GetString("group")
