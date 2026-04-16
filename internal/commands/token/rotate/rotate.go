@@ -44,8 +44,8 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "rotate <token-name|token-id>",
-		Short: "Rotate user, group, or project access tokens.",
+		Use:     "rotate <token-name|token-id>",
+		Short:   "Rotate user, group, or project access tokens.",
 		Aliases: []string{"rot"},
 		Args:    cobra.RangeArgs(1, 1),
 		Long: heredoc.Docf(`
