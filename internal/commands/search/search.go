@@ -10,7 +10,7 @@ import (
 func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
 	searchCmd := &cobra.Command{
 		Use:   "search <command> [flags]",
-		Short: `Search for code and resources in a GitLab project.`,
+		Short: `Search for code and resources in a GitLab project. (BETA)`,
 		Long:  ``,
 	}
 

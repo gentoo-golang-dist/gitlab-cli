@@ -164,6 +164,32 @@ func TestSemanticSearch_NoResults(t *testing.T) {
 	assert.Contains(t, output.String(), "No results found.")
 }
 
+func TestSemanticSearch_KnnOutOfRange(t *testing.T) {
+	t.Parallel()
+
+	for _, cli := range []string{`-q foo --knn=-1`, `-q foo --knn=101`} {
+		exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		)
+		_, err := exec(cli)
+		assert.Error(t, err, "expected error for %q", cli)
+		assert.Contains(t, err.Error(), "--knn must be between 1 and 100")
+	}
+}
+
+func TestSemanticSearch_LimitOutOfRange(t *testing.T) {
+	t.Parallel()
+
+	for _, cli := range []string{`-q foo --limit=-1`, `-q foo --limit=101`} {
+		exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		)
+		_, err := exec(cli)
+		assert.Error(t, err, "expected error for %q", cli)
+		assert.Contains(t, err.Error(), "--limit must be between 1 and 100")
+	}
+}
+
 func TestSemanticSearch_APIError(t *testing.T) {
 	t.Parallel()
 

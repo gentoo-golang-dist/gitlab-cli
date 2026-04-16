@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -78,7 +80,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			Search project code using natural language (semantic similarity).
 
 			Requires the project to have semantic code search enabled via GitLab Duo.
-		`),
+		`) + text.BetaString,
 		Example: heredoc.Doc(`
 			# Search for authentication-related code in the current project
 			glab search semantic -q "authentication middleware"
@@ -96,19 +98,33 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := opts.validate(); err != nil {
+				return err
+			}
 			return opts.run(cmd.Context())
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.query, "query", "q", "", "Natural language search query. (required)")
-	cmd.Flags().StringVarP(&opts.directoryPath, "directory-path", "d", "", "Restrict search to files under this path (e.g. app/services/).")
-	cmd.Flags().IntVar(&opts.knn, "knn", 0, "Nearest neighbours to retrieve (1–100). Defaults to 64 server-side.")
-	cmd.Flags().IntVarP(&opts.limit, "limit", "l", 0, "Maximum number of results (1–100). Defaults to 20 server-side.")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.query, "query", "q", "", "Natural language search query. (required)")
+	fl.StringVarP(&opts.directoryPath, "directory-path", "d", "", "Restrict search to files under this path (e.g. app/services/).")
+	fl.IntVar(&opts.knn, "knn", 0, "Nearest neighbours to retrieve (1–100). Defaults to 64 server-side.")
+	fl.IntVarP(&opts.limit, "limit", "l", 0, "Maximum number of results (1–100). Defaults to 20 server-side.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
-	_ = cmd.MarkFlagRequired("query")
+	cobra.CheckErr(cmd.MarkFlagRequired("query"))
 
 	return cmd
+}
+
+func (o *options) validate() error {
+	if o.knn != 0 && (o.knn < 1 || o.knn > 100) {
+		return fmt.Errorf("--knn must be between 1 and 100, got %d", o.knn)
+	}
+	if o.limit != 0 && (o.limit < 1 || o.limit > 100) {
+		return fmt.Errorf("--limit must be between 1 and 100, got %d", o.limit)
+	}
+	return nil
 }
 
 func (o *options) run(ctx context.Context) error {
@@ -173,7 +189,7 @@ func (o *options) printText(projectID string, result *semanticSearchResponse) er
 			c.Bold(r.filePath()), r.Score)
 		for _, chunk := range r.chunks() {
 			fmt.Fprintf(o.io.StdOut, "  Lines %d–%d:\n", chunk.StartLine, chunk.EndLine)
-			for _, line := range splitLines(chunk.Content) {
+			for _, line := range strings.Split(chunk.Content, "\n") {
 				fmt.Fprintf(o.io.StdOut, "    %s\n", line)
 			}
 		}
@@ -181,19 +197,4 @@ func (o *options) printText(projectID string, result *semanticSearchResponse) er
 	}
 
 	return nil
-}
-
-func splitLines(s string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '\n' {
-			lines = append(lines, s[start:i])
-			start = i + 1
-		}
-	}
-	if start < len(s) {
-		lines = append(lines, s[start:])
-	}
-	return lines
 }

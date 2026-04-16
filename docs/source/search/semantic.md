@@ -18,6 +18,11 @@ Search project code using natural language (semantic similarity).
 
 Requires the project to have semantic code search enabled via GitLab Duo.
 
+This feature is in beta and might not be ready for production use.
+It might be unstable and breaking changes can occur outside of major releases.
+For more information, see
+<https://docs.gitlab.com/policy/development_stages_support/>.
+
 ```plaintext
 glab search semantic [flags]
 ```
