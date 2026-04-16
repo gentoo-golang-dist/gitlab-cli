@@ -48,7 +48,7 @@ instructions:
 
       Examples (`Example` field):
       11. Every command must include at least one example that demonstrates real-world usage.
-          Do not use examples that only repeat the usage line.
+          Do not use examples that only repeat the command syntax.
       12. Annotate non-obvious examples with an inline comment above the command, using `# Comment text` format.
       13. For commands with many options, show the most common combinations first.
 
