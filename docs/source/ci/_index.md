@@ -50,3 +50,4 @@ pipeline
 - [`trace`](trace.md)
 - [`trigger`](trigger.md)
 - [`view`](view.md)
+- [`visualize`](visualize.md)
