@@ -1,4 +1,4 @@
-package dag
+package visualize
 
 import (
 	"context"
@@ -7,8 +7,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"oss.terrastruct.com/d2/d2graph"
 	"oss.terrastruct.com/d2/d2layouts/d2dagrelayout"
@@ -20,6 +22,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/ci/shared/lintcompile"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -32,13 +35,18 @@ var (
 	exampleHelp string
 )
 
+const (
+	outputDefault = ""
+	outputSVG     = "svg"
+)
+
 type options struct {
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
 
 	path           string
-	compiled       bool
+	web            bool
 	showStageEdges bool
 	listenAddr     string
 	output         string
@@ -50,7 +58,7 @@ type options struct {
 	vars           []string
 }
 
-func NewCmdDag(f cmdutils.Factory) *cobra.Command {
+func NewCmdVisualize(f cmdutils.Factory) *cobra.Command {
 	opts := options{
 		io:           f.IO(),
 		gitlabClient: f.GitLabClient,
@@ -58,12 +66,11 @@ func NewCmdDag(f cmdutils.Factory) *cobra.Command {
 
 		listenAddr:     "localhost:0",
 		showStageEdges: true,
-		output:         "browser",
 	}
 
 	cmd := &cobra.Command{
-		Use:     "dag [path] [flags]",
-		Short:   "Generate a DAG visualization of a CI/CD pipeline.",
+		Use:     "visualize [path] [flags]",
+		Short:   "Visualize a CI/CD pipeline as a DAG.",
 		Long:    longHelp,
 		Example: strings.Trim(exampleHelp, "\n\r"),
 		Args:    cobra.MaximumNArgs(1),
@@ -80,14 +87,14 @@ func NewCmdDag(f cmdutils.Factory) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
-	fl.BoolVar(&opts.compiled, "compiled", false,
-		"Use the GitLab API to get the fully expanded configuration (resolves include: directives).")
+	fl.BoolVar(&opts.web, "web", false,
+		"Start an interactive local HTTP server with pan/zoom instead of opening an SVG file.")
 	fl.BoolVar(&opts.showStageEdges, "stage-edges", true,
 		"Show implicit stage ordering edges between consecutive stages.")
 	fl.StringVar(&opts.listenAddr, "listen-addr", opts.listenAddr,
-		"Address for the local HTTP server.")
-	fl.StringVarP(&opts.output, "output", "o", opts.output,
-		"Output mode: 'browser' to open in browser, 'svg' to print SVG to stdout.")
+		"Address for the local HTTP server. Only used with --web.")
+	fl.StringVarP(&opts.output, "output", "o", outputDefault,
+		"Output mode: 'svg' prints raw SVG to stdout. Defaults to opening the rendered SVG in a browser.")
 	fl.StringVar(&opts.source, "source", "",
 		"Set CI_PIPELINE_SOURCE to simulate a pipeline type (e.g. push, merge_request_event, schedule, web, api).")
 	fl.StringVar(&opts.branch, "branch", "",
@@ -113,8 +120,11 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) validate() error {
-	if o.output != "browser" && o.output != "svg" {
-		return cmdutils.FlagError{Err: fmt.Errorf("invalid output mode %q: must be 'browser' or 'svg'", o.output)}
+	if o.output != outputDefault && o.output != outputSVG {
+		return cmdutils.FlagError{Err: fmt.Errorf("invalid output mode %q: must be 'svg'", o.output)}
+	}
+	if o.output == outputSVG && o.web {
+		return cmdutils.FlagError{Err: fmt.Errorf("--output svg cannot be combined with --web")}
 	}
 
 	for _, v := range o.vars {
@@ -132,12 +142,12 @@ func (o *options) hasSimulationFlags() bool {
 }
 
 func (o *options) run(ctx context.Context) error {
-	yamlContent, err := o.loadYAML()
+	mergedYaml, runnableJobs, err := o.loadCompiledYAML()
 	if err != nil {
 		return err
 	}
 
-	pipeline, err := ParsePipeline(yamlContent)
+	pipeline, err := ParsePipeline(mergedYaml)
 	if err != nil {
 		return err
 	}
@@ -145,9 +155,10 @@ func (o *options) run(ctx context.Context) error {
 		return fmt.Errorf("no jobs found in %s", o.path)
 	}
 
-	if o.hasSimulationFlags() {
-		if err := o.applyRulesFilter(pipeline); err != nil {
-			return err
+	if runnableJobs != nil {
+		applyAPIFilter(pipeline, runnableJobs)
+		if len(pipeline.Jobs) == 0 {
+			return fmt.Errorf("no jobs would run for this pipeline configuration")
 		}
 	}
 
@@ -158,94 +169,115 @@ func (o *options) run(ctx context.Context) error {
 		return fmt.Errorf("rendering diagram: %w", err)
 	}
 
-	if o.output == "svg" {
-		_, err := o.io.StdOut.Write(svgData)
-		return err
-	}
-
-	srv := &dagServer{
-		io:         o.io,
-		svgData:    svgData,
-		listenAddr: o.listenAddr,
-	}
-	return srv.Run(ctx)
+	return o.emit(ctx, svgData)
 }
 
-func (o *options) loadYAML() ([]byte, error) {
-	if o.compiled {
-		return o.loadCompiledYAML()
+func (o *options) emit(ctx context.Context, svgData []byte) error {
+	switch {
+	case o.output == outputSVG:
+		_, err := o.io.StdOut.Write(svgData)
+		return err
+	case o.web:
+		srv := &visualizeServer{
+			io:         o.io,
+			svgData:    svgData,
+			listenAddr: o.listenAddr,
+		}
+		return srv.Run(ctx)
+	default:
+		return o.openInBrowser(svgData)
+	}
+}
+
+func (o *options) openInBrowser(svgData []byte) error {
+	f, err := os.CreateTemp("", "glab-visualize-*.svg")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	if _, err := f.Write(svgData); err != nil {
+		f.Close() //nolint:errcheck
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
 	}
 
+	abs, err := filepath.Abs(f.Name())
+	if err != nil {
+		abs = f.Name()
+	}
+	url := "file://" + filepath.ToSlash(abs)
+
+	fmt.Fprintf(o.io.StdErr, "Rendered pipeline to %s\n", abs)
+	if err := browser.OpenURL(url); err != nil {
+		o.io.LogError("Failed to open browser:", err)
+		fmt.Fprintf(o.io.StdErr, "Open %s manually in your browser.\n", url)
+	}
+	return nil
+}
+
+// loadCompiledYAML reads the local file, injects any simulation variables
+// and calls the GitLab lint API
+func (o *options) loadCompiledYAML() ([]byte, []string, error) {
 	content, err := os.ReadFile(o.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("%s: no such file or directory", o.path)
+			return nil, nil, fmt.Errorf("%s: no such file or directory", o.path)
 		}
-		return nil, err
+		return nil, nil, err
 	}
-	return content, nil
-}
 
-func (o *options) loadCompiledYAML() ([]byte, error) {
 	client, err := o.gitlabClient()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	repo, err := o.baseRepo()
 	if err != nil {
-		return nil, fmt.Errorf("you must be in a GitLab project repository to use --compiled: %w", err)
+		return nil, nil, fmt.Errorf("ci visualize needs a GitLab project to compile the configuration; run from inside a cloned repo or set --repo: %w", err)
 	}
 
 	project, err := repo.Project(client)
 	if err != nil {
-		return nil, fmt.Errorf("you must be in a GitLab project repository to use --compiled: %w", err)
+		return nil, nil, fmt.Errorf("ci visualize needs a GitLab project to compile the configuration; run from inside a cloned repo or set --repo: %w", err)
 	}
 
-	content, err := os.ReadFile(o.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("%s: no such file or directory", o.path)
+	simulating := o.hasSimulationFlags()
+	if simulating {
+		vars := BuildVariables(o.buildSimulationConfig())
+		content, err = injectVariables(content, vars)
+		if err != nil {
+			return nil, nil, err
 		}
-		return nil, err
 	}
 
-	o.io.LogInfo("Compiling CI/CD configuration via GitLab API...")
+	fmt.Fprintln(o.io.StdErr, "Compiling CI/CD configuration via GitLab API...")
 
-	dryRun := true
-	result, _, err := client.Validate.ProjectNamespaceLint(
-		project.ID,
-		&gitlab.ProjectNamespaceLintOptions{
-			Content:     new(string(content)),
-			DryRun:      &dryRun,
-			IncludeJobs: new(bool),
-		},
-	)
+	result, err := lintcompile.CompileAndList(client, project.ID, content, lintcompile.Options{
+		DryRun:      simulating,
+		IncludeJobs: simulating,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("GitLab API error: %w", err)
+		return nil, nil, err
 	}
-
-	if !result.Valid {
-		return nil, fmt.Errorf("CI/CD configuration is invalid: %s", strings.Join(result.Errors, "; "))
-	}
-
-	return []byte(result.MergedYaml), nil
+	return []byte(result.MergedYaml), result.RunnableJobs, nil
 }
 
-func (o *options) applyRulesFilter(pipeline *Pipeline) error {
-	cfg := o.buildSimulationConfig()
-	vars := BuildVariables(cfg)
-
-	if err := EvalWorkflowRules(pipeline.WorkflowRules, vars); err != nil {
-		return err
+// applyAPIFilter parses pipeline with the job-name list 
+func applyAPIFilter(pipeline *Pipeline, runnableJobs []string) {
+	allowed := make(map[string]bool, len(runnableJobs))
+	for _, name := range runnableJobs {
+		allowed[name] = true
 	}
 
-	pipeline.Jobs = FilterJobs(pipeline.Jobs, vars)
-	if len(pipeline.Jobs) == 0 {
-		return fmt.Errorf("no jobs would run for this pipeline configuration")
+	kept := pipeline.Jobs[:0]
+	for _, j := range pipeline.Jobs {
+		if allowed[j.Name] {
+			kept = append(kept, j)
+		}
 	}
+	pipeline.Jobs = kept
 
-	// Re-filter stages to only those with remaining jobs.
 	usedStages := make(map[string]bool)
 	for _, j := range pipeline.Jobs {
 		usedStages[j.Stage] = true
@@ -258,8 +290,7 @@ func (o *options) applyRulesFilter(pipeline *Pipeline) error {
 	}
 	pipeline.Stages = filteredStages
 
-	// Clean up needs references to filtered-out jobs.
-	jobExists := make(map[string]bool)
+	jobExists := make(map[string]bool, len(pipeline.Jobs))
 	for _, j := range pipeline.Jobs {
 		jobExists[j.Name] = true
 	}
@@ -272,8 +303,6 @@ func (o *options) applyRulesFilter(pipeline *Pipeline) error {
 		}
 		pipeline.Jobs[i].Needs = validNeeds
 	}
-
-	return nil
 }
 
 func (o *options) buildSimulationConfig() SimulationConfig {

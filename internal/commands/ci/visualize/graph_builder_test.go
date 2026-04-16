@@ -1,6 +1,6 @@
 //go:build !integration
 
-package dag
+package visualize
 
 import (
 	"testing"
