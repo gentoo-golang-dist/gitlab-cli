@@ -3,7 +3,7 @@
 package run
 
 import (
-	"os"
+	"bytes"
 	"testing"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -17,7 +17,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 func Test_ScheduleRun(t *testing.T) {
@@ -81,13 +80,11 @@ func Test_ScheduleRun(t *testing.T) {
 }
 
 func Test_ScheduleRunNoID(t *testing.T) {
-	old := os.Stderr // keep backup of the real Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+	var buf bytes.Buffer
+	cmd := NewCmdRun(cmdtest.NewTestFactory(nil))
+	cmd.SetErr(&buf)
 
-	assert.Error(t, NewCmdRun(cmdtest.NewTestFactory(nil)).Execute())
+	assert.Error(t, cmd.Execute())
 
-	out := test.ReturnBuffer(old, r, w)
-
-	assert.Contains(t, out, "Error: accepts 1 arg(s), received 0\n")
+	assert.Contains(t, buf.String(), "Error: accepts 1 arg(s), received 0\n")
 }

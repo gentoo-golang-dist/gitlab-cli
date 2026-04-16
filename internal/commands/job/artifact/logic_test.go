@@ -11,8 +11,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 const numTestFiles = 100
@@ -84,13 +82,10 @@ func TestAcceptableZipFile(t *testing.T) {
 
 	targetDir := t.TempDir()
 
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
+	var buf bytes.Buffer
 	listPaths := true
-	err = readZip(reader, targetDir, listPaths, defaultZIPReadLimit, defaultZIPFileLimit)
-	stdout := test.ReturnBuffer(old, r, w)
+	err = readZipTo(reader, targetDir, listPaths, defaultZIPReadLimit, defaultZIPFileLimit, &buf)
+	stdout := buf.String()
 	require.NoError(t, err)
 
 	files, err := listFilesInDir(targetDir)

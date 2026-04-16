@@ -3,7 +3,7 @@
 package commands
 
 import (
-	"os"
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,48 +11,32 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
-	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 func TestMain(m *testing.M) {
 	cmdtest.InitTest(m, "")
 }
 
-func setupIOStreams() *iostreams.IOStreams {
-	return iostreams.New(
-		iostreams.WithStdin(os.Stdin, iostreams.IsTerminal(os.Stdin)),
-		iostreams.WithStdout(iostreams.NewColorable(os.Stdout), iostreams.IsTerminal(os.Stdout)),
-		iostreams.WithStderr(iostreams.NewColorable(os.Stderr), iostreams.IsTerminal(os.Stderr)),
-		iostreams.WithPagerCommand(iostreams.PagerCommandFromEnv()),
-	)
-}
-
 func TestRootVersion(t *testing.T) {
-	old := os.Stdout // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	rootCmd := NewCmdRoot(cmdutils.NewFactory(setupIOStreams(), false, config.NewBlankConfig(), api.BuildInfo{Version: "v1.0.0", Commit: "abcdefgh"}))
+	ios, _, stdout, _ := cmdtest.TestIOStreams()
+	rootCmd := NewCmdRoot(cmdutils.NewFactory(ios, false, config.NewBlankConfig(), api.BuildInfo{Version: "v1.0.0", Commit: "abcdefgh"}))
+	rootCmd.SetOut(stdout)
 	assert.Nil(t, rootCmd.Flag("version").Value.Set("true"))
 	assert.Nil(t, rootCmd.Execute())
 
-	out := test.ReturnBuffer(old, r, w)
-
-	assert.Equal(t, "glab 1.0.0 (abcdefgh)\n", out)
+	assert.Equal(t, "glab 1.0.0 (abcdefgh)\n", stdout.String())
 }
 
 func TestRootNoArg(t *testing.T) {
-	old := os.Stdout // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	rootCmd := NewCmdRoot(cmdutils.NewFactory(setupIOStreams(), false, config.NewBlankConfig(), api.BuildInfo{Version: "v1.0.0", Commit: "abcdefgh"}))
+	var buf bytes.Buffer
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	rootCmd := NewCmdRoot(cmdutils.NewFactory(ios, false, config.NewBlankConfig(), api.BuildInfo{Version: "v1.0.0", Commit: "abcdefgh"}))
+	rootCmd.SetOut(&buf)
 	assert.Nil(t, rootCmd.Execute())
 
-	out := test.ReturnBuffer(old, r, w)
-
-	assert.Contains(t, out, "GLab is an open source GitLab CLI tool that brings GitLab to your command line.\n")
-	assert.Contains(t, out, `USAGE
+	assert.Contains(t, buf.String(), "GLab is an open source GitLab CLI tool that brings GitLab to your command line.\n")
+	assert.Contains(t, buf.String(), `USAGE
   glab <command> <subcommand> [flags]
 
 CORE COMMANDS`)

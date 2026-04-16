@@ -36,6 +36,10 @@ func ensurePathIsCreated(filename string) error {
 }
 
 func readZip(artifact *bytes.Reader, path string, listPaths bool, zipReadLimit int64, zipFileLimit int) error {
+	return readZipTo(artifact, path, listPaths, zipReadLimit, zipFileLimit, os.Stdout)
+}
+
+func readZipTo(artifact *bytes.Reader, path string, listPaths bool, zipReadLimit int64, zipFileLimit int, out io.Writer) error {
 	zipReader, err := zip.NewReader(artifact, artifact.Size())
 	if err != nil {
 		return err
@@ -106,7 +110,7 @@ func readZip(artifact *bytes.Reader, path string, listPaths bool, zipReadLimit i
 			}
 
 			if listPaths {
-				fmt.Println(friendlyPath(destPath))
+				fmt.Fprintln(out, friendlyPath(destPath))
 			}
 
 			written += writtenPerFile

@@ -3,7 +3,6 @@
 package help
 
 import (
-	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -12,7 +11,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/alias"
 	"gitlab.com/gitlab-org/cli/internal/commands/alias/set"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 func TestDedent(t *testing.T) {
@@ -88,20 +86,16 @@ USAGE
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			streams, _, _, _ := cmdtest.TestIOStreams()
-			old := os.Stdout // keep backup of the real stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
+			streams, _, buf, _ := cmdtest.TestIOStreams()
 			cmd := tt.args.command
+			cmd.SetOut(buf)
 			if len(tt.args.args) > 0 {
 				// falsify a parent command
 				alias.NewCmdAlias(cmdtest.NewTestFactory(streams)).AddCommand(cmd)
 			}
 			RootHelpFunc(streams.Color(), cmd, tt.args.args)
 
-			out := test.ReturnBuffer(old, r, w)
-
-			assert.Contains(t, out, tt.wantOut)
+			assert.Contains(t, buf.String(), tt.wantOut)
 		})
 	}
 }
