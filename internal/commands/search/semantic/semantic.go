@@ -94,6 +94,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			# Limit results
 			glab search semantic -q "database migrations" --limit 5
 		`),
+		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -106,7 +107,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
-	fl.StringVarP(&opts.query, "query", "q", "", "Natural language search query. (required)")
+	fl.StringVarP(&opts.query, "query", "q", "", "Natural language search query.")
 	fl.StringVarP(&opts.directoryPath, "directory-path", "d", "", "Restrict search to files under this path (e.g. app/services/).")
 	fl.IntVar(&opts.knn, "knn", 0, "Nearest neighbours to retrieve (1–100). Defaults to 64 server-side.")
 	fl.IntVarP(&opts.limit, "limit", "l", 0, "Maximum number of results (1–100). Defaults to 20 server-side.")
@@ -189,7 +190,7 @@ func (o *options) printText(projectID string, result *semanticSearchResponse) er
 			c.Bold(r.filePath()), r.Score)
 		for _, chunk := range r.chunks() {
 			fmt.Fprintf(o.io.StdOut, "  Lines %d–%d:\n", chunk.StartLine, chunk.EndLine)
-			for _, line := range strings.Split(chunk.Content, "\n") {
+			for line := range strings.SplitSeq(chunk.Content, "\n") {
 				fmt.Fprintf(o.io.StdOut, "    %s\n", line)
 			}
 		}
