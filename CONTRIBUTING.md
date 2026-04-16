@@ -235,7 +235,7 @@ Additional details about code style and format are in the
 
 CLI documentation is generated from Go source files by `make gen-docs`. All documentation
 content must be authored in the `cobra.Command` definition fields (`Short`, `Long`, `Example`,
-and flag descriptions) — not in the generated files in `docs/source/`.
+and flag descriptions), not in the generated files in `docs/source/`.
 
 For documentation structure, language conventions, and guidance on experimental and beta
 features, see the [CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
