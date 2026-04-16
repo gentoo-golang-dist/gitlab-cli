@@ -1,4 +1,4 @@
-package dag
+package visualize
 
 import (
 	"fmt"

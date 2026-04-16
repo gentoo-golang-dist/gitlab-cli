@@ -10,7 +10,7 @@ import (
 	jobArtifactCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/artifact"
 	ciCancelCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/cancel"
 	ciConfigCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/config"
-	ciDagCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/dag"
+	ciVisualizeCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/visualize"
 	pipeDeleteCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/delete"
 	pipeGetCmd "gitlab.com/gitlab-org/cli/internal/commands/ci/get"
 	legacyCICmd "gitlab.com/gitlab-org/cli/internal/commands/ci/legacyci"
@@ -57,7 +57,7 @@ func NewCmdCI(f cmdutils.Factory) *cobra.Command {
 	ciCmd.AddCommand(jobArtifactCmd.NewCmdRun(f))
 	ciCmd.AddCommand(pipeGetCmd.NewCmdGet(f))
 	ciCmd.AddCommand(ciConfigCmd.NewCmdConfig(f))
-	ciCmd.AddCommand(ciDagCmd.NewCmdDag(f))
+	ciCmd.AddCommand(ciVisualizeCmd.NewCmdVisualize(f))
 
 	return ciCmd
 }

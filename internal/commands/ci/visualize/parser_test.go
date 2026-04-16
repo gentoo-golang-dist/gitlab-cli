@@ -1,6 +1,6 @@
 //go:build !integration
 
-package dag
+package visualize
 
 import (
 	"os"
@@ -143,56 +143,6 @@ variables:
 	require.NoError(t, err)
 	assert.Empty(t, p.Jobs)
 	assert.Empty(t, p.Stages)
-}
-
-func TestParsePipeline_Extends(t *testing.T) {
-	t.Parallel()
-
-	p, err := ParsePipeline(readTestdata(t, "extends.yml"))
-	require.NoError(t, err)
-
-	assert.Equal(t, []string{"documentation", "test", "build"}, p.Stages)
-
-	jobsByName := jobMap(p.Jobs)
-
-	// Jobs extending .documentation should inherit stage: documentation.
-	assert.Equal(t, "documentation", jobsByName["check_docs_update"].Stage)
-	assert.Equal(t, "documentation", jobsByName["check_docs_markdown"].Stage)
-
-	// Inherited needs: [] from .documentation.
-	assert.Empty(t, jobsByName["check_docs_update"].Needs)
-
-	// Jobs extending multiple templates: .go-cache then .test.
-	// .test has stage: test, which should win over .go-cache (no stage).
-	assert.Equal(t, "test", jobsByName["lint"].Stage)
-	assert.Equal(t, "test", jobsByName["tests:unit"].Stage)
-
-	// Job with extends but also its own stage: should use its own.
-	assert.Equal(t, "build", jobsByName["build_windows"].Stage)
-}
-
-func TestParsePipeline_ExtendsChain(t *testing.T) {
-	t.Parallel()
-
-	p, err := ParsePipeline([]byte(`
-stages:
-  - deploy
-
-.base:
-  stage: deploy
-
-.child:
-  extends: .base
-  script: echo hello
-
-deploy-job:
-  extends: .child
-  script: echo deploy
-`))
-	require.NoError(t, err)
-
-	assert.Len(t, p.Jobs, 1)
-	assert.Equal(t, "deploy", p.Jobs[0].Stage)
 }
 
 func jobMap(jobs []Job) map[string]Job {

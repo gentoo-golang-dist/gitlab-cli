@@ -1,4 +1,4 @@
-package dag
+package visualize
 
 import (
 	"context"
@@ -18,7 +18,7 @@ const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>GitLab CI Pipeline DAG</title>
+    <title>GitLab CI Pipeline Visualization</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -138,14 +138,14 @@ const htmlTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-type dagServer struct {
+type visualizeServer struct {
 	io         *iostreams.IOStreams
 	svgData    []byte
 	listenAddr string
 	pageData   []byte
 }
 
-func (s *dagServer) Run(ctx context.Context) error {
+func (s *visualizeServer) Run(ctx context.Context) error {
 	// Pre-render the full HTML page to avoid format string issues with SVG content.
 	s.pageData = []byte(strings.Replace(htmlTemplate, svgPlaceholder, string(s.svgData), 1))
 
@@ -155,12 +155,12 @@ func (s *dagServer) Run(ctx context.Context) error {
 	}
 
 	url := fmt.Sprintf("http://%s", l.Addr())
-	s.io.LogInfof("DAG server listening on %s\n", url)
-	s.io.LogInfo("Press Ctrl+C to stop the server.")
+	fmt.Fprintf(s.io.StdErr, "Visualization server listening on %s\n", url)
+	fmt.Fprintln(s.io.StdErr, "Press Ctrl+C to stop the server.")
 
 	if err := browser.OpenURL(url); err != nil {
 		s.io.LogError("Failed to open browser:", err)
-		s.io.LogInfof("Open %s manually in your browser.\n", url)
+		fmt.Fprintf(s.io.StdErr, "Open %s manually in your browser.\n", url)
 	}
 
 	srv := &http.Server{
@@ -179,7 +179,7 @@ func (s *dagServer) Run(ctx context.Context) error {
 	return err
 }
 
-func (s *dagServer) handle(w http.ResponseWriter, _ *http.Request) {
+func (s *visualizeServer) handle(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(s.pageData) //nolint:errcheck
 }
