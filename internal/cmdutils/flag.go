@@ -5,14 +5,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-func GroupOverride(cmd *cobra.Command) (string, error) {
-	// Bind cobra command persistent flags to env user viper
+func init() {
+	// One-time setup of viper env binding. Called automatically by Go when the
+	// package is first loaded — once per process — so concurrent callers of
+	// GroupOverride never race on global viper state.
 	viper.SetEnvPrefix("GITLAB")
-	err := viper.BindEnv("group")
-	if err != nil {
-		return "", err
-	}
+	viper.MustBindEnv("group")
+}
 
+func GroupOverride(cmd *cobra.Command) (string, error) {
 	// Get group from env
 	groupFromEnv := viper.GetString("group")
 
