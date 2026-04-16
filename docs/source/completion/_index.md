@@ -101,6 +101,14 @@ When installing glab through a package manager, however, you might not need
 more shell configuration to support completions.
 For Homebrew, see [brew shell completion](https://docs.brew.sh/Shell-Completion)
 
+### Other Shells
+
+If you are using a shell that is not listed above,
+[Carapace-bin](https://github.com/carapace-sh/carapace-bin) provides
+completions for glab in multiple shells (along with other CLI tools);
+follow the provided steps for installation and configuration if you'd
+like completions in a currently unsupported shell.
+
 ```plaintext
 glab completion [flags]
 ```
