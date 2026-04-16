@@ -7,8 +7,8 @@
 ## Documentation
 
 If this MR adds or updates CLI command documentation, follow the conventions in the
-[GitLab CLI (glab) documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
-Run `make gen-docs` and commit the updated files in `docs/source/` before merging.
+[GitLab CLI (glab) documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/),
+run `make gen-docs`, and commit the updated files in `docs/source/`.
 
 /label ~"devops::create" ~"group::code review" ~"Category:GitLab CLI" ~"cli"
 /label ~documentation ~"type::maintenance" ~"docs::improvement" ~"maintenance::refactor"
