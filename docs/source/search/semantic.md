@@ -51,7 +51,7 @@ glab search semantic -q "database migrations" --limit 5
       --knn int                 Nearest neighbours to retrieve (1–100). Defaults to 64 server-side.
   -l, --limit int               Maximum number of results (1–100). Defaults to 20 server-side.
   -F, --output string           Format output as: text, json. (default "text")
-  -q, --query string            Natural language search query. (required)
+  -q, --query string            Natural language search query.
 ```
 
 ## Options inherited from parent commands
