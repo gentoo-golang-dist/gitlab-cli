@@ -1,5 +1,5 @@
 ---
-title: glab mr create
+title: '`glab mr create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,12 +25,11 @@ new
 ## Examples
 
 ```console
-$ glab mr new
-$ glab mr create -a username -t "fix annoying bug"
-$ glab mr create -f --draft --label RFC
-$ glab mr create --fill --web
-$ glab mr create --fill --fill-commit-body --yes
-
+glab mr new
+glab mr create -a username -t "fix annoying bug"
+glab mr create -f --draft --label RFC
+glab mr create --fill --web
+glab mr create --fill --fill-commit-body --yes
 ```
 
 ## Options
@@ -38,6 +37,7 @@ $ glab mr create --fill --fill-commit-body --yes
 ```plaintext
       --allow-collaboration    Allow commits from other members. Set to true/false to override project defaults, or omit to use project settings.
   -a, --assignee usernames     Assign merge request to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+      --auto-merge             Set the merge request to merge when all merge checks pass.
       --copy-issue-labels      Copy labels from issue to the merge request. Used with --related-issue.
       --create-source-branch   Create a source branch if it does not exist.
   -d, --description string     Supply a description for the merge request. Set to "-" to open an editor.

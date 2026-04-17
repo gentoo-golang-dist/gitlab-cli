@@ -54,7 +54,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						IID:        1,
 						Title:      "test issue",
 						Subscribed: true,
-						IssueType:  gitlab.Ptr("issue"),
+						IssueType:  new("issue"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 				tc.MockIssues.EXPECT().
@@ -63,7 +63,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						ID:         1,
 						IID:        1,
 						Subscribed: false,
-						IssueType:  gitlab.Ptr("issue"),
+						IssueType:  new("issue"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 			},
@@ -84,7 +84,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						IID:        2,
 						Title:      "test incident",
 						Subscribed: true,
-						IssueType:  gitlab.Ptr("incident"),
+						IssueType:  new("incident"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 				tc.MockIssues.EXPECT().
@@ -93,7 +93,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						ID:         2,
 						IID:        2,
 						Subscribed: false,
-						IssueType:  gitlab.Ptr("incident"),
+						IssueType:  new("incident"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 			},
@@ -114,7 +114,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						IID:        2,
 						Title:      "test incident",
 						Subscribed: true,
-						IssueType:  gitlab.Ptr("incident"),
+						IssueType:  new("incident"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 				tc.MockIssues.EXPECT().
@@ -123,7 +123,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						ID:         2,
 						IID:        2,
 						Subscribed: false,
-						IssueType:  gitlab.Ptr("incident"),
+						IssueType:  new("incident"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 			},
@@ -141,7 +141,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						IID:        1,
 						Title:      "test issue",
 						Subscribed: true,
-						IssueType:  gitlab.Ptr("issue"),
+						IssueType:  new("issue"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 			},
@@ -162,7 +162,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						IID:        3,
 						Title:      "test issue",
 						Subscribed: false,
-						IssueType:  gitlab.Ptr("issue"),
+						IssueType:  new("issue"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 				notModifiedResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotModified}}
@@ -187,7 +187,7 @@ func Test_IssuableUnsubscribe(t *testing.T) {
 						IID:        3,
 						Title:      "test incident",
 						Subscribed: false,
-						IssueType:  gitlab.Ptr("incident"),
+						IssueType:  new("incident"),
 						CreatedAt:  &createdAt,
 					}, nil, nil)
 				notModifiedResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotModified}}

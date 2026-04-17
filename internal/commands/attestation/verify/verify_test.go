@@ -32,9 +32,9 @@ func mocks(t *testing.T, tc *gitlab_testing.TestClient) {
 			{
 				ID:            1,
 				IID:           1,
-				CreatedAt:     gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
-				UpdatedAt:     gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
-				ExpireAt:      gitlab.Ptr(time.Now().Add(-24 * time.Hour)),
+				CreatedAt:     new(time.Now().Add(-24 * time.Hour)),
+				UpdatedAt:     new(time.Now().Add(-24 * time.Hour)),
+				ExpireAt:      new(time.Now().Add(-24 * time.Hour)),
 				ProjectID:     1,
 				BuildID:       1,
 				Status:        "success",

@@ -29,7 +29,10 @@ Please do:
 Please avoid:
 
 - Opening merge requests for issues marked `blocked`.
-- Opening merge requests for documentation for a new command specifically. Manual pages are auto-generated from source after every release
+- Opening merge requests that only add or edit files in `docs/source/`. These files are
+  auto-generated from Go source by `make gen-docs` and are overwritten on every release.
+  Instead, update the documentation fields in the relevant `cobra.Command` definition.
+  For guidance, see the [CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
 
 ## Code of Conduct
 
@@ -135,7 +138,7 @@ LEFTHOOK_EXCLUDE=pre-push git push
 Run tests with: `go test ./...` or `make test`.
 
 There are some integration tests that perform real API requests to `https://gitlab.com`.
-If the environment variables `GITLAB_TEST_HOST` and `GITLAB_TOKEN` are not set, the integration tests will fail in CI if
+If the environment variables `GITLAB_TEST_HOST` and `GITLAB_TOKEN_TEST` are not set, the integration tests will fail in CI if
 being run in the `gitlab-org/cli` project. They will be skipped locally or in forks if `GITLAB_TEST_HOST` and `GITLAB_TOKEN`
 are both are omitted.
 Integration tests use the `_Integration` test suffix and use the `_integration_test.go` file suffix.
@@ -227,6 +230,15 @@ the code in this project. The linter configuration can be seen in the
 
 Additional details about code style and format are in the
 [go guide](https://docs.gitlab.com/ee/development/go_guide/#code-style-and-format).
+
+### Documenting commands
+
+CLI documentation is generated from Go source files by `make gen-docs`. All documentation
+content must be authored in the `cobra.Command` definition fields (`Short`, `Long`, `Example`,
+and flag descriptions), not in the generated files in `docs/source/`.
+
+For documentation structure, language conventions, and guidance on experimental and beta
+features, see the [CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
 
 ## Commit Messages
 

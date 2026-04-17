@@ -1,5 +1,5 @@
 ---
-title: glab ci config compile
+title: '`glab ci config compile`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,10 +20,9 @@ glab ci config compile [flags]
 
 ```console
 # Uses .gitlab-ci.yml in the current directory
-$ glab ci config compile
-$ glab ci config compile .gitlab-ci.yml
-$ glab ci config compile path/to/.gitlab-ci.yml
-
+glab ci config compile
+glab ci config compile .gitlab-ci.yml
+glab ci config compile path/to/.gitlab-ci.yml
 ```
 
 ## Options inherited from parent commands

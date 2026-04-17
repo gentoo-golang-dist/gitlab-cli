@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -48,6 +49,7 @@ type options struct {
 	RemoveSourceBranch *bool `json:"remove_source_branch,omitempty"`
 	AllowCollaboration *bool `json:"allow_collaboration,omitempty"`
 	SquashBeforeMerge  *bool `json:"squash_before_merge,omitempty"`
+	AutoMerge          bool  `json:"auto_merge,omitempty"`
 
 	Autofill       bool `json:"autofill,omitempty"`
 	FillCommitBody bool `json:"fill_commit_body,omitempty"`
@@ -98,12 +100,11 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-			$ glab mr new
-			$ glab mr create -a username -t "fix annoying bug"
-			$ glab mr create -f --draft --label RFC
-			$ glab mr create --fill --web
-			$ glab mr create --fill --fill-commit-body --yes
-		`),
+			glab mr new
+			glab mr create -a username -t "fix annoying bug"
+			glab mr create -f --draft --label RFC
+			glab mr create --fill --web
+			glab mr create --fill --fill-commit-body --yes`),
 		Args: cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			opts.headRepo = ResolvedHeadRepo(cmd.Context(), f)
@@ -155,6 +156,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().Bool("allow-collaboration", false, "Allow commits from other members. Set to true/false to override project defaults, or omit to use project settings.")
 	mrCreateCmd.Flags().Bool("remove-source-branch", false, "Remove source branch on merge. Set to true/false to override project defaults, or omit to use project settings.")
 	mrCreateCmd.Flags().Bool("squash-before-merge", false, "Squash commits into a single commit when merging. Set to true/false to override project defaults, or omit to use project settings.")
+	mrCreateCmd.Flags().BoolVarP(&opts.AutoMerge, "auto-merge", "", false, "Set the merge request to merge when all merge checks pass.")
 	mrCreateCmd.Flags().BoolVarP(&opts.noEditor, "no-editor", "", false, "Don't open editor to enter a description. If true, uses prompt. Defaults to false.")
 	mrCreateCmd.Flags().StringP("head", "H", "", "Select another head repository using the `OWNER/REPO` or `GROUP/NAMESPACE/REPO` format, the project ID, or the full URL.")
 	mrCreateCmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "Skip submission confirmation prompt. Use --fill to skip all optional prompts.")
@@ -397,7 +399,11 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.TargetBranch == "" {
-		o.TargetBranch = getTargetBranch(baseRepoRemote)
+		var err error
+		o.TargetBranch, err = getTargetBranch(client, o.TargetProject, o.SourceBranch)
+		if err != nil {
+			o.io.LogErrorf("warning: failed to fetch target branch rules: %v\n", err)
+		}
 	}
 
 	if o.RelatedIssue != "" {
@@ -675,7 +681,7 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.Milestone != 0 {
-		mrCreateOpts.MilestoneID = gitlab.Ptr(o.Milestone)
+		mrCreateOpts.MilestoneID = new(o.Milestone)
 	}
 
 	if action == cmdutils.CancelAction {
@@ -704,6 +710,24 @@ func (o *options) run(ctx context.Context) error {
 		mr, _, err := client.MergeRequests.CreateMergeRequest(headRepo.FullName(), mrCreateOpts)
 		if err != nil {
 			return err
+		}
+
+		// Enable auto-merge if requested
+		if o.AutoMerge {
+			mergeOpts := &gitlab.AcceptMergeRequestOptions{
+				AutoMerge: new(true),
+				SHA:       new(mr.SHA),
+			}
+
+			_, _, err = client.MergeRequests.AcceptMergeRequest(headRepo.FullName(), mr.IID, mergeOpts)
+			if err != nil {
+				fmt.Fprintln(out, mrutils.DisplayMR(c, &mr.BasicMergeRequest, o.io.IsaTTY))
+				return fmt.Errorf("merge request created but auto-merge could not be enabled: %w", err)
+			}
+
+			fmt.Fprintln(out, mrutils.DisplayMR(c, &mr.BasicMergeRequest, o.io.IsaTTY))
+			fmt.Fprintf(out, "%s Auto-merge enabled. Will merge when all checks pass.\n", c.GreenCheck())
+			return nil
 		}
 
 		fmt.Fprintln(out, mrutils.DisplayMR(c, &mr.BasicMergeRequest, o.io.IsaTTY))
@@ -892,11 +916,30 @@ func repoRemote(opts *options, repo glrepo.Interface, project *gitlab.Project, r
 	return repoRemote, nil
 }
 
-func getTargetBranch(baseRepoRemote *glrepo.Remote) string {
-	br, _ := git.GetDefaultBranch(baseRepoRemote.Name)
-	// we ignore the error since git.GetDefaultBranch returns master and an error
-	// if the default branch cannot be determined
-	return br
+func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourceBranch string) (string, error) {
+	if sourceBranch != "" {
+		rules, _, err := client.Projects.ListProjectTargetBranchRules(targetProject.PathWithNamespace)
+		if err != nil {
+			return targetProject.DefaultBranch, err
+		}
+		for _, rule := range rules {
+			if matched, _ := matchBranchPattern(rule.Name, sourceBranch); matched {
+				return rule.TargetBranch, nil
+			}
+		}
+	}
+	return targetProject.DefaultBranch, nil
+}
+
+// matchBranchPattern reports whether branch matches a GitLab branch name
+// pattern. GitLab patterns are glob-style where '*' matches any sequence of
+// characters, including '/'.
+func matchBranchPattern(pattern, branch string) (bool, error) {
+	re, err := regexp.Compile("^" + strings.ReplaceAll(regexp.QuoteMeta(pattern), `\*`, `.*`) + "$")
+	if err != nil {
+		return false, err
+	}
+	return re.MatchString(branch), nil
 }
 
 // createRecoverSaveFile will try save the issue create options to a file

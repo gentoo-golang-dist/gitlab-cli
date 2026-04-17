@@ -1,5 +1,5 @@
 ---
-title: glab repo search
+title: '`glab repo search`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,11 +26,10 @@ lookup
 ## Examples
 
 ```console
-$ glab project search -s "title"
-$ glab repo search -s "title"
-$ glab project find -s "title"
-$ glab project lookup -s "title"
-
+glab project search -s "title"
+glab repo search -s "title"
+glab project find -s "title"
+glab project lookup -s "title"
 ```
 
 ## Options

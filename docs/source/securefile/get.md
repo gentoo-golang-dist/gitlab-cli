@@ -1,5 +1,5 @@
 ---
-title: glab securefile get
+title: '`glab securefile get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,11 +26,10 @@ show
 
 ```console
 # Get details of a project's secure file using the file ID.
-$ glab securefile get 1
+glab securefile get 1
 
 # Get details of a project's secure file using the 'show' alias.
-$ glab securefile show 1
-
+glab securefile show 1
 ```
 
 ## Options inherited from parent commands

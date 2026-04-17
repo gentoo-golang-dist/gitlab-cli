@@ -41,17 +41,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: `Initialize OpenTofu or Terraform.`,
 		Example: heredoc.Doc(`
 			# Initialize state with name production in working directory
-			$ glab opentofu init production
+			glab opentofu init production
 
 			# Initialize state with name production in infra/ directory
-			$ glab opentofu init production -d infra/
+			glab opentofu init production -d infra/
 
 			# Initialize state with name production with Terraform
-			$ glab opentofu init production -b terraform
+			glab opentofu init production -b terraform
 
 			# Initialize state with name production with reconfiguring state
-			$ glab opentofu init production -- -reconfigure
-		`),
+			glab opentofu init production -- -reconfigure`),
 		Args: cobra.MinimumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

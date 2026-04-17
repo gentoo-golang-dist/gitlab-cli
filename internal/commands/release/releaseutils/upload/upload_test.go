@@ -27,20 +27,20 @@ func TestReleaseUtilsUpload_AliasFilePathToAssetDirectPath(t *testing.T) {
 	}{
 		{
 			name:                 "no filepath, no direct_asset_path",
-			givenReleaseAsset:    &ReleaseAsset{Name: gitlab.Ptr("any-name")},
-			expectedReleaseAsset: &ReleaseAsset{Name: gitlab.Ptr("any-name")},
+			givenReleaseAsset:    &ReleaseAsset{Name: new("any-name")},
+			expectedReleaseAsset: &ReleaseAsset{Name: new("any-name")},
 			expectedAliased:      false,
 		},
 		{
 			name:                 "no filepath, but direct_asset_path",
-			givenReleaseAsset:    &ReleaseAsset{Name: gitlab.Ptr("any-name"), DirectAssetPath: gitlab.Ptr("/any-path")},
-			expectedReleaseAsset: &ReleaseAsset{Name: gitlab.Ptr("any-name"), DirectAssetPath: gitlab.Ptr("/any-path")},
+			givenReleaseAsset:    &ReleaseAsset{Name: new("any-name"), DirectAssetPath: new("/any-path")},
+			expectedReleaseAsset: &ReleaseAsset{Name: new("any-name"), DirectAssetPath: new("/any-path")},
 			expectedAliased:      false,
 		},
 		{
 			name:                 "filepath, but not direct_asset_path",
-			givenReleaseAsset:    &ReleaseAsset{Name: gitlab.Ptr("any-name"), FilePath: gitlab.Ptr("/any-path")},
-			expectedReleaseAsset: &ReleaseAsset{Name: gitlab.Ptr("any-name"), DirectAssetPath: gitlab.Ptr("/any-path")},
+			givenReleaseAsset:    &ReleaseAsset{Name: new("any-name"), FilePath: new("/any-path")},
+			expectedReleaseAsset: &ReleaseAsset{Name: new("any-name"), DirectAssetPath: new("/any-path")},
 			expectedAliased:      true,
 		},
 	}
@@ -58,8 +58,8 @@ func TestReleaseUtilsUpload_AliasFilePathToAssetDirectPath(t *testing.T) {
 
 func TestReleaseUtilsUpload_AliasFilePathToAssetDirectPath_Conflict(t *testing.T) {
 	asset := &ReleaseAsset{
-		FilePath:        gitlab.Ptr("/any-path"),
-		DirectAssetPath: gitlab.Ptr("/any-path"),
+		FilePath:        new("/any-path"),
+		DirectAssetPath: new("/any-path"),
 	}
 
 	aliased, err := aliasFilePathToDirectAssetPath(asset)
@@ -86,7 +86,7 @@ func TestReleaseUtilsUpload_UploadFiles_ProjectMarkdownFiles(t *testing.T) {
 				},
 				Name: "test-release-file.txt",
 				Path: "./foobar/test-release-file.txt",
-				Type: gitlab.Ptr(gitlab.OtherLinkType),
+				Type: new(gitlab.OtherLinkType),
 			},
 		},
 		AssetsLinks: []*ReleaseAsset{},
@@ -124,7 +124,7 @@ func TestReleaseUtilsUpload_UploadFiles_GenericPackageRegistry(t *testing.T) {
 				},
 				Name: "test-release-file.txt",
 				Path: "./foobar/test-release-file.txt",
-				Type: gitlab.Ptr(gitlab.OtherLinkType),
+				Type: new(gitlab.OtherLinkType),
 			},
 		},
 		AssetsLinks: []*ReleaseAsset{},

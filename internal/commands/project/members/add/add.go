@@ -145,17 +145,17 @@ func (o *options) run() error {
 	addOptions := &gitlab.AddProjectMemberOptions{}
 
 	if o.roleID != 0 {
-		addOptions.MemberRoleID = gitlab.Ptr(o.roleID)
+		addOptions.MemberRoleID = new(o.roleID)
 	} else {
 		role := roles[o.role]
-		addOptions.AccessLevel = gitlab.Ptr(role)
+		addOptions.AccessLevel = new(role)
 	}
 
 	if o.expiresAt != "" {
-		addOptions.ExpiresAt = gitlab.Ptr(o.expiresAt)
+		addOptions.ExpiresAt = new(o.expiresAt)
 	}
 
-	addOptions.UserID = gitlab.Ptr(userIDToAdd)
+	addOptions.UserID = new(userIDToAdd)
 	member, _, err := client.ProjectMembers.AddProjectMember(repo.FullName(), addOptions)
 	if err != nil {
 		return fmt.Errorf("failed to add member %s: %w", userIdentifier, err)

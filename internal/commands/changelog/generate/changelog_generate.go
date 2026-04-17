@@ -22,8 +22,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Generate a changelog
-			$ glab changelog generate
-		`),
+			glab changelog generate`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -43,7 +42,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 
 			// Set the version
 			if s, _ := cmd.Flags().GetString("version"); s != "" {
-				opts.Version = gitlab.Ptr(s)
+				opts.Version = new(s)
 			} else {
 				tags, err := git.ListTags()
 				if err != nil {
@@ -58,12 +57,12 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to determine version from `git describe`: %w..", err)
 				}
-				opts.Version = gitlab.Ptr(version)
+				opts.Version = new(version)
 			}
 
 			// Set the config file
 			if s, _ := cmd.Flags().GetString("config-file"); s != "" {
-				opts.ConfigFile = gitlab.Ptr(s)
+				opts.ConfigFile = new(s)
 			}
 
 			// Set the date
@@ -74,30 +73,25 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 				}
 
 				t := gitlab.ISOTime(parsedDate)
-				opts.Date = &t
+				opts.Date = new(t)
 			}
 
 			// Set the "from" attribute
 			if s, _ := cmd.Flags().GetString("from"); s != "" {
-				opts.From = gitlab.Ptr(s)
+				opts.From = new(s)
 			}
 
 			// Set the "to" attribute
 			if s, _ := cmd.Flags().GetString("to"); s != "" {
-				opts.To = gitlab.Ptr(s)
+				opts.To = new(s)
 			}
 
 			// Set the trailer
 			if s, _ := cmd.Flags().GetString("trailer"); s != "" {
-				opts.Trailer = gitlab.Ptr(s)
+				opts.Trailer = new(s)
 			}
 
-			project, err := repo.Project(client)
-			if err != nil {
-				return err
-			}
-
-			changelog, _, err := client.Repositories.GenerateChangelogData(project.ID, opts)
+			changelog, _, err := client.Repositories.GenerateChangelogData(repo.FullName(), opts)
 			if err != nil {
 				return err
 			}
@@ -111,7 +105,7 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 	// The options mimic the ones from the REST API.
 	// https://docs.gitlab.com/api/repositories/#generate-changelog-data
 	changelogGenerateCmd.Flags().StringP("version", "v", "", "Version to generate the changelog for. Must follow semantic versioning. Defaults to the version of the local checkout, like using 'git describe'.")
-	changelogGenerateCmd.Flags().StringP("config-file", "", "", "Path of the changelog configuration file in the project's Git repository. Defaults to '.gitlab/changelog_config.yml'.")
+	changelogGenerateCmd.Flags().StringP("config-file", "", "", "Path of the changelog configuration file in the project's Git repository. Defaults to '.gitlab/changelog_config.yml'. For more information, see <https://docs.gitlab.com/user/project/changelogs/>.")
 	changelogGenerateCmd.Flags().StringP("date", "", "", "Date and time of the release. Uses ISO 8601 (`2016-03-11T03:45:40Z`) format. Defaults to the current time.")
 	changelogGenerateCmd.Flags().StringP("from", "", "", "Start of the range of commits (as a SHA) to use when generating the changelog. This commit itself isn't included in the list.")
 	changelogGenerateCmd.Flags().StringP("to", "", "", "End of the range of commits (as a SHA) to use when generating the changelog. This commit is included in the list. Defaults to the HEAD of the project's default branch.")

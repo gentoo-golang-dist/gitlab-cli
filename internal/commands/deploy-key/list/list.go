@@ -38,8 +38,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Short: "Get a list of deploy keys for the current project.",
 		Long:  "",
 		Example: heredoc.Doc(`
-		  - glab deploy-key list
-		`),
+			glab deploy-key list`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

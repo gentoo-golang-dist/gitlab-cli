@@ -1334,7 +1334,7 @@ func TestCIView(t *testing.T) {
 							WebURL:    "https://gitlab.com/OWNER/REPO/-/pipelines/225",
 							CreatedAt: &createdAt,
 						},
-						Status: gitlab.Ptr(gitlab.Running),
+						Status: new(gitlab.Running),
 					}, nil, nil)
 			},
 			expectedOutput: "Opening gitlab.com/OWNER/REPO/-/pipelines/225 in your browser.\n",
@@ -1364,7 +1364,7 @@ func TestCIView(t *testing.T) {
 							WebURL:    "https://gitlab.com/OWNER/REPO/-/pipelines/225",
 							CreatedAt: &createdAt,
 						},
-						Status: gitlab.Ptr(gitlab.Running),
+						Status: new(gitlab.Running),
 					}, nil, nil)
 			},
 			expectedOutput: "Opening gitlab.com/OWNER/REPO/-/pipelines/5 in your browser.\n",

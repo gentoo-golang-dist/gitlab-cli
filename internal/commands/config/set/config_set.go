@@ -33,9 +33,9 @@ Use 'glab config set --global' to set a global config.
 Specifying the '--host' flag also saves in the global configuration file.
 `,
 		Example: heredoc.Doc(`
-- glab config set editor vim
-- glab config set token xxxxx --host gitlab.com
-- glab config set check_update false --global`),
+glab config set editor vim
+glab config set token xxxxx --host gitlab.com
+glab config set check_update false --global`),
 		Args: cobra.ExactArgs(2),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",

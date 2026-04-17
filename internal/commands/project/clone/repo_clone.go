@@ -3,6 +3,7 @@ package clone
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -67,39 +68,38 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 		Short: `Clone a GitLab repository or project.`,
 		Example: heredoc.Doc(`
 			# Clones repository into current directory
-			$ glab repo clone gitlab-org/cli
-			$ glab repo clone https://gitlab.com/gitlab-org/cli
+			glab repo clone gitlab-org/cli
+			glab repo clone https://gitlab.com/gitlab-org/cli
 
 			# Clones repository into 'mydirectory'
-			$ glab repo clone gitlab-org/cli mydirectory
+			glab repo clone gitlab-org/cli mydirectory
 
 			# Clones repository 'glab' for current user
-			$ glab repo clone glab
+			glab repo clone glab
 
 			# Finds the project by the ID provided and clones it
-			$ glab repo clone 4356677
+			glab repo clone 4356677
 
 			# Clones a specific branch
-			$ glab repo clone gitlab-org/cli -- --branch development
+			glab repo clone gitlab-org/cli -- --branch development
 
 			# Clones with a shallow clone (depth 1)
-			$ glab repo clone gitlab-org/cli -- --depth 1
+			glab repo clone gitlab-org/cli -- --depth 1
 
 			# Clones with multiple Git flags
-			$ glab repo clone gitlab-org/cli -- --branch main --single-branch --depth 1
+			glab repo clone gitlab-org/cli -- --branch main --single-branch --depth 1
 
 			# Clones all repos in a group
-			$ glab repo clone -g everyonecancontribute --paginate
+			glab repo clone -g everyonecancontribute --paginate
 
 			# Clones all non-archived repos in a group
-			$ glab repo clone -g everyonecancontribute --archived=false --paginate
+			glab repo clone -g everyonecancontribute --archived=false --paginate
 
 			# Clones only active projects in a group
-			$ glab repo clone -g everyonecancontribute --active=true --paginate
+			glab repo clone -g everyonecancontribute --active=true --paginate
 
 			# Clones from a GitLab Self-Managed or GitLab Dedicated instance
-			$ GITLAB_HOST=salsa.debian.org glab repo clone myrepo
-		`),
+			GITLAB_HOST=salsa.debian.org glab repo clone myrepo`),
 		Long: heredoc.Docf(`
 		Clone a GitLab repository to your local machine. Specify the
 		repository by name, namespace/repo path, full URL, or project ID.
@@ -124,9 +124,13 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 			dbg.Debug("Args:", strings.Join(args, " "))
 			dbg.Debug("GitFlags:", strings.Join(opts.gitFlags, " "))
 			if nArgs := len(args); nArgs > 0 {
-				ctxOpts.Repo = args[0]
-				if nArgs > 1 && !opts.preserveNamespace {
-					opts.dir = args[1]
+				if opts.groupName != "" {
+					opts.dir = args[0]
+				} else {
+					ctxOpts.Repo = args[0]
+					if nArgs > 1 {
+						opts.dir = args[1]
+					}
 				}
 			}
 			dbg.Debug("Dir:", opts.dir)
@@ -195,29 +199,29 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 	c := opts.io.Color()
 	listOpts := &gitlab.ListGroupProjectsOptions{}
 	if !opts.withShared {
-		listOpts.WithShared = gitlab.Ptr(false)
+		listOpts.WithShared = new(false)
 	}
 	if opts.withMREnabled {
-		listOpts.WithMergeRequestsEnabled = gitlab.Ptr(true)
+		listOpts.WithMergeRequestsEnabled = new(true)
 	}
 	if opts.withIssuesEnabled {
-		listOpts.WithIssuesEnabled = gitlab.Ptr(true)
+		listOpts.WithIssuesEnabled = new(true)
 	}
 	if opts.owned {
-		listOpts.Owned = gitlab.Ptr(true)
+		listOpts.Owned = new(true)
 	}
 	if opts.activeSet {
-		listOpts.Active = gitlab.Ptr(opts.active)
+		listOpts.Active = new(opts.active)
 	}
 	if opts.archivedSet {
-		listOpts.Archived = gitlab.Ptr(opts.archived)
+		listOpts.Archived = new(opts.archived)
 	}
 	if opts.includeSubgroups {
 		includeSubGroups := true
 		listOpts.IncludeSubGroups = &includeSubGroups
 	}
 	if opts.visibility != "" {
-		listOpts.Visibility = gitlab.Ptr(gitlab.VisibilityValue(opts.visibility))
+		listOpts.Visibility = new(gitlab.VisibilityValue(opts.visibility))
 	}
 
 	listOpts.PerPage = 100
@@ -272,6 +276,7 @@ func groupClone(opts *options, ctxOpts *ContextOpts) error {
 }
 
 func cloneRun(opts *options, ctxOpts *ContextOpts) error {
+	localDir := opts.dir
 	if !git.IsValidURL(ctxOpts.Repo) {
 		// Assuming that repo is a project ID if it is an integer
 		if _, err := strconv.ParseInt(ctxOpts.Repo, 10, 64); err != nil {
@@ -288,15 +293,15 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 			ctxOpts.Project = p
 		}
 		ctxOpts.Repo = glrepo.RemoteURL(ctxOpts.Project, opts.protocol)
+		if opts.preserveNamespace {
+			localDir = filepath.Join(opts.dir, filepath.FromSlash(ctxOpts.Project.PathWithNamespace))
+		} else if opts.dir != "" && opts.groupName != "" {
+			localDir = filepath.Join(opts.dir, ctxOpts.Project.Path)
+		}
 	} else if !strings.HasSuffix(ctxOpts.Repo, ".git") {
 		ctxOpts.Repo += ".git"
 	}
-	// To preserve namespaces, we deep copy gitFlags for group clones
-	if opts.preserveNamespace {
-		namespacedDir := ctxOpts.Project.PathWithNamespace
-		opts.dir = namespacedDir
-	}
-	_, err := git.RunClone(ctxOpts.Repo, opts.dir, opts.gitFlags)
+	_, err := git.RunClone(ctxOpts.Repo, localDir, opts.gitFlags)
 	if err != nil {
 		return err
 	}
@@ -305,15 +310,15 @@ func cloneRun(opts *options, ctxOpts *ContextOpts) error {
 	// to forked repo's ssh/https url depending on the users preferred protocol
 	if ctxOpts.Project != nil {
 		if ctxOpts.Project.ForkedFromProject != nil && strings.Contains(ctxOpts.Project.PathWithNamespace, opts.currentUser.Username) {
-			if opts.dir == "" {
-				opts.dir = "./" + ctxOpts.Project.Path
+			if localDir == "" {
+				localDir = "./" + ctxOpts.Project.Path
 			}
 			fProject, err := api.GetProject(opts.apiClient.Lab(), ctxOpts.Project.ForkedFromProject.PathWithNamespace)
 			if err != nil {
 				return err
 			}
 			repoURL := glrepo.RemoteURL(fProject, opts.protocol)
-			err = git.AddUpstreamRemote(repoURL, opts.dir)
+			err = git.AddUpstreamRemote(repoURL, localDir)
 			if err != nil {
 				return err
 			}

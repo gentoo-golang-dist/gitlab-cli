@@ -52,7 +52,7 @@ func Test_IssuableClose(t *testing.T) {
 						IID:       1,
 						Title:     "test issue",
 						State:     "opened",
-						IssueType: gitlab.Ptr("issue"),
+						IssueType: new("issue"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 				tc.MockIssues.EXPECT().
@@ -61,7 +61,7 @@ func Test_IssuableClose(t *testing.T) {
 						ID:        1,
 						IID:       1,
 						State:     "closed",
-						IssueType: gitlab.Ptr("issue"),
+						IssueType: new("issue"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 			},
@@ -83,7 +83,7 @@ func Test_IssuableClose(t *testing.T) {
 						IID:       2,
 						Title:     "test incident",
 						State:     "opened",
-						IssueType: gitlab.Ptr("incident"),
+						IssueType: new("incident"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 				tc.MockIssues.EXPECT().
@@ -92,7 +92,7 @@ func Test_IssuableClose(t *testing.T) {
 						ID:        2,
 						IID:       2,
 						State:     "closed",
-						IssueType: gitlab.Ptr("incident"),
+						IssueType: new("incident"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 			},
@@ -114,7 +114,7 @@ func Test_IssuableClose(t *testing.T) {
 						IID:       2,
 						Title:     "test incident",
 						State:     "opened",
-						IssueType: gitlab.Ptr("incident"),
+						IssueType: new("incident"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 				tc.MockIssues.EXPECT().
@@ -123,7 +123,7 @@ func Test_IssuableClose(t *testing.T) {
 						ID:        2,
 						IID:       2,
 						State:     "closed",
-						IssueType: gitlab.Ptr("incident"),
+						IssueType: new("incident"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 			},
@@ -141,7 +141,7 @@ func Test_IssuableClose(t *testing.T) {
 						IID:       1,
 						Title:     "test issue",
 						State:     "opened",
-						IssueType: gitlab.Ptr("issue"),
+						IssueType: new("issue"),
 						CreatedAt: &createdAt,
 					}, nil, nil)
 			},

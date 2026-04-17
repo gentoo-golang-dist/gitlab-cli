@@ -43,13 +43,12 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Use:   "delete <id> [flags]",
 		Short: `Delete CI/CD pipelines.`,
 		Example: heredoc.Doc(`
-			$ glab ci delete 34
-			$ glab ci delete 12,34,2
-			$ glab ci delete --source=api
-			$ glab ci delete --status=failed
-			$ glab ci delete --older-than 24h
-			$ glab ci delete --older-than 24h --status=failed
-		`),
+			glab ci delete 34
+			glab ci delete 12,34,2
+			glab ci delete --source=api
+			glab ci delete --status=failed
+			glab ci delete --older-than 24h
+			glab ci delete --older-than 24h --status=failed`),
 		Long: ``,
 		Args: func(cmd *cobra.Command, args []string) error {
 			olderThanDuration, _ := cmd.Flags().GetDuration(FlagOlderThan)
@@ -137,15 +136,15 @@ func optsFromFlags(flags *pflag.FlagSet) *gitlab.ListProjectPipelinesOptions {
 	olderThanDuration, _ := flags.GetDuration(FlagOlderThan)
 
 	if source != "" {
-		opts.Source = gitlab.Ptr(source)
+		opts.Source = new(source)
 	}
 
 	if status != "" {
-		opts.Status = gitlab.Ptr(gitlab.BuildStateValue(status))
+		opts.Status = new(gitlab.BuildStateValue(status))
 	}
 
 	if olderThanDuration != 0 {
-		opts.UpdatedBefore = gitlab.Ptr(time.Now().Add(-olderThanDuration))
+		opts.UpdatedBefore = new(time.Now().Add(-olderThanDuration))
 	}
 
 	return opts

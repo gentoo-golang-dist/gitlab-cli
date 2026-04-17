@@ -22,3 +22,11 @@ go test ./internal/commands/mr/note/... -run TestCreate  # single test
 make gen-docs                                 # regenerate docs from cobra definitions
 make generate                                 # go generate (config stubs, etc.)
 ```
+
+## Documentation conventions
+
+CLI documentation is generated from Go source files by `make gen-docs`. All documentation
+content must be authored in the Go source. Do not edit files in `docs/source/` directly.
+
+When you add or update a command, follow the conventions in the
+[GitLab CLI (glab) documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).

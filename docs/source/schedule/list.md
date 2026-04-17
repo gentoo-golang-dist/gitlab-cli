@@ -1,5 +1,5 @@
 ---
-title: glab schedule list
+title: '`glab schedule list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -21,11 +21,10 @@ glab schedule list [flags]
 ```console
 # List all scheduled pipelines
 $ glab schedule list
-> Showing schedules for project gitlab-org/cli
-> ID  Description                    Cron            Ref    Active
-> 1   Daily build                   0 0 * * *       main   true
-> 2   Weekly deployment             0 0 * * 0       main   true
-
+Showing schedules for project gitlab-org/cli
+ID  Description                    Cron            Ref    Active
+1   Daily build                   0 0 * * *       main   true
+2   Weekly deployment             0 0 * * 0       main   true
 ```
 
 ## Options

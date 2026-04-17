@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller token revoke
+title: '`glab runner-controller token revoke`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,11 +20,10 @@ glab runner-controller token revoke <controller-id> <token-id> [flags]
 
 ```console
 # Revoke token 1 from runner controller 42 (with confirmation prompt)
-$ glab runner-controller token revoke 42 1
+glab runner-controller token revoke 42 1
 
 # Revoke without confirmation
-$ glab runner-controller token revoke 42 1 --force
-
+glab runner-controller token revoke 42 1 --force
 ```
 
 ## Options

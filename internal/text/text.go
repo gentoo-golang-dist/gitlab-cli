@@ -15,6 +15,13 @@ For more information, see
 https://docs.gitlab.com/policy/development_stages_support/.
 `
 
+const BetaString = `
+This feature is in beta and might not be ready for production use.
+It might be unstable and breaking changes can occur outside of major releases.
+For more information, see
+https://docs.gitlab.com/policy/development_stages_support/.
+`
+
 const ansi = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))"
 
 var re = regexp.MustCompile(ansi)

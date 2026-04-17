@@ -37,14 +37,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Update a runner controller's description
-			$ glab runner-controller update 42 --description "Updated description"
+			glab runner-controller update 42 --description "Updated description"
 
 			# Update a runner controller's state
-			$ glab runner-controller update 42 --state enabled
+			glab runner-controller update 42 --state enabled
 
 			# Update both description and state
-			$ glab runner-controller update 42 --description "Production" --state enabled
-		`),
+			glab runner-controller update 42 --description "Production" --state enabled`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -93,10 +92,10 @@ func (o *options) run(ctx context.Context) error {
 
 	updateOpts := &gitlab.UpdateRunnerControllerOptions{}
 	if o.description != "" {
-		updateOpts.Description = gitlab.Ptr(o.description)
+		updateOpts.Description = new(o.description)
 	}
 	if o.state != "" {
-		updateOpts.State = gitlab.Ptr(o.state)
+		updateOpts.State = new(o.state)
 	}
 
 	controller, _, err := client.RunnerControllers.UpdateRunnerController(o.id, updateOpts, gitlab.WithContext(ctx))

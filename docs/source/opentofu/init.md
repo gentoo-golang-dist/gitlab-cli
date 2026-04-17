@@ -1,5 +1,5 @@
 ---
-title: glab opentofu init
+title: '`glab opentofu init`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,17 +20,16 @@ glab opentofu init <state> [flags]
 
 ```console
 # Initialize state with name production in working directory
-$ glab opentofu init production
+glab opentofu init production
 
 # Initialize state with name production in infra/ directory
-$ glab opentofu init production -d infra/
+glab opentofu init production -d infra/
 
 # Initialize state with name production with Terraform
-$ glab opentofu init production -b terraform
+glab opentofu init production -b terraform
 
 # Initialize state with name production with reconfiguring state
-$ glab opentofu init production -- -reconfigure
-
+glab opentofu init production -- -reconfigure
 ```
 
 ## Options

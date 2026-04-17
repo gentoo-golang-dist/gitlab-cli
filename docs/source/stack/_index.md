@@ -1,5 +1,5 @@
 ---
-title: glab stack
+title: '`glab stack`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -30,9 +30,8 @@ stacks
 ## Examples
 
 ```console
-$ glab stack create cool-new-feature
-$ glab stack sync
-
+glab stack create cool-new-feature
+glab stack sync
 ```
 
 ## Options

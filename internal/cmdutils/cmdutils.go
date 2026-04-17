@@ -66,7 +66,7 @@ var listLabels = func(client *gitlab.Client, projectID any, opts *gitlab.ListLab
 }
 
 var projectMilestoneByTitle = func(client *gitlab.Client, projectID any, name string) (*gitlab.Milestone, error) {
-	opts := &gitlab.ListMilestonesOptions{Title: gitlab.Ptr(name), IncludeParentMilestones: gitlab.Ptr(true)}
+	opts := &gitlab.ListMilestonesOptions{Title: new(name), IncludeParentMilestones: new(true)}
 
 	if opts.PerPage == 0 {
 		opts.PerPage = api.DefaultListLimit
@@ -230,8 +230,8 @@ func MilestonesPrompt(ctx context.Context, response *int64, apiClient *gitlab.Cl
 	milestoneMap := map[string]int64{}
 
 	lOpts := &api.ListMilestonesOptions{
-		IncludeParentMilestones: gitlab.Ptr(true),
-		State:                   gitlab.Ptr("active"),
+		IncludeParentMilestones: new(true),
+		State:                   new("active"),
 		PerPage:                 100,
 	}
 	milestones, err := api.ListAllMilestones(apiClient, repoRemote.FullName(), lOpts)

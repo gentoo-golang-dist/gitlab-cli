@@ -36,11 +36,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Short: `Create a new project secure file.`,
 		Example: heredoc.Doc(`
 			# Create a project secure file with the given name using the contents of the given path.
-			$ glab securefile create "newfile.txt" "securefiles/localfile.txt"
+			glab securefile create "newfile.txt" "securefiles/localfile.txt"
 
 			# Create a project secure file using the 'upload' alias.
-			$ glab securefile upload "newfile.txt" "securefiles/localfile.txt"
-		`),
+			glab securefile upload "newfile.txt" "securefiles/localfile.txt"`),
 		Long:    ``,
 		Aliases: []string{"upload"},
 		Args:    cobra.ExactArgs(2),
@@ -83,7 +82,7 @@ func (o *options) run() error {
 		return fmt.Errorf("Unable to read file at %s: %w", o.inputFilePath, err)
 	}
 
-	_, _, err = client.SecureFiles.CreateSecureFile(repo.FullName(), reader, &gitlab.CreateSecureFileOptions{Name: gitlab.Ptr(o.fileName)})
+	_, _, err = client.SecureFiles.CreateSecureFile(repo.FullName(), reader, &gitlab.CreateSecureFileOptions{Name: new(o.fileName)})
 	if err != nil {
 		return fmt.Errorf("Error creating secure file: %w", err)
 	}

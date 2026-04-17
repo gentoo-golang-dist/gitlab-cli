@@ -115,7 +115,7 @@ func PipelineJobsWithID(client *gitlab.Client, pid any, ppid int64) ([]*gitlab.J
 // pipelineJobsWithSha returns a list of jobs in a pipeline for a given commit sha.
 // The jobs are returned in the order in which they were created
 func pipelineJobsWithSha(client *gitlab.Client, pid any, sha string) ([]*gitlab.Job, []*gitlab.Bridge, error) {
-	pipelines, _, err := client.Pipelines.ListProjectPipelines(pid, &gitlab.ListProjectPipelinesOptions{SHA: gitlab.Ptr(sha), ListOptions: gitlab.ListOptions{PerPage: DefaultListLimit}})
+	pipelines, _, err := client.Pipelines.ListProjectPipelines(pid, &gitlab.ListProjectPipelinesOptions{SHA: new(sha), ListOptions: gitlab.ListOptions{PerPage: DefaultListLimit}})
 	if err != nil {
 		return nil, nil, err
 	}

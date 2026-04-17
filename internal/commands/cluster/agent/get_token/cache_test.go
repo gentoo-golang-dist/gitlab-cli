@@ -42,7 +42,7 @@ func TestCache_unpopulated(t *testing.T) {
 	createdPAT := &gitlab.PersonalAccessToken{
 		Name:      "sentinel",
 		Token:     "redacted",
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(1 * time.Hour))),
+		ExpiresAt: new(gitlab.ISOTime(time.Now().UTC().Add(1 * time.Hour))),
 	}
 	c := &cache{
 		id: "test-id",
@@ -82,7 +82,7 @@ func TestCache_hit(t *testing.T) {
 	// GIVEN
 	token := &gitlab.PersonalAccessToken{
 		Token:     "any-token",
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(tokenExpiryDurationDefault))),
+		ExpiresAt: new(gitlab.ISOTime(time.Now().UTC().Add(tokenExpiryDurationDefault))),
 	}
 
 	mockStore := &mockStorage{}
@@ -116,12 +116,12 @@ func TestCache_tokenExpired(t *testing.T) {
 	// GIVEN
 	expiredToken := &gitlab.PersonalAccessToken{
 		Token:     "expired-token",
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(-1 * time.Hour))),
+		ExpiresAt: new(gitlab.ISOTime(time.Now().UTC().Add(-1 * time.Hour))),
 	}
 
 	newToken := &gitlab.PersonalAccessToken{
 		Token:     "new-token",
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(tokenExpiryDurationDefault))),
+		ExpiresAt: new(gitlab.ISOTime(time.Now().UTC().Add(tokenExpiryDurationDefault))),
 	}
 
 	mockStore := &mockStorage{}
@@ -155,12 +155,12 @@ func TestCache_tokenRevoked(t *testing.T) {
 	revokedToken := &gitlab.PersonalAccessToken{
 		Token:     "revoked-token",
 		Revoked:   true,
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(-1 * time.Hour))),
+		ExpiresAt: new(gitlab.ISOTime(time.Now().UTC().Add(-1 * time.Hour))),
 	}
 
 	newToken := &gitlab.PersonalAccessToken{
 		Token:     "new-token",
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(time.Now().UTC().Add(tokenExpiryDurationDefault))),
+		ExpiresAt: new(gitlab.ISOTime(time.Now().UTC().Add(tokenExpiryDurationDefault))),
 	}
 
 	mockStore := &mockStorage{}

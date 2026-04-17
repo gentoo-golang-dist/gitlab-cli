@@ -1,5 +1,5 @@
 ---
-title: glab runner managers
+title: '`glab runner managers`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -24,11 +24,10 @@ glab runner managers <runner-id> [flags]
 
 ```console
 # List managers for runner 1
-$ glab runner managers 1
+glab runner managers 1
 
 # List managers as JSON
-$ glab runner managers 1 --output json
-
+glab runner managers 1 --output json
 ```
 
 ## Options

@@ -1,5 +1,5 @@
 ---
-title: glab mr note
+title: '`glab mr note`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,28 +26,26 @@ comment
 
 ```console
 # Add a comment to merge request with ID 123
-$ glab mr note 123 -m "Looks good to me!"
+glab mr note 123 -m "Looks good to me!"
 
 # Add a comment to the merge request for the current branch
-$ glab mr note -m "LGTM"
+glab mr note -m "LGTM"
 
 # Open your editor to compose a multi-line comment
-$ glab mr note 123
+glab mr note 123
 
 # Resolve a discussion by note ID
-$ glab mr note 123 --resolve 3107030349
+glab mr note resolve 123 3107030349
 
-# Unresolve a discussion by note ID
-$ glab mr note 123 --unresolve 3107030349
+# Reopen a discussion by note ID
+glab mr note reopen 123 3107030349
 ```
 
 ## Options
 
 ```plaintext
   -m, --message string   Comment or note message.
-      --resolve int      Resolve the discussion containing the specified note ID.
       --unique           Don't create a comment or note if it already exists.
-      --unresolve int    Unresolve the discussion containing the specified note ID.
 ```
 
 ## Options inherited from parent commands
@@ -60,3 +58,5 @@ $ glab mr note 123 --unresolve 3107030349
 ## Subcommands
 
 - [`list`](list.md)
+- [`reopen`](reopen.md)
+- [`resolve`](resolve.md)

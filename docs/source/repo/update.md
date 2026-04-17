@@ -1,5 +1,5 @@
 ---
-title: glab repo update
+title: '`glab repo update`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,18 +20,17 @@ glab repo update [path] [flags]
 
 ```console
 # Update the description for my-project.
-$ glab repo update my-project --description "This project is cool."
+glab repo update my-project --description "This project is cool."
 
 # Update the default branch for my-project.
-$ glab repo update my-project --defaultBranch main
+glab repo update my-project --defaultBranch main
 
 # Archive my-project.
-$ glab repo update my-project --archive
-$ glab repo update my-project --archive=true
+glab repo update my-project --archive
+glab repo update my-project --archive=true
 
 # Unarchive my-project.
-$ glab repo update my-project --archive=false
-
+glab repo update my-project --archive=false
 ```
 
 ## Options

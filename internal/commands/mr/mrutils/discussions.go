@@ -1,13 +1,17 @@
 package mrutils
 
 import (
+	"context"
+	"fmt"
+	"strings"
+
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 )
 
 // ListAllDiscussions fetches all discussions for a merge request, paginating automatically.
-var ListAllDiscussions = func(client *gitlab.Client, projectID any, mrIID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
+var ListAllDiscussions = func(ctx context.Context, client *gitlab.Client, projectID any, mrIID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
 	if opts == nil {
 		opts = &gitlab.ListMergeRequestDiscussionsOptions{}
 	}
@@ -23,7 +27,7 @@ var ListAllDiscussions = func(client *gitlab.Client, projectID any, mrIID int64,
 
 	for {
 		opts.Page = page
-		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(projectID, mrIID, opts)
+		discussions, resp, err := client.Discussions.ListMergeRequestDiscussions(projectID, mrIID, opts, gitlab.WithContext(ctx))
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +138,58 @@ func matchesType(discussion *gitlab.Discussion, typ string) bool {
 	default:
 		return true
 	}
+}
+
+// ResolveDiscussionID resolves a prefix (8+ chars) to a full discussion ID.
+// Returns an error if the prefix is ambiguous or not found.
+func ResolveDiscussionID(ctx context.Context, client *gitlab.Client, projectID any, mrIID int64, prefix string) (string, error) {
+	prefixLen := len(prefix)
+	if prefixLen < 8 {
+		return "", fmt.Errorf("discussion ID prefix must be at least 8 characters, got %d", len(prefix))
+	}
+	discussions, err := ListAllDiscussions(ctx, client, projectID, mrIID, &gitlab.ListMergeRequestDiscussionsOptions{})
+	if err != nil {
+		return "", err
+	}
+	var matches []string
+	for _, d := range discussions {
+		if len(d.ID) >= prefixLen && d.ID[:prefixLen] == prefix {
+			matches = append(matches, d.ID)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("no discussion found matching prefix %q", prefix)
+	case 1:
+		return matches[0], nil
+	default:
+		return "", fmt.Errorf("prefix %q matches %d discussions: %s", prefix, len(matches), formatMatches(matches))
+	}
+}
+
+// formatMatches formats discussion IDs for display, truncating each to 8 chars.
+func formatMatches(matches []string) string {
+	var b strings.Builder
+	for i, m := range matches {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(TruncateDiscussionID(m))
+	}
+	return b.String()
+}
+
+// FindDiscussionByNoteID finds the discussion containing a specific note ID.
+// Returns the discussion ID, or an error if the note is not found.
+func FindDiscussionByNoteID(discussions []*gitlab.Discussion, noteID int64) (string, error) {
+	for _, d := range discussions {
+		for _, n := range d.Notes {
+			if n.ID == noteID {
+				return d.ID, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("note %d not found", noteID)
 }
 
 // matchesFilePath checks if a discussion is on the specified file path.

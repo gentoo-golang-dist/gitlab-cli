@@ -1,5 +1,5 @@
 ---
-title: glab stack switch
+title: '`glab stack switch`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -29,7 +29,7 @@ glab stack switch <stack-name> [flags]
 ## Examples
 
 ```console
-$ glab stack switch <stack-name>
+glab stack switch <stack-name>
 ```
 
 ## Options inherited from parent commands

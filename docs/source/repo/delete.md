@@ -1,5 +1,5 @@
 ---
-title: glab repo delete
+title: '`glab repo delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -34,13 +34,12 @@ glab repo delete [<NAMESPACE>/]<NAME> [flags]
 
 ```console
 # Delete a personal project.
-$ glab repo delete dotfiles
+glab repo delete dotfiles
 
 # Delete a project in a GitLab group, or another project
 # you have write access to:
-$ glab repo delete mygroup/dotfiles
-$ glab repo delete myorg/mynamespace/dotfiles
-
+glab repo delete mygroup/dotfiles
+glab repo delete myorg/mynamespace/dotfiles
 ```
 
 ## Options

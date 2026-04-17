@@ -41,6 +41,7 @@ type options struct {
 	requestInputFile    string
 	magicFields         []string
 	rawFields           []string
+	formFields          []string
 	requestHeaders      []string
 	showResponseHeaders bool
 	paginate            bool
@@ -102,6 +103,12 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 		For GraphQL requests, all fields other than %[1]squery%[1]s and %[1]soperationName%[1]s are
 		interpreted as GraphQL variables.
 
+		Use %[1]s--form%[1]s to send data as %[1]smultipart/form-data%[1]s instead of JSON. This is
+		required for API endpoints that accept file uploads, such as wiki attachments.
+		Pass one or more %[1]s--form%[1]s values in %[1]skey=value%[1]s format. To upload a file,
+		prefix the value with %[1]s@%[1]s followed by the file path. Pass %[1]s-%[1]s to read from
+		standard input. Cannot be combined with %[1]s--field%[1]s, %[1]s--raw-field%[1]s, or %[1]s--input%[1]s.
+
 		Raw request body can be passed from the outside via a file specified by %[1]s--input%[1]s.
 		Pass %[1]s-%[1]s to read from standard input. In this mode, parameters specified with
 		%[1]s--field%[1]s flags are serialized into URL query parameters.
@@ -123,6 +130,7 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ glab api projects/:fullpath/releases
 			$ glab api projects/gitlab-com%2Fwww-gitlab-com/issues
+			$ glab api --method POST projects/:fullpath/wikis/attachments --form "file=@./image.png" --form "branch=main"
 			$ glab api issues --paginate
 			$ glab api issues --paginate --output ndjson
 			$ glab api issues --paginate --output ndjson | jq 'select(.state == "opened")'
@@ -186,17 +194,22 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.hostname, "hostname", "", "The GitLab hostname for the request. Defaults to 'gitlab.com', or the authenticated host in the current Git directory.")
-	cmd.Flags().StringVarP(&opts.requestMethod, "method", "X", "GET", "The HTTP method for the request.")
-	cmd.Flags().StringArrayVarP(&opts.magicFields, "field", "F", nil, "Add a parameter of inferred type. Changes the default HTTP method to \"POST\".")
-	cmd.Flags().StringArrayVarP(&opts.rawFields, "raw-field", "f", nil, "Add a string parameter.")
-	cmd.Flags().StringArrayVarP(&opts.requestHeaders, "header", "H", nil, "Add an additional HTTP request header.")
-	cmd.Flags().BoolVarP(&opts.showResponseHeaders, "include", "i", false, "Include HTTP response headers in the output.")
-	cmd.Flags().BoolVar(&opts.paginate, "paginate", false, "Make additional HTTP requests to fetch all pages of results.")
-	cmd.Flags().StringVar(&opts.requestInputFile, "input", "", "The file to use as the body for the HTTP request.")
-	cmd.Flags().BoolVar(&opts.silent, "silent", false, "Do not print the response body.")
-	cmd.Flags().Var(cmdutils.NewEnumValue([]string{"json", "ndjson"}, "json", &opts.outputFormat), "output", "Format output as: json, ndjson.")
+	fl := cmd.Flags()
+	fl.StringVar(&opts.hostname, "hostname", "", "The GitLab hostname for the request. Defaults to 'gitlab.com', or the authenticated host in the current Git directory.")
+	fl.StringVarP(&opts.requestMethod, "method", "X", "GET", "The HTTP method for the request.")
+	fl.StringArrayVarP(&opts.magicFields, "field", "F", nil, "Add a parameter of inferred type. Changes the default HTTP method to \"POST\".")
+	fl.StringArrayVarP(&opts.rawFields, "raw-field", "f", nil, "Add a string parameter.")
+	fl.StringArrayVar(&opts.formFields, "form", nil, "Add a multipart form field. Use @filepath to upload a file, or @- to read from standard input (at most once). Changes the default HTTP method to \"POST\".")
+	fl.StringArrayVarP(&opts.requestHeaders, "header", "H", nil, "Add an additional HTTP request header.")
+	fl.BoolVarP(&opts.showResponseHeaders, "include", "i", false, "Include HTTP response headers in the output.")
+	fl.BoolVar(&opts.paginate, "paginate", false, "Make additional HTTP requests to fetch all pages of results.")
+	fl.StringVar(&opts.requestInputFile, "input", "", "The file to use as the body for the HTTP request.")
+	fl.BoolVar(&opts.silent, "silent", false, "Do not print the response body.")
+	fl.Var(cmdutils.NewEnumValue([]string{"json", "ndjson"}, "json", &opts.outputFormat), "output", "Format output as: json, ndjson.")
 	cmd.MarkFlagsMutuallyExclusive("paginate", "input")
+	cmd.MarkFlagsMutuallyExclusive("form", "field")
+	cmd.MarkFlagsMutuallyExclusive("form", "raw-field")
+	cmd.MarkFlagsMutuallyExclusive("form", "input")
 	return cmd
 }
 
@@ -218,6 +231,16 @@ func (o *options) validate(cmd *cobra.Command) error {
 
 	if o.outputFormat != "json" && o.outputFormat != "ndjson" {
 		return &cmdutils.FlagError{Err: fmt.Errorf("invalid output format %q: must be 'json' or 'ndjson'", o.outputFormat)}
+	}
+
+	stdinCount := 0
+	for _, f := range o.formFields {
+		if strings.HasSuffix(f, "=@-") {
+			stdinCount++
+		}
+	}
+	if stdinCount > 1 {
+		return &cmdutils.FlagError{Err: errors.New("'@-' (stdin) can only be used once across all --form fields.")}
 	}
 
 	return nil
@@ -259,6 +282,13 @@ func (o *options) run(ctx context.Context) error {
 		if size >= 0 {
 			requestHeaders = append([]string{fmt.Sprintf("Content-Length: %d", size)}, requestHeaders...)
 		}
+	} else if len(o.formFields) > 0 {
+		if !o.requestMethodPassed {
+			method = http.MethodPost
+		}
+		body, contentType := buildMultipartBody(o.formFields, o.io.In)
+		requestBody = body
+		requestHeaders = append([]string{fmt.Sprintf("Content-Type: %s", contentType)}, requestHeaders...)
 	}
 
 	headersOutputStream := o.io.StdOut

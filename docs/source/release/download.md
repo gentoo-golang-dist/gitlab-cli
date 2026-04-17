@@ -1,5 +1,5 @@
 ---
-title: glab release download
+title: '`glab release download`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -28,14 +28,13 @@ glab release download <tag> [flags]
 
 ```console
 # Download all assets from the latest release
-$ glab release download
+glab release download
 
 # Download all assets from the specified release tag
-$ glab release download v1.1.0
+glab release download v1.1.0
 
 # Download assets with names matching the glob pattern
-$ glab release download v1.10.1 --asset-name="*.tar.gz"
-
+glab release download v1.10.1 --asset-name="*.tar.gz"
 ```
 
 ## Options

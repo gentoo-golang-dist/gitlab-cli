@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller list
+title: '`glab runner-controller list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,11 +20,10 @@ glab runner-controller list [flags]
 
 ```console
 # List all runner controllers
-$ glab runner-controller list
+glab runner-controller list
 
 # List runner controllers as JSON
-$ glab runner-controller list --output json
-
+glab runner-controller list --output json
 ```
 
 ## Options

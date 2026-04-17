@@ -32,7 +32,7 @@ func Test_EditProjectMilestone(t *testing.T) {
 		Title:       "Example",
 		Description: "Updated description",
 		State:       "active",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -42,7 +42,7 @@ func Test_EditProjectMilestone(t *testing.T) {
 			cli:         "123 --title='Example' --project=456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockMilestones.EXPECT().UpdateMilestone("456", int64(123), &gitlab.UpdateMilestoneOptions{
-					Title: gitlab.Ptr("Example"),
+					Title: new("Example"),
 				}).Return(testMilestone, nil, nil)
 			},
 		},
@@ -52,7 +52,7 @@ func Test_EditProjectMilestone(t *testing.T) {
 			cli:         "123 --description='Updated description' --project 456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockMilestones.EXPECT().UpdateMilestone("456", int64(123), &gitlab.UpdateMilestoneOptions{
-					Description: gitlab.Ptr("Updated description"),
+					Description: new("Updated description"),
 				}).Return(testMilestone, nil, nil)
 			},
 		},
@@ -77,7 +77,7 @@ func Test_EditProjectMilestone(t *testing.T) {
 			cli:  "123 --title='Example'",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockMilestones.EXPECT().UpdateMilestone("OWNER/REPO", int64(123), &gitlab.UpdateMilestoneOptions{
-					Title: gitlab.Ptr("Example"),
+					Title: new("Example"),
 				}).Return(testMilestone, nil, nil)
 			},
 		},
@@ -128,7 +128,7 @@ func Test_EditGroupMilestone(t *testing.T) {
 		Title:       "Example",
 		Description: "Updated description",
 		State:       "active",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 12, 16, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -138,7 +138,7 @@ func Test_EditGroupMilestone(t *testing.T) {
 			cli:         "123 --title='Example' --group=456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockGroupMilestones.EXPECT().UpdateGroupMilestone("456", int64(123), &gitlab.UpdateGroupMilestoneOptions{
-					Title: gitlab.Ptr("Example"),
+					Title: new("Example"),
 				}).Return(testMilestone, nil, nil)
 			},
 		},
@@ -148,7 +148,7 @@ func Test_EditGroupMilestone(t *testing.T) {
 			cli:         "123 --description='Updated description' --group 456",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockGroupMilestones.EXPECT().UpdateGroupMilestone("456", int64(123), &gitlab.UpdateGroupMilestoneOptions{
-					Description: gitlab.Ptr("Updated description"),
+					Description: new("Updated description"),
 				}).Return(testMilestone, nil, nil)
 			},
 		},

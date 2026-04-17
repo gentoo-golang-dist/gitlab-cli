@@ -1,5 +1,5 @@
 ---
-title: glab release delete
+title: '`glab release delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,14 +26,13 @@ glab release delete <tag> [flags]
 
 ```console
 # Delete a release (with a confirmation prompt)
-$ glab release delete v1.1.0
+glab release delete v1.1.0
 
 # Skip the confirmation prompt and force delete
-$ glab release delete v1.0.1 -y
+glab release delete v1.0.1 -y
 
 # Delete release and associated tag
-$ glab release delete v1.0.1 --with-tag
-
+glab release delete v1.0.1 --with-tag
 ```
 
 ## Options

@@ -21,8 +21,7 @@ func NewCmdMCP(f cmdutils.Factory) *cobra.Command {
 			merge requests, pipelines, and other resources.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab mcp serve
-		`),
+			glab mcp serve`),
 	}
 
 	mcpCmd.AddCommand(mcpServeCmd.NewCmdServe(f))

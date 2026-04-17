@@ -35,40 +35,52 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "cli [command]",
-		Short: "Run the GitLab Duo CLI (EXPERIMENTAL)",
+		Short: "Run the GitLab Duo CLI (Beta)",
 		Long: heredoc.Docf(`Run the GitLab Duo CLI.
 
-		Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
-		Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
-		on your behalf.
+Use the GitLab Duo CLI to bring the GitLab Duo Agent Platform to your terminal.
+Ask GitLab Duo questions about your codebase and use it to autonomously perform actions
+on your behalf.
 
-		When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
-		authentication for you automatically.
-		You only need to authenticate once.
+When you use the GitLab Duo CLI in the GitLab CLI, %[1]sglab%[1]s handles
+authentication for you automatically.
+You only need to authenticate once.
 
-		Prerequisites:
+Prerequisites:
 
-		- Authenticate by running %[1]sglab auth login%[1]s.
-		- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+- Use GitLab 18.11 or later.
+- Run %[1]sglab auth login%[1]s to authenticate.
+- Meet the [prerequisites for GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/#prerequisites).
+- Turn on [beta and experimental features](https://docs.gitlab.com/user/duo_agent_platform/turn_on_off/#turn-on-beta-and-experimental-features).
 
-		Configuration options:
+Configuration options:
 
-		- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
-		- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
+- %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
+- %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
 
-		All arguments and flags are passed through to the GitLab Duo CLI binary.
-		Use %[1]s--update%[1]s to check for and install updates to the binary.
-	`, "`") + text.ExperimentalString,
+All arguments and flags are passed through to the GitLab Duo CLI binary.
+
+Use %[1]s--update%[1]s to check for and install updates to the binary.
+
+For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
+`, "`") + text.BetaString,
+		Annotations: map[string]string{
+			"help:environment": heredoc.Docf(`
+			- %[1]sGLAB_DUO_CLI_BINARY_PATH%[1]s: Use a local binary instead of the managed one.
+			  Skips download, version checks, and updates. Can also be set via the
+			  %[1]sduo_cli_binary_path%[1]s configuration key.
+			`, "`"),
+		},
+
 		Example: heredoc.Docf(`
 		# Run the GitLab Duo CLI
-		$ glab duo cli
+		glab duo cli
 
 		# Show Duo CLI help
-		$ glab duo cli --help
+		glab duo cli --help
 
 		# Check for and install updates
-		$ glab duo cli --update
-	`),
+		glab duo cli --update`),
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Handle --update flag manually since DisableFlagParsing is true
@@ -100,9 +112,10 @@ func shouldForceUpdateCheck() bool {
 
 // updateCheckResult contains the result of an update check.
 type updateCheckResult struct {
-	hasUpdate      bool
-	currentVersion string
-	latestVersion  string
+	hasUpdate       bool
+	currentVersion  string
+	latestVersion   string
+	newMajorVersion string // non-empty when a newer incompatible major is available
 }
 
 // performUpdateCheck checks for available updates and saves the check timestamp.
@@ -120,7 +133,7 @@ func (o *options) performUpdateCheck(ctx context.Context, forceCheck bool) (*upd
 		lastCheckTime, _ = time.Parse(time.RFC3339, lastCheckStr)
 	}
 
-	hasUpdate, latestVersion, newCheckTime, err := o.manager.CheckForUpdate(ctx, currentVersion, lastCheckTime, forceCheck)
+	hasUpdate, latestVersion, newMajorVersion, newCheckTime, err := o.manager.CheckForUpdate(ctx, currentVersion, lastCheckTime, forceCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +150,10 @@ func (o *options) performUpdateCheck(ctx context.Context, forceCheck bool) (*upd
 	}
 
 	return &updateCheckResult{
-		hasUpdate:      hasUpdate,
-		currentVersion: currentVersion,
-		latestVersion:  latestVersion,
+		hasUpdate:       hasUpdate,
+		currentVersion:  currentVersion,
+		latestVersion:   latestVersion,
+		newMajorVersion: newMajorVersion,
 	}, nil
 }
 
@@ -148,12 +162,24 @@ func (o *options) complete(args []string) {
 }
 
 func (o *options) run(ctx context.Context) error {
+	managedPath, err := cliutils.ManagedBinaryPath()
+	if err != nil {
+		return err
+	}
+
+	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
+
+	if installedPath != "" && installedPath != managedPath && o.update {
+		color := o.io.Color()
+		o.io.LogInfof("%s Updates are not applicable when using a custom binary path (%s).\n", color.DotWarnIcon(), installedPath)
+		return nil
+	}
+
 	if o.update {
 		return o.handleUpdate(ctx)
 	}
 
 	installedVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
-	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
 	autoDownload, _ := o.cfg.Get("", "duo_cli_auto_download")
 
 	info, err := o.manager.EnsureInstalled(ctx, installedVersion, installedPath, autoDownload)
@@ -161,12 +187,16 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	if err := o.saveBinaryInfo(info); err != nil {
+	if info.Path == managedPath {
+		if err := o.saveBinaryInfo(info); err != nil {
+			color := o.io.Color()
+			o.io.LogInfof("%s Failed to save binary metadata: %v\n", color.DotWarnIcon(), err)
+		}
+		o.checkForUpdates(ctx)
+	} else {
 		color := o.io.Color()
-		o.io.LogInfof("%s Failed to save binary metadata: %v\n", color.DotWarnIcon(), err)
+		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), info.Path)
 	}
-
-	o.checkForUpdates(ctx)
 
 	if err := o.checkAutoRun(ctx); err != nil {
 		return err
@@ -208,7 +238,11 @@ func (o *options) handleUpdate(ctx context.Context) error {
 
 	if !result.hasUpdate {
 		color := o.io.Color()
-		o.io.LogInfof("%s You are already using the latest version (%s)\n", color.GreenCheck(), result.currentVersion)
+		o.io.LogInfof("%s You are already using the latest compatible version (%s)\n", color.GreenCheck(), result.currentVersion)
+		if result.newMajorVersion != "" {
+			o.io.LogInfof("%s Duo CLI %s is available but requires a newer version of glab.\n", color.DotWarnIcon(), result.newMajorVersion)
+			o.io.LogInfof("Run 'glab check-update' to upgrade glab.\n")
+		}
 		return nil
 	}
 
@@ -237,7 +271,7 @@ func (o *options) checkAutoRun(ctx context.Context) error {
 	}
 
 	// "false" means "don't auto-run", not "never run"
-	var confirm bool
+	confirm := true // Default to yes so users can press Enter to proceed
 	if err := o.io.Confirm(ctx, &confirm, "Run the GitLab Duo CLI?"); err != nil {
 		return err
 	}
@@ -275,9 +309,13 @@ func (o *options) checkForUpdates(ctx context.Context) {
 		return
 	}
 
+	color := o.io.Color()
 	if result.hasUpdate {
-		color := o.io.Color()
 		o.io.LogInfof("\n%s New Duo CLI version available: %s → %s\n", color.DotWarnIcon(), result.currentVersion, result.latestVersion)
 		o.io.LogInfof("Run 'glab duo cli --update' to upgrade\n")
+	}
+	if result.newMajorVersion != "" {
+		o.io.LogInfof("\n%s Duo CLI %s is available but requires a newer version of glab.\n", color.DotWarnIcon(), result.newMajorVersion)
+		o.io.LogInfof("Run 'glab check-update' to upgrade glab.\n")
 	}
 }

@@ -86,7 +86,7 @@ func TestNewCheckUpdateCmd(t *testing.T) {
 						{
 							TagName:    "v1.11.1",
 							Name:       "v1.11.1",
-							ReleasedAt: gitlab.Ptr(time.Date(2020, 11, 3, 5, 39, 4, 0, time.UTC)),
+							ReleasedAt: new(time.Date(2020, 11, 3, 5, 39, 4, 0, time.UTC)),
 						},
 					}, nil, nil
 				})

@@ -276,7 +276,7 @@ func TestStandardGitCommand_Git_SetsLocale(t *testing.T) {
 
 	t.Run("git status outputs English messages", func(t *testing.T) {
 		// Run git status which outputs human-readable messages
-		output, err := gitCmd.Git("status")
+		output, err := gitCmd.Git("status", "--long")
 		require.NoError(t, err)
 
 		// Verify output contains English messages
@@ -293,7 +293,7 @@ func TestStandardGitCommand_Git_SetsLocale(t *testing.T) {
 	t.Run("git status contains expected English phrases", func(t *testing.T) {
 		// InitGitRepoWithCommit creates a repo with a commit and clean working tree,
 		// so git status should output "nothing to commit" since there are no changes
-		output, err := gitCmd.Git("status")
+		output, err := gitCmd.Git("status", "--long")
 		require.NoError(t, err)
 
 		// This is the key phrase that stack sync looks for to detect up-to-date branches

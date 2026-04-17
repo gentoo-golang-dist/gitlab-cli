@@ -1,5 +1,5 @@
 ---
-title: glab runner update
+title: '`glab runner update`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -32,14 +32,13 @@ glab runner update <runner-id> [flags]
 
 ```console
 # Pause a runner
-$ glab runner update <runner-id> --pause
+glab runner update <runner-id> --pause
 
 # Unpause a runner
-$ glab runner update <runner-id> --unpause
+glab runner update <runner-id> --unpause
 
 # Pause a runner in a specific project
-$ glab runner update <runner-id> --pause -R owner/repo
-
+glab runner update <runner-id> --pause -R owner/repo
 ```
 
 ## Options

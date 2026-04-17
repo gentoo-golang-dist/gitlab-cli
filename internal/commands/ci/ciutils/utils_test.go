@@ -7,19 +7,22 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/survivorbat/huhtest"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestGetJobId(t *testing.T) {
+	t.Parallel()
 	// Response indicating last page
 	lastPageResponse := &gitlab.Response{
 		Response: &http.Response{StatusCode: http.StatusOK},
@@ -36,7 +39,7 @@ func TestGetJobId(t *testing.T) {
 		name          string
 		jobName       string
 		pipelineId    int
-		responder     *huhtest.Responder
+		console       func(t *testing.T) *ugh.Console
 		setupMock     func(tc *gitlabtesting.TestClient)
 		expectedOut   int64
 		expectedError string
@@ -168,8 +171,14 @@ func TestGetJobId(t *testing.T) {
 			jobName:     "",
 			pipelineId:  123,
 			expectedOut: 1122,
-			responder: huhtest.NewResponder().
-				AddSelect("Select pipeline job to trace:", 0),
+			console: func(t *testing.T) *ugh.Console {
+				t.Helper()
+
+				c := ugh.New(t)
+				c.Expect(ugh.Select("Select pipeline job to trace:")).
+					Do(ugh.SelectIndex(0))
+				return c
+			},
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockJobs.EXPECT().
 					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
@@ -183,6 +192,8 @@ func TestGetJobId(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
 
@@ -191,11 +202,14 @@ func TestGetJobId(t *testing.T) {
 				cmdtest.WithBranch("main"),
 			}
 
-			if tc.responder != nil {
-				factoryOpts = append(factoryOpts, cmdtest.WithResponder(t, tc.responder))
+			var ios *iostreams.IOStreams
+			if tc.console != nil {
+				var cleanup func()
+				ios, cleanup = cmdtest.TestIOStreamsWithConsole(t, tc.console(t))
+				t.Cleanup(cleanup)
+			} else {
+				ios, _, _, _ = cmdtest.TestIOStreams()
 			}
-
-			ios, _, _, _ := cmdtest.TestIOStreams()
 			f := cmdtest.NewTestFactory(ios, factoryOpts...)
 
 			client, _ := f.GitLabClient()
@@ -270,6 +284,7 @@ func TestParseCSVToIntSlice(t *testing.T) {
 }
 
 func TestTraceJob(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name          string
 		jobName       string
@@ -330,6 +345,8 @@ func TestTraceJob(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
 
@@ -347,9 +364,10 @@ func TestTraceJob(t *testing.T) {
 				PipelineId: tc.pipelineId,
 				Branch:     "main",
 			}, &JobOptions{
-				IO:     f.IO(),
-				Repo:   repo,
-				Client: client,
+				IO:           f.IO(),
+				Repo:         repo,
+				Client:       client,
+				PollInterval: time.Millisecond,
 			})
 
 			if tc.expectedError == "" {

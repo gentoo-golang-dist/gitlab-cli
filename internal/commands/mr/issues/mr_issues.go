@@ -24,12 +24,11 @@ func NewCmdIssues(f cmdutils.Factory) *cobra.Command {
 		Args:    cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# List issues for merge request 46
-			$ glab mr issues 46
-			$ glab mr issues branch
+			glab mr issues 46
+			glab mr issues branch
 
 			# Use the checked-out branch
-			$ glab mr issues
-		`),
+			glab mr issues`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

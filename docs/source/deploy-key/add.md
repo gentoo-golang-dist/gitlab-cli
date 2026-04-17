@@ -1,5 +1,5 @@
 ---
-title: glab deploy-key add
+title: '`glab deploy-key add`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,14 +26,13 @@ glab deploy-key add [key-file] [flags]
 
 ```console
 # Read deploy key from stdin and upload.
-$ glab deploy-key add -t "my title"
+glab deploy-key add -t "my title"
 
 # Read deploy key from specified key file and upload
-$ cat ~/.ssh/id_ed25519.pub | glab deploy-key add --title='test' -
+cat ~/.ssh/id_ed25519.pub | glab deploy-key add --title='test' -
 
 # Read deploy key from specified key file, upload and set "can push" attribute.
-$ glab deploy-key add ~/.ssh/id_ed25519.pub -t "my title" --can-push true
-
+glab deploy-key add ~/.ssh/id_ed25519.pub -t "my title" --can-push true
 ```
 
 ## Options

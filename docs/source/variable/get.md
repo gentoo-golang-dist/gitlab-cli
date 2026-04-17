@@ -1,5 +1,5 @@
 ---
-title: glab variable get
+title: '`glab variable get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,10 +19,9 @@ glab variable get <key> [flags]
 ## Examples
 
 ```console
-$ glab variable get VAR_KEY
-$ glab variable get -g GROUP VAR_KEY
-$ glab variable get -s SCOPE VAR_KEY
-
+glab variable get VAR_KEY
+glab variable get -g GROUP VAR_KEY
+glab variable get -s SCOPE VAR_KEY
 ```
 
 ## Options

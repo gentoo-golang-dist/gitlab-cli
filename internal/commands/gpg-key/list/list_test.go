@@ -25,7 +25,7 @@ func TestGPGKeyList(t *testing.T) {
 	testKey := &gitlab.GPGKey{
 		ID:        1,
 		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	tests := []testCase{
@@ -85,7 +85,7 @@ func TestGpgKeyList_JSON(t *testing.T) {
 	testKey := &gitlab.GPGKey{
 		ID:        1,
 		Key:       "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmQINBF...",
-		CreatedAt: gitlab.Ptr(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+		CreatedAt: new(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
 	}
 
 	testClient := gitlabtesting.NewTestClient(t)

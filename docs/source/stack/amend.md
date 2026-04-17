@@ -1,5 +1,5 @@
 ---
-title: glab stack amend
+title: '`glab stack amend`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -28,14 +28,23 @@ glab stack amend [flags]
 ## Examples
 
 ```console
-$ glab stack amend modifiedfile
-$ glab stack amend . -m "fixed a function"
-$ glab stack amend newfile -d "forgot to add this"
+# Amend diff with currently staged changes
+glab stack amend -m "Fix a function"
+
+# Add specified file to staged changes and amend diff
+glab stack amend newfile -m "forgot to add this"
+
+# Add all tracked files to staged changes and amend diff
+glab stack amend -a -m "fixed a function in exisiting file"
+
+# Add all tracked and untracked files to staged changes and amend diff
+glab stack amend . -m "refactored file into new files"
 ```
 
 ## Options
 
 ```plaintext
+  -a, --all                  Automatically stage modified and deleted tracked files
   -d, --description string   a description of the change
   -m, --message string       alias for the description flag
 ```

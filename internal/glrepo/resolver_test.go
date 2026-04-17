@@ -3,22 +3,57 @@
 package glrepo
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"testing"
-	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
-	"github.com/survivorbat/huhtest"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
+
+const (
+	testConsoleWidth  = 120
+	testConsoleHeight = 40
+)
+
+func testIOStreamsWithConsole(t *testing.T, c *ugh.Console) (*iostreams.IOStreams, func()) {
+	t.Helper()
+
+	appInR, appInW := io.Pipe()
+	appOutR, appOutW := io.Pipe()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	wait := c.Start(ctx, appOutR, appInW)
+
+	ios := iostreams.New(
+		iostreams.WithStdin(appInR, true),
+		iostreams.WithStdout(appOutW, true),
+		iostreams.WithStderr(io.Discard, true),
+		iostreams.WithProgramOptions(tea.WithWindowSize(testConsoleWidth, testConsoleHeight)),
+	)
+
+	cleanup := func() {
+		appInW.Close()
+		appOutW.Close()
+		appOutR.Close()
+		cancel()
+		wait()
+	}
+
+	return ios, cleanup
+}
 
 func Test_RemoteForRepo(t *testing.T) {
 	r := &ResolvedRemotes{
@@ -419,12 +454,11 @@ func Test_BaseRepo(t *testing.T) {
 		localRem.network = append(localRem.network, originNetwork)
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the base repository", 1).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the base repository")).
+			Do(ugh.SelectIndex(1))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 
 		got, err := localRem.BaseRepo(t.Context(), ios)
 		assert.NoError(t, err)
@@ -451,12 +485,11 @@ func Test_BaseRepo(t *testing.T) {
 		localRem.network = append(localRem.network, originNetwork)
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the base repository", 0).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the base repository")).
+			Do(ugh.SelectIndex(0))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 
 		got, err := localRem.BaseRepo(t.Context(), ios)
 		assert.NoError(t, err)
@@ -488,12 +521,11 @@ func Test_BaseRepo(t *testing.T) {
 		localRem.network = []gitlab.Project{originNetwork}
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the base repository", 1).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the base repository")).
+			Do(ugh.SelectIndex(1))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 
 		got, err := localRem.BaseRepo(t.Context(), ios)
 		assert.NoError(t, err)
@@ -525,12 +557,11 @@ func Test_BaseRepo(t *testing.T) {
 		localRem.network = []gitlab.Project{originNetwork}
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the base repository", 0).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the base repository")).
+			Do(ugh.SelectIndex(0))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 
 		got, err := localRem.BaseRepo(t.Context(), ios)
 		assert.NoError(t, err)
@@ -641,13 +672,7 @@ func Test_BaseRepo(t *testing.T) {
 			return p, nil
 		}
 
-		// Mock the prompt to select the first (and only) project
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the base repository", 0).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		ios := iostreams.New(iostreams.WithStdout(io.Discard, true), iostreams.WithStderr(io.Discard, true))
 
 		got, err := localRem.BaseRepo(t.Context(), ios)
 		assert.NoError(t, err)
@@ -655,6 +680,72 @@ func Test_BaseRepo(t *testing.T) {
 		// The fix should ensure we use the git remote host, not the API host
 		assert.Equal(t, "owner/repo", got.FullName())
 		assert.Equal(t, "git.example.com", got.RepoHost()) // Should use git remote host, not API host
+	})
+
+	t.Run("Host mismatch with subfolder: API host differs from git remote host and includes subfolder", func(t *testing.T) {
+		// This test verifies the split-host + subfolder bug (Issue #8197)
+		// where the API returns a different host than the git remote AND includes a subfolder
+		// Git remote uses git.example.com, but API returns api.example.com/gitlab/owner/repo.git
+
+		// Mock config with subfolder - using CORRECT config pattern (API hostname as key)
+		defer config.StubConfig(`---
+hosts:
+  api.example.com:
+    token: TEST_TOKEN
+    ssh_host: git.example.com
+    subfolder: gitlab
+`, "")()
+
+		localRem := &ResolvedRemotes{
+			remotes: Remotes{
+				&Remote{
+					Remote: &git.Remote{
+						Name: "origin",
+					},
+					Repo: NewWithHost("owner", "repo", "git.example.com"), // Git remote uses git host
+				},
+			},
+			apiClient:       &gitlab.Client{},
+			defaultHostname: "gitlab.com",
+			network: []gitlab.Project{
+				{
+					ID:                1,
+					PathWithNamespace: "owner/repo",                                    // API provides correct path WITHOUT subfolder
+					HTTPURLToRepo:     "https://api.example.com/gitlab/owner/repo.git", // URL includes subfolder
+				},
+			},
+		}
+
+		// Override git.SetRemoteResolution so it doesn't mess with the user configs
+		originalSetRemoteResolution := git.SetRemoteResolution
+		defer func() {
+			git.SetRemoteResolution = originalSetRemoteResolution
+		}()
+		git.SetRemoteResolution = func(_, _ string) error {
+			return nil
+		}
+
+		// Override api.GetProject so it doesn't mess with other tests
+		originalGetProject := api.GetProject
+		defer func() {
+			api.GetProject = originalGetProject
+		}()
+		api.GetProject = func(_ *gitlab.Client, projectID any) (*gitlab.Project, error) {
+			p := &gitlab.Project{
+				PathWithNamespace: "owner/repo", // API returns correct path
+				HTTPURLToRepo:     "https://api.example.com/gitlab/owner/repo.git",
+			}
+			return p, nil
+		}
+
+		ios := iostreams.New(iostreams.WithStdout(nil, true), iostreams.WithStderr(nil, true))
+
+		got, err := localRem.BaseRepo(t.Context(), ios)
+		assert.NoError(t, err)
+
+		// The fix should ensure we get the correct path WITHOUT the subfolder prefix
+		assert.Equal(t, "owner/repo", got.FullName())
+		assert.Equal(t, "git.example.com", got.RepoHost())
 	})
 }
 
@@ -892,12 +983,11 @@ func Test_HeadRepo(t *testing.T) {
 		localRem.network = append(localRem.network, originNetwork)
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the head repository", 1).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the head repository")).
+			Do(ugh.SelectIndex(1))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 		got, err := localRem.HeadRepo(t.Context(), ios)
 		assert.NoError(t, err)
 
@@ -923,12 +1013,11 @@ func Test_HeadRepo(t *testing.T) {
 		localRem.network = append(localRem.network, originNetwork)
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the head repository", 0).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the head repository")).
+			Do(ugh.SelectIndex(0))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 		got, err := localRem.HeadRepo(t.Context(), ios)
 		assert.NoError(t, err)
 
@@ -959,12 +1048,11 @@ func Test_HeadRepo(t *testing.T) {
 		localRem.network = []gitlab.Project{originNetwork}
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the head repository", 1).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the head repository")).
+			Do(ugh.SelectIndex(1))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 		got, err := localRem.HeadRepo(t.Context(), ios)
 		assert.NoError(t, err)
 
@@ -995,12 +1083,11 @@ func Test_HeadRepo(t *testing.T) {
 		localRem.network = []gitlab.Project{originNetwork}
 
 		// Mock the prompt
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the head repository", 0).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
-
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
+		c := ugh.New(t)
+		c.Expect(ugh.SelectRegexp("Which should be the head repository")).
+			Do(ugh.SelectIndex(0))
+		ios, cleanup := testIOStreamsWithConsole(t, c)
+		t.Cleanup(cleanup)
 		got, err := localRem.HeadRepo(t.Context(), ios)
 		assert.NoError(t, err)
 
@@ -1053,13 +1140,8 @@ func Test_HeadRepo(t *testing.T) {
 			return p, nil
 		}
 
-		// Mock the prompt to select the first (and only) project
-		stdin, stdout, cancel := huhtest.NewResponder().
-			AddSelect("Which should be the head repository", 0).MatchRegexp(). // We expect to get `origin`
-			Start(t, 1*time.Hour)
-		t.Cleanup(cancel)
+		ios := iostreams.New(iostreams.WithStdout(io.Discard, true), iostreams.WithStderr(io.Discard, true))
 
-		ios := iostreams.New(iostreams.WithStdin(stdin, true), iostreams.WithStdout(stdout, true), iostreams.WithStderr(nil, true))
 		got, err := localRem.HeadRepo(t.Context(), ios)
 		assert.NoError(t, err)
 

@@ -32,7 +32,7 @@ func Test_GetProjectMilestone(t *testing.T) {
 		Title:       "Milestone title",
 		Description: "Example description",
 		State:       "closed",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -99,7 +99,7 @@ func Test_GetGroupMilestone(t *testing.T) {
 		Title:       "Milestone title",
 		Description: "Example description",
 		State:       "closed",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testCases := []testCase{
@@ -159,7 +159,7 @@ func TestMilestoneGet_JSON(t *testing.T) {
 		Title:       "Milestone title",
 		Description: "Example description",
 		State:       "closed",
-		DueDate:     gitlab.Ptr(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
+		DueDate:     new(gitlab.ISOTime(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC))),
 	}
 
 	testClient := gitlabtesting.NewTestClient(t)

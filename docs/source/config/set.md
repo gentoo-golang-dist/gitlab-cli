@@ -1,5 +1,5 @@
 ---
-title: glab config set
+title: '`glab config set`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,9 +25,9 @@ glab config set <key> <value> [flags]
 ## Examples
 
 ```console
-- glab config set editor vim
-- glab config set token xxxxx --host gitlab.com
-- glab config set check_update false --global
+glab config set editor vim
+glab config set token xxxxx --host gitlab.com
+glab config set check_update false --global
 ```
 
 ## Options

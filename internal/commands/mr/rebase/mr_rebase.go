@@ -39,15 +39,14 @@ func NewCmdRebase(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Rebase merge request 123
-			$ glab mr rebase 123
+			glab mr rebase 123
 
 			# Rebase current branch
-			$ glab mr rebase
+			glab mr rebase
 
 			# Rebase merge request from branch
-			$ glab mr rebase branch
-			$ glab mr rebase branch --skip-ci
-		`),
+			glab mr rebase branch
+			glab mr rebase branch --skip-ci`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -83,6 +82,6 @@ func (o *options) run(ctx context.Context) error {
 		client,
 		repo,
 		mr,
-		&gitlab.RebaseMergeRequestOptions{SkipCI: gitlab.Ptr(o.SkipCI)},
+		&gitlab.RebaseMergeRequestOptions{SkipCI: new(o.SkipCI)},
 	)
 }

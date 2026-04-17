@@ -35,8 +35,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Delete SSH key with ID as argument
-			$ glab deploy-key delete 1234`,
-		),
+			glab deploy-key delete 1234`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

@@ -19,6 +19,45 @@ instructions:
       13. The `options.complete`, `options.validate` and `options.run` functions may optionally be passed the command context (`cmd.Context()`).
       14. The commands should never directly print to or read from the standard ios, but instead rely on the factories iostreams object. That must be assigned to the `io` field of the `options` struct.
 
+  - name: Command documentation
+    fileFilters:
+      - 'internal/commands/**/*.go'
+    instructions: |
+      CLI documentation is generated from Go source files by `make gen-docs`. The following rules
+      apply to the documentation fields of `cobra.Command` definitions.
+
+      Short description (`Short` field):
+      1. Write in the imperative mood. For example: `Create a new merge request.`
+      2. End with a period.
+      3. Do not duplicate the command name.
+      4. For experimental commands, append `(EXPERIMENTAL)` after the sentence.
+         For example: `Create a new stacked diff. (EXPERIMENTAL)`
+
+      Synopsis (`Long` field):
+      5. All new commands must include a `Long` field.
+      6. Do not repeat information already in the `Short` field.
+      7. Use lists for multiple constraints, input types, or behavioral differences.
+      8. If the command requires a minimum GitLab version to work correctly, state this.
+         For example: `This command requires GitLab 17.0 or later.`
+
+      Experimental and beta features:
+      9. Use `text.ExperimentalString` or `text.BetaString` from `internal/text/text.go` to mark
+         experimental or beta features. Do not copy these strings manually into the `Long` field.
+      10. When only a flag is experimental, prepend `(EXPERIMENTAL)` to its description and add a
+          note in the `Long` field explaining the experimental status and any feature flag requirements.
+
+      Examples (`Example` field):
+      11. Every command must include at least one example that demonstrates real-world usage.
+          Do not use examples that only repeat the command syntax.
+      12. Annotate non-obvious examples with an inline comment above the command, using `# Comment text` format.
+      13. For commands with many options, show the most common combinations first.
+
+      Flag descriptions:
+      14. Start each flag description with a capital letter and end with a period.
+      15. Use angle-bracket placeholders for user-supplied values. For example: `<username>`, `<branch>`.
+      16. Always state the default value for boolean flags. For example: `(default false)`.
+      17. For output format flags, use `-F, --output [text | json]` as the canonical form.
+
   - name: Command tests
     fileFilters:
       - 'internal/commands/**/*_test.go'

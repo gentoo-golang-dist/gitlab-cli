@@ -35,14 +35,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# Create a runner controller with default settings
-			$ glab runner-controller create
+			glab runner-controller create
 
 			# Create a runner controller with a description
-			$ glab runner-controller create --description "My controller"
+			glab runner-controller create --description "My controller"
 
 			# Create an enabled runner controller
-			$ glab runner-controller create --description "Production" --state enabled
-		`),
+			glab runner-controller create --description "Production" --state enabled`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -77,10 +76,10 @@ func (o *options) run(ctx context.Context) error {
 
 	createOpts := &gitlab.CreateRunnerControllerOptions{}
 	if o.description != "" {
-		createOpts.Description = gitlab.Ptr(o.description)
+		createOpts.Description = new(o.description)
 	}
 	if o.state != "" {
-		createOpts.State = gitlab.Ptr(o.state)
+		createOpts.State = new(o.state)
 	}
 
 	controller, _, err := client.RunnerControllers.CreateRunnerController(createOpts, gitlab.WithContext(ctx))

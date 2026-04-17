@@ -422,7 +422,7 @@ func TestIssueList_tty_withIssueType(t *testing.T) {
 		ListProjectIssues("OWNER/REPO", gomock.Any()).
 		DoAndReturn(func(pid any, opts *gitlab.ListProjectIssuesOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.Issue, *gitlab.Response, error) {
 			// Verify issue_type filter is passed
-			assert.Equal(t, gitlab.Ptr("incident"), opts.IssueType)
+			assert.Equal(t, new("incident"), opts.IssueType)
 			return []*gitlab.Issue{
 				{
 					ID:          78,

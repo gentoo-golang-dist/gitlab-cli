@@ -4,6 +4,7 @@ package view
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -111,7 +112,7 @@ func TestMain(m *testing.M) {
 func TestMRView(t *testing.T) {
 	oldListAllDiscussions := mrutils.ListAllDiscussions
 	timer, _ := time.Parse(time.RFC3339, "2014-11-12T11:45:26.371Z")
-	mrutils.ListAllDiscussions = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
+	mrutils.ListAllDiscussions = func(_ context.Context, client *gitlab.Client, projectID any, mrID int64, opts *gitlab.ListMergeRequestDiscussionsOptions) ([]*gitlab.Discussion, error) {
 		if projectID == "PROJECT_MR_WITH_EMPTY_NOTE" {
 			return []*gitlab.Discussion{}, nil
 		}

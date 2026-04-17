@@ -1,5 +1,5 @@
 ---
-title: glab mr
+title: '`glab mr`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -15,10 +15,9 @@ Create, view, and manage merge requests.
 ## Examples
 
 ```console
-$ glab mr create --fill --label bugfix
-$ glab mr merge 123
-$ glab mr note -m "needs to do X before it can be merged" branch-foo
-
+glab mr create --fill --label bugfix
+glab mr merge 123
+glab mr note -m "needs to do X before it can be merged" branch-foo
 ```
 
 ## Options

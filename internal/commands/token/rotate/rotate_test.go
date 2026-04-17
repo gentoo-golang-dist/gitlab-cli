@@ -29,6 +29,8 @@ func parseTime(s string) *time.Time {
 }
 
 func TestRotatePersonalAccessToken(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		name        string
 		cli         string
@@ -54,7 +56,7 @@ func TestRotatePersonalAccessToken(t *testing.T) {
 		Scopes:    []string{"k8s_proxy"},
 		UserID:    926857,
 		Active:    true,
-		ExpiresAt: gitlab.Ptr(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
+		ExpiresAt: new(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
 		Token:     "sometoken",
 	}
 
@@ -91,10 +93,42 @@ func TestRotatePersonalAccessToken(t *testing.T) {
 					Return(testPAT, nil, nil)
 			},
 		},
+		{
+			name:        "rotate PAT by ID",
+			cli:         "--user @me 10183862",
+			expectedOut: "sometoken\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(testUser, nil, nil)
+				tc.MockPersonalAccessTokens.EXPECT().
+					ListPersonalAccessTokens(gomock.Any(), gomock.Any()).
+					Return([]*gitlab.PersonalAccessToken{testPAT}, noMorePages(), nil)
+				tc.MockPersonalAccessTokens.EXPECT().
+					RotatePersonalAccessToken(int64(10183862), gomock.Any()).
+					Return(testPAT, nil, nil)
+			},
+		},
+		{
+			name:       "error when PAT not found by ID",
+			cli:        "--user @me 99999",
+			wantErr:    true,
+			wantStderr: "no active token found with the ID '99999'",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(testUser, nil, nil)
+				tc.MockPersonalAccessTokens.EXPECT().
+					ListPersonalAccessTokens(gomock.Any(), gomock.Any()).
+					Return([]*gitlab.PersonalAccessToken{testPAT}, noMorePages(), nil)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// GIVEN
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
@@ -129,6 +163,8 @@ func TestRotatePersonalAccessToken(t *testing.T) {
 }
 
 func TestRotateGroupAccessToken(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		name        string
 		cli         string
@@ -146,7 +182,7 @@ func TestRotateGroupAccessToken(t *testing.T) {
 			Name:      "my-group-token",
 			Scopes:    []string{"read_registry", "read_repository"},
 			CreatedAt: parseTime("2024-07-08T17:33:34.829Z"),
-			ExpiresAt: gitlab.Ptr(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
+			ExpiresAt: new(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
 			Active:    true,
 			Revoked:   false,
 			Token:     "glpat-yz2791KMU-xxxxxxxxx",
@@ -181,10 +217,25 @@ func TestRotateGroupAccessToken(t *testing.T) {
 					Return(testGroupToken, nil, nil)
 			},
 		},
+		{
+			name:        "rotate group token by ID",
+			cli:         "--group GROUP 10190772",
+			expectedOut: "glpat-yz2791KMU-xxxxxxxxx\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockGroupAccessTokens.EXPECT().
+					ListGroupAccessTokens("GROUP", gomock.Any(), gomock.Any()).
+					Return([]*gitlab.GroupAccessToken{testGroupToken}, noMorePages(), nil)
+				tc.MockGroupAccessTokens.EXPECT().
+					RotateGroupAccessToken("GROUP", int64(10190772), gomock.Any()).
+					Return(testGroupToken, nil, nil)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// GIVEN
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
@@ -219,6 +270,8 @@ func TestRotateGroupAccessToken(t *testing.T) {
 }
 
 func TestRotateProjectAccessToken(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		name        string
 		cli         string
@@ -236,7 +289,7 @@ func TestRotateProjectAccessToken(t *testing.T) {
 			Name:      "my-project-token",
 			Scopes:    []string{"api", "read_repository"},
 			CreatedAt: parseTime("2024-07-08T19:47:14.727Z"),
-			ExpiresAt: gitlab.Ptr(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
+			ExpiresAt: new(gitlab.ISOTime(*parseTime("2024-08-07T00:00:00Z"))),
 			Active:    true,
 			Revoked:   false,
 			Token:     "glpat-dfsdfjksjdfslkdfjsd",
@@ -271,10 +324,25 @@ func TestRotateProjectAccessToken(t *testing.T) {
 					Return(testProjectToken, nil, nil)
 			},
 		},
+		{
+			name:        "rotate project token by ID",
+			cli:         "10191548",
+			expectedOut: "glpat-dfsdfjksjdfslkdfjsd\n",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockProjectAccessTokens.EXPECT().
+					ListProjectAccessTokens("OWNER/REPO", gomock.Any(), gomock.Any()).
+					Return([]*gitlab.ProjectAccessToken{testProjectToken}, noMorePages(), nil)
+				tc.MockProjectAccessTokens.EXPECT().
+					RotateProjectAccessToken("OWNER/REPO", int64(10191548), gomock.Any()).
+					Return(testProjectToken, nil, nil)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			// GIVEN
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)

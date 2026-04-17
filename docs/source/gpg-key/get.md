@@ -1,5 +1,5 @@
 ---
-title: glab gpg-key get
+title: '`glab gpg-key get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -20,7 +20,7 @@ glab gpg-key get <key-id> [flags]
 
 ```console
 # Get GPG key with ID as argument
-$ glab gpg-key get 7750633
+glab gpg-key get 7750633
 ```
 
 ## Options

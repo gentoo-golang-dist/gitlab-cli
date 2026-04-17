@@ -1,5 +1,5 @@
 ---
-title: glab ci delete
+title: '`glab ci delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -19,13 +19,12 @@ glab ci delete <id> [flags]
 ## Examples
 
 ```console
-$ glab ci delete 34
-$ glab ci delete 12,34,2
-$ glab ci delete --source=api
-$ glab ci delete --status=failed
-$ glab ci delete --older-than 24h
-$ glab ci delete --older-than 24h --status=failed
-
+glab ci delete 34
+glab ci delete 12,34,2
+glab ci delete --source=api
+glab ci delete --status=failed
+glab ci delete --older-than 24h
+glab ci delete --older-than 24h --status=failed
 ```
 
 ## Options

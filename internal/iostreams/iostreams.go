@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/huh/v2"
 	"github.com/briandowns/spinner"
-	"github.com/charmbracelet/huh"
 	"github.com/google/shlex"
 	"github.com/muesli/termenv"
 
@@ -47,6 +48,8 @@ type IOStreams struct {
 	displayHyperlinks string
 
 	isColorEnabled bool
+
+	programOptions []tea.ProgramOption
 }
 
 var controlCharRegEx = regexp.MustCompile(`(\x1b\[)((?:(\d*)(;*))*)([A-Z,a-l,n-z])`)
@@ -79,6 +82,12 @@ func WithStderr(stderr io.Writer, isTTY bool) IOStreamsOption {
 			i.StdErr = stderr
 		}
 		i.IsErrTTY = isTTY
+	}
+}
+
+func WithProgramOptions(opts ...tea.ProgramOption) IOStreamsOption {
+	return func(i *IOStreams) {
+		i.programOptions = append(i.programOptions, opts...)
 	}
 }
 
@@ -528,15 +537,12 @@ func (s *IOStreams) Run(ctx context.Context, field huh.Field) error {
 	}
 
 	form := huh.NewForm(group).
-		WithInput(s.In).
-		WithOutput(s.StdOut).
 		WithShowHelp(showHelp).
 		WithTheme(theme.HuhTheme())
+	s.applyFormIO(form)
 
 	err := form.RunWithContext(ctx)
 
-	// Convert huh.ErrUserAborted to iostreams.ErrUserCancelled for consistent error handling
-	// This allows callers to handle cancellation without depending on the huh library
 	if errors.Is(err, huh.ErrUserAborted) {
 		fmt.Fprintln(s.StdErr, "Cancelled.")
 		return ErrUserCancelled
@@ -555,7 +561,6 @@ func (s *IOStreams) RunForm(ctx context.Context, fields ...huh.Field) error {
 
 	group := huh.NewGroup(fields...)
 
-	// Show help if any field is a Text or MultiSelect field
 	showHelp := false
 	for _, field := range fields {
 		if _, isText := field.(*huh.Text); isText {
@@ -569,10 +574,9 @@ func (s *IOStreams) RunForm(ctx context.Context, fields ...huh.Field) error {
 	}
 
 	form := huh.NewForm(group).
-		WithInput(s.In).
-		WithOutput(s.StdOut).
 		WithShowHelp(showHelp).
 		WithTheme(theme.HuhTheme())
+	s.applyFormIO(form)
 
 	err := form.RunWithContext(ctx)
 
@@ -583,3 +587,22 @@ func (s *IOStreams) RunForm(ctx context.Context, fields ...huh.Field) error {
 
 	return err
 }
+
+func (s *IOStreams) applyFormIO(form *huh.Form) {
+	if len(s.programOptions) > 0 {
+		opts := []tea.ProgramOption{
+			tea.WithInput(nopCloseReader{s.In}),
+			tea.WithOutput(s.StdOut),
+		}
+		opts = append(opts, s.programOptions...)
+		form.WithProgramOptions(opts...)
+	} else {
+		form.WithInput(s.In).WithOutput(s.StdOut)
+	}
+}
+
+type nopCloseReader struct {
+	io.Reader
+}
+
+func (nopCloseReader) Close() error { return nil }

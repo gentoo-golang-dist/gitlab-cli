@@ -68,12 +68,11 @@ glab snippet create [flags] -t <title> -f <filename>  # reads from stdin`,
 		Long:    ``,
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-			$ glab snippet create script.py --title "Title of the snippet"
-			$ echo "package main" | glab snippet new --title "Title of the snippet" --filename "main.go"
-			$ glab snippet create -t Title -f "different.go" -d Description main.go
-			$ glab snippet create -t Title -f "different.go" -d Description --filename different.go main.go
-			$ glab snippet create --personal --title "Personal snippet" script.py
-		`),
+			glab snippet create script.py --title "Title of the snippet"
+			echo "package main" | glab snippet new --title "Title of the snippet" --filename "main.go"
+			glab snippet create -t Title -f "different.go" -d Description main.go
+			glab snippet create -t Title -f "different.go" -d Description --filename different.go main.go
+			glab snippet create --personal --title "Personal snippet" script.py`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -170,7 +169,7 @@ func (o *options) run(ctx context.Context) error {
 		snippet, _, err = client.Snippets.CreateSnippet(&gitlab.CreateSnippetOptions{
 			Title:       &o.title,
 			Description: &o.description,
-			Visibility:  gitlab.Ptr(gitlab.VisibilityValue(o.visibility)),
+			Visibility:  new(gitlab.VisibilityValue(o.visibility)),
 			Files:       &o.files,
 		})
 	} else {
@@ -178,7 +177,7 @@ func (o *options) run(ctx context.Context) error {
 		snippet, _, err = client.ProjectSnippets.CreateSnippet(repo.FullName(), &gitlab.CreateProjectSnippetOptions{
 			Title:       &o.title,
 			Description: &o.description,
-			Visibility:  gitlab.Ptr(gitlab.VisibilityValue(o.visibility)),
+			Visibility:  new(gitlab.VisibilityValue(o.visibility)),
 			Files:       &o.files,
 		})
 	}

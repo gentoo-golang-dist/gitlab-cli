@@ -1,5 +1,5 @@
 ---
-title: glab repo publish catalog
+title: '`glab repo publish catalog`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -40,8 +40,7 @@ glab repo publish catalog <tag-name> [flags]
 ## Examples
 
 ```console
-- glab repo publish catalog v1.2.3
-
+glab repo publish catalog v1.2.3
 ```
 
 ## Options inherited from parent commands

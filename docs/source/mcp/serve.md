@@ -1,5 +1,5 @@
 ---
-title: glab mcp serve
+title: '`glab mcp serve`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -52,8 +52,7 @@ glab mcp serve [flags]
 ## Examples
 
 ```console
-$ glab mcp serve
-
+glab mcp serve
 ```
 
 ## Options inherited from parent commands

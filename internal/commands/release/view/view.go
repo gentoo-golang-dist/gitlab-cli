@@ -47,11 +47,10 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# View the latest release of a GitLab repository
-			$ glab release view
+			glab release view
 
 			# View a release with specified tag name
-			$ glab release view v1.0.1
-		`),
+			glab release view v1.0.1`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

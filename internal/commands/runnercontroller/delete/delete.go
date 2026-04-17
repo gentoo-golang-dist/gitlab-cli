@@ -37,11 +37,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Delete a runner controller (with confirmation prompt)
-			$ glab runner-controller delete 42
+			glab runner-controller delete 42
 
 			# Delete a runner controller without confirmation
-			$ glab runner-controller delete 42 --force
-		`),
+			glab runner-controller delete 42 --force`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

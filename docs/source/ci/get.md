@@ -1,5 +1,5 @@
 ---
-title: glab ci get
+title: '`glab ci get`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,9 +25,8 @@ stats
 ## Examples
 
 ```console
-$ glab ci get
-$ glab ci -R some/project -p 12345
-
+glab ci get
+glab ci -R some/project -p 12345
 ```
 
 ## Options

@@ -1,5 +1,5 @@
 ---
-title: glab snippet create
+title: '`glab snippet create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -26,12 +26,11 @@ new
 ## Examples
 
 ```console
-$ glab snippet create script.py --title "Title of the snippet"
-$ echo "package main" | glab snippet new --title "Title of the snippet" --filename "main.go"
-$ glab snippet create -t Title -f "different.go" -d Description main.go
-$ glab snippet create -t Title -f "different.go" -d Description --filename different.go main.go
-$ glab snippet create --personal --title "Personal snippet" script.py
-
+glab snippet create script.py --title "Title of the snippet"
+echo "package main" | glab snippet new --title "Title of the snippet" --filename "main.go"
+glab snippet create -t Title -f "different.go" -d Description main.go
+glab snippet create -t Title -f "different.go" -d Description --filename different.go main.go
+glab snippet create --personal --title "Personal snippet" script.py
 ```
 
 ## Options

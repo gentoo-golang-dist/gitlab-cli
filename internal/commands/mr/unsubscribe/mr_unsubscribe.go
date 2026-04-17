@@ -30,13 +30,12 @@ func NewCmdUnsubscribe(f cmdutils.Factory) *cobra.Command {
 		Aliases: []string{"unsub"},
 		Example: heredoc.Doc(`
 		# Unsubscribe from a merge request
-		$ glab mr unsubscribe 123
-		$ glab mr unsub 123
-		$ glab mr unsubscribe branch
+		glab mr unsubscribe 123
+		glab mr unsub 123
+		glab mr unsubscribe branch
 
 		# Unsubscribe from multiple merge requests
-		$ glab mr unsubscribe 123 branch
-		`),
+		glab mr unsubscribe 123 branch`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

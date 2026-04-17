@@ -1,5 +1,5 @@
 ---
-title: glab stack sync
+title: '`glab stack sync`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -36,17 +36,20 @@ glab stack sync [flags]
 ## Examples
 
 ```console
-$ glab stack sync
-$ glab stack sync --no-verify
-$ glab stack sync --update-base
-
+glab stack sync
+glab stack sync --no-verify
+glab stack sync --update-base
+glab stack sync --assignee user1,user2
+glab stack sync --label bug,priority::high
 ```
 
 ## Options
 
 ```plaintext
-      --no-verify     Bypass the pre-push hook. (See githooks(5) for more information.)
-      --update-base   Rebase the stack onto the latest version of the base branch.
+  -a, --assignee usernames   Assign merge request to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+  -l, --label name           Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.
+      --no-verify            Bypass the pre-push hook. (See githooks(5) for more information.)
+      --update-base          Rebase the stack onto the latest version of the base branch.
 ```
 
 ## Options inherited from parent commands

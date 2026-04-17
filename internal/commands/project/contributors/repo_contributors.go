@@ -39,11 +39,10 @@ func NewCmdContributors(f cmdutils.Factory) *cobra.Command {
 		Short: `Get repository contributors list.`,
 		Example: heredoc.Doc(`
 			# List contributors for the current repository
-			$ glab repo contributors
+			glab repo contributors
 
 			# List contributors for a specific repository
-			$ glab repo contributors -R gitlab-com/www-gitlab-com
-		`),
+			glab repo contributors -R gitlab-com/www-gitlab-com`),
 		Args:    cobra.ExactArgs(0),
 		Aliases: []string{"users"},
 		Annotations: map[string]string{
@@ -83,7 +82,7 @@ func (o *options) run() error {
 	}
 
 	l := &gitlab.ListContributorsOptions{
-		OrderBy: gitlab.Ptr(o.orderBy),
+		OrderBy: new(o.orderBy),
 		ListOptions: gitlab.ListOptions{
 			Page:    int64(o.page),
 			PerPage: int64(o.perPage),
@@ -91,7 +90,7 @@ func (o *options) run() error {
 	}
 
 	if o.sort != "" {
-		l.Sort = gitlab.Ptr(o.sort)
+		l.Sort = new(o.sort)
 	}
 
 	users, _, err := client.Repositories.Contributors(repo.FullName(), l)

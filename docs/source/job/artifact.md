@@ -1,5 +1,5 @@
 ---
-title: glab job artifact
+title: '`glab job artifact`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -33,11 +33,10 @@ push
 ## Examples
 
 ```console
-$ glab job artifact main build
-$ glab job artifact main deploy --path="artifacts/"
-$ glab job artifact main deploy --list-paths
-$ glab job artifact refs/merge-requests/123/head build
-
+glab job artifact main build
+glab job artifact main deploy --path="artifacts/"
+glab job artifact main deploy --list-paths
+glab job artifact refs/merge-requests/123/head build
 ```
 
 ## Options

@@ -52,13 +52,12 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Delete a personal project.
-			$ glab repo delete dotfiles
+			glab repo delete dotfiles
 
 			# Delete a project in a GitLab group, or another project
 			# you have write access to:
-			$ glab repo delete mygroup/dotfiles
-			$ glab repo delete myorg/mynamespace/dotfiles
-	  `),
+			glab repo delete mygroup/dotfiles
+			glab repo delete myorg/mynamespace/dotfiles`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

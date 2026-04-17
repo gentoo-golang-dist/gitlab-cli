@@ -1,5 +1,5 @@
 ---
-title: glab incident subscribe
+title: '`glab incident subscribe`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,10 +25,9 @@ sub
 ## Examples
 
 ```console
-$ glab incident subscribe 123
-$ glab incident sub 123
-$ glab incident subscribe https://gitlab.com/OWNER/REPO/-/issues/incident/123
-
+glab incident subscribe 123
+glab incident sub 123
+glab incident subscribe https://gitlab.com/OWNER/REPO/-/issues/incident/123
 ```
 
 ## Options inherited from parent commands

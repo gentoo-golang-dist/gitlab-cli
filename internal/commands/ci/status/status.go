@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/gosuri/uilive"
 	"github.com/spf13/cobra"
 
@@ -42,17 +42,16 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 		Short:   `View a running CI/CD pipeline on current or other branch specified.`,
 		Aliases: []string{"stats"},
 		Example: heredoc.Doc(`
-		       $ glab ci status --live
+		       glab ci status --live
 
 		       # A more compact view
-		       $ glab ci status --compact
+		       glab ci status --compact
 
 		       # Get the pipeline for the main branch
-		       $ glab ci status --branch=main
+		       glab ci status --branch=main
 
 		       # Get the pipeline for the current branch
-		       $ glab ci status
-	       `),
+		       glab ci status`),
 		Long: ``,
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -101,7 +100,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 			// For JSON output, fetch jobs once and return the data
 			if opts.outputFormat == "json" {
 				jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
-					return client.Jobs.ListPipelineJobs(repoName, runningPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+					return client.Jobs.ListPipelineJobs(repoName, runningPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(cmd.Context()))
 				})
 				if err != nil {
 					return err
@@ -115,14 +114,27 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 			writer := uilive.New()
 
+			ctx := cmd.Context()
+
+			// Set up ticker for live updates if needed
+			var ticker *time.Ticker
+			if live {
+				ticker = time.NewTicker(3 * time.Second)
+				defer ticker.Stop()
+			}
+
 			// start listening for updates and render
 			writer.Start()
 			defer writer.Stop()
+		loop:
 			for {
 				jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
-					return client.Jobs.ListPipelineJobs(repoName, runningPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+					return client.Jobs.ListPipelineJobs(repoName, runningPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(ctx))
 				})
 				if err != nil {
+					if ctx.Err() != nil {
+						break
+					}
 					return err
 				}
 				for _, job := range jobs {
@@ -164,15 +176,25 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 				if (runningPipeline.Status == "pending" || runningPipeline.Status == "running") && live {
 					// Use fallback logic for live updates
-					updatedPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, opts.io)
+					updatedPipeline, err := ciutils.GetPipelineWithFallback(ctx, client, repoName, branch, opts.io)
 					if err != nil {
 						// Final fallback: refresh current pipeline by ID
-						updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID)
+						updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID, gitlab.WithContext(ctx))
 						if err != nil {
+							if ctx.Err() != nil {
+								break loop
+							}
 							return err
 						}
 					}
 					runningPipeline = updatedPipeline
+
+					// Wait between updates, but allow cancellation
+					select {
+					case <-ctx.Done():
+						break loop
+					case <-ticker.C:
+					}
 				} else if opts.io.IsInteractive() {
 					var answer string
 					selector := huh.NewSelect[string]().
@@ -183,10 +205,15 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 							huh.NewOption("Exit", "Exit"),
 						).
 						Value(&answer)
-					_ = opts.io.Run(cmd.Context(), selector)
+					if err := opts.io.Run(ctx, selector); err != nil {
+						if ctx.Err() != nil {
+							break
+						}
+						return err
+					}
 					switch answer {
 					case "View logs":
-						return ciutils.TraceJob(cmd.Context(), &ciutils.JobInputs{
+						return ciutils.TraceJob(ctx, &ciutils.JobInputs{
 							Branch: branch,
 						}, &ciutils.JobOptions{
 							Repo:       repo,
@@ -197,25 +224,34 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 					case "Retry":
 						_, _, err := client.Pipelines.RetryPipelineBuild(repoName, runningPipeline.ID)
 						if err != nil {
+							if ctx.Err() != nil {
+								break loop
+							}
 							return err
 						}
-						updatedPipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repoName, branch, opts.io)
+						updatedPipeline, err := ciutils.GetPipelineWithFallback(ctx, client, repoName, branch, opts.io)
 						if err != nil {
 							// Fallback: refresh by pipeline ID if MR lookup fails
-							updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID)
+							updatedPipeline, _, err = client.Pipelines.GetPipeline(repoName, runningPipeline.ID, gitlab.WithContext(ctx))
 							if err != nil {
+								if ctx.Err() != nil {
+									break loop
+								}
 								return err
 							}
 						}
 						runningPipeline = updatedPipeline
 					default:
-						goto exitLoop
+						break loop
 					}
 				} else {
 					break
 				}
 			}
-		exitLoop:
+			// Only show "Exiting..." message if cancelled via Ctrl+C
+			if ctx.Err() != nil {
+				fmt.Fprintln(writer.Newline(), "Exiting...")
+			}
 			if runningPipeline.Status == "failed" {
 				return cmdutils.SilentError
 			}

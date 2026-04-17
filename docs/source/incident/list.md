@@ -1,5 +1,5 @@
 ---
-title: glab incident list
+title: '`glab incident list`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -25,11 +25,10 @@ ls
 ## Examples
 
 ```console
-$ glab incident list --all
-$ glab incident ls --all
-$ glab incident list --assignee=@me
-$ glab incident list --milestone release-2.0.0 --opened
-
+glab incident list --all
+glab incident ls --all
+glab incident list --assignee=@me
+glab incident list --milestone release-2.0.0 --opened
 ```
 
 ## Options

@@ -1,5 +1,5 @@
 ---
-title: glab runner-controller scope create
+title: '`glab runner-controller scope create`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -37,18 +37,17 @@ glab runner-controller scope create <controller-id> [flags]
 
 ```console
 # Add an instance-level scope to runner controller 42
-$ glab runner-controller scope create 42 --instance
+glab runner-controller scope create 42 --instance
 
 # Add a runner-level scope for runner 5 to runner controller 42
-$ glab runner-controller scope create 42 --runner 5
+glab runner-controller scope create 42 --runner 5
 
 # Add runner-level scopes for multiple runners
-$ glab runner-controller scope create 42 --runner 5 --runner 10
-$ glab runner-controller scope create 42 --runner 5,10
+glab runner-controller scope create 42 --runner 5 --runner 10
+glab runner-controller scope create 42 --runner 5,10
 
 # Add a runner-level scope and output as JSON
-$ glab runner-controller scope create 42 --runner 5 --output json
-
+glab runner-controller scope create 42 --runner 5 --output json
 ```
 
 ## Options

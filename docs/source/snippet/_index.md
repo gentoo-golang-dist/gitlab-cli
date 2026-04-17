@@ -1,5 +1,5 @@
 ---
-title: glab snippet
+title: '`glab snippet`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -15,8 +15,7 @@ Create, view and manage snippets.
 ## Examples
 
 ```console
-$ glab snippet create --title "Title of the snippet" --filename "main.go"
-
+glab snippet create --title "Title of the snippet" --filename "main.go"
 ```
 
 ## Options

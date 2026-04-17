@@ -28,12 +28,12 @@ func TestMembersAdd(t *testing.T) {
 			cli:  "--username=john.doe",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockUsers.EXPECT().
-					ListUsers(&gitlab.ListUsersOptions{Username: gitlab.Ptr("john.doe")}).
+					ListUsers(&gitlab.ListUsersOptions{Username: new("john.doe")}).
 					Return([]*gitlab.User{{ID: 101, Username: "john.doe"}}, nil, nil)
 				tc.MockProjectMembers.EXPECT().
 					AddProjectMember("OWNER/REPO", &gitlab.AddProjectMemberOptions{
-						UserID:      gitlab.Ptr(101),
-						AccessLevel: gitlab.Ptr(gitlab.DeveloperPermissions),
+						UserID:      new(101),
+						AccessLevel: new(gitlab.DeveloperPermissions),
 					}).
 					Return(&gitlab.ProjectMember{ID: 101, Username: "john.doe", AccessLevel: gitlab.DeveloperPermissions}, nil, nil)
 			},
@@ -44,12 +44,12 @@ func TestMembersAdd(t *testing.T) {
 			cli:  "--username=jane.smith --role=maintainer",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockUsers.EXPECT().
-					ListUsers(&gitlab.ListUsersOptions{Username: gitlab.Ptr("jane.smith")}).
+					ListUsers(&gitlab.ListUsersOptions{Username: new("jane.smith")}).
 					Return([]*gitlab.User{{ID: 102, Username: "jane.smith"}}, nil, nil)
 				tc.MockProjectMembers.EXPECT().
 					AddProjectMember("OWNER/REPO", &gitlab.AddProjectMemberOptions{
-						UserID:      gitlab.Ptr(102),
-						AccessLevel: gitlab.Ptr(gitlab.MaintainerPermissions),
+						UserID:      new(102),
+						AccessLevel: new(gitlab.MaintainerPermissions),
 					}).
 					Return(&gitlab.ProjectMember{ID: 102, Username: "jane.smith", AccessLevel: gitlab.MaintainerPermissions}, nil, nil)
 			},
@@ -61,8 +61,8 @@ func TestMembersAdd(t *testing.T) {
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockProjectMembers.EXPECT().
 					AddProjectMember("OWNER/REPO", &gitlab.AddProjectMemberOptions{
-						UserID:      gitlab.Ptr(123),
-						AccessLevel: gitlab.Ptr(gitlab.ReporterPermissions),
+						UserID:      new(123),
+						AccessLevel: new(gitlab.ReporterPermissions),
 					}).
 					Return(&gitlab.ProjectMember{ID: 123, Username: "testuser", AccessLevel: gitlab.ReporterPermissions}, nil, nil)
 			},
@@ -97,7 +97,7 @@ func TestMembersAdd(t *testing.T) {
 			cli:  "--username=nonexistent",
 			setupMocks: func(tc *gitlabtesting.TestClient) {
 				tc.MockUsers.EXPECT().
-					ListUsers(&gitlab.ListUsersOptions{Username: gitlab.Ptr("nonexistent")}).
+					ListUsers(&gitlab.ListUsersOptions{Username: new("nonexistent")}).
 					Return([]*gitlab.User{}, nil, nil)
 			},
 			expectedError: "user nonexistent not found",

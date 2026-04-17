@@ -46,11 +46,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`),
 		Example: heredoc.Doc(`
 			# Delete a runner (prompts for confirmation)
-			$ glab runner delete 6
+			glab runner delete 6
 
 			# Skip confirmation prompt
-			$ glab runner delete 6 --force
-		`),
+			glab runner delete 6 --force`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

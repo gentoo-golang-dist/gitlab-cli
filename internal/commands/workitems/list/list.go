@@ -68,29 +68,28 @@ for group-level work items or -R to specify a different project.
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
 				# List first 20 open work items in current project
-				$ glab work-items list
+				glab work-items list
 
 				# List open epics in a group (default: 20 items)
-				$ glab work-items list --type epic -g gitlab-org
+				glab work-items list --type epic -g gitlab-org
 
 				# List first 50 open work items
-				$ glab work-items list --per-page 50 -g gitlab-org
+				glab work-items list --per-page 50 -g gitlab-org
 
 				# Get next page using cursor from previous output
-				$ glab work-items list --after "eyJpZCI6OTk5OX0" -g gitlab-org
+				glab work-items list --after "eyJpZCI6OTk5OX0" -g gitlab-org
 
 				# List closed work items
-				$ glab work-items list --state closed -g gitlab-org
+				glab work-items list --state closed -g gitlab-org
 
 				# List all work items regardless of state
-				$ glab work-items list --state all -g gitlab-org
+				glab work-items list --state all -g gitlab-org
 
 				# JSON output with pagination metadata
-				$ glab work-items list --output json -g gitlab-org
+				glab work-items list --output json -g gitlab-org
 
 				# List issues in a specific project
-				$ glab work-items list --type issue -R gitlab-org/cli
-		`),
+				glab work-items list --type issue -R gitlab-org/cli`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

@@ -12,6 +12,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type listOptions struct {
@@ -29,37 +30,33 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		factory: f,
 	}
 
-	cmd := &cobra.Command{
+	mrNoteListCmd := &cobra.Command{
 		Use:   "list [<id> | <branch>]",
-		Short: "List discussions on a merge request (EXPERIMENTAL)",
-		Long: heredoc.Doc(`
-			This command is experimental.
+		Short: "List merge request discussions. (EXPERIMENTAL)",
+		Long: heredoc.Docf(`Fetches and displays merge request discussions.
 
-			Fetch and display all discussions on a merge request.
-
-			Uses the same output format as 'glab mr view --comments'.
-			Supports filtering by note type, resolution state, and file path.
-			Supports JSON output for scripting.
-		`),
+		Uses the same output format as %[1]sglab mr view --comments%[1]s.
+		Supports filtering by note type, resolution state, and file path.
+		Supports JSON output for scripting.
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# List all discussions on the current branch's MR
-			$ glab mr note list
+			glab mr note list
 
 			# List diff comments only
-			$ glab mr note list --type diff
+			glab mr note list --type diff
 
 			# List unresolved discussions
-			$ glab mr note list --state unresolved
+			glab mr note list --state unresolved
 
 			# List discussions on a specific file
-			$ glab mr note list --file src/main.go
+			glab mr note list --file src/main.go
 
 			# JSON output for scripting
-			$ glab mr note list -F json | jq '.[].notes[].body'
+			glab mr note list -F json | jq '.[].notes[].body'
 
 			# List discussions on MR 123
-			$ glab mr note list 123
-		`),
+			glab mr note list 123`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)
@@ -67,18 +64,18 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().VarP(
+	mrNoteListCmd.Flags().VarP(
 		cmdutils.NewEnumValue([]string{"all", "general", "diff", "system"}, "all", &opts.noteType),
 		"type", "t", "Note type: all, general, diff, system.",
 	)
-	cmd.Flags().Var(
+	mrNoteListCmd.Flags().Var(
 		cmdutils.NewEnumValue([]string{"all", "resolved", "unresolved"}, "all", &opts.state),
 		"state", "Resolution state: all, resolved, unresolved.",
 	)
-	cmd.Flags().StringVar(&opts.filePath, "file", "", "Show only diff notes on this file path.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	mrNoteListCmd.Flags().StringVar(&opts.filePath, "file", "", "Show only diff notes on this file path.")
+	cmdutils.EnableJSONOutput(mrNoteListCmd, &opts.outputFormat)
 
-	return cmd
+	return mrNoteListCmd
 }
 
 func (o *listOptions) complete(args []string) {
@@ -96,7 +93,7 @@ func (o *listOptions) run(ctx context.Context) error {
 		return err
 	}
 
-	discussions, err := mrutils.ListAllDiscussions(client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
+	discussions, err := mrutils.ListAllDiscussions(ctx, client, repo.FullName(), mr.IID, &gitlab.ListMergeRequestDiscussionsOptions{})
 	if err != nil {
 		return err
 	}

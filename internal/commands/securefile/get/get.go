@@ -21,11 +21,10 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Get details of a project's secure file using the file ID.
-			$ glab securefile get 1
+			glab securefile get 1
 
 			# Get details of a project's secure file using the 'show' alias.
-			$ glab securefile show 1
-		`),
+			glab securefile show 1`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

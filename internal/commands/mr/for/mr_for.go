@@ -56,27 +56,26 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			remotes, err := f.Remotes()
-			if err != nil {
-				return err
-			}
-			repoRemote, err := remotes.FindByRepo(repo.RepoOwner(), repo.RepoName())
-			if err != nil {
-				return err
-			}
-
 			var targetBranch string
 			if t, _ := cmd.Flags().GetString("target-branch"); t != "" {
 				targetBranch = strings.TrimSpace(t)
 			} else {
-				targetBranch, _ = git.GetDefaultBranch(repoRemote.Name)
+				project, err := api.GetProject(client, repo.FullName())
+				if err != nil {
+					return fmt.Errorf("error getting project details: %w", err)
+				}
+				if project.DefaultBranch != "" {
+					targetBranch = project.DefaultBranch
+				} else {
+					targetBranch = git.DefaultBranchName
+				}
 			}
 
 			sourceBranch := fmt.Sprintf("%d-%s", issue.IID, utils.ReplaceNonAlphaNumericChars(strings.ToLower(issue.Title), "-"))
 
 			lb := &gitlab.CreateBranchOptions{
-				Branch: gitlab.Ptr(sourceBranch),
-				Ref:    gitlab.Ptr(targetBranch),
+				Branch: &sourceBranch,
+				Ref:    &targetBranch,
 			}
 
 			_, _, err = client.Branches.CreateBranch(repo.FullName(), lb)
@@ -85,8 +84,8 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 
 					numberedBranch := fmt.Sprintf("%d-%s-%d", issue.IID, strings.ReplaceAll(strings.ToLower(issue.Title), " ", "-"), branchCount)
 					lb = &gitlab.CreateBranchOptions{
-						Branch: gitlab.Ptr(numberedBranch),
-						Ref:    gitlab.Ptr(targetBranch),
+						Branch: &numberedBranch,
+						Ref:    &targetBranch,
 					}
 					sourceBranch = numberedBranch
 					_, _, branchErr = client.Branches.CreateBranch(repo.FullName(), lb)
@@ -110,19 +109,19 @@ func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 			mergeLabel, _ := cmd.Flags().GetString("label")
 
 			l := &gitlab.CreateMergeRequestOptions{}
-			l.Title = gitlab.Ptr(mergeTitle)
-			l.Description = gitlab.Ptr(fmt.Sprintf("Closes #%d", issue.IID))
+			l.Title = new(mergeTitle)
+			l.Description = new(fmt.Sprintf("Closes #%d", issue.IID))
 			l.Labels = &gitlab.LabelOptions{mergeLabel}
-			l.SourceBranch = gitlab.Ptr(sourceBranch)
-			l.TargetBranch = gitlab.Ptr(targetBranch)
+			l.SourceBranch = new(sourceBranch)
+			l.TargetBranch = new(targetBranch)
 			if milestone, _ := cmd.Flags().GetInt("milestone"); milestone != -1 {
-				l.MilestoneID = gitlab.Ptr(int64(milestone))
+				l.MilestoneID = new(int64(milestone))
 			}
 			if allowCol, _ := cmd.Flags().GetBool("allow-collaboration"); allowCol {
-				l.AllowCollaboration = gitlab.Ptr(true)
+				l.AllowCollaboration = new(true)
 			}
 			if removeSource, _ := cmd.Flags().GetBool("remove-source-branch"); removeSource {
-				l.RemoveSourceBranch = gitlab.Ptr(true)
+				l.RemoveSourceBranch = new(true)
 			}
 			if withLabels, _ := cmd.Flags().GetBool("with-labels"); withLabels {
 				l.Labels = (*gitlab.LabelOptions)(&issue.Labels)

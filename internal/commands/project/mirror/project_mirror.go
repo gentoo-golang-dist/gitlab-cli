@@ -64,21 +64,20 @@ func NewCmdMirror(f cmdutils.Factory) *cobra.Command {
 		`, "`"),
 		Example: heredoc.Docf(`
 			# Create a project, then configure pull mirroring
-			$ glab repo create mygroup/myproject --public
-			$ glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s
+			glab repo create mygroup/myproject --public
+			glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s
 
 			# Configure pull mirroring from a private repository
-			$ glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://username:token@gitlab.example.com/org/private-repo%[1]s
+			glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://username:token@gitlab.example.com/org/private-repo%[1]s
 
 			# Configure pull mirroring for protected branches only
-			$ glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s --protected-branches-only
+			glab repo mirror mygroup/myproject --direction=pull --url=%[1]shttps://gitlab.example.com/org/repo%[1]s --protected-branches-only
 
 			# Configure push mirroring to another GitLab instance
-			$ glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/myproject%[1]s
+			glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/myproject%[1]s
 
 			# Configure push mirroring and allow divergent refs
-			$ glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/repo%[1]s --allow-divergence
-		`, `"`),
+			glab repo mirror mygroup/myproject --direction=push --url=%[1]shttps://gitlab-backup.example.com/backup/repo%[1]s --allow-divergence`, `"`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -182,10 +181,10 @@ func (o *options) run() error {
 
 func (o *options) createPushMirror() error {
 	pm, _, err := o.client.ProjectMirrors.AddProjectMirror(o.projectID, &gitlab.AddProjectMirrorOptions{
-		URL:                   gitlab.Ptr(o.url),
-		Enabled:               gitlab.Ptr(o.enabled),
-		OnlyProtectedBranches: gitlab.Ptr(o.protectedBranchesOnly),
-		KeepDivergentRefs:     gitlab.Ptr(o.allowDivergence),
+		URL:                   new(o.url),
+		Enabled:               new(o.enabled),
+		OnlyProtectedBranches: new(o.protectedBranchesOnly),
+		KeepDivergentRefs:     new(o.allowDivergence),
 	})
 	if err != nil {
 		return cmdutils.WrapError(err, "Failed to create push mirror. Check if the project exists and ensure you have the necessary permissions.")
@@ -201,9 +200,9 @@ func (o *options) createPushMirror() error {
 
 func (o *options) createPullMirror() error {
 	_, _, err := o.client.Projects.EditProject(o.projectID, &gitlab.EditProjectOptions{
-		ImportURL:                   gitlab.Ptr(o.url),
-		Mirror:                      gitlab.Ptr(o.enabled),
-		OnlyMirrorProtectedBranches: gitlab.Ptr(o.protectedBranchesOnly),
+		ImportURL:                   new(o.url),
+		Mirror:                      new(o.enabled),
+		OnlyMirrorProtectedBranches: new(o.protectedBranchesOnly),
 	})
 	if err != nil {
 		return cmdutils.WrapError(err, "Failed to create pull mirror. Check if the project exists and ensure you have the necessary permissions.")

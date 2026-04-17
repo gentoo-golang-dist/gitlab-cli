@@ -1,5 +1,5 @@
 ---
-title: glab stack reorder
+title: '`glab stack reorder`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -27,8 +27,7 @@ glab stack reorder [flags]
 ## Examples
 
 ```console
-$ glab stack reorder
-
+glab stack reorder
 ```
 
 ## Options inherited from parent commands

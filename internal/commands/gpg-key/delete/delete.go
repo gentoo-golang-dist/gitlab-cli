@@ -32,7 +32,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		Long:  ``,
 		Example: heredoc.Doc(`
 			# Delete GPG key with ID as argument
-			$ glab gpg-key delete 7750633`),
+			glab gpg-key delete 7750633`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

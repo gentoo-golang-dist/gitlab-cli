@@ -13,6 +13,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -174,16 +175,17 @@ hosts:
   ✓ GraphQL Endpoint: https://gitlab3.example.com/api/graphql/
   ✓ Token found: **************************
 
-! One of GITLAB_TOKEN, GITLAB_ACCESS_TOKEN, OAUTH_TOKEN environment variables is set. It will be used for all authentication.
+! Token is from environment variable GITLAB_TOKEN. This takes precedence over tokens stored in config or keyring.
+  If a wrapper (e.g., 'op plugin run -- glab') is setting this, run type glab in your shell to check.
 `,
 		},
 	}
 
 	tc := gitlabtesting.NewTestClient(t)
 	gomock.InOrder(
-		tc.MockUsers.EXPECT().CurrentUser().Return(&gitlab.User{Username: "john_smith"}, nil, nil),
-		tc.MockUsers.EXPECT().CurrentUser().Return(&gitlab.User{Username: "john_doe"}, nil, nil),
-		tc.MockUsers.EXPECT().CurrentUser().Return(&gitlab.User{Username: "john_doe"}, nil, nil),
+		tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(&gitlab.User{Username: "john_smith"}, nil, nil),
+		tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(&gitlab.User{Username: "john_doe"}, nil, nil),
+		tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(&gitlab.User{Username: "john_doe"}, nil, nil),
 	)
 
 	client := func(token, hostname string) (*api.Client, error) { // nolint:unparam
@@ -207,7 +209,7 @@ hosts:
 				t.Setenv("GITLAB_TOKEN", "")
 			}
 
-			err := tt.opts.run()
+			err := tt.opts.run(t.Context())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("statusRun() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -223,6 +225,49 @@ hosts:
 			}
 		})
 	}
+}
+
+func Test_statusRun_authFailureWithEnvToken(t *testing.T) {
+	defer config.StubConfig(`---
+hosts:
+  gitlab.example.com:
+    token: xxxxxxxxxxxxxxxxxxxx
+    git_protocol: ssh
+    api_protocol: https
+`, "")()
+
+	tc := gitlabtesting.NewTestClient(t)
+	tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}}, errors.New("GET https://gitlab.example.com/api/v4/user: 401 {error: invalid_token}"))
+
+	client := func(token, hostname string) (*api.Client, error) { // nolint:unparam
+		return cmdtest.NewTestApiClient(t, nil, token, hostname, api.WithGitLabClient(tc.Client)), nil
+	}
+
+	t.Setenv("GITLAB_TOKEN", "glpat-expired-token")
+	configs, err := config.ParseConfig("config.yml")
+	require.NoError(t, err)
+	io, _, stdout, stderr := cmdtest.TestIOStreams()
+
+	opts := &options{
+		hostname: "gitlab.example.com",
+		config: func() config.Config {
+			return configs
+		},
+		apiClient: func(repoHost string) (*api.Client, error) {
+			return client("", repoHost)
+		},
+		httpClientOverride: client,
+		io:                 io,
+	}
+
+	err = opts.run(t.Context())
+	require.Error(t, err)
+	assert.Empty(t, stdout.String())
+	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. A wrapper may be injecting a different or expired token.")
+	assert.Contains(t, stderr.String(), "To investigate, run in your shell: type glab")
+	assert.Contains(t, stderr.String(), "To see the token value in use, run: env | grep -E 'GITLAB_TOKEN|GITLAB_ACCESS_TOKEN|OAUTH_TOKEN'")
+	assert.Contains(t, stderr.String(), "Token is from environment variable GITLAB_TOKEN. This takes precedence over tokens stored in config or keyring.")
+	assert.Contains(t, stderr.String(), "If a wrapper (e.g., 'op plugin run -- glab') is setting this, run type glab in your shell to check.")
 }
 
 func Test_statusRun_noHostnameSpecified(t *testing.T) {
@@ -242,9 +287,9 @@ hosts:
 
 	tc := gitlabtesting.NewTestClient(t)
 	gomock.InOrder(
-		tc.MockUsers.EXPECT().CurrentUser().Return(&gitlab.User{Username: "john_smith"}, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil),
-		tc.MockUsers.EXPECT().CurrentUser().Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}}, errors.New("GET https://another.example/api/v4/user: 401 {message: invalid token}")),
-		tc.MockUsers.EXPECT().CurrentUser().Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}}, errors.New("GET https://test.example/api/v4/user: 401 {message: no token provided}")),
+		tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(&gitlab.User{Username: "john_smith"}, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil),
+		tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}}, errors.New("GET https://another.example/api/v4/user: 401 {message: invalid token}")),
+		tc.MockUsers.EXPECT().CurrentUser(gomock.Any()).Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}}, errors.New("GET https://test.example/api/v4/user: 401 {message: no token provided}")),
 	)
 
 	client := func(token, hostname string) (*api.Client, error) { // nolint:unparam
@@ -290,7 +335,7 @@ test.example
 		io:                 io,
 	}
 
-	err = opts.run()
+	err = opts.run(t.Context())
 	assert.Equal(t, "\nx could not authenticate to one or more of the configured GitLab instances.", err.Error())
 	assert.Empty(t, stdout.String())
 	assert.Equal(t, expectedOutput, stderr.String())
@@ -315,7 +360,7 @@ git_protocol: ssh
 		io: io,
 	}
 	t.Run("no instance authenticated", func(t *testing.T) {
-		err := opts.run()
+		err := opts.run(t.Context())
 		assert.Equal(t, "No GitLab instances have been authenticated with glab. Run `glab auth login` to authenticate.\n", err.Error())
 		assert.Empty(t, stdout.String())
 	})

@@ -1,5 +1,5 @@
 ---
-title: glab runner delete
+title: '`glab runner delete`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -30,11 +30,10 @@ glab runner delete <runner-id> [flags]
 
 ```console
 # Delete a runner (prompts for confirmation)
-$ glab runner delete 6
+glab runner delete 6
 
 # Skip confirmation prompt
-$ glab runner delete 6 --force
-
+glab runner delete 6 --force
 ```
 
 ## Options

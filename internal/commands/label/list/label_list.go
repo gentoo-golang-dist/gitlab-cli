@@ -48,11 +48,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Long:    ``,
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
-			$ glab label list
-			$ glab label ls
-			$ glab label list -R owner/repository
-			$ glab label list -g mygroup
-		`),
+			glab label list
+			glab label ls
+			glab label list -R owner/repository
+			glab label list -g mygroup`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -110,7 +109,7 @@ func (o *options) run() error {
 	client := apiClient.Lab()
 
 	labelApiOpts := &listLabelsOptions{}
-	labelApiOpts.withCounts = gitlab.Ptr(true)
+	labelApiOpts.withCounts = new(true)
 
 	if o.page != 0 {
 		labelApiOpts.page = int64(o.page)

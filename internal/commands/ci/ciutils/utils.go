@@ -9,12 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 	"github.com/pkg/errors"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
@@ -29,7 +30,7 @@ func makeHyperlink(s *iostreams.IOStreams, pipeline *gitlab.PipelineInfo) string
 // for merged results pipelines where the direct branch lookup may fail or returns a pipeline with no jobs.
 func GetPipelineWithFallback(ctx context.Context, client *gitlab.Client, repoName, branch string, ios *iostreams.IOStreams) (*gitlab.Pipeline, error) {
 	// First try: Get pipeline by branch name
-	pipeline, _, err := client.Pipelines.GetLatestPipeline(repoName, &gitlab.GetLatestPipelineOptions{Ref: gitlab.Ptr(branch)}, gitlab.WithContext(ctx))
+	pipeline, _, err := client.Pipelines.GetLatestPipeline(repoName, &gitlab.GetLatestPipelineOptions{Ref: new(branch)}, gitlab.WithContext(ctx))
 	if err == nil {
 		// Check if the pipeline has jobs - some pipelines (e.g., external pipelines) may have no jobs
 		jobs, _, jobsErr := client.Jobs.ListPipelineJobs(repoName, pipeline.ID, &gitlab.ListJobsOptions{
@@ -76,7 +77,7 @@ func GetPipelineWithFallback(ctx context.Context, client *gitlab.Client, repoNam
 // getMRForBranch finds a merge request for the given branch
 func getMRForBranch(ctx context.Context, client *gitlab.Client, repoName, branch string, ios *iostreams.IOStreams) (*gitlab.MergeRequest, error) {
 	opts := &gitlab.ListProjectMergeRequestsOptions{
-		SourceBranch: gitlab.Ptr(branch),
+		SourceBranch: new(branch),
 	}
 
 	mrs, err := api.ListMRs(client, repoName, opts)
@@ -184,17 +185,21 @@ func RunTraceSha(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid
 	if err != nil || job == nil {
 		return errors.Wrap(err, "failed to find job")
 	}
-	return runTrace(ctx, apiClient, w, pid, job.ID)
+	return runTrace(ctx, apiClient, w, pid, job.ID, 3*time.Second)
 }
 
-func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, jobId int64) error {
+func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, jobId int64, pollInterval time.Duration) error {
 	var once sync.Once
 	var offset int64
 
 	fmt.Fprintln(w, "Getting job trace...")
-	for range time.NewTicker(time.Second * 3).C {
-		if ctx.Err() == context.Canceled {
-			break
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
 		}
 		job, _, err := apiClient.Jobs.GetJob(pid, jobId)
 		if err != nil {
@@ -230,7 +235,6 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 			return nil
 		}
 	}
-	return nil
 }
 
 func GetJobId(ctx context.Context, inputs *JobInputs, opts *JobOptions) (int64, error) {
@@ -306,19 +310,16 @@ func getPipelineId(inputs *JobInputs, opts *JobOptions) (int64, error) {
 }
 
 // GetDefaultBranch fetches the repository's default branch from GitLab API.
-// Falls back to "main" if the API call fails or returns empty.
+// Falls back to git.DefaultBranchName if the API call fails or returns empty.
 func GetDefaultBranch(repo glrepo.Interface, client *gitlab.Client) string {
 	if repo == nil || client == nil {
-		return "main"
+		return git.DefaultBranchName
 	}
-	project, _, err := client.Projects.GetProject(repo.FullName(), nil)
-	if err != nil {
-		return "main"
+	project, err := api.GetProject(client, repo.FullName())
+	if err != nil || project.DefaultBranch == "" {
+		return git.DefaultBranchName
 	}
-	if project.DefaultBranch != "" {
-		return project.DefaultBranch
-	}
-	return "main"
+	return project.DefaultBranch
 }
 
 // GetBranch returns the specified branch, current git branch, or the default branch from API
@@ -368,7 +369,7 @@ func getJobIdInteractive(ctx context.Context, inputs *JobInputs, opts *JobOption
 			return 0, err
 		}
 		// use commit statuses to show external jobs
-		cs, _, err := opts.Client.Commits.GetCommitStatuses(opts.Repo.FullName(), pipeline.SHA, &gitlab.GetCommitStatusesOptions{All: gitlab.Ptr(true)})
+		cs, _, err := opts.Client.Commits.GetCommitStatuses(opts.Repo.FullName(), pipeline.SHA, &gitlab.GetCommitStatusesOptions{All: new(true)})
 		if err != nil {
 			return 0, err
 		}
@@ -423,10 +424,11 @@ type JobInputs struct {
 }
 
 type JobOptions struct {
-	Client     *gitlab.Client
-	Repo       glrepo.Interface
-	IO         *iostreams.IOStreams
-	BranchFunc func() (string, error)
+	Client       *gitlab.Client
+	Repo         glrepo.Interface
+	IO           *iostreams.IOStreams
+	BranchFunc   func() (string, error)
+	PollInterval time.Duration // interval between trace polls; defaults to 3s if zero
 }
 
 func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {
@@ -438,8 +440,12 @@ func TraceJob(ctx context.Context, inputs *JobInputs, opts *JobOptions) error {
 	if jobID == 0 {
 		return nil
 	}
+	pollInterval := opts.PollInterval
+	if pollInterval == 0 {
+		pollInterval = 3 * time.Second
+	}
 	fmt.Fprintln(opts.IO.StdOut)
-	return runTrace(ctx, opts.Client, opts.IO.StdOut, opts.Repo.FullName(), jobID)
+	return runTrace(ctx, opts.Client, opts.IO.StdOut, opts.Repo.FullName(), jobID, pollInterval)
 }
 
 // IDsFromArgs parses list of IDs from space or comma-separated values

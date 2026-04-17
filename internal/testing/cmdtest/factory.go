@@ -4,13 +4,12 @@ import (
 	"bytes"
 	io "io"
 	"runtime"
-	"sync"
 	"testing"
-	"time"
 
+	tea "charm.land/bubbletea/v2"
+	"git.sr.ht/~timofurrer/ugh"
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
-	"github.com/survivorbat/huhtest"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -281,45 +280,35 @@ func WithExecutor(exec cmdutils.Executor) FactoryOption {
 	}
 }
 
-func WithResponder(t *testing.T, responder *huhtest.Responder) FactoryOption {
+const (
+	ConsoleWidth  = 120
+	ConsoleHeight = 40
+)
+
+func WithConsole(t *testing.T, console *ugh.Console) FactoryOption {
 	t.Helper()
 
 	return func(f *Factory) {
-		rIn, wIn := io.Pipe()
-		rOut, wOut := io.Pipe()
+		appInR, appInW := io.Pipe()
+		appOutR, appOutW := io.Pipe()
 
-		closer := func() {
-			rIn.Close()
-			wIn.Close()
-			rOut.Close()
-			wOut.Close()
-		}
+		f.IOStub = iostreams.New(
+			iostreams.WithStdin(appInR, true),
+			iostreams.WithStdout(appOutW, true),
+			iostreams.WithStderr(f.IOStub.StdErr, f.IOStub.IsErrTTY),
+			iostreams.WithProgramOptions(tea.WithWindowSize(ConsoleWidth, ConsoleHeight)),
+		)
 
-		f.IOStub.In = rIn
-		f.IOStub.StdOut = wOut
-
-		// register setup functions to redirect ios to responder
-		startResponder := func() {
-			rstdin, rstdout, cancel := responder.Start(t, 1*time.Hour)
-
-			var wg sync.WaitGroup
-
-			wg.Go(func() {
-				_, _ = io.Copy(wIn, rstdin)
-			})
-
-			wg.Go(func() {
-				_, _ = io.Copy(rstdout, rOut)
-			})
+		startConsole := func() {
+			wait := console.Start(t.Context(), appOutR, appInW)
 
 			f.execCleanup = append(f.execCleanup, func() {
-				cancel()
-				closer()
-
-				wg.Wait()
+				appInW.Close()
+				appOutR.Close()
+				wait()
 			})
 		}
 
-		f.execSetup = append(f.execSetup, startResponder)
+		f.execSetup = append(f.execSetup, startConsole)
 	}
 }

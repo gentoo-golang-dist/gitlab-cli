@@ -10,10 +10,13 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
+	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -84,26 +87,25 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Docf(`
 			# Start interactive setup
 			# (If in a Git repository, glab will detect and suggest GitLab instances from remotes)
-			$ glab auth login
+			glab auth login
 
 			# Authenticate against %[1]sgitlab.com%[1]s by reading the token from a file
-			$ glab auth login --stdin < myaccesstoken.txt
+			glab auth login --stdin < myaccesstoken.txt
 
 			# Authenticate with GitLab Self-Managed or GitLab Dedicated
-			$ glab auth login --hostname salsa.debian.org
+			glab auth login --hostname salsa.debian.org
 
 			# Non-interactive setup
-			$ glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
+			glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
 
 			# Non-interactive setup reading token from a file
-			$ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+			glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
 
 			# Semi-interactive OAuth login, skipping all prompts except browser auth
-			$ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
+			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
 			# Non-interactive CI/CD setup
-			$ glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
-		`, "`"),
+			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -194,6 +196,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		// Split hostname and subfolder
 		hostname, subfolder := splitHostnameAndSubfolder(opts.Hostname)
 
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
+			return err
+		}
+
 		err := cfg.Set(hostname, "token", opts.Token)
 		if err != nil {
 			return err
@@ -241,6 +247,10 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 
 		// Split hostname and subfolder
 		hostname, subfolder := splitHostnameAndSubfolder(opts.Hostname)
+
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
+			return err
+		}
 
 		err := cfg.Set(hostname, "job_token", opts.JobToken)
 		if err != nil {
@@ -415,7 +425,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
-		user, _, err := apiClient.Lab().Users.CurrentUser()
+		authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 		if err == nil {
 			username := user.Username
 			keepGoing := false // default value
@@ -470,11 +482,22 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		loginType = promptLoginTypeWeb
 	}
 
+	// Re-split hostname in case it was changed by prompts
+	hostname, subfolder = splitHostnameAndSubfolder(hostname)
+
 	var token string
 	var err error
 	if strings.EqualFold(loginType, promptLoginTypeToken) {
 		token, err = showTokenPrompt(ctx, opts.IO, hostname)
 		if err != nil {
+			return err
+		}
+
+		// Clear stale OAuth fields only after the prompt succeeds, so that a
+		// cancelled or failed login leaves existing credentials intact.
+		// This handles the OAuth → PAT switch: is_oauth2 / refresh / expiry fields
+		// that were set by a previous OAuth login are removed before the PAT is saved.
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
 			return err
 		}
 	} else {
@@ -483,14 +506,15 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
+		// StartFlow calls marshal() internally, which writes is_oauth2, token,
+		// oauth2_refresh_token, and oauth2_expiry_date.  No explicit ClearAuthFields
+		// is needed: marshal() overwrites every field it owns, and is_oauth2=true
+		// ensures the OAuth auth source wins over any residual job_token.
 		token, err = oauth2.StartFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
 		if err != nil {
 			return err
 		}
 	}
-
-	// Re-split hostname in case it was changed by prompts
-	hostname, subfolder = splitHostnameAndSubfolder(hostname)
 
 	if err := cfg.Set(hostname, "token", token); err != nil {
 		return err
@@ -594,7 +618,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		return err
 	}
 
-	user, _, err := apiClient.Lab().Users.CurrentUser()
+	authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 	if err != nil {
 		return fmt.Errorf("error using API: %w", err)
 	}
