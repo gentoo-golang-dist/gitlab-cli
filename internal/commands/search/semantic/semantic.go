@@ -56,6 +56,9 @@ func (r searchResult) filePath() string {
 	return r.Path
 }
 
+// chunks returns the code snippets for this result. The API may return them
+// under either "chunks" or "snippet_ranges" depending on the endpoint version,
+// so we prefer "chunks" and fall back to "snippet_ranges".
 func (r searchResult) chunks() []codeChunk {
 	if len(r.Chunks) > 0 {
 		return r.Chunks
@@ -172,6 +175,10 @@ func (o *options) run(ctx context.Context) error {
 	}
 	req.URL.RawQuery = q.Encode()
 
+	if o.outputFormat != "json" {
+		fmt.Fprintf(o.io.StdOut, "Searching for %q in %s...\n", o.query, o.projectID)
+	}
+
 	var result semanticSearchResponse
 	_, err = o.client.Do(req, &result)
 	if err != nil {
@@ -187,7 +194,6 @@ func (o *options) run(ctx context.Context) error {
 
 func (o *options) printText(result *semanticSearchResponse) error {
 	c := o.io.Color()
-	fmt.Fprintf(o.io.StdOut, "Searching for %q in %s...\n", o.query, o.projectID)
 	fmt.Fprintf(o.io.StdOut, "Confidence: %s\n", result.Confidence)
 
 	if len(result.Results) == 0 {
