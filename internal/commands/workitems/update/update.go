@@ -24,31 +24,27 @@ import (
 
 type options struct {
 	// Dependencies
-	io *iostreams.IOStreams
-	baseRepo func() (glrepo.Interface, error)
+	io           *iostreams.IOStreams
+	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
-	config func() config.Config
+	config       func() config.Config
 
 	// Flags
-	group string
-	iid int64
-	title string
-	// TODO: ask about stateEvent
-	// stateEvent string
-	description string
-	assignee []string
-	milestone string
-	parentID int64
-	addLabel []string
-	removeLabel []string
-	startDate string
-	dueDate string
-	weight int64
+	group        string
+	iid          int64
+	title        string
+	description  string
+	assignee     []string
+	milestone    string
+	parentID     int64
+	startDate    string
+	dueDate      string
+	weight       int64
 	healthStatus string
 	// TO DO: come back to iteration
 	iterationID int64
-	color string
-	status string
+	color       string
+	status      string
 
 	// internal state
 	scope *api.ScopeInfo
@@ -59,14 +55,14 @@ type options struct {
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
-		io: f.IO(),
-		baseRepo: f.BaseRepo,
+		io:           f.IO(),
+		baseRepo:     f.BaseRepo,
 		gitlabClient: f.GitLabClient,
-		config: f.Config,
+		config:       f.Config,
 	}
 
 	cmd := &cobra.Command{
-		Use: "update <iid> [flags]",
+		Use:   "update <iid> [flags]",
 		Short: "Update work items in a project or group. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`Update work items in a project or group.
 
@@ -121,7 +117,7 @@ func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error {
 		return err
 	}
 	opts.group = group
-	
+
 	if err := cmdutils.HandleDescriptionEditor(ctx, &opts.description, opts.io, opts.config, nil); err != nil {
 		return err
 	}
@@ -131,7 +127,7 @@ func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error {
 		return err
 	}
 	opts.scope = scope
-	
+
 	return nil
 }
 
@@ -168,7 +164,7 @@ func (opts *options) run() error {
 		}
 		updateOpts.StartDate = gitlab.Ptr(startDate)
 	}
-	
+
 	if opts.title != "" {
 		updateOpts.Title = gitlab.Ptr(opts.title)
 	}
@@ -182,39 +178,45 @@ func (opts *options) run() error {
 		if err != nil {
 			return cmdutils.FlagError{Err: fmt.Errorf("failed to find assignee")}
 		}
-		
+
 		assignees := make([]int64, 0)
 
 		for _, i := range user {
 			assignees = append(assignees, i.ID)
-		}	
+		}
 		updateOpts.AssigneeIDs = assignees
 	}
-	
+
 	if opts.milestone != "" {
 		if ok, err := strconv.ParseInt(opts.milestone, 10, 64); err == nil {
-			updateOpts.MilestoneID = gitlab.Ptr(ok) 
+			milestoneID := new(int64)
+			*milestoneID = ok
+			updateOpts.MilestoneID = milestoneID
 		} else {
-				if opts.scope.Type == "project" {
+			if opts.scope.Type == "project" {
 
-					l := &a.ListMilestonesOptions{
-						Title: gitlab.Ptr(opts.milestone),
-					}
-					
-					m, err := a.ListAllMilestones(client, opts.scope.Path, l)
-					if err != nil || len(m) == 0 {
-						return cmdutils.FlagError{Err: fmt.Errorf("failed to find project milestone by title")}
-					}
-					
-					updateOpts.MilestoneID = gitlab.Ptr(m[0].ID)
-			 } else if opts.scope.Type == "group" {
-				  m, _, err := client.GroupMilestones.ListGroupMilestones(opts.scope.Path, &gitlab.ListGroupMilestonesOptions{Title: gitlab.Ptr(opts.milestone)})
-					if err != nil || len(m) == 0 {
-						return cmdutils.FlagError{Err: fmt.Errorf("failed to find group milestone by title")}
-					}
+				l := &a.ListMilestonesOptions{
+					Title: gitlab.Ptr(opts.milestone),
+				}
 
-					updateOpts.MilestoneID = gitlab.Ptr(m[0].ID)
-			 }
+				m, err := a.ListAllMilestones(client, opts.scope.Path, l)
+				if err != nil || len(m) == 0 {
+					return cmdutils.FlagError{Err: fmt.Errorf("failed to find project milestone by title")}
+				}
+
+				milestoneID := new(int64)
+				*milestoneID = m[0].ID
+				updateOpts.MilestoneID = milestoneID
+			} else if opts.scope.Type == "group" {
+				m, _, err := client.GroupMilestones.ListGroupMilestones(opts.scope.Path, &gitlab.ListGroupMilestonesOptions{Title: gitlab.Ptr(opts.milestone)})
+				if err != nil || len(m) == 0 {
+					return cmdutils.FlagError{Err: fmt.Errorf("failed to find group milestone by title")}
+				}
+
+				milestoneID := new(int64)
+				*milestoneID = m[0].ID
+				updateOpts.MilestoneID = milestoneID
+			}
 		}
 	}
 
@@ -258,7 +260,6 @@ func (opts *options) run() error {
 	if opts.color != "" {
 		updateOpts.Color = gitlab.Ptr(opts.color)
 	}
-
 
 	switch opts.status {
 	case "to-do":
