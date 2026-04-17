@@ -747,12 +747,8 @@ func Test_stackSync(t *testing.T) {
 					Return(&gitlab.User{Username: "stack_guy", ID: 100}, nil, nil)
 
 				testClient.MockUsers.EXPECT().
-				api.UsersByNames = func(client *gitlab.Client, names []string) ([]*gitlab.User, error) {
 					ListUsers(gomock.Any()).
-					return []*gitlab.User{
 					Return([]*gitlab.User{{ID: 201, Username: "reviewer1"}}, nil, nil)
-						{ID: 202, Username: "reviewer2"},
-					}, nil
 				testClient.MockUsers.EXPECT().
 					ListUsers(gomock.Any()).
 					Return([]*gitlab.User{{ID: 202, Username: "reviewer2"}}, nil, nil)
