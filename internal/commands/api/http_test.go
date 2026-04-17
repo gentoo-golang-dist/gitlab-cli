@@ -302,7 +302,7 @@ hosts:
 
 	client := &http.Client{}
 	client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		return nil, fmt.Errorf("RoundTrip unexpectedly invoked")
+		return nil, fmt.Errorf("HTTP request made with invalid URL")
 	})
 
 	httpClient := cmdtest.NewTestApiClient(t, client, "OTOKEN", "gitlab.com")
