@@ -238,7 +238,19 @@ func filterEmpty(s []string) []string {
 	return result
 }
 
-func (o *options) validate() error {
+func dedupe(s []string) []string {
+	seen := make(map[string]struct{}, len(s))
+	result := make([]string, 0, len(s))
+	for _, v := range s {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func (o *options) validate(client *gitlab.Client) error {
 	raw := o.assignees
 	o.assignees = dedupe(filterEmpty(o.assignees))
 
@@ -260,7 +272,7 @@ func (o *options) validate() error {
 		return fmt.Errorf("--reviewer flag requires at least one valid username")
 	}
 
-	return nil
+	return o.complete(client)
 }
 
 func (o *options) complete(client *gitlab.Client) error {
