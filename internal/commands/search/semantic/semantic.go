@@ -41,29 +41,10 @@ type semanticSearchResponse struct {
 }
 
 type searchResult struct {
-	FilePath      string      `json:"file_path"`
 	Path          string      `json:"path"`
 	FileURL       string      `json:"file_url"`
 	Score         float64     `json:"score"`
-	Chunks        []codeChunk `json:"chunks"`
 	SnippetRanges []codeChunk `json:"snippet_ranges"`
-}
-
-func (r searchResult) filePath() string {
-	if r.FilePath != "" {
-		return r.FilePath
-	}
-	return r.Path
-}
-
-// chunks returns the code snippets for this result. The API may return them
-// under either "chunks" or "snippet_ranges" depending on the endpoint version,
-// so we prefer "chunks" and fall back to "snippet_ranges".
-func (r searchResult) chunks() []codeChunk {
-	if len(r.Chunks) > 0 {
-		return r.Chunks
-	}
-	return r.SnippetRanges
 }
 
 type codeChunk struct {
@@ -204,8 +185,8 @@ func (o *options) printText(result *semanticSearchResponse) error {
 	fmt.Fprintln(o.io.StdOut)
 	for _, r := range result.Results {
 		fmt.Fprintf(o.io.StdOut, "%s  (score: %.2f)\n",
-			c.Bold(r.filePath()), r.Score)
-		for _, chunk := range r.chunks() {
+			c.Bold(r.Path), r.Score)
+		for _, chunk := range r.SnippetRanges {
 			fmt.Fprintf(o.io.StdOut, "  Lines %d–%d:\n", chunk.StartLine, chunk.EndLine)
 			for line := range strings.SplitSeq(chunk.Content, "\n") {
 				fmt.Fprintf(o.io.StdOut, "    %s\n", line)

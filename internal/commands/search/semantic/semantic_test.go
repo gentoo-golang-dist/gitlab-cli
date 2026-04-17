@@ -34,10 +34,10 @@ func TestSemanticSearch_TextOutput(t *testing.T) {
 		Confidence: "high",
 		Results: []searchResult{
 			{
-				FilePath: "app/services/auth.rb",
-				FileURL:  "https://gitlab.com/owner/repo/-/blob/main/app/services/auth.rb",
-				Score:    0.94,
-				Chunks: []codeChunk{
+				Path:    "app/services/auth.rb",
+				FileURL: "https://gitlab.com/owner/repo/-/blob/main/app/services/auth.rb",
+				Score:   0.94,
+				SnippetRanges: []codeChunk{
 					{StartLine: 10, EndLine: 20, Content: "def authenticate\n  ...\nend"},
 				},
 			},
@@ -82,10 +82,10 @@ func TestSemanticSearch_JSONOutput(t *testing.T) {
 		Confidence: "medium",
 		Results: []searchResult{
 			{
-				FilePath: "lib/foo.rb",
-				FileURL:  "https://gitlab.com/owner/repo/-/blob/main/lib/foo.rb",
-				Score:    0.75,
-				Chunks:   []codeChunk{{StartLine: 1, EndLine: 5, Content: "# foo"}},
+				Path:          "lib/foo.rb",
+				FileURL:       "https://gitlab.com/owner/repo/-/blob/main/lib/foo.rb",
+				Score:         0.75,
+				SnippetRanges: []codeChunk{{StartLine: 1, EndLine: 5, Content: "# foo"}},
 			},
 		},
 	}
@@ -113,7 +113,7 @@ func TestSemanticSearch_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "medium", got.Confidence)
 	assert.Len(t, got.Results, 1)
-	assert.Equal(t, "lib/foo.rb", got.Results[0].FilePath)
+	assert.Equal(t, "lib/foo.rb", got.Results[0].Path)
 }
 
 func TestSemanticSearch_WithDirectoryPath(t *testing.T) {
