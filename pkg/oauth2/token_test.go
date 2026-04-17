@@ -18,29 +18,42 @@ func TestCalcExpiresDate(t *testing.T) {
 }
 
 func TestTokenFromConfig(t *testing.T) {
-	cfg := stubConfig{
-		hosts: map[string]map[string]string{
-			"gitlab.com": {
-				"is_oauth2":            "true",
-				"oauth2_refresh_token": "refresh_token",
-				"token":                "access_token",
-				"oauth2_code_verifier": "123",
-				"oauth2_expiry_date":   "13 Mar 23 15:47 GMT",
-			},
-		},
+	tests := []struct {
+		name           string
+		expiryDate     string
+		expectedFormat string
+	}{
+		{"RFC3339", "2023-03-13T15:47:00Z", time.RFC3339},
+		{"RFC822 fallback for existing configs", "13 Mar 23 15:47 GMT", time.RFC822},
 	}
 
-	token, err := tokenFromConfig("gitlab.com", cfg)
-	require.Nil(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := stubConfig{
+				hosts: map[string]map[string]string{
+					"gitlab.com": {
+						"is_oauth2":            "true",
+						"oauth2_refresh_token": "refresh_token",
+						"token":                "access_token",
+						"oauth2_code_verifier": "123",
+						"oauth2_expiry_date":   tt.expiryDate,
+					},
+				},
+			}
 
-	assert.Equal(t, "refresh_token", token.RefreshToken)
-	assert.Equal(t, "access_token", token.AccessToken)
-	assert.Equal(t, "123", token.CodeVerifier)
+			token, err := tokenFromConfig("gitlab.com", cfg)
+			require.Nil(t, err)
 
-	expectedDate, err := time.Parse(time.RFC822, "13 Mar 23 15:47 GMT")
-	require.Nil(t, err)
+			assert.Equal(t, "refresh_token", token.RefreshToken)
+			assert.Equal(t, "access_token", token.AccessToken)
+			assert.Equal(t, "123", token.CodeVerifier)
 
-	assert.Equal(t, expectedDate, token.ExpiryDate)
+			expectedDate, err := time.Parse(tt.expectedFormat, tt.expiryDate)
+			require.Nil(t, err)
+
+			assert.Equal(t, expectedDate, token.ExpiryDate)
+		})
+	}
 }
 
 func TestTokenSetConfig(t *testing.T) {
@@ -66,7 +79,7 @@ func TestTokenSetConfig(t *testing.T) {
 			"oauth2_refresh_token": "refresh_token",
 			"token":                "access_token",
 			"oauth2_code_verifier": "123",
-			"oauth2_expiry_date":   expectedDate.Format(time.RFC822),
+			"oauth2_expiry_date":   expectedDate.UTC().Format(time.RFC3339),
 		},
 	})
 }

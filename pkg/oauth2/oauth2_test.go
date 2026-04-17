@@ -32,7 +32,7 @@ func TestHandleAuthRedirect(t *testing.T) {
 		"oauth2_refresh_token": "refresh_token",
 		"token":                "access_token",
 		"oauth2_code_verifier": "123",
-		"oauth2_expiry_date":   "13 Mar 23 15:47 GMT",
+		"oauth2_expiry_date":   "2023-03-13T15:47:00Z",
 		"client_id":            "321",
 	}
 
@@ -70,7 +70,7 @@ func TestRefreshToken(t *testing.T) {
 		"oauth2_refresh_token": "refresh_token",
 		"token":                "access_token",
 		"oauth2_code_verifier": "123",
-		"oauth2_expiry_date":   "13 Mar 23 15:47 GMT",
+		"oauth2_expiry_date":   "2023-03-13T15:47:00Z",
 		"client_id":            "321",
 	}
 
@@ -87,7 +87,7 @@ func TestRefreshToken(t *testing.T) {
 
 	expiryDateString, err := cfg.Get(hostname, "oauth2_expiry_date")
 	require.Nil(t, err)
-	_, err = time.Parse(time.RFC822, expiryDateString)
+	_, err = time.Parse(time.RFC3339, expiryDateString)
 	require.Nil(t, err)
 }
 

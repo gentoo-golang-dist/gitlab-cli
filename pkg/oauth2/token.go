@@ -27,7 +27,10 @@ func tokenFromConfig(hostname string, cfg config.Config) (*AuthToken, error) {
 		return nil, err
 	}
 
-	result.ExpiryDate, err = time.Parse(time.RFC822, expiryDateString)
+	result.ExpiryDate, err = time.Parse(time.RFC3339, expiryDateString)
+	if err != nil {
+		result.ExpiryDate, err = time.Parse(time.RFC822, expiryDateString)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,7 @@ func (token *AuthToken) SetConfig(hostname string, cfg config.Config) error {
 	}
 
 	token.CalcExpiresDate()
-	err = cfg.Set(hostname, "oauth2_expiry_date", token.ExpiryDate.Format(time.RFC822))
+	err = cfg.Set(hostname, "oauth2_expiry_date", token.ExpiryDate.UTC().Format(time.RFC3339))
 	if err != nil {
 		return err
 	}
