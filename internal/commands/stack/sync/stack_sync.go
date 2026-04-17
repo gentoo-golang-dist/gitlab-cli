@@ -141,7 +141,10 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 	o.source = source
 	o.user = *user
 
-	if err := o.validate(client); err != nil {
+	if err := o.validate(); err != nil {
+		return err
+	}
+	if err := o.complete(client); err != nil {
 		return err
 	}
 
@@ -233,6 +236,18 @@ func filterEmpty(s []string) []string {
 	for _, v := range s {
 		if trimmed := strings.TrimSpace(v); trimmed != "" {
 			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+func dedupe(s []string) []string {
+	seen := make(map[string]struct{}, len(s))
+	result := make([]string, 0, len(s))
+	for _, v := range s {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			result = append(result, v)
 		}
 	}
 	return result
