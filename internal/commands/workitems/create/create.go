@@ -146,11 +146,12 @@ func (opts *options) run() error {
 	}
 
 	if opts.description != "" {
-		createOpts.Description = gitlab.Ptr(opts.description)
+		createOpts.Description = &opts.description
 	}
 
 	if opts.confidential {
-		createOpts.Confidential = gitlab.Ptr(true)
+		confidential := true
+		createOpts.Confidential = &confidential
 	}
 
 	wi, _, err := client.WorkItems.CreateWorkItem(opts.scope.Path, typeID, createOpts)
