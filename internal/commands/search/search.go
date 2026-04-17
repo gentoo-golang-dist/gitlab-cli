@@ -7,7 +7,7 @@ import (
 	semanticCmd "gitlab.com/gitlab-org/cli/internal/commands/search/semantic"
 )
 
-func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	searchCmd := &cobra.Command{
 		Use:   "search <command> [flags]",
 		Short: `Search for code and resources in a GitLab project. (BETA)`,

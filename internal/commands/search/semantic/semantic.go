@@ -25,6 +25,9 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepoFunc func() (glrepo.Interface, error)
 
+	client    *gitlab.Client
+	projectID string
+
 	query         string
 	directoryPath string
 	knn           int
@@ -102,6 +105,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			if err := opts.validate(); err != nil {
 				return err
 			}
+			if err := opts.complete(); err != nil {
+				return err
+			}
 			return opts.run(cmd.Context())
 		},
 	}
@@ -128,8 +134,9 @@ func (o *options) validate() error {
 	return nil
 }
 
-func (o *options) run(ctx context.Context) error {
-	client, err := o.gitlabClient()
+func (o *options) complete() error {
+	var err error
+	o.client, err = o.gitlabClient()
 	if err != nil {
 		return err
 	}
@@ -138,10 +145,14 @@ func (o *options) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	projectID := baseRepo.FullName()
+	o.projectID = baseRepo.FullName()
 
-	path := fmt.Sprintf("projects/%s/search/semantic", url.PathEscape(projectID))
-	req, err := client.NewRequest(http.MethodGet, path, nil, []gitlab.RequestOptionFunc{
+	return nil
+}
+
+func (o *options) run(ctx context.Context) error {
+	path := fmt.Sprintf("projects/%s/search/semantic", url.PathEscape(o.projectID))
+	req, err := o.client.NewRequest(http.MethodGet, path, nil, []gitlab.RequestOptionFunc{
 		gitlab.WithContext(ctx),
 	})
 	if err != nil {
@@ -153,16 +164,16 @@ func (o *options) run(ctx context.Context) error {
 	if o.directoryPath != "" {
 		q.Set("directory_path", o.directoryPath)
 	}
-	if o.knn > 0 {
+	if o.knn != 0 {
 		q.Set("knn", strconv.Itoa(o.knn))
 	}
-	if o.limit > 0 {
+	if o.limit != 0 {
 		q.Set("limit", strconv.Itoa(o.limit))
 	}
 	req.URL.RawQuery = q.Encode()
 
 	var result semanticSearchResponse
-	_, err = client.Do(req, &result)
+	_, err = o.client.Do(req, &result)
 	if err != nil {
 		return fmt.Errorf("semantic search request failed: %w", err)
 	}
@@ -171,12 +182,12 @@ func (o *options) run(ctx context.Context) error {
 		return o.io.PrintJSON(result)
 	}
 
-	return o.printText(projectID, &result)
+	return o.printText(&result)
 }
 
-func (o *options) printText(projectID string, result *semanticSearchResponse) error {
+func (o *options) printText(result *semanticSearchResponse) error {
 	c := o.io.Color()
-	fmt.Fprintf(o.io.StdOut, "Searching for %q in %s...\n", o.query, projectID)
+	fmt.Fprintf(o.io.StdOut, "Searching for %q in %s...\n", o.query, o.projectID)
 	fmt.Fprintf(o.io.StdOut, "Confidence: %s\n", result.Confidence)
 
 	if len(result.Results) == 0 {
