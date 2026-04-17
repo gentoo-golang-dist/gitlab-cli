@@ -77,8 +77,11 @@ func httpRequest(ctx context.Context, client *api.Client, method, p string, para
 		return nil, fmt.Errorf("unrecognized parameter type: %v", params)
 	}
 
-	baseURL, _ = url.Parse(baseURLStr)
-	req, err := api.NewHTTPRequest(ctx, client, method, baseURL, body, headers, bodyIsJSON)
+	reqURL, err := url.Parse(baseURLStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid request URL: %w", err)
+	}
+	req, err := api.NewHTTPRequest(ctx, client, method, reqURL, body, headers, bodyIsJSON)
 	if err != nil {
 		return nil, err
 	}
