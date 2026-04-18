@@ -64,7 +64,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			# Create a work item in a group
 			$ glab work-items create --type epic --group my-group
 		`),
-		Args: cobra.ExactArgs(0),
+		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -93,6 +93,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.confidential, "confidential", "c", false, "Mark work item confidential.")
 
 	_ = cmd.MarkFlagRequired("type")
+	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
@@ -146,11 +147,11 @@ func (opts *options) run() error {
 	}
 
 	if opts.description != "" {
-		createOpts.Description = gitlab.Ptr(opts.description)
+		createOpts.Description = new(opts.description)
 	}
 
 	if opts.confidential {
-		createOpts.Confidential = gitlab.Ptr(true)
+		createOpts.Confidential = new(true)
 	}
 
 	wi, _, err := client.WorkItems.CreateWorkItem(opts.scope.Path, typeID, createOpts)
