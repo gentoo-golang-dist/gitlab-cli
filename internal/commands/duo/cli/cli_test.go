@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/cli/internal/commands/duo/cli/cliutils"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -35,6 +37,10 @@ func TestNewCmd_Help(t *testing.T) {
 }
 
 func TestRunWithCustomPath_Validation(t *testing.T) {
+	if _, err := cliutils.ManagedBinaryPath(); errors.Is(err, cliutils.ErrUnsupportedPlatform) {
+		t.Skipf("skipping on unsupported platform: %v", err)
+	}
+
 	t.Run("non-existent path returns clear error", func(t *testing.T) {
 		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
 		factory := cmdtest.NewTestFactory(ios)
