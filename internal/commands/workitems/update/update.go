@@ -166,15 +166,15 @@ func (opts *options) run() error {
 		if err != nil {
 			return cmdutils.FlagError{Err: fmt.Errorf("date is not formatted correctly")}
 		}
-		updateOpts.StartDate = gitlab.Ptr(startDate)
+		updateOpts.StartDate = new(startDate)
 	}
 
 	if opts.title != "" {
-		updateOpts.Title = gitlab.Ptr(opts.title)
+		updateOpts.Title = new(opts.title)
 	}
 
 	if opts.description != "" {
-		updateOpts.Description = gitlab.Ptr(opts.description)
+		updateOpts.Description = new(opts.description)
 	}
 
 	if len(opts.assignee) != 0 {
@@ -193,12 +193,12 @@ func (opts *options) run() error {
 
 	if opts.milestone != "" {
 		if ok, err := strconv.ParseInt(opts.milestone, 10, 64); err == nil {
-			updateOpts.MilestoneID = gitlab.Ptr(ok)
+			updateOpts.MilestoneID = new(ok)
 		} else {
 			if opts.scope.Type == "project" {
 
 				l := &a.ListMilestonesOptions{
-					Title: gitlab.Ptr(opts.milestone),
+					Title: new(opts.milestone),
 				}
 
 				m, err := a.ListAllMilestones(client, opts.scope.Path, l)
@@ -206,20 +206,20 @@ func (opts *options) run() error {
 					return cmdutils.FlagError{Err: fmt.Errorf("failed to find project milestone by title")}
 				}
 
-				updateOpts.MilestoneID = gitlab.Ptr(m[0].ID)
+				updateOpts.MilestoneID = new(m[0].ID)
 			} else if opts.scope.Type == "group" {
-				m, _, err := client.GroupMilestones.ListGroupMilestones(opts.scope.Path, &gitlab.ListGroupMilestonesOptions{Title: gitlab.Ptr(opts.milestone)})
+				m, _, err := client.GroupMilestones.ListGroupMilestones(opts.scope.Path, &gitlab.ListGroupMilestonesOptions{Title: new(opts.milestone)})
 				if err != nil || len(m) == 0 {
 					return cmdutils.FlagError{Err: fmt.Errorf("failed to find group milestone by title")}
 				}
 
-				updateOpts.MilestoneID = gitlab.Ptr(m[0].ID)
+				updateOpts.MilestoneID = new(m[0].ID)
 			}
 		}
 	}
 
 	if opts.parentID != 0 {
-		updateOpts.ParentID = gitlab.Ptr(opts.parentID)
+		updateOpts.ParentID = new(opts.parentID)
 	}
 
 	//if len(opts.addLabelIDs) != 0 {
@@ -235,28 +235,28 @@ func (opts *options) run() error {
 		if err != nil {
 			return cmdutils.FlagError{Err: fmt.Errorf("date is not formatted correctly")}
 		}
-		updateOpts.DueDate = gitlab.Ptr(dueDate)
+		updateOpts.DueDate = new(dueDate)
 	}
 
 	if opts.weight != 0 {
-		updateOpts.Weight = gitlab.Ptr(opts.weight)
+		updateOpts.Weight = new(opts.weight)
 	}
 
 	switch opts.healthStatus {
 	case "on-track":
-		updateOpts.HealthStatus = gitlab.Ptr("onTrack")
+		updateOpts.HealthStatus = new("onTrack")
 	case "needs-attention":
-		updateOpts.HealthStatus = gitlab.Ptr("needsAttention")
+		updateOpts.HealthStatus = new("needsAttention")
 	case "at-risk":
-		updateOpts.HealthStatus = gitlab.Ptr("atRisk")
+		updateOpts.HealthStatus = new("atRisk")
 	}
 
 	if opts.iterationID != 0 {
-		updateOpts.IterationID = gitlab.Ptr(opts.iterationID)
+		updateOpts.IterationID = new(opts.iterationID)
 	}
 
 	if opts.color != "" {
-		updateOpts.Color = gitlab.Ptr(opts.color)
+		updateOpts.Color = new(opts.color)
 	}
 
 	switch opts.status {
