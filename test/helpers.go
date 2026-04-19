@@ -2,14 +2,13 @@ package test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"regexp"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	"gitlab.com/gitlab-org/cli/internal/run"
 )

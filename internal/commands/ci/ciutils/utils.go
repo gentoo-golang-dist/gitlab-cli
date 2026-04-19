@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"charm.land/huh/v2"
-	"github.com/pkg/errors"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -182,8 +181,11 @@ func DisplayMultiplePipelines(s *iostreams.IOStreams, p []*gitlab.PipelineInfo, 
 
 func RunTraceSha(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, sha, name string) error {
 	job, err := api.PipelineJobWithSha(apiClient, pid, sha, name)
-	if err != nil || job == nil {
-		return errors.Wrap(err, "failed to find job")
+	if err != nil {
+		return fmt.Errorf("failed to find job: %w", err)
+	}
+	if job == nil {
+		return fmt.Errorf("failed to find job: no matching job named %q for this pipeline", name)
 	}
 	return runTrace(ctx, apiClient, w, pid, job.ID, 3*time.Second)
 }
@@ -203,7 +205,7 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 		}
 		job, _, err := apiClient.Jobs.GetJob(pid, jobId)
 		if err != nil {
-			return errors.Wrap(err, "failed to find job")
+			return fmt.Errorf("failed to find job: %w", err)
 		}
 		switch job.Status {
 		case "pending":
@@ -219,8 +221,11 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 			fmt.Fprintf(w, "Showing logs for %s job #%d.\n", job.Name, job.ID)
 		})
 		trace, _, err := apiClient.Jobs.GetTraceFile(pid, jobId)
-		if err != nil || trace == nil {
-			return errors.Wrap(err, "failed to find job")
+		if err != nil {
+			return fmt.Errorf("failed to find job: %w", err)
+		}
+		if trace == nil {
+			return fmt.Errorf("failed to find job: trace response was empty for job %d", jobId)
 		}
 		_, _ = io.CopyN(io.Discard, trace, offset)
 		lenT, err := io.Copy(w, trace)
