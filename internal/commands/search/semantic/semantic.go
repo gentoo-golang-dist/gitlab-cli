@@ -188,7 +188,7 @@ func (o *options) printText(result *semanticSearchResponse) error {
 			c.Bold(r.Path), r.Score)
 		for _, chunk := range r.SnippetRanges {
 			fmt.Fprintf(o.io.StdOut, "  Lines %d–%d:\n", chunk.StartLine, chunk.EndLine)
-			for line := range strings.SplitSeq(chunk.Content, "\n") {
+			for _, line := range strings.Split(chunk.Content, "\n") {
 				fmt.Fprintf(o.io.StdOut, "    %s\n", line)
 			}
 		}
