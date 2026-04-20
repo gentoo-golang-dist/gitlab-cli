@@ -90,10 +90,10 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"checkout", "feat-new-mr"}).Return("", nil)
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
 		exec := setupTest(t, testClient, mockGit)
 		output, err := exec("123")
@@ -136,10 +136,10 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/merge-requests/123/head:feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.merge", "refs/merge-requests/123/head"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"checkout", "feat-new-mr"}).Return("", nil)
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/merge-requests/123/head:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/merge-requests/123/head").Return("", nil)
+		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
 		exec := setupTest(t, testClient, mockGit)
 		output, err := exec("123")
@@ -177,11 +177,11 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:FORK_OWNER/REPO.git", "refs/heads/feat-new-mr:foo"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.foo.remote", "git@gitlab.com:FORK_OWNER/REPO.git"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.foo.pushRemote", "git@gitlab.com:FORK_OWNER/REPO.git"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.foo.merge", "refs/heads/feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"checkout", "foo"}).Return("", nil)
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:FORK_OWNER/REPO.git", "refs/heads/feat-new-mr:foo").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.foo.remote", "git@gitlab.com:FORK_OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.foo.pushRemote", "git@gitlab.com:FORK_OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.foo.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("checkout", "foo").Return("", nil)
 
 		exec := setupTest(t, testClient, mockGit)
 		output, err := exec("123 --branch foo")
@@ -216,12 +216,12 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr"}).
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
 			Return("", errors.New("couldn't find remote ref"))
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"checkout", "feat-new-mr"}).Return("", nil)
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
 		exec := setupTest(t, testClient, mockGit)
 		output, err := exec("123")
@@ -256,9 +256,9 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr"}).
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
 			Return("", errors.New("fetch failed"))
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr"}).
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
 			Return("", errors.New("fetch failed"))
 
 		exec := setupTest(t, testClient, mockGit)
@@ -293,10 +293,10 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"checkout", "feat-new-mr"}).Return("", errors.New("pathspec 'feat-new-mr' did not match"))
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", errors.New("pathspec 'feat-new-mr' did not match"))
 
 		exec := setupTest(t, testClient, mockGit)
 		_, err := exec("123")
@@ -330,8 +330,8 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git([]string{"fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr"}).Return("", nil)
-		mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git"}).
+		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").
 			Return("", errors.New("could not set config"))
 
 		exec := setupTest(t, testClient, mockGit)
@@ -371,10 +371,10 @@ func TestMrCheckout_HTTPSProtocolConfiguration(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
-	mockGit.EXPECT().Git([]string{"fetch", "https://gitlab.com/OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr"}).Return("", nil)
-	mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.remote", "https://gitlab.com/OWNER/REPO.git"}).Return("", nil)
-	mockGit.EXPECT().Git([]string{"config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr"}).Return("", nil)
-	mockGit.EXPECT().Git([]string{"checkout", "feat-new-mr"}).Return("", nil)
+	mockGit.EXPECT().Git("fetch", "https://gitlab.com/OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+	mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "https://gitlab.com/OWNER/REPO.git").Return("", nil)
+	mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+	mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
 	cfg := config.NewBlankConfig()
 	err := cfg.Set("gitlab.com", "git_protocol", "https")
