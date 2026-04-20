@@ -30,6 +30,8 @@ glab issue new
 glab issue create -m release-2.0.0 -t "we need this feature" --label important
 glab issue new -t "Fix CVE-YYYY-XXXX" -l security --linked-mr 123
 glab issue create -m release-1.0.1 -t "security fix" --label security --web --recover
+glab issue create -t "Bug Report" --template bug
+glab issue create -t "Feature Request" --template feature_proposal.md --yes
 ```
 
 ## Options
@@ -47,6 +49,7 @@ glab issue create -m release-1.0.1 -t "security fix" --label security --web --re
   -m, --milestone string       The global ID or title of a milestone to assign.
       --no-editor              Don't open editor to enter a description. If set to true, uses prompt. (default false)
       --recover                Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)
+      --template string        Name of a template in '.gitlab/issue_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.
   -e, --time-estimate string   Set time estimate for the issue.
   -s, --time-spent string      Set time spent for the issue.
   -t, --title string           Issue title.
