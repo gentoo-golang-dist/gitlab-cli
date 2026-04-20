@@ -5,15 +5,24 @@ import (
 	"image/color"
 	"io"
 	"os"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-colorable"
-	"github.com/mgutz/ansi"
 	"github.com/muesli/termenv"
 
 	"gitlab.com/gitlab-org/cli/internal/theme"
 )
+
+// ANSI index strings for [termenv.Output.Profile] (mgutz-style names → xterm index).
+// "black+h" and "default+b" are not listed: gray and bold are handled by [makeGrayString] and [makeBoldString].
+var ansiNameToIndex = map[string]string{
+	"magenta": "5",
+	"cyan":    "6",
+	"red":     "1",
+	"yellow":  "3",
+	"blue":    "4",
+	"green":   "2",
+}
 
 type ColorPalette struct {
 	// Magenta outputs ANSI color if stdout is a tty
@@ -34,29 +43,41 @@ type ColorPalette struct {
 	Bold func(string) string
 }
 
+// Color returns style helpers. It does not cache: s.StdOut may change (e.g. when a pager starts).
 func (s *IOStreams) Color() *ColorPalette {
-	isColorfulOutput := s.ColorEnabled() && s.IsaTTY
+	noop := func(s string) string { return s }
+	identity := &ColorPalette{
+		Magenta: noop, Cyan: noop, Red: noop, Yellow: noop,
+		Blue: noop, Green: noop, Gray: noop, Bold: noop,
+	}
+
+	if !s.ColorEnabled() || !s.IsaTTY {
+		return identity
+	}
+
+	out := termenv.NewOutput(NewColorable(s.StdOut))
+
 	var isDark bool
-	switch s.BackgroundColor() { // could be simplified if commands like `ci list` called `ResolveBackgroundColor()`
+	switch s.BackgroundColor() { // "none" means not yet resolved: detect
 	case "dark":
 		isDark = true
 	case "light":
 		isDark = false
-	default: // "none" — not yet resolved, detect now if color is enabled
-		isDark = isColorfulOutput && termenv.HasDarkBackground()
+	default: // "none" — same [termenv.Output] as colors; only probe background when we already allow color+TTY
+		isDark = s.ColorEnabled() && s.IsaTTY && out.HasDarkBackground()
 	}
 	lightDark := lipgloss.LightDark(isDark)
-	glc := theme.NewGitLabColors(lightDark) // reuse existing palette
+	glc := theme.NewGitLabColors(lightDark) // 24-bit RGB when terminal is TrueColor-capable
 
 	return &ColorPalette{
-		Magenta: makeColorFunc(isColorfulOutput, glc.Purple, "magenta"),
-		Cyan:    makeColorFunc(isColorfulOutput, nil, "cyan"), // not in theme, falls back to ANSI
-		Red:     makeColorFunc(isColorfulOutput, glc.Red, "red"),
-		Yellow:  makeColorFunc(isColorfulOutput, nil, "yellow"), // not in theme, falls back to ANSI
-		Blue:    makeColorFunc(isColorfulOutput, glc.Blue, "blue"),
-		Green:   makeColorFunc(isColorfulOutput, glc.Green, "green"),
-		Gray:    makeColorFunc(isColorfulOutput, nil, "black+h"),
-		Bold:    makeColorFunc(isColorfulOutput, nil, "default+b"),
+		Magenta: makeStyledString(out, glc.Purple, "magenta"),
+		Cyan:    makeStyledString(out, nil, "cyan"), // not in brand palette, ANSI/termenv
+		Red:     makeStyledString(out, glc.Red, "red"),
+		Yellow:  makeStyledString(out, nil, "yellow"), // not in brand palette, ANSI/termenv
+		Blue:    makeStyledString(out, glc.Blue, "blue"),
+		Green:   makeStyledString(out, glc.Green, "green"),
+		Gray:    makeGrayString(out),
+		Bold:    makeBoldString(out),
 	}
 }
 
@@ -68,40 +89,57 @@ func NewColorable(out io.Writer) io.Writer {
 	return out
 }
 
-func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName string) func(string) string {
-	// don't bother doing terminal capacity checks and calculations if color is disabled
-	if !isColorfulOutput {
-		return func(arg string) string {
-			return arg
-		}
-	}
-
-	// 24-bit truecolor and we got a color from lipgloss'd theme
-	if brandColor != nil && isTrueColorSupported() {
-		r16, g16, b16, _ := brandColor.RGBA() // standard Go interface, 16-bit per channel
+// makeStyledString applies either GitLab theme RGB (TrueColor) or a fixed ANSI name via [termenv].
+// Brand hex and index colors are resolved once when the palette is built, not on every cell.
+//
+// 24-bit theme RGB is only for TrueColor: ANSI256/ANSI get [ansiNameToIndex] (good fallback, not
+// a downgrade bug). (termenv iota is not monotonic in “capability”; TrueColor=0 … Ascii=3 — do
+// not use >= on [termenv.Profile] for 24-bit.)
+func makeStyledString(out *termenv.Output, brand color.Color, ansiName string) func(string) string {
+	if brand != nil && out.Profile == termenv.TrueColor {
+		r16, g16, b16, _ := brand.RGBA()
 		r, g, b := uint8(r16>>8), uint8(g16>>8), uint8(b16>>8)
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
+		// One hex + [termenv.RGBColor] per palette field; closure only applies style per string.
+		fg := termenv.RGBColor(fmt.Sprintf("#%02x%02x%02x", r, g, b))
+		return func(s string) string {
+			return out.String(s).Foreground(fg).String()
 		}
 	}
 
-	// 256 colors gray
-	if ansiName == "black+h" && is256ColorSupported() {
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
-		}
+	idx, ok := ansiNameToIndex[ansiName]
+	if !ok {
+		return func(s string) string { return s }
 	}
+	c := out.Profile.Color(idx)
+	return func(s string) string {
+		return out.String(s).Foreground(c).String()
+	}
+}
 
-	// basic ANSI colors
-	return ansi.ColorFunc(ansiName)
+// makeGrayString maps “subtle gray”: 242 on 256+ / true-color terminals, else dim (index 8).
+// termenv iota: TrueColor(0), ANSI256(1), ANSI(2), Ascii(3) — 242 only for TrueColor or ANSI256.
+func makeGrayString(out *termenv.Output) func(string) string {
+	return func(s string) string {
+		if out.Profile == termenv.TrueColor || out.Profile == termenv.ANSI256 {
+			return out.String(s).Foreground(out.Profile.Color("242")).String()
+		}
+		return out.String(s).Foreground(out.Profile.Color("8")).String()
+	}
+}
+
+// makeBoldString is bold (or plain on Ascii profile) via [termenv].
+func makeBoldString(out *termenv.Output) func(string) string {
+	return func(s string) string {
+		return out.String(s).Bold().String()
+	}
 }
 
 // detectIsColorEnabled determines whether color output should be enabled based on environment variables.
 // It follows the NO_COLOR specification (https://no-color.org/) with an override mechanism:
 //
-// - If NO_COLOR environment variable exists (with any value), color is disabled by default
-// - If COLOR_ENABLED is set to "1" or "true", it overrides NO_COLOR and forces color to be enabled
-// - If NO_COLOR doesn't exist, color is enabled by default
+//   - If NO_COLOR environment variable exists (with any value), color is disabled by default
+//   - If COLOR_ENABLED is set to "1" or "true", it overrides NO_COLOR and forces color to be enabled
+//   - If NO_COLOR doesn't exist, color is enabled by default
 //
 // This allows users to disable color globally with NO_COLOR while still providing an escape hatch
 // via COLOR_ENABLED for specific use cases.
@@ -117,18 +155,4 @@ func detectIsColorEnabled() bool {
 
 	// If NO_COLOR doesn't exist, color is enabled by default
 	return true
-}
-
-func isTrueColorSupported() bool {
-	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
-
-	return strings.Contains(term, "24bit") || strings.Contains(term, "truecolor") ||
-		strings.Contains(colorterm, "24bit") || strings.Contains(colorterm, "truecolor")
-}
-
-func is256ColorSupported() bool {
-	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
-
-	return strings.Contains(term, "256") || strings.Contains(colorterm, "256") ||
-		isTrueColorSupported()
 }
