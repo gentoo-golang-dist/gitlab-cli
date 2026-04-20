@@ -176,6 +176,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().StringVar(&opts.Template, "template", "", "Name of a template in '.gitlab/merge_request_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.")
 	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "description")
 	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "fill")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "related-issue")
 
 	return mrCreateCmd
 }

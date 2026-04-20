@@ -73,7 +73,7 @@ func TestIssueCreate_WithTemplate(t *testing.T) {
 	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, false, cmdtest.WithGitLabClient(testClient.Client))
 
 	output, err := exec(`--title "Test Issue" --template bug --yes`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/issues/1")
 }
 
@@ -109,7 +109,7 @@ func TestIssueCreate_TemplateWithMdExtension(t *testing.T) {
 
 	// Passing "bug.md" should work the same as "bug"
 	output, err := exec(`--title "Test Issue" --template bug.md --yes`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/issues/1")
 }
 

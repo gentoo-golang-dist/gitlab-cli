@@ -115,7 +115,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			opts.needsPrompt = !(hasTitle && (hasDescription || hasTemplate))
 
 			if opts.needsPrompt && !opts.io.IsInteractive() {
-				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' required for non-interactive mode.")}
+				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' (or '--template') required for non-interactive mode.")}
 			}
 
 			// Remove this once --yes does more than just skip the prompts that --web happen to skip
