@@ -8,12 +8,71 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/zalando/go-keyring"
 	"gopkg.in/yaml.v3"
 
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 )
+
+// keyringTimeout is the maximum time to wait for a keyring operation.
+// On Linux, keyring access goes over D-Bus; if the daemon is not running
+// or the session is locked the call blocks indefinitely without a timeout.
+const keyringTimeout = 15 * time.Second
+
+// keyringGet retrieves a value from the keyring with a timeout.
+func keyringGet(service, user string) (string, error) {
+	type result struct {
+		val string
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		v, err := keyring.Get(service, user)
+		ch <- result{v, err}
+	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
+	select {
+	case r := <-ch:
+		return r.val, r.err
+	case <-timer.C:
+		return "", errors.New("keyring operation timed out: the secret service daemon may not be running or is locked")
+	}
+}
+
+// keyringSet stores a value in the keyring with a timeout.
+func keyringSet(service, user, password string) error {
+	ch := make(chan error, 1)
+	go func() {
+		ch <- keyring.Set(service, user, password)
+	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
+	select {
+	case err := <-ch:
+		return err
+	case <-timer.C:
+		return errors.New("keyring operation timed out: the secret service daemon may not be running or is locked")
+	}
+}
+
+// keyringDelete removes a value from the keyring with a timeout.
+// Errors (including timeout) are ignored since deletion is best-effort cleanup.
+func keyringDelete(service, user string) {
+	ch := make(chan struct{}, 1)
+	go func() {
+		_ = keyring.Delete(service, user)
+		ch <- struct{}{}
+	}()
+	timer := time.NewTimer(keyringTimeout)
+	defer timer.Stop()
+	select {
+	case <-ch:
+	case <-timer.C:
+	}
+}
 
 //go:generate go run gen.go
 
@@ -285,7 +344,7 @@ func buildKeyringKey(hostname, key string) string {
 func getFromKeyring(hostname, key string) (string, error) {
 	// Try new format first
 	keyringKey := buildKeyringKey(hostname, key)
-	token, err := keyring.Get(keyringKey, "")
+	token, err := keyringGet(keyringKey, "")
 	if err == nil {
 		return token, nil
 	}
@@ -293,7 +352,7 @@ func getFromKeyring(hostname, key string) (string, error) {
 	// Fallback to legacy key format for backward compatibility (if one exists)
 	legacyKey := buildLegacyKeyringKey(hostname, key)
 	if legacyKey != "" {
-		return keyring.Get(legacyKey, "")
+		return keyringGet(legacyKey, "")
 	}
 
 	// No legacy format exists for this key type
@@ -328,7 +387,7 @@ func (c *fileConfig) Set(hostname, key, value string) error {
 			if value != "" {
 				// Store in keyring instead of config file
 				keyringKey := buildKeyringKey(hostname, key)
-				if err := keyring.Set(keyringKey, "", value); err != nil {
+				if err := keyringSet(keyringKey, "", value); err != nil {
 					return err
 				}
 				// Remove any existing plaintext token from config
@@ -338,10 +397,10 @@ func (c *fileConfig) Set(hostname, key, value string) error {
 				// Delete from keyring when value is empty
 				// Try both new and legacy formats for thorough cleanup
 				keyringKey := buildKeyringKey(hostname, key)
-				_ = keyring.Delete(keyringKey, "")
+				keyringDelete(keyringKey, "")
 
 				legacyKey := buildLegacyKeyringKey(hostname, key)
-				_ = keyring.Delete(legacyKey, "")
+				keyringDelete(legacyKey, "")
 
 				// Also remove from config file below
 			}
