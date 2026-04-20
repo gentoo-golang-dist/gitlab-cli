@@ -272,6 +272,7 @@ func (o *options) run(ctx context.Context) error {
 			screen.Fini()
 		}
 	}()
+	tview.Styles = tview.Theme{}
 	app := tview.NewApplication()
 	defer recoverPanic(app)
 
