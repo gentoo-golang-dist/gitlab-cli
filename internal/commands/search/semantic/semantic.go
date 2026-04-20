@@ -110,10 +110,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 func (o *options) validate() error {
 	if o.knn != 0 && (o.knn < 1 || o.knn > 100) {
-		return fmt.Errorf("--knn must be between 1 and 100, got %d", o.knn)
+		return cmdutils.FlagError{Err: fmt.Errorf("--knn must be between 1 and 100, got %d", o.knn)}
 	}
 	if o.limit != 0 && (o.limit < 1 || o.limit > 100) {
-		return fmt.Errorf("--limit must be between 1 and 100, got %d", o.limit)
+		return cmdutils.FlagError{Err: fmt.Errorf("--limit must be between 1 and 100, got %d", o.limit)}
 	}
 	return nil
 }

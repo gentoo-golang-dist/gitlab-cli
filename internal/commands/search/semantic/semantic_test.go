@@ -4,6 +4,7 @@ package semantic
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -188,6 +189,18 @@ func TestSemanticSearch_LimitOutOfRange(t *testing.T) {
 		assert.Error(t, err, "expected error for %q", cli)
 		assert.Contains(t, err.Error(), "--limit must be between 1 and 100")
 	}
+}
+
+func TestSemanticSearch_BaseRepoError(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
+		cmdtest.WithBaseRepoError(errors.New("not a git repository")),
+	)
+
+	_, err := exec(`-q foo`)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not a git repository")
 }
 
 func TestSemanticSearch_APIError(t *testing.T) {
