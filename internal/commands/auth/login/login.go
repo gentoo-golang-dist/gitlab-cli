@@ -150,6 +150,9 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 
 			if cmd.Flags().Changed("api-host") && strings.Contains(opts.ApiHost, "://") {
 				stripped, _ := glinstance.StripHostProtocol(opts.ApiHost)
+				if stripped == "" {
+					return &cmdutils.FlagError{Err: fmt.Errorf("error parsing '--api-host': value must be a hostname, not a URL (for example, %q or %q)", "example.com", "example.com:3443")}
+				}
 				return &cmdutils.FlagError{Err: fmt.Errorf("error parsing '--api-host': value must be a hostname, not a URL. Use %q instead", stripped)}
 			}
 
