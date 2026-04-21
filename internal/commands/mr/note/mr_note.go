@@ -82,7 +82,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 	}
 
 	mrCreateNoteCmd.Flags().StringP("message", "m", "", "Comment or note message.")
-	mrCreateNoteCmd.Flags().Bool("unique", false, "Don't create a comment or note if it already exists.")
+	mrCreateNoteCmd.Flags().Bool("unique", false, "Do not create a comment if a comment with the same body already exists.")
 	mrCreateNoteCmd.Flags().Int64("resolve", 0, "Resolve the discussion containing the specified note ID.")
 	mrCreateNoteCmd.Flags().Int64("unresolve", 0, "Unresolve the discussion containing the specified note ID.")
 

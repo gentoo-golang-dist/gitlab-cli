@@ -20,14 +20,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Use:   "create [<id> | <branch>]",
 		Short: "Create a comment or discussion on a merge request. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`
-			Add a comment to a merge request. The comment is created as a new
+			Add a comment to a merge request. The command creates the comment as a new
 			discussion thread.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
 			glab mr note create 123 -m "Looks good to me!"
 
-			# Add a comment to the current branch's MR
+			# Add a comment to the current branch's merge request
 			glab mr note create -m "LGTM"
 
 			# Open editor to compose the message
