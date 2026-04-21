@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go/format"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
@@ -26,7 +26,7 @@ func main() {
 package config
 
 import (
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 func rootConfig() *yaml.Node {
