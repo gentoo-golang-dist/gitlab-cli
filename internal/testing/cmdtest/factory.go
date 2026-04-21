@@ -74,7 +74,7 @@ func NewTestFactory(ios *iostreams.IOStreams, opts ...FactoryOption) *Factory {
 		BranchStub: func() (string, error) {
 			return "main", nil
 		},
-		BuildInfoStub:  api.BuildInfo{Version: "test", Commit: "test", Platform: runtime.GOOS, Architecture: runtime.GOARCH},
+		BuildInfoStub: api.BuildInfo{Version: "test", Commit: "test", Platform: runtime.GOOS, Architecture: runtime.GOARCH},
 		GitRunnerStub: git.StandardGitCommand{},
 	}
 
@@ -291,12 +291,12 @@ func WithGitRunner(gr git.GitRunner) FactoryOption {
 	return func(f *Factory) {
 		f.GitRunnerStub = gr
 	}
-)
+}
 
 const (
 	ConsoleWidth  = 120
 	ConsoleHeight = 40
-}
+)
 
 func WithConsole(t *testing.T, console *ugh.Console) FactoryOption {
 	t.Helper()
