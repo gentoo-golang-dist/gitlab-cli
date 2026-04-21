@@ -14,7 +14,7 @@ Create a comment or discussion on a merge request. (EXPERIMENTAL)
 
 ## Synopsis
 
-Add a comment to a merge request. The comment is created as a new
+Add a comment to a merge request. The command creates the comment as a new
 discussion thread.
 
 This feature is an experiment and is not ready for production use.
@@ -32,7 +32,7 @@ glab mr note create [<id> | <branch>] [flags]
 # Add a comment to merge request 123
 glab mr note create 123 -m "Looks good to me!"
 
-# Add a comment to the current branch's MR
+# Add a comment to the current branch's merge request
 glab mr note create -m "LGTM"
 
 # Open editor to compose the message
