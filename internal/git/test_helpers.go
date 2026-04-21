@@ -83,6 +83,36 @@ func configureGitConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// InitGitWorktree creates a git worktree from an existing repo (which must
+// have at least one commit) and chdir's into it. Returns the worktree path.
+func InitGitWorktree(t *testing.T) string {
+	t.Helper()
+
+	// We need a commit before we can create a worktree
+	repoDir := InitGitRepoWithCommit(t)
+
+	worktreeDir := t.TempDir()
+
+	addCmd := GitCommand("worktree", "add", worktreeDir, "-b", "worktree-branch")
+	addCmd.Dir = repoDir
+	_, err := run.PrepareCmd(addCmd).Output()
+	require.NoError(t, err)
+
+	t.Chdir(worktreeDir)
+
+	return worktreeDir
+}
+
+// InitGitRepoOrWorktree initializes a git repo or worktree based on the
+// worktree flag. Returns the directory path.
+func InitGitRepoOrWorktree(t *testing.T, worktree bool) string {
+	t.Helper()
+	if worktree {
+		return InitGitWorktree(t)
+	}
+	return InitGitRepo(t)
+}
+
 func CreateRefFiles(refs map[string]StackRef, title string) error {
 	for _, ref := range refs {
 		err := AddStackRefFile(title, ref)
