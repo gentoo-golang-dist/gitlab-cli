@@ -22,7 +22,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	cmdtest.InitTest(m, "mr_note_create_test")
+	cmdtest.InitTest(m, "mr_note_test")
 }
 
 func Test_NewCmdNote(t *testing.T) {
