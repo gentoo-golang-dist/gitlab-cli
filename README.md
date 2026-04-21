@@ -256,13 +256,24 @@ detects if it's running in a GitLab CI job and uses the predefined CI/CD variabl
 GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 ```
 
+The following predefined CI/CD variables are used automatically:
+
+| Predefined CI/CD variable | Equivalent `glab auth login` flag |
+|---|---|
+| `CI_SERVER_FQDN` | `--hostname` |
+| `CI_JOB_TOKEN` | `--job-token` |
+| `CI_SERVER_PROTOCOL` | `--api-protocol` |
+| `CI_SERVER_SHELL_SSH_HOST` | `--ssh-hostname` |
+
 #### Manual login
+
+Use manual login when the command does not support CI job tokens, or you need a personal access token.
 
 Example:
 
 ```shell
-glab auth login --job-token $CI_JOB_TOKEN --hostname $CI_SERVER_HOST --api-protocol $CI_SERVER_PROTOCOL
-GITLAB_HOST=$CI_SERVER_URL glab release list -R $CI_PROJECT_PATH
+glab auth login --job-token $CI_JOB_TOKEN --hostname $CI_SERVER_FQDN --api-protocol $CI_SERVER_PROTOCOL
+GITLAB_HOST=$CI_SERVER_FQDN glab release list -R $CI_PROJECT_PATH
 ```
 
 ## Configuration
