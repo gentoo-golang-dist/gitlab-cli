@@ -86,6 +86,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
+			if len(disc.Notes) == 0 {
+				return fmt.Errorf("discussion created but returned no notes")
+			}
+
 			fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, disc.Notes[0].ID)
 			return nil
 		},

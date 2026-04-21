@@ -48,7 +48,7 @@ func deduplicateNote(client *gitlab.Client, repo string, mrIID int64, body, webU
 			return false, fmt.Errorf("failed to list merge request notes: %w", err)
 		}
 		for _, noteInfo := range notes {
-			if noteInfo.Body == strings.TrimSpace(body) {
+			if strings.TrimSpace(noteInfo.Body) == strings.TrimSpace(body) {
 				fmt.Fprintf(out, "%s#note_%d\n", webURL, noteInfo.ID)
 				return true, nil
 			}
