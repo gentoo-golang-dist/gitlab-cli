@@ -35,7 +35,6 @@ require (
 	github.com/muesli/termenv v0.16.0
 	github.com/otiai10/copy v1.14.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20230621164836-6cc0565babaf
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10

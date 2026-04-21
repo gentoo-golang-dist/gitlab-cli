@@ -15,7 +15,6 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/gdamore/tcell/v2"
 	"github.com/lunixbochs/vtclean"
-	"github.com/pkg/errors"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -910,7 +909,7 @@ func updateJobs(
 		)
 		if err != nil {
 			app.Stop()
-			log.Fatal(errors.Wrap(err, "failed to find CI jobs."))
+			log.Fatalf("failed to find CI jobs: %v", err)
 		}
 		if len(jobs) == 0 && len(bridges) == 0 {
 			app.Stop()
@@ -949,7 +948,7 @@ func linkJobs(screen tcell.Screen, jobs []*ViewJob, boxes map[string]*tview.Text
 	}
 	for i, j := range jobs {
 		if _, ok := boxes["jobs-"+j.Name]; !ok {
-			return errors.Errorf("jobs-%s not found at index: %d", jobs[i].Name, i)
+			return fmt.Errorf("jobs-%s not found at index: %d", jobs[i].Name, i)
 		}
 	}
 	var padding int
