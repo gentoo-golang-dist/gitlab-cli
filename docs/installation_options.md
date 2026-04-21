@@ -209,3 +209,7 @@ example:
   script:
     - glab --version
 ```
+
+## Completions
+
+Once `glab` is installed, if you find that you are using a shell not covered by [`glab completion`](./source/completion/_index.md), you may consider using [Carapace-bin](https://github.com/carapace-sh/carapace-bin). Carapace provides completions for glab (as well as other CLI tools) in multiple shells. Follow the provided steps to install and configure Carapace-bin for completions in a shell unsupported by `glab`.
