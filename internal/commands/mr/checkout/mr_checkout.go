@@ -12,7 +12,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
-	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
@@ -25,7 +24,7 @@ type mrCheckoutConfig struct {
 
 var mrCheckoutCfg mrCheckoutConfig
 
-func NewCmdCheckout(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
+func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 	mrCheckoutCmd := &cobra.Command{
 		Use:   "checkout [<id> | <branch> | <url>]",
 		Short: "Check out an open merge request.",
@@ -44,6 +43,8 @@ func NewCmdCheckout(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			gr := f.GitRunner()
+
 			var err error
 			var upstream string
 
@@ -132,7 +133,7 @@ func NewCmdCheckout(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			}
 
 			if _, err := gr.Git("checkout", mrCheckoutCfg.branch); err != nil {
-				return err
+				return fmt.Errorf("could not checkout branch %q: %w", mrCheckoutCfg.branch, err)
 			}
 
 			if upstream != "" {

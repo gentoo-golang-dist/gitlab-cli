@@ -15,6 +15,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -65,6 +66,8 @@ func (f *dummyFactory) DefaultHostname() string { return "" }
 func (f *dummyFactory) BuildInfo() api.BuildInfo { return api.BuildInfo{} }
 
 func (f *dummyFactory) Executor() Executor { return nil }
+
+func (f *dummyFactory) GitRunner() git.GitRunner { return git.StandardGitCommand{} }
 
 func NewDummyCmd(f Factory, runE func(opts *options) error) *cobra.Command {
 	opts := &options{

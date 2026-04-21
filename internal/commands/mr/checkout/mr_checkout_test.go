@@ -7,14 +7,12 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
@@ -24,7 +22,7 @@ import (
 	"gitlab.com/gitlab-org/cli/test"
 )
 
-func setupTest(t *testing.T, testClient *gitlabtesting.TestClient, gr git.GitRunner, opts ...cmdtest.FactoryOption) func(string) (*test.CmdOut, error) {
+func setupTest(t *testing.T, testClient *gitlabtesting.TestClient, opts ...cmdtest.FactoryOption) func(string) (*test.CmdOut, error) {
 	t.Helper()
 
 	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
@@ -56,9 +54,7 @@ func setupTest(t *testing.T, testClient *gitlabtesting.TestClient, gr git.GitRun
 		},
 	}
 
-	return cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-		return NewCmdCheckout(f, gr)
-	}, false, append(defaultOpts, opts...)...)
+	return cmdtest.SetupCmdForTest(t, NewCmdCheckout, false, append(defaultOpts, opts...)...)
 }
 
 func TestMrCheckout(t *testing.T) {
@@ -95,7 +91,7 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
 		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123")
 
 		assert.NoError(t, err)
@@ -141,7 +137,7 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/merge-requests/123/head").Return("", nil)
 		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123")
 
 		assert.NoError(t, err)
@@ -183,7 +179,7 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("config", "branch.foo.merge", "refs/heads/feat-new-mr").Return("", nil)
 		mockGit.EXPECT().Git("checkout", "foo").Return("", nil)
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123 --branch foo")
 
 		assert.NoError(t, err)
@@ -223,7 +219,7 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
 		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123")
 
 		assert.NoError(t, err)
@@ -261,7 +257,7 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
 			Return("", errors.New("fetch failed"))
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		_, err := exec("123")
 
 		assert.Error(t, err)
@@ -298,11 +294,11 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
 		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", errors.New("pathspec 'feat-new-mr' did not match"))
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		_, err := exec("123")
 
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "pathspec 'feat-new-mr' did not match")
+		assert.Contains(t, err.Error(), "could not checkout branch")
 	})
 
 	t.Run("when git config fails", func(t *testing.T) {
@@ -334,7 +330,7 @@ func TestMrCheckout(t *testing.T) {
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").
 			Return("", errors.New("could not set config"))
 
-		exec := setupTest(t, testClient, mockGit)
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		_, err := exec("123")
 
 		assert.Error(t, err)
@@ -380,7 +376,7 @@ func TestMrCheckout_HTTPSProtocolConfiguration(t *testing.T) {
 	err := cfg.Set("gitlab.com", "git_protocol", "https")
 	assert.NoError(t, err)
 
-	exec := setupTest(t, testClient, mockGit, cmdtest.WithConfig(cfg))
+	exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit), cmdtest.WithConfig(cfg))
 	output, err := exec("123")
 
 	assert.NoError(t, err)

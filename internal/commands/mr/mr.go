@@ -25,7 +25,6 @@ import (
 	mrUnsubscribeCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/unsubscribe"
 	mrUpdateCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/update"
 	mrViewCmd "gitlab.com/gitlab-org/cli/internal/commands/mr/view"
-	"gitlab.com/gitlab-org/cli/internal/git"
 )
 
 func NewCmdMR(f cmdutils.Factory) *cobra.Command {
@@ -51,8 +50,7 @@ func NewCmdMR(f cmdutils.Factory) *cobra.Command {
 
 	mrCmd.AddCommand(mrApproveCmd.NewCmdApprove(f))
 	mrCmd.AddCommand(mrApproversCmd.NewCmdApprovers(f))
-	var gr git.StandardGitCommand
-	mrCmd.AddCommand(mrCheckoutCmd.NewCmdCheckout(f, gr))
+	mrCmd.AddCommand(mrCheckoutCmd.NewCmdCheckout(f))
 	mrCmd.AddCommand(mrCloseCmd.NewCmdClose(f))
 	mrCmd.AddCommand(mrCreateCmd.NewCmdCreate(f))
 	mrCmd.AddCommand(mrDeleteCmd.NewCmdDelete(f))
