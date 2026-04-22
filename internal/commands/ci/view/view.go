@@ -250,6 +250,9 @@ func (o *options) run(ctx context.Context) error {
 
 	pipelines = make([]gitlab.PipelineInfo, 0, 10)
 
+	// Use terminal default colors instead of tview's hardcoded white-on-black theme.
+	tview.Styles = tview.Theme{}
+
 	root := tview.NewPages()
 	root.
 		SetBackgroundColor(tcell.ColorDefault).
