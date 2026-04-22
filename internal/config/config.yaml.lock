@@ -4,6 +4,8 @@ git_protocol: ssh
 editor:
 # What browser glab should run when opening links. This global config cannot be overridden by hostname.
 browser:
+# Color usage/detection behavior. Available options are auto (rely on terminal capabilities and NO_COLOR), force (use colors), and disable (don't use colors)
+colors: auto
 # Set your desired Markdown renderer style. Available options are [dark, light, notty]. To set a custom style, refer to https://github.com/charmbracelet/glamour#styles
 glamour_style: dark
 # Allow glab to automatically check for updates and notify you when there are new updates.
