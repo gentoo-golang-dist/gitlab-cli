@@ -26,6 +26,7 @@ type createOptions struct {
 	// Flags.
 	message string
 	unique  bool
+	reply   string
 
 	// Populated in complete.
 	client *gitlab.Client
@@ -47,6 +48,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			Add a comment to a merge request. The command creates the comment as a new
 			discussion thread.
+
+			Use --reply to add a note to an existing discussion thread instead of
+			starting a new one. The value can be a full discussion ID or a unique
+			prefix of at least 8 characters.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
@@ -63,6 +68,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 			# Skip if already posted
 			glab mr note create 123 -m "LGTM" --unique
+
+			# Reply to an existing discussion (full or 8+ char prefix)
+			glab mr note create 123 --reply abc12345 -m "I agree!"
 		`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
@@ -82,6 +90,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.message, "message", "m", "", "Comment or note message.")
 	fl.BoolVar(&opts.unique, "unique", false, "Don't create a note if a note with the same body already exists. Reads all MR comments first.")
+	fl.StringVar(&opts.reply, "reply", "", "Reply to an existing discussion by ID (full or 8+ character prefix).")
+
+	cmd.MarkFlagsMutuallyExclusive("reply", "unique")
 
 	return cmd
 }
@@ -120,7 +131,10 @@ func (o *createOptions) validate() error {
 }
 
 func (o *createOptions) run(ctx context.Context) error {
-	if o.unique {
+	switch {
+	case o.reply != "":
+		return o.runReply(ctx)
+	case o.unique:
 		found, err := deduplicateNote(o.client, o.repo.FullName(), o.mr.IID, o.body, o.mr.WebURL, o.io.StdOut)
 		if err != nil {
 			return err
@@ -130,6 +144,10 @@ func (o *createOptions) run(ctx context.Context) error {
 		}
 	}
 
+	return o.runCreate(ctx)
+}
+
+func (o *createOptions) runCreate(ctx context.Context) error {
 	disc, _, err := o.client.Discussions.CreateMergeRequestDiscussion(
 		o.repo.FullName(),
 		o.mr.IID,
@@ -145,5 +163,26 @@ func (o *createOptions) run(ctx context.Context) error {
 	}
 
 	fmt.Fprintf(o.io.StdOut, "%s#note_%d\n", o.mr.WebURL, disc.Notes[0].ID)
+	return nil
+}
+
+func (o *createOptions) runReply(ctx context.Context) error {
+	discussionID, err := mrutils.ResolveDiscussionID(ctx, o.client, o.repo.FullName(), o.mr.IID, o.reply)
+	if err != nil {
+		return err
+	}
+
+	note, _, err := o.client.Discussions.AddMergeRequestDiscussionNote(
+		o.repo.FullName(),
+		o.mr.IID,
+		discussionID,
+		&gitlab.AddMergeRequestDiscussionNoteOptions{Body: &o.body},
+		gitlab.WithContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to add reply: %w", err)
+	}
+
+	fmt.Fprintf(o.io.StdOut, "%s#note_%d\n", o.mr.WebURL, note.ID)
 	return nil
 }

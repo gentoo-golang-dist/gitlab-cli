@@ -214,6 +214,138 @@ func Test_cmdCreate_unique(t *testing.T) {
 	})
 }
 
+func Test_cmdCreate_reply(t *testing.T) {
+	t.Parallel()
+
+	const fullID = "abc12345deadbeef1234567890abcdef12345678"
+
+	t.Run("replies to discussion by full ID", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{{ID: fullID}}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			AddMergeRequestDiscussionNote("OWNER/REPO", int64(1), fullID, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, discID string, opts *gitlab.AddMergeRequestDiscussionNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "I agree!", *opts.Body)
+				return &gitlab.Note{ID: 901}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --reply ` + fullID + ` -m "I agree!"`)
+		require.NoError(t, err)
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_901\n", output.String())
+	})
+
+	t.Run("replies to discussion by prefix", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{
+				{ID: fullID},
+				{ID: "ff000000deadbeef1234567890abcdef12345678"},
+			}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			AddMergeRequestDiscussionNote("OWNER/REPO", int64(1), fullID, gomock.Any(), gomock.Any()).
+			Return(&gitlab.Note{ID: 902}, nil, nil)
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --reply abc12345 -m "thanks"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_902")
+	})
+
+	t.Run("prefix too short", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --reply abc -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "at least 8 characters")
+	})
+
+	t.Run("prefix not found", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{{ID: "ff000000deadbeef1234567890abcdef12345678"}}, nil, nil)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --reply abc12345 -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no discussion found")
+	})
+
+	t.Run("ambiguous prefix", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{
+				{ID: "abc123450000beef1234567890abcdef12345678"},
+				{ID: "abc123459999beef1234567890abcdef12345678"},
+			}, nil, nil)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --reply abc12345 -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "matches 2 discussions")
+	})
+
+	t.Run("AddMergeRequestDiscussionNote error wrapped", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{{ID: fullID}}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			AddMergeRequestDiscussionNote("OWNER/REPO", int64(1), fullID, gomock.Any(), gomock.Any()).
+			Return(nil, nil, errors.New("boom"))
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --reply ` + fullID + ` -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to add reply")
+		assert.Contains(t, err.Error(), "boom")
+	})
+
+	t.Run("--reply and --unique are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --reply abc12345 --unique -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "none of the others can be")
+	})
+}
+
 func Test_cmdCreate_stdin(t *testing.T) {
 	t.Parallel()
 

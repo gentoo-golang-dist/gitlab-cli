@@ -17,6 +17,10 @@ Create a comment or discussion on a merge request. (EXPERIMENTAL)
 Add a comment to a merge request. The command creates the comment as a new
 discussion thread.
 
+Use --reply to add a note to an existing discussion thread instead of
+starting a new one. The value can be a full discussion ID or a unique
+prefix of at least 8 characters.
+
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
@@ -44,12 +48,16 @@ echo "LGTM" | glab mr note create 123
 # Skip if already posted
 glab mr note create 123 -m "LGTM" --unique
 
+# Reply to an existing discussion (full or 8+ char prefix)
+glab mr note create 123 --reply abc12345 -m "I agree!"
+
 ```
 
 ## Options
 
 ```plaintext
   -m, --message string   Comment or note message.
+      --reply string     Reply to an existing discussion by ID (full or 8+ character prefix).
       --unique           Don't create a note if a note with the same body already exists. Reads all MR comments first.
 ```
 
