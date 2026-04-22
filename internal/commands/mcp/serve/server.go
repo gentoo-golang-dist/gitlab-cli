@@ -384,7 +384,7 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) m
 						Text: processedOutput,
 					},
 				},
-				StructuredContent: structuredData,
+				StructuredContent: ensureStructuredRecord(structuredData),
 			}, nil
 		}
 
@@ -397,6 +397,19 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) m
 			},
 		}, nil
 	}
+}
+
+// ensureStructuredRecord wraps non-object JSON values so strict MCP
+// clients accept the response. Arrays land under "data", scalars
+// under "value". The unchanged payload still rides in TextContent.
+func ensureStructuredRecord(v any) any {
+	if _, ok := v.(map[string]any); ok {
+		return v
+	}
+	if _, ok := v.([]any); ok {
+		return map[string]any{"data": v}
+	}
+	return map[string]any{"value": v}
 }
 
 // responseConfig holds output processing configuration
