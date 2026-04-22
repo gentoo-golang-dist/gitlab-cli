@@ -26,9 +26,24 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
+
+// TestMCPSafeAnnotation pins the Safe marker for both issuable
+// types. Losing NewCmdList's annotation vanishes both tools.
+func TestMCPSafeAnnotation(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	factory := cmdtest.NewTestFactory(ios)
+
+	for _, itype := range []issuable.IssueType{issuable.TypeIssue, issuable.TypeIncident} {
+		cmd := NewCmdList(factory, nil, itype)
+		assert.Equal(t, "true", cmd.Annotations[mcpannotations.Safe], "issuable type %s", itype)
+	}
+}
 
 func TestNewCmdList(t *testing.T) {
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
@@ -1159,6 +1174,77 @@ func TestIssueList_filterByLabel(t *testing.T) {
 			assert.Equal(t, tt.expect, got)
 		})
 	}
+}
+
+// TestIssueList_NoRepoFallsBackToUserLevel: no repo and no
+// default_group falls back to /issues instead of erroring out.
+func TestIssueList_NoRepoFallsBackToUserLevel(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockIssues.EXPECT().
+		ListIssues(gomock.Any()).
+		DoAndReturn(func(opts *gitlab.ListIssuesOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.Issue, *gitlab.Response, error) {
+			require.NotNil(t, opts.Scope, "cross-project fallback must set an explicit scope")
+			assert.Equal(t, "all", *opts.Scope, "scope defaults to 'all' so the user sees everything they can access")
+			return []*gitlab.Issue{{IID: 1, Title: "Across projects", WebURL: "https://example.com/x/y/issues/1", References: &gitlab.IssueReferences{Short: "#1"}}}, nil, nil
+		})
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdList(f, nil, issuable.TypeIssue)
+	}, true,
+		cmdtest.WithConfig(config.NewBlankConfig()),
+		cmdtest.WithApiClient(apiClient),
+		cmdtest.WithBaseRepoError(assert.AnError),
+	)
+
+	out, err := exec("")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Across projects")
+}
+
+// TestIssueList_DefaultGroupBeatsUserLevel: with no repo but a
+// `default_group` set, the command scopes to that group.
+func TestIssueList_DefaultGroupBeatsUserLevel(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockIssues.EXPECT().
+		ListGroupIssues("gitlab-org", gomock.Any()).
+		DoAndReturn(func(_ any, _ *gitlab.ListGroupIssuesOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.Issue, *gitlab.Response, error) {
+			return []*gitlab.Issue{{IID: 2, Title: "Group-scoped", WebURL: "https://example.com/gitlab-org/foo/issues/2", References: &gitlab.IssueReferences{Short: "#2"}}}, nil, nil
+		})
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
+	cfg := config.NewBlankConfig()
+	require.NoError(t, cfg.Set("", "default_group", "gitlab-org"))
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdList(f, nil, issuable.TypeIssue)
+	}, true,
+		cmdtest.WithConfig(cfg),
+		cmdtest.WithApiClient(apiClient),
+		cmdtest.WithBaseRepoError(assert.AnError),
+	)
+
+	out, err := exec("")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Group-scoped")
 }
 
 func strToIntSlice(s string) ([]int, error) {

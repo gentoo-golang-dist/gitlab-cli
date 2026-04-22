@@ -23,8 +23,21 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
+
+// TestMCPSafeAnnotation pins the Safe marker.
+func TestMCPSafeAnnotation(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	factory := cmdtest.NewTestFactory(ios,
+		cmdtest.WithConfig(config.NewBlankConfig()),
+		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+	)
+	cmd := NewCmdList(factory, nil)
+	assert.Equal(t, "true", cmd.Annotations[mcpannotations.Safe])
+}
 
 func TestNewCmdList(t *testing.T) {
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
@@ -1073,4 +1086,90 @@ func TestMergeRequestList_ExplicitSortOverridesDefault(t *testing.T) {
 
 	// THEN
 	require.NoError(t, err)
+}
+
+// TestMergeRequestList_NoRepoFallsBackToUserLevel: no repo and no
+// default_group hits /merge_requests instead of erroring. This
+// is the MCP-standalone happy path.
+func TestMergeRequestList_NoRepoFallsBackToUserLevel(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockMergeRequests.EXPECT().
+		ListMergeRequests(gomock.Any()).
+		DoAndReturn(func(opts *gitlab.ListMergeRequestsOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+			require.NotNil(t, opts.Scope, "cross-project fallback must set an explicit scope")
+			assert.Equal(t, "all", *opts.Scope, "scope defaults to 'all' so the user sees everything they can access")
+			return []*gitlab.BasicMergeRequest{{
+				IID:          1,
+				Title:        "Across projects",
+				WebURL:       "https://example.com/x/y/-/merge_requests/1",
+				TargetBranch: "main",
+				SourceBranch: "topic",
+				References:   &gitlab.IssueReferences{Full: "x/y!1", Relative: "!1", Short: "!1"},
+			}}, nil, nil
+		})
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdList(f, nil)
+	}, true,
+		cmdtest.WithConfig(config.NewBlankConfig()),
+		cmdtest.WithApiClient(apiClient),
+		cmdtest.WithBaseRepoError(assert.AnError),
+	)
+
+	out, err := exec("")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Across projects")
+}
+
+// TestMergeRequestList_DefaultGroupBeatsUserLevel: with no repo
+// but a `default_group` set, the command scopes to that group.
+func TestMergeRequestList_DefaultGroupBeatsUserLevel(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockMergeRequests.EXPECT().
+		ListGroupMergeRequests("gitlab-org", gomock.Any()).
+		DoAndReturn(func(_ any, _ *gitlab.ListGroupMergeRequestsOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+			return []*gitlab.BasicMergeRequest{{
+				IID:          2,
+				Title:        "Group-scoped MR",
+				WebURL:       "https://example.com/gitlab-org/foo/-/merge_requests/2",
+				TargetBranch: "main",
+				SourceBranch: "feature",
+				References:   &gitlab.IssueReferences{Full: "gitlab-org/foo!2", Relative: "!2", Short: "!2"},
+			}}, nil, nil
+		})
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
+	cfg := config.NewBlankConfig()
+	require.NoError(t, cfg.Set("", "default_group", "gitlab-org"))
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdList(f, nil)
+	}, true,
+		cmdtest.WithConfig(cfg),
+		cmdtest.WithApiClient(apiClient),
+		cmdtest.WithBaseRepoError(assert.AnError),
+	)
+
+	out, err := exec("")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Group-scoped MR")
 }

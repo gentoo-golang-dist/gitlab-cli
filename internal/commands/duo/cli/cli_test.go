@@ -12,8 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/cli/internal/commands/duo/cli/cliutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
+
+func TestMCPInteractiveAnnotation(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	cmd := NewCmd(cmdtest.NewTestFactory(ios))
+	assert.Equal(t, "true", cmd.Annotations[mcpannotations.Interactive],
+		"duo cli runs an interactive agent session; MCP must not wrap it")
+}
 
 func TestNewCmd_Help(t *testing.T) {
 	t.Parallel()

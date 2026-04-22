@@ -2,6 +2,7 @@ package list
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -15,6 +16,25 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
+
+// TodoGroup mirrors the subset of REST NamespaceBasic we care
+// about. The SDK's gitlab.Todo doesn't model the group at all, so
+// group-scoped todos lose their namespace unless we rebuild it.
+type TodoGroup struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	FullPath string `json:"full_path"`
+	WebURL   string `json:"web_url,omitempty"`
+}
+
+// Todo embeds gitlab.Todo by value so every original field stays
+// addressable and JSON marshals with the same flat shape, plus the
+// new "group" key when the todo is group-scoped.
+type Todo struct {
+	gitlab.Todo
+	Group *TodoGroup `json:"group,omitempty"`
+}
 
 var (
 	validStates  = map[string]bool{"pending": true, "done": true, "all": true}
@@ -127,7 +147,7 @@ func (o *options) run() error {
 		listOpts.Type = &o.typ
 	}
 
-	todos, _, err := client.Todos.ListTodos(listOpts)
+	todos, err := listTodos(client, listOpts)
 	if err != nil {
 		return cmdutils.WrapError(err, "failed to list to-do items.")
 	}
@@ -177,4 +197,20 @@ func (o *options) run() error {
 	o.io.LogInfo(table.String())
 
 	return nil
+}
+
+// listTodos calls GET /todos and decodes into the wrapper type.
+// The SDK drops the "group" field REST returns on group-scoped
+// todos; MCP clients rely on it to distinguish epic reviews from
+// project assignments.
+func listTodos(client *gitlab.Client, opt *gitlab.ListTodosOptions) ([]*Todo, error) {
+	req, err := client.NewRequest(http.MethodGet, "todos", opt, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request: %w", err)
+	}
+	var todos []*Todo
+	if _, err := client.Do(req, &todos); err != nil {
+		return nil, err
+	}
+	return todos, nil
 }

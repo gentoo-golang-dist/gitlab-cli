@@ -13,6 +13,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -75,6 +76,7 @@ type options struct {
 	io        *iostreams.IOStreams
 	baseRepo  func() (glrepo.Interface, error)
 	apiClient func(repoHost string) (*api.Client, error)
+	cfg       func() config.Config
 }
 
 func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Command {
@@ -82,6 +84,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 		io:        f.IO(),
 		baseRepo:  f.BaseRepo,
 		apiClient: f.ApiClient,
+		cfg:       f.Config,
 	}
 
 	mrListCmd := &cobra.Command{
@@ -336,14 +339,22 @@ func (o *options) run() error {
 		mergeRequests, err = api.ListGroupMRs(client, o.group, projectListMROptionsToGroup(l), api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
 		title.RepoName = o.group
 	} else {
-		var repo glrepo.Interface
-		repo, err = o.baseRepo()
-		if err != nil {
-			return err
+		// Scope order: repo, then default_group config, then the
+		// user-level /merge_requests endpoint. The last tier lets
+		// MCP callers running outside any repo get useful results.
+		repo, repoErr := o.baseRepo()
+		switch {
+		case repoErr == nil:
+			title.RepoName = repo.FullName()
+			mergeRequests, err = api.ListMRs(client, repo.FullName(), l, api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
+		case mrDefaultGroup(o.cfg) != "":
+			group := mrDefaultGroup(o.cfg)
+			mergeRequests, err = api.ListGroupMRs(client, group, projectListMROptionsToGroup(l), api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
+			title.RepoName = group + " (default_group)"
+		default:
+			mergeRequests, err = listAllMRs(client, projectListMROptionsToAll(l), assigneeIds, reviewerIds)
+			title.RepoName = "all accessible projects"
 		}
-
-		title.RepoName = repo.FullName()
-		mergeRequests, err = api.ListMRs(client, repo.FullName(), l, api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
 	}
 	if err != nil {
 		return err
@@ -393,4 +404,108 @@ func projectListMROptionsToGroup(l *gitlab.ListProjectMergeRequestsOptions) *git
 		Search:                 l.Search,
 		WIP:                    l.WIP,
 	}
+}
+
+// projectListMROptionsToAll maps project-scoped options onto the
+// user-level /merge_requests shape. Scope defaults to "all" when
+// unset; "created_by_me" would hide most of what the caller wants.
+func projectListMROptionsToAll(l *gitlab.ListProjectMergeRequestsOptions) *gitlab.ListMergeRequestsOptions {
+	out := &gitlab.ListMergeRequestsOptions{
+		ListOptions:            l.ListOptions,
+		State:                  l.State,
+		OrderBy:                l.OrderBy,
+		Sort:                   l.Sort,
+		Milestone:              l.Milestone,
+		View:                   l.View,
+		Labels:                 l.Labels,
+		NotLabels:              l.NotLabels,
+		WithLabelsDetails:      l.WithLabelsDetails,
+		WithMergeStatusRecheck: l.WithMergeStatusRecheck,
+		CreatedAfter:           l.CreatedAfter,
+		CreatedBefore:          l.CreatedBefore,
+		UpdatedAfter:           l.UpdatedAfter,
+		UpdatedBefore:          l.UpdatedBefore,
+		Scope:                  l.Scope,
+		AuthorID:               l.AuthorID,
+		AssigneeID:             l.AssigneeID,
+		ReviewerID:             l.ReviewerID,
+		ReviewerUsername:       l.ReviewerUsername,
+		MyReactionEmoji:        l.MyReactionEmoji,
+		SourceBranch:           l.SourceBranch,
+		TargetBranch:           l.TargetBranch,
+		Search:                 l.Search,
+		WIP:                    l.WIP,
+		Draft:                  l.Draft,
+	}
+	if out.Scope == nil {
+		scopeAll := "all"
+		out.Scope = &scopeAll
+	}
+	return out
+}
+
+// listAllMRs calls the user-level /merge_requests endpoint with
+// api.ListMRs' per-id fan-out pattern: the API rejects multi-value
+// assignee / reviewer filters, so we query once per id and merge.
+func listAllMRs(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions, assigneeIds, reviewerIds []int) ([]*gitlab.BasicMergeRequest, error) {
+	if opts.PerPage == 0 {
+		opts.PerPage = api.DefaultListLimit
+	}
+	if len(assigneeIds) == 0 && len(reviewerIds) == 0 {
+		mrs, _, err := client.MergeRequests.ListMergeRequests(opts)
+		return mrs, err
+	}
+
+	merged := map[int64]*gitlab.BasicMergeRequest{}
+	runQuery := func() error {
+		mrs, _, err := client.MergeRequests.ListMergeRequests(opts)
+		if err != nil {
+			return err
+		}
+		for _, mr := range mrs {
+			merged[mr.ID] = mr
+		}
+		return nil
+	}
+
+	savedAssignee, savedReviewer := opts.AssigneeID, opts.ReviewerID
+	for _, id := range assigneeIds {
+		opts.AssigneeID = gitlab.AssigneeID(id)
+		opts.ReviewerID = nil
+		if err := runQuery(); err != nil {
+			return nil, err
+		}
+	}
+	for _, id := range reviewerIds {
+		opts.AssigneeID = nil
+		opts.ReviewerID = gitlab.ReviewerID(id)
+		if err := runQuery(); err != nil {
+			return nil, err
+		}
+	}
+	opts.AssigneeID, opts.ReviewerID = savedAssignee, savedReviewer
+
+	out := make([]*gitlab.BasicMergeRequest, 0, len(merged))
+	for _, mr := range merged {
+		out = append(out, mr)
+	}
+	return out, nil
+}
+
+// mrDefaultGroup reads "default_group" from config. Any failure
+// returns "". Lives here rather than as a shared helper because
+// issuable and mr are separate packages.
+func mrDefaultGroup(cfg func() config.Config) string {
+	if cfg == nil {
+		return ""
+	}
+	c := cfg()
+	if c == nil {
+		return ""
+	}
+	group, err := c.Get("", "default_group")
+	if err != nil {
+		return ""
+	}
+	return group
 }
