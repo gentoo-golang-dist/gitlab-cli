@@ -49,6 +49,7 @@ type LoginOptions struct {
 
 	WebLogin   bool
 	UseKeyring bool
+	Force      bool
 }
 
 var opts *LoginOptions
@@ -105,7 +106,10 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
 			# Non-interactive CI/CD setup
-			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
+			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN
+
+			# Non-interactive OAuth login skipping confirmation prompts (--force)
+			glab auth login --hostname gitlab.com --web --use-keyring --force`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -167,6 +171,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read token from standard input.")
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
 	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
+	cmd.Flags().BoolVarP(&opts.Force, "force", "f", false, "Skip all confirmation prompts (re-authentication and Git credential setup). Useful for automated workflows.")
 	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "API host url.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
@@ -430,16 +435,18 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 		if err == nil {
 			username := user.Username
-			keepGoing := false // default value
-			confirm := huh.NewConfirm().
-				Title(fmt.Sprintf(
-					"You're already logged into %s as %s. Do you want to re-authenticate?",
-					hostname,
-					username)).
-				Value(&keepGoing)
-			err = opts.IO.Run(ctx, confirm)
-			if err != nil {
-				return fmt.Errorf("could not prompt: %w", err)
+			keepGoing := opts.Force // skip prompt when --force
+			if !keepGoing {
+				confirm := huh.NewConfirm().
+					Title(fmt.Sprintf(
+						"You're already logged into %s as %s. Do you want to re-authenticate?",
+						hostname,
+						username)).
+					Value(&keepGoing)
+				err = opts.IO.Run(ctx, confirm)
+				if err != nil {
+					return fmt.Errorf("could not prompt: %w", err)
+				}
 			}
 
 			if !keepGoing {
@@ -501,6 +508,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 	} else {
+		if opts.Force {
+			// Clear stale OAuth2 state so apiClient falls through to an
+			// unauthenticated client instead of failing on a missing token.
+			// marshal() will restore is_oauth2 and fresh tokens on success.
+			if err := cfg.Set(hostname, "is_oauth2", ""); err != nil {
+				return err
+			}
+		}
 		client, err := opts.apiClient(hostname)
 		if err != nil {
 			return err
@@ -579,7 +594,11 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		}
 
 		if gitProtocol != "ssh" {
-			if err := credentialFlow.Prompt(ctx, opts.IO, hostname, gitProtocol); err != nil {
+			if opts.Force {
+				if err := credentialFlow.AutoSetup(hostname, gitProtocol); err != nil {
+					return err
+				}
+			} else if err := credentialFlow.Prompt(ctx, opts.IO, hostname, gitProtocol); err != nil {
 				return err
 			}
 		}
