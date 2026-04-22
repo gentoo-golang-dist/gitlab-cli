@@ -2,12 +2,17 @@ package iostreams
 
 import (
 	"fmt"
+	"image/color"
 	"io"
 	"os"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-colorable"
 	"github.com/mgutz/ansi"
+	"github.com/muesli/termenv"
+
+	"gitlab.com/gitlab-org/cli/internal/theme"
 )
 
 type ColorPalette struct {
@@ -31,15 +36,27 @@ type ColorPalette struct {
 
 func (s *IOStreams) Color() *ColorPalette {
 	isColorfulOutput := s.ColorEnabled() && s.IsaTTY
+	var isDark bool
+	switch s.BackgroundColor() { // could be simplified if commands like `ci list` called `ResolveBackgroundColor()`
+	case "dark":
+		isDark = true
+	case "light":
+		isDark = false
+	default: // "none" — not yet resolved, detect now if color is enabled
+		isDark = isColorfulOutput && termenv.HasDarkBackground()
+	}
+	lightDark := lipgloss.LightDark(isDark)
+	glc := theme.NewGitLabColors(lightDark) // reuse existing palette
+
 	return &ColorPalette{
-		Magenta: makeColorFunc(isColorfulOutput, "magenta"),
-		Cyan:    makeColorFunc(isColorfulOutput, "cyan"),
-		Red:     makeColorFunc(isColorfulOutput, "red"),
-		Yellow:  makeColorFunc(isColorfulOutput, "yellow"),
-		Blue:    makeColorFunc(isColorfulOutput, "blue"),
-		Green:   makeColorFunc(isColorfulOutput, "green"),
-		Gray:    makeColorFunc(isColorfulOutput, "black+h"),
-		Bold:    makeColorFunc(isColorfulOutput, "default+b"),
+		Magenta: makeColorFunc(isColorfulOutput, glc.Purple, "magenta"),
+		Cyan:    makeColorFunc(isColorfulOutput, nil, "cyan"), // not in theme, falls back to ANSI
+		Red:     makeColorFunc(isColorfulOutput, glc.Red, "red"),
+		Yellow:  makeColorFunc(isColorfulOutput, nil, "yellow"), // not in theme, falls back to ANSI
+		Blue:    makeColorFunc(isColorfulOutput, glc.Blue, "blue"),
+		Green:   makeColorFunc(isColorfulOutput, glc.Green, "green"),
+		Gray:    makeColorFunc(isColorfulOutput, nil, "black+h"),
+		Bold:    makeColorFunc(isColorfulOutput, nil, "default+b"),
 	}
 }
 
@@ -51,20 +68,32 @@ func NewColorable(out io.Writer) io.Writer {
 	return out
 }
 
-func makeColorFunc(isColorfulOutput bool, color string) func(string) string {
-	if isColorfulOutput && color == "black+h" && is256ColorSupported() {
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[%d;5;%dm%s\x1b[m", 38, 242, t)
+func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName string) func(string) string {
+	// don't bother doing terminal capacity checks and calculations if color is disabled
+	if !isColorfulOutput {
+		return func(arg string) string {
+			return arg
 		}
 	}
 
-	cf := ansi.ColorFunc(color)
-	return func(arg string) string {
-		if isColorfulOutput {
-			return cf(arg)
+	// 24-bit truecolor and we got a color from lipgloss'd theme
+	if brandColor != nil && isTrueColorSupported() {
+		r16, g16, b16, _ := brandColor.RGBA() // standard Go interface, 16-bit per channel
+		r, g, b := uint8(r16>>8), uint8(g16>>8), uint8(b16>>8)
+		return func(t string) string {
+			return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
 		}
-		return arg
 	}
+
+	// 256 colors gray
+	if ansiName == "black+h" && is256ColorSupported() {
+		return func(t string) string {
+			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
+		}
+	}
+
+	// basic ANSI colors
+	return ansi.ColorFunc(ansiName)
 }
 
 // detectIsColorEnabled determines whether color output should be enabled based on environment variables.
@@ -90,14 +119,16 @@ func detectIsColorEnabled() bool {
 	return true
 }
 
-func is256ColorSupported() bool {
-	term := os.Getenv("TERM")
-	colorterm := os.Getenv("COLORTERM")
+func isTrueColorSupported() bool {
+	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
 
-	return strings.Contains(term, "256") ||
-		strings.Contains(term, "24bit") ||
-		strings.Contains(term, "truecolor") ||
-		strings.Contains(colorterm, "256") ||
-		strings.Contains(colorterm, "24bit") ||
-		strings.Contains(colorterm, "truecolor")
+	return strings.Contains(term, "24bit") || strings.Contains(term, "truecolor") ||
+		strings.Contains(colorterm, "24bit") || strings.Contains(colorterm, "truecolor")
+}
+
+func is256ColorSupported() bool {
+	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
+
+	return strings.Contains(term, "256") || strings.Contains(colorterm, "256") ||
+		isTrueColorSupported()
 }
