@@ -35,6 +35,7 @@ import (
 	runnerCmd "gitlab.com/gitlab-org/cli/internal/commands/runner"
 	runnerControllerCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
+	searchCmd "gitlab.com/gitlab-org/cli/internal/commands/search"
 	securefileCmd "gitlab.com/gitlab-org/cli/internal/commands/securefile"
 	snippetCmd "gitlab.com/gitlab-org/cli/internal/commands/snippet"
 	sshCmd "gitlab.com/gitlab-org/cli/internal/commands/ssh-key"
@@ -167,6 +168,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(projectCmd.NewCmdRepo(f))
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
 	rootCmd.AddCommand(runnerCmd.NewCmdRunner(f))
+	rootCmd.AddCommand(searchCmd.NewCmd(f))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
