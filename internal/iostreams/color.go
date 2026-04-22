@@ -76,7 +76,7 @@ func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName strin
 	}
 
 	// if we got a color from lipgloss'd theme, let it do color detection and everything
-	if brandColor != nil && isTrueColorSupported() {
+	if brandColor != nil {
 		style := lipgloss.NewStyle().Foreground(brandColor)
 		return func(arg string) string {
 			return style.Render(arg)
