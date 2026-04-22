@@ -1,7 +1,6 @@
 package iostreams
 
 import (
-	"fmt"
 	"image/color"
 	"io"
 	"os"
@@ -76,19 +75,11 @@ func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName strin
 		}
 	}
 
-	// 24-bit truecolor and we got a color from lipgloss'd theme
+	// if we got a color from lipgloss'd theme, let it do color detection and everything
 	if brandColor != nil && isTrueColorSupported() {
-		r16, g16, b16, _ := brandColor.RGBA() // standard Go interface, 16-bit per channel
-		r, g, b := uint8(r16>>8), uint8(g16>>8), uint8(b16>>8)
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
-		}
-	}
-
-	// 256 colors gray
-	if ansiName == "black+h" && is256ColorSupported() {
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
+		style := lipgloss.NewStyle().Foreground(brandColor)
+		return func(arg string) string {
+			return style.Render(arg)
 		}
 	}
 
