@@ -346,6 +346,46 @@ func Test_cmdCreate_reply(t *testing.T) {
 	})
 }
 
+func Test_cmdCreate_reply_prompt(t *testing.T) {
+	// NOTE: This test cannot run in parallel because the huh form library
+	// uses global state (charmbracelet/bubbles runeutil sanitizer).
+
+	const fullID = "abc12345deadbeef1234567890abcdef12345678"
+
+	t.Run("message provided via prompt", func(t *testing.T) {
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{{ID: fullID}}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			AddMergeRequestDiscussionNote("OWNER/REPO", int64(1), fullID, gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, discID string, opts *gitlab.AddMergeRequestDiscussionNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "prompted reply", *opts.Body)
+				return &gitlab.Note{ID: 950}, nil, nil
+			})
+
+		c := ugh.New(t)
+		c.Expect(ugh.Input("Note message:")).
+			Do(ugh.Type("prompted reply"))
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdCreate(f)
+		}, true,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithConsole(t, c),
+		)
+
+		output, err := exec(`1 --reply ` + fullID)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/merge_requests/1#note_950")
+	})
+}
+
 func Test_cmdCreate_stdin(t *testing.T) {
 	t.Parallel()
 
@@ -413,15 +453,7 @@ func Test_cmdCreate_stdin(t *testing.T) {
 func setupMR(t *testing.T) *gitlabtesting.TestClient {
 	t.Helper()
 	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockMergeRequests.EXPECT().
-		GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-		Return(&gitlab.MergeRequest{
-			BasicMergeRequest: gitlab.BasicMergeRequest{
-				ID:     1,
-				IID:    1,
-				WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-			},
-		}, nil, nil)
+	mockMR1(t, testClient)
 	return testClient
 }
 

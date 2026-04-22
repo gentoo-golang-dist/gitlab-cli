@@ -127,6 +127,9 @@ func (o *createOptions) validate() error {
 	if strings.TrimSpace(o.body) == "" {
 		return fmt.Errorf("aborted... Note has an empty message.")
 	}
+	if o.reply != "" && len(o.reply) < 8 {
+		return fmt.Errorf("discussion ID prefix must be at least 8 characters, got %d", len(o.reply))
+	}
 	return nil
 }
 
