@@ -50,7 +50,7 @@ glab mr note create 123 -m "LGTM" --unique
 
 ```plaintext
   -m, --message string   Comment or note message.
-      --unique           Don't create a note if note with same body already exists. Reads all MR comments first.
+      --unique           Don't create a note if a note with the same body already exists. Reads all MR comments first.
 ```
 
 ## Options inherited from parent commands

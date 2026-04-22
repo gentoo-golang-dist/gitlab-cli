@@ -1,6 +1,7 @@
 package note
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -11,11 +12,35 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
+type createOptions struct {
+	io           *iostreams.IOStreams
+	factory      cmdutils.Factory
+	gitlabClient func() (*gitlab.Client, error)
+
+	// Flags.
+	message string
+	unique  bool
+
+	// Populated in complete.
+	client *gitlab.Client
+	mr     *gitlab.MergeRequest
+	repo   glrepo.Interface
+	body   string
+}
+
 func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
+	opts := &createOptions{
+		io:           f.IO(),
+		factory:      f,
+		gitlabClient: f.GitLabClient,
+	}
+
 	cmd := &cobra.Command{
 		Use:   "create [<id> | <branch>]",
 		Short: "Create a comment or discussion on a merge request. (EXPERIMENTAL)",
@@ -44,59 +69,81 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := f.GitLabClient()
-			if err != nil {
+			if err := opts.complete(cmd, args); err != nil {
 				return err
 			}
-
-			mr, repo, err := mrutils.MRFromArgs(cmd.Context(), f, args, "any")
-			if err != nil {
+			if err := opts.validate(); err != nil {
 				return err
 			}
-
-			body, _ := cmd.Flags().GetString("message")
-			if strings.TrimSpace(body) == "" {
-				body, err = getBodyFromStdinOrEditor(f, cmd)
-				if err != nil {
-					return err
-				}
-			}
-			if strings.TrimSpace(body) == "" {
-				return fmt.Errorf("aborted... Note has an empty message.")
-			}
-
-			uniqueNoteEnabled, _ := cmd.Flags().GetBool("unique")
-			if uniqueNoteEnabled {
-				found, err := deduplicateNote(client, repo.FullName(), mr.IID, body, mr.WebURL, f.IO().StdOut)
-				if err != nil {
-					return err
-				}
-				if found {
-					return nil
-				}
-			}
-
-			disc, _, err := client.Discussions.CreateMergeRequestDiscussion(
-				repo.FullName(),
-				mr.IID,
-				&gitlab.CreateMergeRequestDiscussionOptions{Body: &body},
-				gitlab.WithContext(cmd.Context()),
-			)
-			if err != nil {
-				return err
-			}
-
-			if len(disc.Notes) == 0 {
-				return fmt.Errorf("discussion created but returned no notes")
-			}
-
-			fmt.Fprintf(f.IO().StdOut, "%s#note_%d\n", mr.WebURL, disc.Notes[0].ID)
-			return nil
+			return opts.run(cmd.Context())
 		},
 	}
 
-	cmd.Flags().StringP("message", "m", "", "Comment or note message.")
-	cmd.Flags().Bool("unique", false, "Don't create a note if note with same body already exists. Reads all MR comments first.")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.message, "message", "m", "", "Comment or note message.")
+	fl.BoolVar(&opts.unique, "unique", false, "Don't create a note if a note with the same body already exists. Reads all MR comments first.")
 
 	return cmd
+}
+
+func (o *createOptions) complete(cmd *cobra.Command, args []string) error {
+	client, err := o.gitlabClient()
+	if err != nil {
+		return err
+	}
+	o.client = client
+
+	mr, repo, err := mrutils.MRFromArgs(cmd.Context(), o.factory, args, "any")
+	if err != nil {
+		return err
+	}
+	o.mr = mr
+	o.repo = repo
+
+	body := o.message
+	if strings.TrimSpace(body) == "" {
+		body, err = getBodyFromStdinOrEditor(o.factory, cmd)
+		if err != nil {
+			return err
+		}
+	}
+	o.body = body
+
+	return nil
+}
+
+func (o *createOptions) validate() error {
+	if strings.TrimSpace(o.body) == "" {
+		return fmt.Errorf("aborted... Note has an empty message.")
+	}
+	return nil
+}
+
+func (o *createOptions) run(ctx context.Context) error {
+	if o.unique {
+		found, err := deduplicateNote(o.client, o.repo.FullName(), o.mr.IID, o.body, o.mr.WebURL, o.io.StdOut)
+		if err != nil {
+			return err
+		}
+		if found {
+			return nil
+		}
+	}
+
+	disc, _, err := o.client.Discussions.CreateMergeRequestDiscussion(
+		o.repo.FullName(),
+		o.mr.IID,
+		&gitlab.CreateMergeRequestDiscussionOptions{Body: &o.body},
+		gitlab.WithContext(ctx),
+	)
+	if err != nil {
+		return err
+	}
+
+	if len(disc.Notes) == 0 {
+		return fmt.Errorf("discussion created but returned no notes")
+	}
+
+	fmt.Fprintf(o.io.StdOut, "%s#note_%d\n", o.mr.WebURL, disc.Notes[0].ID)
+	return nil
 }
