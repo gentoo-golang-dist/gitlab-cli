@@ -40,7 +40,7 @@ glab ci list --status=failed
   -a, --updated-after string    Return only pipelines updated after the specified date. Expected in ISO 8601 format (2019-03-15T08:00:00Z).
   -b, --updated-before string   Return only pipelines updated before the specified date. Expected in ISO 8601 format (2019-03-15T08:00:00Z).
   -u, --username string         Return only pipelines triggered by the given username.
-  -y, --yaml-errors             Return only pipelines with invalid configurations.
+  -y, --yaml-errors             Return only pipelines with invalid configurations. (default false)
 ```
 
 ## Options inherited from parent commands

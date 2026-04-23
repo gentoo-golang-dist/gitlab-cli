@@ -54,7 +54,7 @@ glab pipeline ci view -b main -R myusername/glab
 ```plaintext
   -b, --branch string    Check pipeline status for a branch or tag. Defaults to the current branch.
   -p, --pipelineid int   Check pipeline status for a specific pipeline ID.
-  -w, --web              Open pipeline in a browser. Uses default browser, or browser specified in BROWSER variable.
+  -w, --web              Open pipeline in a browser. Uses default browser, or browser specified in BROWSER variable. (default false)
 ```
 
 ## Options inherited from parent commands

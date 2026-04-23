@@ -259,8 +259,8 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
-	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
+	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends. (default false)")
+	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format. (default false)")
 	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
 	cmdutils.EnableJSONOutput(pipelineStatusCmd, &opts.outputFormat, "Format output as: text, json. Note: JSON output is not compatible with --live or --compact flags.")
 

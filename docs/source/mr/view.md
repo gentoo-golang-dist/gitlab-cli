@@ -25,14 +25,14 @@ show
 ## Options
 
 ```plaintext
-  -c, --comments        Show merge request comments and activities.
+  -c, --comments        Show merge request comments and activities. (default false)
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number.
   -P, --per-page int    Number of items to list per page. (default 20)
-      --resolved        Show only resolved discussions (implies --comments).
-  -s, --system-logs     Show system activities and logs.
-      --unresolved      Show only unresolved discussions (implies --comments).
-  -w, --web             Open merge request in a browser. Uses default browser or browser specified in BROWSER variable.
+      --resolved        Show only resolved discussions (implies --comments). (default false)
+  -s, --system-logs     Show system activities and logs. (default false)
+      --unresolved      Show only unresolved discussions (implies --comments). (default false)
+  -w, --web             Open merge request in a browser. Uses default browser or browser specified in BROWSER variable. (default false)
 ```
 
 ## Options inherited from parent commands

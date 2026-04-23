@@ -92,12 +92,12 @@ glab ci run -b main --variables-from variables.json
 ```plaintext
   -b, --branch string            Create pipeline on branch/ref <string>.
   -i, --input stringArray        Pass inputs to pipeline in format '<key>:<value>'. Cannot be used for merge request pipelines. See documentation for examples.
-      --mr                       Run merge request pipeline instead of branch pipeline.
+      --mr                       Run merge request pipeline instead of branch pipeline. (default false)
       --variables strings        Pass variables to pipeline in format <key>:<value>. Cannot be used for MR pipelines.
       --variables-env strings    Pass variables to pipeline in format <key>:<value>. Cannot be used for MR pipelines.
       --variables-file strings   Pass file contents as a file variable to pipeline in format <key>:<filename>. Cannot be used for MR pipelines.
   -f, --variables-from string    JSON file with variables for pipeline execution. Expects array of hashes, each with at least 'key' and 'value'. Cannot be used for MR pipelines.
-  -w, --web                      Open pipeline in a browser. Uses default browser, or browser specified in BROWSER environment variable.
+  -w, --web                      Open pipeline in a browser. Uses default browser, or browser specified in BROWSER environment variable. (default false)
 ```
 
 ## Options inherited from parent commands

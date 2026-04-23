@@ -28,7 +28,7 @@ glab ci cancel pipeline 1504182795,1504182796 --dry-run
 ## Options
 
 ```plaintext
-      --dry-run   Simulates process, but does not cancel anything.
+      --dry-run   Simulates process, but does not cancel anything. (default false)
 ```
 
 ## Options inherited from parent commands

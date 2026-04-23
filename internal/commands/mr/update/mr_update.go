@@ -344,12 +344,12 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	mrUpdateCmd.Flags().BoolP("draft", "", false, "Mark merge request as a draft.")
-	mrUpdateCmd.Flags().BoolP("ready", "r", false, "Mark merge request as ready to be reviewed and merged.")
-	mrUpdateCmd.Flags().BoolP("wip", "", false, "Mark merge request as a work in progress. Alternative to --draft.")
+	mrUpdateCmd.Flags().BoolP("draft", "", false, "Mark merge request as a draft. (default false)")
+	mrUpdateCmd.Flags().BoolP("ready", "r", false, "Mark merge request as ready to be reviewed and merged. (default false)")
+	mrUpdateCmd.Flags().BoolP("wip", "", false, "Mark merge request as a work in progress. Alternative to --draft. (default false)")
 	mrUpdateCmd.Flags().StringP("title", "t", "", "Title of merge request.")
-	mrUpdateCmd.Flags().BoolP("lock-discussion", "", false, "Lock discussion on merge request.")
-	mrUpdateCmd.Flags().BoolP("unlock-discussion", "", false, "Unlock discussion on merge request.")
+	mrUpdateCmd.Flags().BoolP("lock-discussion", "", false, "Lock discussion on merge request. (default false)")
+	mrUpdateCmd.Flags().BoolP("unlock-discussion", "", false, "Unlock discussion on merge request. (default false)")
 	mrUpdateCmd.Flags().StringP("description", "d", "", "Merge request description. Set to \"-\" to open an editor.")
 	mrUpdateCmd.Flags().StringSliceP("label", "l", []string{}, "Add labels.")
 	mrUpdateCmd.Flags().StringSliceP("unlabel", "u", []string{}, "Remove labels.")
@@ -359,15 +359,15 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		StringSliceP("reviewer", "", []string{}, "Request review from users by their usernames. Prefix with '!' or '-' to remove from existing reviewers, '+' to add. Otherwise, replace existing reviewers with given users. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	mrUpdateCmd.Flags().Bool("unassign", false, "Unassign all users.")
 	mrUpdateCmd.Flags().
-		BoolP("squash-before-merge", "", false, "Toggles the option to squash commits into a single commit when merging.")
-	mrUpdateCmd.Flags().BoolP("remove-source-branch", "", false, "Toggles the removal of the source branch on merge.")
+		BoolP("squash-before-merge", "", false, "Toggles the option to squash commits into a single commit when merging. (default false)")
+	mrUpdateCmd.Flags().BoolP("remove-source-branch", "", false, "Toggles the removal of the source branch on merge. (default false)")
 	mrUpdateCmd.Flags().StringP("milestone", "m", "", "Title of the milestone to assign. Set to \"\" or 0 to unassign.")
 	mrUpdateCmd.Flags().String("target-branch", "", "Set target branch.")
 
 	// Add new autofill flags
-	mrUpdateCmd.Flags().BoolP("fill", "f", false, "Do not prompt for title or body, and just use commit info.")
+	mrUpdateCmd.Flags().BoolP("fill", "f", false, "Do not prompt for title or body, and just use commit info. (default false)")
 	mrUpdateCmd.Flags().Bool("fill-commit-body", false, "Fill body with each commit body when multiple commits. Can only be used with --fill.")
-	mrUpdateCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt.")
+	mrUpdateCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt. (default false)")
 
 	return mrUpdateCmd
 }

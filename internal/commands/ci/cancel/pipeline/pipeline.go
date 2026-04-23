@@ -70,7 +70,7 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 }
 
 func SetupCommandFlags(flags *pflag.FlagSet) {
-	flags.BoolP(FlagDryRun, "", false, "Simulates process, but does not cancel anything.")
+	flags.BoolP(FlagDryRun, "", false, "Simulates process, but does not cancel anything. (default false)")
 }
 
 func runCancelation(

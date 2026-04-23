@@ -57,7 +57,7 @@ func NewCmdRebase(f cmdutils.Factory) *cobra.Command {
 			return opts.run(cmd.Context())
 		},
 	}
-	mrRebaseCmd.Flags().BoolVarP(&opts.SkipCI, "skip-ci", "", false, "Rebase merge request while skipping CI/CD pipeline.")
+	mrRebaseCmd.Flags().BoolVarP(&opts.SkipCI, "skip-ci", "", false, "Rebase merge request while skipping CI/CD pipeline. (default false)")
 
 	return mrRebaseCmd
 }

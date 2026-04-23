@@ -301,8 +301,8 @@ If used with merge request pipelines, the command fails with a message like ` + 
 	pipelineRunCmd.Flags().StringSliceP("variables-env", "", []string{}, "Pass variables to pipeline in format <key>:<value>. Cannot be used for MR pipelines.")
 	pipelineRunCmd.Flags().StringSliceP("variables-file", "", []string{}, "Pass file contents as a file variable to pipeline in format <key>:<filename>. Cannot be used for MR pipelines.")
 	pipelineRunCmd.Flags().StringP("variables-from", "f", "", "JSON file with variables for pipeline execution. Expects array of hashes, each with at least 'key' and 'value'. Cannot be used for MR pipelines.")
-	pipelineRunCmd.Flags().BoolVarP(&openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses default browser, or browser specified in BROWSER environment variable.")
-	pipelineRunCmd.Flags().BoolVar(&mr, "mr", false, "Run merge request pipeline instead of branch pipeline.")
+	pipelineRunCmd.Flags().BoolVarP(&openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses default browser, or browser specified in BROWSER environment variable. (default false)")
+	pipelineRunCmd.Flags().BoolVar(&mr, "mr", false, "Run merge request pipeline instead of branch pipeline. (default false)")
 	cmdutils.AddPipelineInputsFlag(pipelineRunCmd)
 
 	for _, flag := range []string{"variables", "variables-env", "variables-file", "variables-from", "input"} {

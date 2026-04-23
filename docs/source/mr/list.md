@@ -42,21 +42,21 @@ glab mr list --not-draft
 ## Options
 
 ```plaintext
-  -A, --all                    Get all merge requests.
+  -A, --all                    Get all merge requests. (default false)
   -a, --assignee strings       Get only merge requests assigned to users. Multiple users can be comma-separated or specified by repeating the flag.
       --author string          Filter merge request by author <username>.
-  -c, --closed                 Get only closed merge requests.
+  -c, --closed                 Get only closed merge requests. (default false)
       --created-after time     Filter merge requests created after a certain date (ISO 8601 format).
       --created-before time    Filter merge requests created before a certain date (ISO 8601 format).
       --deployed-after time    Filter merge requests deployed after a certain date (ISO 8601 format).
       --deployed-before time   Filter merge requests deployed before a certain date (ISO 8601 format).
-  -d, --draft                  Filter by draft merge requests.
+  -d, --draft                  Filter by draft merge requests. (default false)
       --environment string     Filter merge requests deployed to the given environment <name>.
   -g, --group string           Select a group/subgroup. This option is ignored if a repo argument is set.
   -l, --label strings          Filter merge request by label <name>. Multiple labels can be comma-separated or specified by repeating the flag.
-  -M, --merged                 Get only merged merge requests.
+  -M, --merged                 Get only merged merge requests. (default false)
   -m, --milestone string       Filter merge request by milestone <id>.
-      --not-draft              Filter by non-draft merge requests.
+      --not-draft              Filter by non-draft merge requests. (default false)
       --not-label strings      Filter merge requests by not having label <name>. Multiple labels can be comma-separated or specified by repeating the flag.
   -o, --order string           Order merge requests by <field>. Order options: created_at, updated_at, merged_at, title, priority, label_priority, milestone_due, and popularity.
   -F, --output string          Format output as: text, json. (default "text")
