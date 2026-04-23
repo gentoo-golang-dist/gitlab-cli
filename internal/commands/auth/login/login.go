@@ -104,8 +104,11 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			# Semi-interactive OAuth login, skipping all prompts except browser auth
 			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
-			# Non-interactive CI/CD setup
-			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
+			# CI/CD setup: for most cases, prefer auto-login over manual login
+			GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
+
+			# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a personal access token
+			glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-protocol $CI_SERVER_PROTOCOL`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -145,6 +148,14 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 				}
 			}
 
+			if cmd.Flags().Changed("api-host") && strings.Contains(opts.ApiHost, "://") {
+				stripped, _ := glinstance.StripHostProtocol(opts.ApiHost)
+				if stripped == "" {
+					return &cmdutils.FlagError{Err: fmt.Errorf("error parsing '--api-host': value must be a hostname, not a URL (for example, %q or %q)", "example.com", "example.com:3443")}
+				}
+				return &cmdutils.FlagError{Err: fmt.Errorf("error parsing '--api-host': value must be a hostname, not a URL. Use %q instead", stripped)}
+			}
+
 			if !opts.Interactive && opts.Hostname == "" {
 				opts.Hostname = glinstance.DefaultHostname
 			}
@@ -167,10 +178,10 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read token from standard input.")
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
 	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
-	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "API host url.")
+	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts hostname or hostname:port. Use only when the API is served from a different host than the git remote.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
-	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint.")
+	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.")
 	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
 
 	return cmd
