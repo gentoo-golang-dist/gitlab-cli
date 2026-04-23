@@ -787,17 +787,35 @@ func TestIssueListJSON(t *testing.T) {
 }
 
 func TestIssueListMutualOutputFlags(t *testing.T) {
-	// This test doesn't need API mocking - it just tests flag validation
+	// --output and --output-format can be used together; --output takes precedence
+	// when it is set to a non-default value. Verify that no mutual-exclusivity error
+	// is returned when both flags are provided.
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockIssues.EXPECT().
+		ListProjectIssues("OWNER/REPO", gomock.Any()).
+		Return([]*gitlab.Issue{}, nil, nil)
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
 	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 		return NewCmdList(f, nil, issuable.TypeIssue)
 	}, true,
+		cmdtest.WithApiClient(apiClient),
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 	)
 
-	_, err := exec("--output json --output-format ids")
+	// Both flags can be set simultaneously; --output=json takes precedence.
+	output, err := exec("--output json --output-format ids")
 
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, "if any flags in the group [output output-format] are set none of the others can be; [output output-format] were all set")
+	assert.NoError(t, err)
+	assert.JSONEq(t, "[]", output.String())
 }
 
 func TestIssueList_epicIssues(t *testing.T) {
