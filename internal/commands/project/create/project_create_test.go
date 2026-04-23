@@ -82,7 +82,7 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -120,7 +120,7 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -158,7 +158,7 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -186,7 +186,7 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -225,7 +225,7 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -331,7 +331,7 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 				gitInitializer = func() error {
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -367,7 +367,7 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 					t.Error("gitInitializer should not be called when already in a git repository")
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					t.Error("repoCloner should not be called when already in a git repository")
 					return nil
 				}
@@ -401,7 +401,7 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 					t.Error("gitInitializer should not be called when already in a git repository")
 					return nil
 				}
-				repoCloner = func(cloneURL, target string) error {
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					t.Error("repoCloner should not be called when already in a git repository")
 					return nil
 				}

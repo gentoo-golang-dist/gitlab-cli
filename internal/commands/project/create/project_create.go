@@ -48,8 +48,8 @@ var repoInitializer = func(projectPath, remoteURL string) error {
 	return initializeRepo(projectPath, remoteURL)
 }
 
-var repoCloner = func(cloneURL, target string) error {
-	_, err := git.RunClone(cloneURL, target, []string{})
+var repoCloner = func(cloneURL, target, remoteName string) error {
+	_, err := git.RunClone(cloneURL, target, []string{"--origin", remoteName})
 	return err
 }
 
@@ -274,7 +274,7 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 		if needsGitInit {
 			if readme {
 				// GitLab initialized the repo server-side; clone so the local branch matches the remote.
-				if err := repoCloner(remote, "."); err != nil {
+				if err := repoCloner(remote, ".", remoteName); err != nil {
 					fmt.Fprintf(f.IO().StdErr, "Warning: Project created on GitLab but clone failed: %v\n", err)
 					fmt.Fprintf(f.IO().StdErr, "You can manually clone with: git clone %s .\n", remote)
 				} else {
@@ -314,6 +314,8 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 
 	// When a project name is provided (not working in current directory)
 	// we need to set up a local subdirectory for it.
+	// In non-interactive mode, defaults to false (only creates remote project)
+	// to prevent unexpected directory creation for AI agents.
 	var doSetup bool
 	if f.IO().IsInteractive() {
 		doSetup = true
@@ -325,15 +327,18 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 	if doSetup {
 		projectPath := project.Path
 		if readme {
-			if err := repoCloner(remote, projectPath); err != nil {
-				return err
+			if err := repoCloner(remote, projectPath, remoteName); err != nil {
+				fmt.Fprintf(f.IO().StdErr, "Warning: Project created on GitLab but clone failed: %v\n", err)
+				fmt.Fprintf(f.IO().StdErr, "You can manually clone with: git clone %s %s\n", remote, projectPath)
+			} else {
+				fmt.Fprintf(f.IO().StdOut, "%s Initialized repository in './%s/'\n", greenCheck, projectPath)
 			}
 		} else {
 			if err := repoInitializer(projectPath, remote); err != nil {
 				return err
 			}
+			fmt.Fprintf(f.IO().StdOut, "%s Initialized repository in './%s/'\n", greenCheck, projectPath)
 		}
-		fmt.Fprintf(f.IO().StdOut, "%s Initialized repository in './%s/'\n", greenCheck, projectPath)
 	}
 
 	return nil
