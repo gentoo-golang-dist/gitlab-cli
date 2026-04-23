@@ -48,6 +48,11 @@ var repoInitializer = func(projectPath, remoteURL string) error {
 	return initializeRepo(projectPath, remoteURL)
 }
 
+var repoCloner = func(cloneURL, target, remoteName string) error {
+	_, err := git.RunClone(cloneURL, target, []string{"--origin", remoteName})
+	return err
+}
+
 func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	projectCreateCmd := &cobra.Command{
 		Use:   "create [path] [flags]",
@@ -88,14 +93,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	projectCreateCmd.Flags().StringP("name", "n", "", "Name of the new project.")
 	projectCreateCmd.Flags().StringP("group", "g", "", "Namespace or group for the new project. Defaults to the current user's namespace.")
 	projectCreateCmd.Flags().StringP("description", "d", "", "Description of the new project. Set to \"-\" to open an editor.")
-	projectCreateCmd.Flags().String("defaultBranch", "", "Default branch of the project. Defaults to `master` if not provided.")
+	projectCreateCmd.Flags().String("defaultBranch", "", "Branch name for the new project, overriding both the GitLab instance default and your local git configuration.")
 	projectCreateCmd.Flags().String("remoteName", "origin", "Remote name for the Git repository you're in. Defaults to `origin` if not provided.")
 	projectCreateCmd.Flags().StringArrayP("tag", "t", []string{}, "The list of tags for the project.")
 	projectCreateCmd.Flags().Bool("internal", false, "Make project internal: visible to any authenticated user. Default.")
 	projectCreateCmd.Flags().BoolP("private", "p", false, "Make project private: visible only to project members.")
 	projectCreateCmd.Flags().BoolP("public", "P", false, "Make project public: visible without any authentication.")
-	projectCreateCmd.Flags().Bool("readme", false, "Initialize project with `README.md`.")
-	projectCreateCmd.Flags().BoolP("skipGitInit", "s", false, "Skip run 'git init'.")
+	projectCreateCmd.Flags().Bool("readme", false, "Initialize project with `README.md`. The repository is cloned locally after creation to ensure the local branch matches the remote.")
+	projectCreateCmd.Flags().BoolP("skipGitInit", "s", false, "Skip local repository setup (skips both 'git init' and cloning).")
 
 	return projectCreateCmd
 }
@@ -120,26 +125,29 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 		return err
 	}
 	skipGitInit, _ := cmd.Flags().GetBool("skipGitInit")
+	readme, _ := cmd.Flags().GetBool("readme")
 
 	// Check if directory is already git initialized
 	gitDir := path.Join(config.GitDir(false)...)
 	stat, statErr := os.Stat(gitDir)
 	isGitInitialized := statErr == nil && stat.Mode().IsDir()
 
-	// Determine if we need to initialize git in the current directory
+	// Determine if we need to set up a local repository in the current directory
 	var needsGitInit bool
 	if !skipGitInit && !isGitInitialized {
 		// Default behavior depends on whether we can prompt
 		if f.IO().IsInteractive() {
-			// If interactive, default to true and ask the user
 			needsGitInit = true
-			err := f.IO().Confirm(cmd.Context(), &needsGitInit, "Directory not Git initialized. Run `git init`?")
+			promptMsg := "Directory not Git initialized. Run `git init`?"
+			if readme {
+				promptMsg = "Directory not Git initialized. Create project on GitLab and clone to the current directory?"
+			}
+			err := f.IO().Confirm(cmd.Context(), &needsGitInit, promptMsg)
 			if err != nil {
 				return err
 			}
 		} else {
 			// In non-interactive mode, default to false for safety
-			// Users can explicitly use --skipGitInit=false to force git init
 			needsGitInit = false
 		}
 	}
@@ -231,7 +239,6 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 	}
 
 	tags, _ := cmd.Flags().GetStringArray("tag")
-	readme, _ := cmd.Flags().GetBool("readme")
 
 	opts := &gitlab.CreateProjectOptions{
 		Name:                 new(name),
@@ -258,38 +265,47 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 	greenCheck := c.Green("✓")
 	fmt.Fprintf(f.IO().StdOut, "%s Created project on GitLab: %s - %s\n", greenCheck, project.NameWithNamespace, project.WebURL)
 
-	// Execute git init if needed (we already validated it will work)
-	if needsGitInit {
-		if err := gitInitializer(); err != nil {
-			// Project exists on GitLab but git init failed
-			fmt.Fprintf(f.IO().StdErr, "Warning: Project created on GitLab but git init failed: %v\n", err)
-			fmt.Fprintf(f.IO().StdErr, "You can manually initialize the repository with: git init\n")
-			// Don't return error since project was created successfully
-		} else {
-			fmt.Fprintf(f.IO().StdOut, "%s Initialized git repository\n", greenCheck)
-		}
-	}
+	cfg := f.Config()
+	webURL, _ := url.Parse(project.WebURL)
+	protocol, _ := cfg.Get(webURL.Host, "git_protocol")
+	remote := glrepo.RemoteURL(project, protocol)
 
 	if isPath {
-		cfg := f.Config()
-		webURL, _ := url.Parse(project.WebURL)
-		protocol, _ := cfg.Get(webURL.Host, "git_protocol")
-
-		remote := glrepo.RemoteURL(project, protocol)
-		if _, err := addRemote(remoteName, remote); err != nil {
-			// Remote already exists or other git error - warn but don't fail
-			fmt.Fprintf(f.IO().StdErr, "Warning: Could not add remote: %v\n", err)
+		if needsGitInit {
+			if readme {
+				// GitLab initialized the repo server-side; clone so the local branch matches the remote.
+				if err := repoCloner(remote, ".", remoteName); err != nil {
+					fmt.Fprintf(f.IO().StdErr, "Warning: Project created on GitLab but clone failed: %v\n", err)
+					fmt.Fprintf(f.IO().StdErr, "You can manually clone with: git clone %s .\n", remote)
+				} else {
+					fmt.Fprintf(f.IO().StdOut, "%s Cloned repository\n", greenCheck)
+				}
+			} else {
+				if err := gitInitializer(); err != nil {
+					fmt.Fprintf(f.IO().StdErr, "Warning: Project created on GitLab but git init failed: %v\n", err)
+					fmt.Fprintf(f.IO().StdErr, "You can manually initialize the repository with: git init\n")
+				} else {
+					fmt.Fprintf(f.IO().StdOut, "%s Initialized git repository\n", greenCheck)
+					if _, err := addRemote(remoteName, remote); err != nil {
+						fmt.Fprintf(f.IO().StdErr, "Warning: Could not add remote: %v\n", err)
+					} else {
+						fmt.Fprintf(f.IO().StdOut, "%s Added remote %s\n", greenCheck, remote)
+					}
+					if defaultBranch != "" {
+						gitBranch := git.GitCommand("checkout", "-b", defaultBranch)
+						gitBranch.Stdout = os.Stdout
+						gitBranch.Stdin = os.Stdin
+						if err := run.PrepareCmd(gitBranch).Run(); err != nil {
+							fmt.Fprintf(f.IO().StdErr, "Warning: Failed to create branch %s: %v\n", defaultBranch, err)
+						}
+					}
+				}
+			}
 		} else {
-			fmt.Fprintf(f.IO().StdOut, "%s Added remote %s\n", greenCheck, remote)
-		}
-
-		// Create default branch after remote is added (if specified)
-		if needsGitInit && defaultBranch != "" {
-			gitBranch := git.GitCommand("checkout", "-b", defaultBranch)
-			gitBranch.Stdout = os.Stdout
-			gitBranch.Stdin = os.Stdin
-			if err := run.PrepareCmd(gitBranch).Run(); err != nil {
-				fmt.Fprintf(f.IO().StdErr, "Warning: Failed to create branch %s: %v\n", defaultBranch, err)
+			if _, err := addRemote(remoteName, remote); err != nil {
+				fmt.Fprintf(f.IO().StdErr, "Warning: Could not add remote: %v\n", err)
+			} else {
+				fmt.Fprintf(f.IO().StdOut, "%s Added remote %s\n", greenCheck, remote)
 			}
 		}
 
@@ -297,27 +313,32 @@ func runCreateProject(cmd *cobra.Command, args []string, f cmdutils.Factory) err
 	}
 
 	// When a project name is provided (not working in current directory)
-	// we need to set up a local subdirectory for it
-	// Default behavior depends on whether we can prompt
+	// we need to set up a local subdirectory for it.
+	// In non-interactive mode, defaults to false (only creates remote project)
+	// to prevent unexpected directory creation for AI agents.
 	var doSetup bool
 	if f.IO().IsInteractive() {
-		// If interactive, default to true and ask the user
 		doSetup = true
 		if err := f.IO().Confirm(cmd.Context(), &doSetup, fmt.Sprintf("Create a local project directory for %s?", project.NameWithNamespace)); err != nil {
 			return err
 		}
-	} else {
-		// In non-interactive mode, default to false (only create remote project)
-		// This prevents unexpected directory creation for AI agents
-		doSetup = false
 	}
 
 	if doSetup {
 		projectPath := project.Path
-		if err := repoInitializer(projectPath, project.SSHURLToRepo); err != nil {
-			return err
+		if readme {
+			if err := repoCloner(remote, projectPath, remoteName); err != nil {
+				fmt.Fprintf(f.IO().StdErr, "Warning: Project created on GitLab but clone failed: %v\n", err)
+				fmt.Fprintf(f.IO().StdErr, "You can manually clone with: git clone %s %s\n", remote, projectPath)
+			} else {
+				fmt.Fprintf(f.IO().StdOut, "%s Initialized repository in './%s/'\n", greenCheck, projectPath)
+			}
+		} else {
+			if err := repoInitializer(projectPath, remote); err != nil {
+				return err
+			}
+			fmt.Fprintf(f.IO().StdOut, "%s Initialized repository in './%s/'\n", greenCheck, projectPath)
 		}
-		fmt.Fprintf(f.IO().StdOut, "%s Initialized repository in './%s/'\n", greenCheck, projectPath)
 	}
 
 	return nil
