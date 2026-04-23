@@ -30,25 +30,18 @@ type options struct {
 	config       func() config.Config
 
 	// Flags
-	group string
-	iid   int64
-	title string
-	// TODO: ask about stateEvent
-	// string
-	description string
-	assignee    []string
-	milestone   string
-	parentID    int64
-	// addLabel     []string
-	// removeLabel  []string
+	group        string
+	iid          int64
+	title        string
+	description  string
+	assignee     []string
+	milestone    string
 	startDate    string
 	dueDate      string
 	weight       int64
 	healthStatus string
-	// TO DO: come back to iteration
-	iterationID int64
-	color       string
-	status      string
+	color        string
+	status       string
 
 	// internal state
 	scope *api.ScopeInfo
@@ -68,13 +61,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <iid> [flags]",
 		Short: "Update work items in a project or group. (EXPERIMENTAL)",
-		Long: heredoc.Doc(`Update work items in a project or group.
-
-		The command uses your repository context to detect scope automatically.
+		Long: heredoc.Doc(`The command uses your repository context to detect scope automatically.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 					# Update work item in current project
-					$ glab work-items update 42 --description "test description update"
+					glab work-items update 42 --description "test description update in issue"
+
+					glab work-items update 40 --group MYGROUP --description "test description update in epic"
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
@@ -102,15 +95,20 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	// Flags
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Update work items for a group or subgroup")
-	cmd.Flags().StringVarP(&opts.title, "title", "t", "", "Update title for work item")
-	cmd.Flags().StringVarP(&opts.description, "description", "d", "", "Update description for work item")
-	cmd.Flags().Int64VarP(&opts.weight, "weight", "w", 0, "Update weight value for the work item")
-	cmd.Flags().StringVarP(&opts.healthStatus, "health", "", "", "Update health status for the work item: on-track, needs-attention or at-risk")
-	cmd.Flags().StringVarP(&opts.status, "status", "s", "", "Update current status for the work item: to-do, in-progress, done, wont-do, duplicate")
-	cmd.Flags().StringVarP(&opts.color, "color", "c", "", "Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.")
-	cmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update work item assignee with the supplied GitLab usernames")
-	cmd.Flags().StringVarP(&opts.milestone, "milestone", "m", "", "Update work item milestone with the title or ID")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.group, "group", "g", "", "Update work items for a group or subgroup.")
+	fl.StringVarP(&opts.title, "title", "t", "", "Update title for work item.")
+	fl.StringVarP(&opts.description, "description", "d", "", "Update description for work item.")
+	fl.Int64VarP(&opts.weight, "weight", "w", 0, "Update weight value for the work item.")
+	fl.StringVar(&opts.healthStatus, "health", "", "Update health status for the work item: on-track, needs-attention or at-risk.")
+	fl.StringVarP(&opts.status, "status", "s", "", "Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.")
+	fl.StringVarP(&opts.color, "color", "c", "", "Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.")
+	fl.StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update work item assignee with the supplied GitLab usernames.")
+	fl.StringVarP(&opts.milestone, "milestone", "m", "", "Update work item milestone with the title or ID.")
+	fl.StringVar(&opts.startDate, "startdate", "", "Update Start Date for a given work item.")
+	fl.StringVar(&opts.dueDate, "duedate", "", "Update Due Date for a given work item.")
+
+	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
@@ -169,6 +167,14 @@ func (opts *options) run() error {
 		updateOpts.StartDate = new(startDate)
 	}
 
+	if opts.dueDate != "" {
+		dueDate, err := gitlab.ParseISOTime(opts.dueDate)
+		if err != nil {
+			return cmdutils.FlagError{Err: fmt.Errorf("date is not formatted correctly")}
+		}
+		updateOpts.DueDate = new(dueDate)
+	}
+
 	if opts.title != "" {
 		updateOpts.Title = new(opts.title)
 	}
@@ -180,7 +186,7 @@ func (opts *options) run() error {
 	if len(opts.assignee) != 0 {
 		user, err := a.UsersByNames(client, opts.assignee)
 		if err != nil {
-			return cmdutils.FlagError{Err: fmt.Errorf("failed to find assignee")}
+			return cmdutils.FlagError{Err: fmt.Errorf("failed to find assignee: %w", err)}
 		}
 
 		assignees := make([]int64, 0)
@@ -218,26 +224,6 @@ func (opts *options) run() error {
 		}
 	}
 
-	if opts.parentID != 0 {
-		updateOpts.ParentID = new(opts.parentID)
-	}
-
-	//if len(opts.addLabelIDs) != 0 {
-	//	updateOpts.AddLabelIDs = opts.addLabelIDs
-	//}
-
-	//if len(opts.removeLabelIDs) != 0 {
-	//	updateOpts.RemoveLabelIDs = opts.removeLabelIDs
-	//}
-
-	if opts.dueDate != "" {
-		dueDate, err := gitlab.ParseISOTime(opts.dueDate)
-		if err != nil {
-			return cmdutils.FlagError{Err: fmt.Errorf("date is not formatted correctly")}
-		}
-		updateOpts.DueDate = new(dueDate)
-	}
-
 	if opts.weight != 0 {
 		updateOpts.Weight = new(opts.weight)
 	}
@@ -249,10 +235,6 @@ func (opts *options) run() error {
 		updateOpts.HealthStatus = new("needsAttention")
 	case "at-risk":
 		updateOpts.HealthStatus = new("atRisk")
-	}
-
-	if opts.iterationID != 0 {
-		updateOpts.IterationID = new(opts.iterationID)
 	}
 
 	if opts.color != "" {

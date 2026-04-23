@@ -14,8 +14,6 @@ Update work items in a project or group. (EXPERIMENTAL)
 
 ## Synopsis
 
-Update work items in a project or group.
-
 The command uses your repository context to detect scope automatically.
 
 This feature is an experiment and is not ready for production use.
@@ -31,24 +29,28 @@ glab work-items update <iid> [flags]
 
 ```console
 # Update work item in current project
-$ glab work-items update 42 --description "test description update"
+glab work-items update 42 --description "test description update in issue"
+
+glab work-items update 40 --group MYGROUP --description "test description update in epic"
 
 ```
 
 ## Options
 
 ```plaintext
-  -a, --assignee strings     Update work item assignee with the supplied GitLab usernames
+  -a, --assignee strings     Update work item assignee with the supplied GitLab usernames.
   -c, --color string         Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.
-  -d, --description string   Update description for work item
-  -g, --group string         Update work items for a group or subgroup
-      --health string        Update health status for the work item: on-track, needs-attention or at-risk
-  -m, --milestone string     Update work item milestone with the title or ID
+  -d, --description string   Update description for work item.
+      --duedate string       Update Due Date for a given work item.
+  -g, --group string         Update work items for a group or subgroup.
+      --health string        Update health status for the work item: on-track, needs-attention or at-risk.
+  -m, --milestone string     Update work item milestone with the title or ID.
   -F, --output string        Format output as: text, json. (default "text")
   -R, --repo OWNER/REPO      Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
-  -s, --status string        Update current status for the work item: to-do, in-progress, done, wont-do, duplicate
-  -t, --title string         Update title for work item
-  -w, --weight int           Update weight value for the work item
+      --startdate string     Update Start Date for a given work item.
+  -s, --status string        Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.
+  -t, --title string         Update title for work item.
+  -w, --weight int           Update weight value for the work item.
 ```
 
 ## Options inherited from parent commands
