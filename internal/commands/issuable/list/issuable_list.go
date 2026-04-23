@@ -161,13 +161,13 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 	issueListCmd.Flags().BoolVarP(&opts.All, "all", "A", false, fmt.Sprintf("Get all %ss.", issueType))
 	issueListCmd.Flags().BoolVarP(&opts.Closed, "closed", "c", false, fmt.Sprintf("Get only closed %ss.", issueType))
 	issueListCmd.Flags().BoolVarP(&opts.Confidential, "confidential", "C", false, fmt.Sprintf("Filter by confidential %ss.", issueType))
-	issueListCmd.Flags().StringVarP(&opts.OutputFormat, "output-format", "F", "details", "Options: 'details', 'ids', 'urls'.")
-	issueListCmd.Flags().StringVarP(&opts.Output, "output", "O", "text", "Options: 'text' or 'json'.")
+	issueListCmd.Flags().StringVarP(&opts.Output, "output", "F", "text", "Format output as: text, json, ids, urls.")
+	issueListCmd.Flags().StringVar(&opts.OutputFormat, "output-format", "details", "Format text output as: details, ids, urls.")
+	_ = issueListCmd.Flags().MarkDeprecated("output-format", "use --output with ids or urls instead.")
 	issueListCmd.Flags().Int64VarP(&opts.Page, "page", "p", 1, "Page number.")
 	issueListCmd.Flags().Int64VarP(&opts.PerPage, "per-page", "P", 30, "Number of items to list per page.")
 	issueListCmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repo argument is set.")
 	issueListCmd.Flags().IntVarP(&opts.Epic, "epic", "e", 0, "List issues belonging to a given epic (requires --group, no pagination support).")
-	issueListCmd.MarkFlagsMutuallyExclusive("output", "output-format")
 	issueListCmd.Flags().StringVar(&opts.OrderBy, "order", "created_at", fmt.Sprintf("Order %s by <field>. Order options: created_at, updated_at, priority, due_date, relative_position, label_priority, milestone_due, popularity, weight.", issueType))
 	issueListCmd.Flags().StringVarP(&opts.Sort, "sort", "s", "desc", "Sort direction for --order field: asc or desc.")
 
@@ -322,20 +322,23 @@ func listRun(opts *ListOptions) error {
 	title.ListActionType = opts.ListType
 	title.CurrentPageTotal = len(issues)
 
-	if opts.Output == "json" {
+	// --output-format is deprecated; migrate its value into --output if --output
+	// was not explicitly set to a non-default value.
+	if opts.OutputFormat != "details" && opts.Output == "text" {
+		opts.Output = opts.OutputFormat
+	}
+
+	switch opts.Output {
+	case "json":
 		issueListJSON, _ := json.Marshal(issues)
 		fmt.Fprintln(opts.IO.StdOut, string(issueListJSON))
 		return nil
-	}
-
-	if opts.OutputFormat == "ids" {
+	case "ids":
 		for _, i := range issues {
 			fmt.Fprintf(opts.IO.StdOut, "%d\n", i.IID)
 		}
 		return nil
-	}
-
-	if opts.OutputFormat == "urls" {
+	case "urls":
 		for _, i := range issues {
 			fmt.Fprintf(opts.IO.StdOut, "%s\n", i.WebURL)
 		}
