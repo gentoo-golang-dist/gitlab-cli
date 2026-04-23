@@ -36,7 +36,7 @@ glab mr merge
 ## Options
 
 ```plaintext
-      --auto-merge              Set auto-merge. (default true) (default true)
+      --auto-merge              Set auto-merge. (default true)
   -m, --message string          Custom merge commit message.
   -r, --rebase                  Rebase the commits onto the base branch. (default false)
   -d, --remove-source-branch    Remove source branch on merge. (default false)
