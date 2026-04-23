@@ -59,7 +59,7 @@ glab auth login --hostname gitlab.com --web --git-protocol ssh --container-regis
 # CI/CD setup: for most cases, prefer auto-login over manual login
 GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 
-# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a PAT
+# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a personal access token
 glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-protocol $CI_SERVER_PROTOCOL
 ```
 
@@ -72,7 +72,7 @@ glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-proto
   -g, --git-protocol string                 Git protocol: ssh, https, http
       --hostname string                     The hostname of the GitLab instance to authenticate with.
   -j, --job-token string                    CI job token.
-      --ssh-hostname string                 SSH hostname for instances with a different SSH endpoint. Port is not required; git uses the port from the remote URL directly.
+      --ssh-hostname string                 SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.
       --stdin                               Read token from standard input.
   -t, --token string                        Your GitLab access token.
       --use-keyring                         Store token in your operating system's keyring.

@@ -107,7 +107,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			# CI/CD setup: for most cases, prefer auto-login over manual login
 			GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 
-			# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a PAT
+			# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a personal access token
 			glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-protocol $CI_SERVER_PROTOCOL`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
@@ -181,7 +181,7 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts hostname or hostname:port. Use only when the API is served from a different host than the git remote.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
-	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. Port is not required; git uses the port from the remote URL directly.")
+	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.")
 	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
 
 	return cmd
