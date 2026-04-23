@@ -55,6 +55,8 @@ type options struct {
 
 	IsConfidential bool `json:"is_confidential,omitempty"`
 
+	Template string `json:"template,omitempty"`
+
 	noEditor    bool
 	needsPrompt bool
 	yes         bool
@@ -88,7 +90,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			glab issue new
 			glab issue create -m release-2.0.0 -t "we need this feature" --label important
 			glab issue new -t "Fix CVE-YYYY-XXXX" -l security --linked-mr 123
-			glab issue create -m release-1.0.1 -t "security fix" --label security --web --recover`),
+			glab issue create -m release-1.0.1 -t "security fix" --label security --web --recover
+			glab issue create -t "Bug Report" --template bug
+			glab issue create -t "Feature Request" --template feature_proposal.md --yes`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -105,12 +109,13 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			}
 			hasTitle := cmd.Flags().Changed("title")
 			hasDescription := cmd.Flags().Changed("description")
+			hasTemplate := cmd.Flags().Changed("template")
 
-			// disable interactive mode if title and description are explicitly defined
-			opts.needsPrompt = !(hasTitle && hasDescription)
+			// disable interactive mode if title and description (or template) are explicitly defined
+			opts.needsPrompt = !(hasTitle && (hasDescription || hasTemplate))
 
 			if opts.needsPrompt && !opts.io.IsInteractive() {
-				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' required for non-interactive mode.")}
+				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' (or '--template') required for non-interactive mode.")}
 			}
 
 			// Remove this once --yes does more than just skip the prompts that --web happen to skip
@@ -162,6 +167,8 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	issueCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the issue fails to be created. If the file exists, the options will be loaded from the recovery file. (EXPERIMENTAL)")
 	issueCreateCmd.Flags().Int64VarP(&opts.EpicID, "epic", "", 0, "ID of the epic to add the issue to.")
 	issueCreateCmd.Flags().StringVarP(&opts.DueDate, "due-date", "", "", "A date in 'YYYY-MM-DD' format.")
+	issueCreateCmd.Flags().StringVar(&opts.Template, "template", "", "Name of a template in '.gitlab/issue_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.")
+	issueCreateCmd.MarkFlagsMutuallyExclusive("template", "description")
 
 	return issueCreateCmd
 }
@@ -231,6 +238,17 @@ var createRun = func(ctx context.Context, opts *options) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if opts.Template != "" && opts.Description == "" {
+		content, err := cmdutils.LoadGitLabTemplate(cmdutils.IssueTemplate, opts.Template)
+		if err != nil {
+			return err
+		}
+		if content == "" {
+			return fmt.Errorf("template %q not found in .gitlab/issue_templates/", opts.Template)
+		}
+		opts.Description = content
 	}
 
 	if opts.needsPrompt {
