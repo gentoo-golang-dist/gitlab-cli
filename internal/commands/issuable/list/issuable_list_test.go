@@ -787,7 +787,6 @@ func TestIssueListJSON(t *testing.T) {
 }
 
 func TestIssueListMutualOutputFlags(t *testing.T) {
-
 	// --output and --output-format can be used together; --output takes precedence
 	// when it is set to a non-default value. Verify that no mutual-exclusivity error
 	// is returned when both flags are provided.
@@ -811,7 +810,6 @@ func TestIssueListMutualOutputFlags(t *testing.T) {
 		cmdtest.WithApiClient(apiClient),
 		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
 	)
-
 
 	// Both flags can be set simultaneously; --output=json takes precedence.
 	output, err := exec("--output json --output-format ids")
