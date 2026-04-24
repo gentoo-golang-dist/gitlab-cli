@@ -16,6 +16,8 @@ Update work items in a project or group. (EXPERIMENTAL)
 
 The command uses your repository context to detect scope automatically.
 
+Use %[1]s--group%[1]s to target a group or subgroup. %[1]s--group%[1]s and %[1]s--repo%[1]s are mutually exclusive.
+
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
@@ -28,29 +30,30 @@ glab work-items update <iid> [flags]
 ## Examples
 
 ```console
-# Update work item in current project
-glab work-items update 42 --description "test description update in issue"
+# Update a work item in current project
+glab work-items update 42 --description "this issue tracks a new feature"
 
-glab work-items update 40 --group MYGROUP --description "test description update in epic"
+# Update a work item in a group
+glab work-items update 40 --group MYGROUP --description "this epic tracks a new feature"
 
 ```
 
 ## Options
 
 ```plaintext
-  -a, --assignee strings     Update work item assignee with the supplied GitLab usernames.
+  -a, --assignee strings     Update the work item assignee with the supplied GitLab usernames.
   -c, --color string         Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.
-  -d, --description string   Update description for work item.
-      --duedate string       Update Due Date for a given work item.
+  -d, --description string   Update the description for the work item.
+      --duedate string       Update the due date for the work item.
   -g, --group string         Update work items for a group or subgroup.
       --health string        Update health status for the work item: on-track, needs-attention or at-risk.
-  -m, --milestone string     Update work item milestone with the title or ID.
+  -m, --milestone string     Update the work item milestone with the title or ID.
   -F, --output string        Format output as: text, json. (default "text")
   -R, --repo OWNER/REPO      Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
-      --startdate string     Update Start Date for a given work item.
-      --status string        Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.
-  -t, --title string         Update title for work item.
-  -w, --weight int           Update weight value for the work item.
+      --startdate string     Update the start date for the work item.
+      --status string        Update the current status for the work item: to-do, in-progress, done, wont-do, duplicate.
+  -t, --title string         Update the title for the work item.
+  -w, --weight int           Update the weight value for the work item.
 ```
 
 ## Options inherited from parent commands

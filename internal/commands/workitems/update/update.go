@@ -60,13 +60,17 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <iid> [flags]",
 		Short: "Update work items in a project or group. (EXPERIMENTAL)",
-		Long: heredoc.Doc(`The command uses your repository context to detect scope automatically.
+		Long: heredoc.Doc(`
+		The command uses your repository context to detect scope automatically.
+		
+		Use %[1]s--group%[1]s to target a group or subgroup. %[1]s--group%[1]s and %[1]s--repo%[1]s are mutually exclusive.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
-					# Update work item in current project
-					glab work-items update 42 --description "test description update in issue"
-
-					glab work-items update 40 --group MYGROUP --description "test description update in epic"
+					# Update a work item in current project
+					glab work-items update 42 --description "this issue tracks a new feature"
+					
+					# Update a work item in a group
+					glab work-items update 40 --group MYGROUP --description "this epic tracks a new feature"
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
@@ -94,16 +98,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	// Flags
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.group, "group", "g", "", "Update work items for a group or subgroup.")
-	fl.StringVarP(&opts.title, "title", "t", "", "Update title for work item.")
-	fl.StringVarP(&opts.description, "description", "d", "", "Update description for work item.")
-	fl.Int64VarP(&opts.weight, "weight", "w", 0, "Update weight value for the work item.")
+	fl.StringVarP(&opts.title, "title", "t", "", "Update the title for the work item.")
+	fl.StringVarP(&opts.description, "description", "d", "", "Update the description for the work item.")
+	fl.Int64VarP(&opts.weight, "weight", "w", 0, "Update the weight value for the work item.")
 	fl.Var(cmdutils.NewEnumValue([]string{"on-track", "needs-attention", "at-risk"}, "", &opts.healthStatus), "health", "Update health status for the work item: on-track, needs-attention or at-risk.")
-	fl.Var(cmdutils.NewEnumValue([]string{"to-do", "in-progress", "done", "wont-do", "duplicate"}, "", &opts.status), "status", "Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.")
+	fl.Var(cmdutils.NewEnumValue([]string{"to-do", "in-progress", "done", "wont-do", "duplicate"}, "", &opts.status), "status", "Update the current status for the work item: to-do, in-progress, done, wont-do, duplicate.")
 	fl.StringVarP(&opts.color, "color", "c", "", "Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.")
-	fl.StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update work item assignee with the supplied GitLab usernames.")
-	fl.StringVarP(&opts.milestone, "milestone", "m", "", "Update work item milestone with the title or ID.")
-	fl.StringVar(&opts.startDate, "startdate", "", "Update Start Date for a given work item.")
-	fl.StringVar(&opts.dueDate, "duedate", "", "Update Due Date for a given work item.")
+	fl.StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update the work item assignee with the supplied GitLab usernames.")
+	fl.StringVarP(&opts.milestone, "milestone", "m", "", "Update the work item milestone with the title or ID.")
+	fl.StringVar(&opts.startDate, "startdate", "", "Update the start date for the work item.")
+	fl.StringVar(&opts.dueDate, "duedate", "", "Update the due date for the work item.")
 
 	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
