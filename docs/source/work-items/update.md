@@ -48,7 +48,7 @@ glab work-items update 40 --group MYGROUP --description "test description update
   -F, --output string        Format output as: text, json. (default "text")
   -R, --repo OWNER/REPO      Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
       --startdate string     Update Start Date for a given work item.
-  -s, --status string        Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.
+      --status string        Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.
   -t, --title string         Update title for work item.
   -w, --weight int           Update weight value for the work item.
 ```

@@ -3,7 +3,6 @@ package update
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -82,10 +81,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			if err := opts.complete(cmd.Context(), cmd); err != nil {
 				return err
 			}
-			if err := opts.validate(); err != nil {
-				return err
-			}
-			return opts.run()
+
+			return opts.run(cmd)
 		},
 	}
 
@@ -100,8 +97,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.title, "title", "t", "", "Update title for work item.")
 	fl.StringVarP(&opts.description, "description", "d", "", "Update description for work item.")
 	fl.Int64VarP(&opts.weight, "weight", "w", 0, "Update weight value for the work item.")
-	fl.StringVar(&opts.healthStatus, "health", "", "Update health status for the work item: on-track, needs-attention or at-risk.")
-	fl.StringVarP(&opts.status, "status", "s", "", "Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.")
+	fl.Var(cmdutils.NewEnumValue([]string{"on-track", "needs-attention", "at-risk"}, "", &opts.healthStatus), "health", "Update health status for the work item: on-track, needs-attention or at-risk.")
+	fl.Var(cmdutils.NewEnumValue([]string{"to-do", "in-progress", "done", "wont-do", "duplicate"}, "", &opts.status), "status", "Update current status for the work item: to-do, in-progress, done, wont-do, duplicate.")
 	fl.StringVarP(&opts.color, "color", "c", "", "Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.")
 	fl.StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update work item assignee with the supplied GitLab usernames.")
 	fl.StringVarP(&opts.milestone, "milestone", "m", "", "Update work item milestone with the title or ID.")
@@ -133,25 +130,7 @@ func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error {
 	return nil
 }
 
-func (opts *options) validate() error {
-	validHealthStatuses := []string{"on-track", "needs-attention", "at-risk"}
-	if opts.healthStatus != "" && !slices.Contains(validHealthStatuses, opts.healthStatus) {
-		return cmdutils.FlagError{
-			Err: fmt.Errorf("--health must be one of: on-track, needs-attention, at-risk"),
-		}
-	}
-
-	validWIStatuses := []string{"to-do", "in-progress", "done", "wont-do", "duplicate"}
-	if opts.status != "" && !slices.Contains(validWIStatuses, opts.status) {
-		return cmdutils.FlagError{
-			Err: fmt.Errorf("--status must be one of: to-do, in-progress, done, wont-do, duplicate"),
-		}
-	}
-
-	return nil
-}
-
-func (opts *options) run() error {
+func (opts *options) run(cmd *cobra.Command) error {
 	client, err := opts.gitlabClient()
 	if err != nil {
 		return fmt.Errorf("failed to get GitLab client: %w", err)
@@ -224,7 +203,7 @@ func (opts *options) run() error {
 		}
 	}
 
-	if opts.weight != 0 {
+	if cmd.Flags().Changed("weight") {
 		updateOpts.Weight = new(opts.weight)
 	}
 

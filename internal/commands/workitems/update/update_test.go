@@ -1,3 +1,5 @@
+//go:build !integration
+
 package update
 
 import (
@@ -65,4 +67,43 @@ func TestWorkItemsUpdate(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestWorkItemsUpdate_FlagValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    string
+		wantErr string
+	}{
+		{
+			name:    "wrong value passed to --health",
+			args:    "1 --health bogus",
+			wantErr: "must be one of",
+		},
+		{
+			name:    "wrong vlaue passed to --status",
+			args:    "1 --status bogus",
+			wantErr: "must be one of",
+		},
+		{
+			name:    "invalid <iid> arg",
+			args:    "abc",
+			wantErr: "invalid work item ID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exec := cmdtest.SetupCmdForTest(
+				t,
+				NewCmd,
+				false,
+				cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
+			)
+
+			_, err := exec(tt.args)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
 }
