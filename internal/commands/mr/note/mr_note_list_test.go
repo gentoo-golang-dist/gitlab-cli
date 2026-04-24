@@ -19,18 +19,8 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func makeMRForList(t *testing.T, tc *gitlabtesting.TestClient) {
-	t.Helper()
-	tc.MockMergeRequests.EXPECT().
-		GetMergeRequest("OWNER/REPO", int64(1), gomock.Any()).
-		Return(&gitlab.MergeRequest{
-			BasicMergeRequest: gitlab.BasicMergeRequest{
-				ID:     1,
-				IID:    1,
-				WebURL: "https://gitlab.com/OWNER/REPO/merge_requests/1",
-			},
-		}, nil, nil)
-}
+// makeMRForList is an alias for mockMR1 kept for readability in this file.
+var makeMRForList = mockMR1
 
 func setupListCmd(t *testing.T, tc *gitlabtesting.TestClient) cmdtest.CmdExecFunc {
 	t.Helper()
