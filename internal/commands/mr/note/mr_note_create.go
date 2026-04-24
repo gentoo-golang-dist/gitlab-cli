@@ -158,7 +158,7 @@ func (o *createOptions) runCreate(ctx context.Context) error {
 		gitlab.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create discussion: %w", err)
 	}
 
 	if len(disc.Notes) == 0 {
