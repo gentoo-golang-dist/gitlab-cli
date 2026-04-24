@@ -75,7 +75,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	// enable -R flag fo repo override
+	// enable -R flag for repo override
 	cmdutils.EnableRepoOverride(cmd, f)
 
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
