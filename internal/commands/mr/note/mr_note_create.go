@@ -45,14 +45,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [<id> | <branch>]",
 		Short: "Create a comment or discussion on a merge request. (EXPERIMENTAL)",
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 			Add a comment to a merge request. The command creates the comment as a new
 			discussion thread.
 
-			Use --reply to add a note to an existing discussion thread instead of
+			Use %[1]s--reply%[1]s to add a note to an existing discussion thread instead of
 			starting a new one. The value can be a full discussion ID or a unique
 			prefix of at least 8 characters.
-		`) + text.ExperimentalString,
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
 			glab mr note create 123 -m "Looks good to me!"
@@ -69,7 +69,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			# Skip if already posted
 			glab mr note create 123 -m "LGTM" --unique
 
-			# Reply to an existing discussion (full or 8+ char prefix)
+			# Reply to an existing discussion thread
 			glab mr note create 123 --reply abc12345 -m "I agree!"
 		`),
 		Args: cobra.MaximumNArgs(1),
@@ -90,7 +90,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.message, "message", "m", "", "Comment or note message.")
 	fl.BoolVar(&opts.unique, "unique", false, "Don't create a note if a note with the same body already exists. Reads all MR comments first.")
-	fl.StringVar(&opts.reply, "reply", "", "Reply to an existing discussion by ID (full or 8+ character prefix).")
+	fl.StringVar(&opts.reply, "reply", "", "Reply to an existing discussion. Accepts a full discussion ID or a prefix of 8 or more characters.")
 
 	cmd.MarkFlagsMutuallyExclusive("reply", "unique")
 
