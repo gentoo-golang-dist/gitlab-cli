@@ -53,9 +53,9 @@ glab issue create -t "Feature Request" --template feature_proposal.md --yes
   -e, --time-estimate string   Set time estimate for the issue.
   -s, --time-spent string      Set time spent for the issue.
   -t, --title string           Issue title.
-      --web                    Continue issue creation with web interface.
+      --web                    Continue issue creation with web interface. (default false)
   -w, --weight int             Issue weight. Valid values are greater than or equal to 0.
-  -y, --yes                    Don't prompt for confirmation to submit the issue.
+  -y, --yes                    Don't prompt for confirmation to submit the issue. (default false)
 ```
 
 ## Options inherited from parent commands

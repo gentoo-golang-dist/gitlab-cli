@@ -38,12 +38,12 @@ glab mr merge
 ```plaintext
       --auto-merge              Set auto-merge. (default true)
   -m, --message string          Custom merge commit message.
-  -r, --rebase                  Rebase the commits onto the base branch.
-  -d, --remove-source-branch    Remove source branch on merge.
+  -r, --rebase                  Rebase the commits onto the base branch. (default false)
+  -d, --remove-source-branch    Remove source branch on merge. (default false)
       --sha string              Merge only if the HEAD of the source branch matches this SHA. Use to ensure that only reviewed commits are merged.
-  -s, --squash                  Squash commits on merge.
+  -s, --squash                  Squash commits on merge. (default false)
       --squash-message string   Custom squash commit message.
-  -y, --yes                     Skip submission confirmation prompt.
+  -y, --yes                     Skip submission confirmation prompt. (default false)
 ```
 
 ## Options inherited from parent commands

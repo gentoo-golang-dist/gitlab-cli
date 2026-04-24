@@ -37,7 +37,7 @@ glab mr rebase branch --skip-ci
 ## Options
 
 ```plaintext
-      --skip-ci   Rebase merge request while skipping CI/CD pipeline.
+      --skip-ci   Rebase merge request while skipping CI/CD pipeline. (default false)
 ```
 
 ## Options inherited from parent commands

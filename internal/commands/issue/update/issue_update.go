@@ -200,13 +200,13 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	issueUpdateCmd.Flags().StringP("title", "t", "", "Title of issue.")
-	issueUpdateCmd.Flags().BoolP("lock-discussion", "", false, "Lock discussion on issue.")
-	issueUpdateCmd.Flags().BoolP("unlock-discussion", "", false, "Unlock discussion on issue.")
+	issueUpdateCmd.Flags().BoolP("lock-discussion", "", false, "Lock discussion on issue. (default false)")
+	issueUpdateCmd.Flags().BoolP("unlock-discussion", "", false, "Unlock discussion on issue. (default false)")
 	issueUpdateCmd.Flags().StringP("description", "d", "", "Issue description. Set to \"-\" to open an editor.")
 	issueUpdateCmd.Flags().StringSliceP("label", "l", []string{}, "Add labels.")
 	issueUpdateCmd.Flags().StringSliceP("unlabel", "u", []string{}, "Remove labels.")
-	issueUpdateCmd.Flags().BoolP("public", "p", false, "Make issue public.")
-	issueUpdateCmd.Flags().BoolP("confidential", "c", false, "Make issue confidential.")
+	issueUpdateCmd.Flags().BoolP("public", "p", false, "Make issue public. (default false)")
+	issueUpdateCmd.Flags().BoolP("confidential", "c", false, "Make issue confidential. (default false)")
 	issueUpdateCmd.Flags().StringP("milestone", "m", "", "Title of the milestone to assign Set to \"\" or 0 to unassign.")
 	issueUpdateCmd.Flags().
 		StringSliceP("assignee", "a", []string{}, "Assign users by username. Prefix with '!' or '-' to remove from existing assignees, or '+' to add new. Otherwise, replace existing assignees with these users. Multiple usernames can be comma-separated or specified by repeating the flag.")

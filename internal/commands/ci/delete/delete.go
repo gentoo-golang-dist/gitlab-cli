@@ -110,11 +110,11 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 }
 
 func SetupCommandFlags(flags *pflag.FlagSet) {
-	flags.BoolP(FlagDryRun, "", false, "Simulate process, but do not delete anything.")
+	flags.BoolP(FlagDryRun, "", false, "Simulate process, but do not delete anything. (default false)")
 	flags.StringP(FlagStatus, "s", "", fmt.Sprintf("Delete pipelines by status: %s.", strings.Join(pipelineStatuses, ", ")))
 	flags.String(FlagSource, "", fmt.Sprintf("Filter pipelines by source: %s.", strings.Join(pipelineSources, ", ")))
 	flags.Duration(FlagOlderThan, 0, "Filter pipelines older than the given duration. Valid units: h, m, s, ms, us, ns.")
-	flags.BoolP(FlagPaginate, "", false, "Make additional HTTP requests to fetch all pages of projects before cloning. Respects '--per-page'.")
+	flags.BoolP(FlagPaginate, "", false, "Make additional HTTP requests to fetch all pages of projects before cloning. Respects '--per-page'. (default false)")
 	flags.IntP(FlagPage, "", 0, "Page number.")
 	flags.IntP(FlagPerPage, "", 0, "Number of items to list per page.")
 }

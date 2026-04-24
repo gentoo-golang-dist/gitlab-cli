@@ -142,7 +142,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	pipelineListCmd.Flags().String("scope", "", "Return only pipelines with the given scope: {running|pending|finished|branches|tags}")
 	pipelineListCmd.Flags().String("source", "", "Return only pipelines triggered via the given source. See https://docs.gitlab.com/ci/jobs/job_rules/#ci_pipeline_source-predefined-variable for full list. Commonly used options: {merge_request_event|parent_pipeline|pipeline|push|trigger}")
 	pipelineListCmd.Flags().String("sha", "", "Return only pipelines with the given SHA.")
-	pipelineListCmd.Flags().BoolP("yaml-errors", "y", false, "Return only pipelines with invalid configurations.")
+	pipelineListCmd.Flags().BoolP("yaml-errors", "y", false, "Return only pipelines with invalid configurations. (default false)")
 	pipelineListCmd.Flags().StringP("name", "n", "", "Return only pipelines with the given name.")
 	pipelineListCmd.Flags().StringP("username", "u", "", "Return only pipelines triggered by the given username.")
 	pipelineListCmd.Flags().StringP("updated-before", "b", "", "Return only pipelines updated before the specified date. Expected in ISO 8601 format (2019-03-15T08:00:00Z).")

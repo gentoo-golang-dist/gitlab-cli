@@ -39,7 +39,7 @@ glab incident view https://gitlab.com/NAMESPACE/REPO/-/issues/incident/123
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number. (default 1)
   -P, --per-page int    Number of items to list per page. (default 20)
-  -s, --system-logs     Show system activities and logs.
+  -s, --system-logs     Show system activities and logs. (default false)
   -w, --web             Open incident in a browser. Uses the default browser, or the browser specified in the $BROWSER variable.
 ```
 
