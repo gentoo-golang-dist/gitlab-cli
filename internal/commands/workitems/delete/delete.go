@@ -1,8 +1,6 @@
 package delete
 
-
 import (
-	"context"
 	"fmt"
 	"strconv"
 
@@ -11,7 +9,6 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
-	a "gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/api"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/utils"
@@ -24,14 +21,14 @@ import (
 
 type options struct {
 	// Dependencies
-	io *iostreams.IOStreams
-	baseRepo func() (glrepo.Interface, error)
+	io           *iostreams.IOStreams
+	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
-	config func() config.Config
+	config       func() config.Config
 
 	// Flags
 	group string
-	iid int64
+	iid   int64
 
 	// Internal state
 	scope *api.ScopeInfo
@@ -42,14 +39,14 @@ type options struct {
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
-		io: f.IO(),
-		baseRepo: f.BaseRepo,
+		io:           f.IO(),
+		baseRepo:     f.BaseRepo,
 		gitlabClient: f.GitLabClient,
-		config: f.Config,
+		config:       f.Config,
 	}
 
 	cmd := &cobra.Command{
-		Use: "delete <iid>",
+		Use:   "delete <iid>",
 		Short: "Delete a given work item in a project or group. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`The command uses your repository context to detect scope automatically.
 		`) + text.ExperimentalString,
@@ -70,7 +67,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("invalid work item ID: %w", err)
 			}
 			opts.iid = iid
-			if err := opts.complete(cmd.Context(), cmd); err != nil {
+			if err := opts.complete(cmd); err != nil {
 				return err
 			}
 
@@ -92,6 +89,39 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error
+func (opts *options) complete(cmd *cobra.Command) error {
+	group, err := cmdutils.GroupOverride(cmd)
+	if err != nil {
+		return err
+	}
+	opts.group = group
 
-func (opts *options) run() error
+	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
+	if err != nil {
+		return err
+	}
+	opts.scope = scope
+	return nil
+}
+
+func (opts *options) run() error {
+	client, err := opts.gitlabClient()
+	if err != nil {
+		return fmt.Errorf("failed to get GitLab client: %w", err)
+	}
+
+	fmt.Fprintln(opts.io.StdOut, "- Deleting work item in", opts.scope.Path)
+
+	_, err = client.WorkItems.DeleteWorkItem(opts.scope.Path, opts.iid)
+	if err != nil {
+		return err
+	}
+
+	if opts.io.IsaTTY {
+		fmt.Fprintf(opts.io.StdOut, "Successfully deleted %d\n", opts.iid)
+	} else {
+		fmt.Fprintln(opts.io.StdOut, opts.iid)
+	}
+
+	return nil
+}
