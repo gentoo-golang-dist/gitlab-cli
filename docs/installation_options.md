@@ -210,6 +210,8 @@ example:
     - glab --version
 ```
 
-## Completions
+## Shell completions
 
-Once `glab` is installed, if you find that you are using a shell not covered by [`glab completion`](./source/completion/_index.md), you may consider using [Carapace-bin](https://github.com/carapace-sh/carapace-bin). Carapace provides completions for glab (as well as other CLI tools) in multiple shells. Follow the provided steps to install and configure Carapace-bin for completions in a shell unsupported by `glab`.
+If your shell is not supported by [`glab completion`](./source/completion/_index.md), you can
+use [Carapace-bin](https://github.com/carapace-sh/carapace-bin) to get completions for `glab`
+and other CLI tools. To set up completions for your shell, follow the [Carapace-bin installation instructions](https://carapace-sh.github.io/carapace-bin/install.html).
