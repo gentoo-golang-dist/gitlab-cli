@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"charm.land/huh/v2"
-	"github.com/pkg/errors"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
@@ -148,42 +147,46 @@ func DisplaySchedules(i *iostreams.IOStreams, s []*gitlab.PipelineSchedule, proj
 }
 
 func DisplayMultiplePipelines(s *iostreams.IOStreams, p []*gitlab.PipelineInfo, projectID string) string {
+	if len(p) == 0 {
+		return "No Pipelines available on " + projectID
+	}
+
 	c := s.Color()
 
 	table := tableprinter.NewTablePrinter()
+	table.AddRow("State", "IID", "Ref", "Created")
 
-	if len(p) > 0 {
-		table.AddRow("State", "IID", "Ref", "Created")
-		for _, pipeline := range p {
-			duration := ""
-
-			if pipeline.CreatedAt != nil {
-				duration = c.Magenta("(" + utils.TimeToPrettyTimeAgo(*pipeline.CreatedAt) + ")")
-			}
-
-			var pipeState string
-			switch pipeline.Status {
-			case "success":
-				pipeState = c.Green(fmt.Sprintf("(%s) • #%s", pipeline.Status, makeHyperlink(s, pipeline)))
-			case "failed":
-				pipeState = c.Red(fmt.Sprintf("(%s) • #%s", pipeline.Status, makeHyperlink(s, pipeline)))
-			default:
-				pipeState = c.Gray(fmt.Sprintf("(%s) • #%s", pipeline.Status, makeHyperlink(s, pipeline)))
-			}
-
-			table.AddRow(pipeState, fmt.Sprintf("(#%d)", pipeline.IID), pipeline.Ref, duration)
+	for _, pipeline := range p {
+		duration := ""
+		if pipeline.CreatedAt != nil {
+			duration = c.Magenta("(" + utils.TimeToPrettyTimeAgo(*pipeline.CreatedAt) + ")")
 		}
 
-		return table.Render()
+		pipeState := fmt.Sprintf("(%s) • #%s", pipeline.Status, makeHyperlink(s, pipeline))
+		switch pipeline.Status {
+		case "running":
+			pipeState = c.Blue(pipeState)
+		case "success":
+			pipeState = c.Green(pipeState)
+		case "failed":
+			pipeState = c.Red(pipeState)
+		default:
+			pipeState = c.Gray(pipeState)
+		}
+
+		table.AddRow(pipeState, fmt.Sprintf("(#%d)", pipeline.IID), pipeline.Ref, duration)
 	}
 
-	return "No Pipelines available on " + projectID
+	return table.Render()
 }
 
 func RunTraceSha(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid any, sha, name string) error {
 	job, err := api.PipelineJobWithSha(apiClient, pid, sha, name)
-	if err != nil || job == nil {
-		return errors.Wrap(err, "failed to find job")
+	if err != nil {
+		return fmt.Errorf("failed to find job: %w", err)
+	}
+	if job == nil {
+		return fmt.Errorf("failed to find job: no matching job named %q for this pipeline", name)
 	}
 	return runTrace(ctx, apiClient, w, pid, job.ID, 3*time.Second)
 }
@@ -203,7 +206,7 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 		}
 		job, _, err := apiClient.Jobs.GetJob(pid, jobId)
 		if err != nil {
-			return errors.Wrap(err, "failed to find job")
+			return fmt.Errorf("failed to find job: %w", err)
 		}
 		switch job.Status {
 		case "pending":
@@ -219,8 +222,11 @@ func runTrace(ctx context.Context, apiClient *gitlab.Client, w io.Writer, pid an
 			fmt.Fprintf(w, "Showing logs for %s job #%d.\n", job.Name, job.ID)
 		})
 		trace, _, err := apiClient.Jobs.GetTraceFile(pid, jobId)
-		if err != nil || trace == nil {
-			return errors.Wrap(err, "failed to find job")
+		if err != nil {
+			return fmt.Errorf("failed to find job: %w", err)
+		}
+		if trace == nil {
+			return fmt.Errorf("failed to find job: trace response was empty for job %d", jobId)
 		}
 		_, _ = io.CopyN(io.Discard, trace, offset)
 		lenT, err := io.Copy(w, trace)

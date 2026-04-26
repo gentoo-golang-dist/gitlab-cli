@@ -35,6 +35,7 @@ import (
 	runnerCmd "gitlab.com/gitlab-org/cli/internal/commands/runner"
 	runnerControllerCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
+	searchCmd "gitlab.com/gitlab-org/cli/internal/commands/search"
 	securefileCmd "gitlab.com/gitlab-org/cli/internal/commands/securefile"
 	snippetCmd "gitlab.com/gitlab-org/cli/internal/commands/snippet"
 	sshCmd "gitlab.com/gitlab-org/cli/internal/commands/ssh-key"
@@ -168,12 +169,13 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
 	rootCmd.AddCommand(runnerCmd.NewCmdRunner(f))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
+	rootCmd.AddCommand(searchCmd.NewCmd(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
 	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
 	rootCmd.AddCommand(stackCmd.NewCmdStack(f))
-	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
 	rootCmd.AddCommand(todoCmd.NewCmd(f))
+	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
 	rootCmd.AddCommand(userCmd.NewCmdUser(f))
 	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 	rootCmd.AddCommand(runnerControllerCmd.NewCmd(f))
@@ -183,6 +185,6 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	// Add global repo override flag but keep it hidden
 	cmdutils.AddGlobalRepoOverride(rootCmd, f)
 
-	rootCmd.Flags().BoolP("version", "v", false, "show glab version information")
+	rootCmd.Flags().BoolP("version", "v", false, "Show glab version information.")
 	return rootCmd
 }

@@ -41,6 +41,7 @@ type options struct {
 	Milestone             int64    `json:"milestone,omitempty"`
 	MilestoneFlag         string   `json:"milestone_flag,omitempty"`
 	MRCreateTargetProject string   `json:"mr_create_target_project,omitempty"`
+	Template              string   `json:"template,omitempty"`
 
 	RelatedIssue    string `json:"related_issue,omitempty"`
 	CopyIssueLabels bool   `json:"copy_issue_labels,omitempty"`
@@ -104,7 +105,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			glab mr create -a username -t "fix annoying bug"
 			glab mr create -f --draft --label RFC
 			glab mr create --fill --web
-			glab mr create --fill --fill-commit-body --yes`),
+			glab mr create --fill --fill-commit-body --yes
+			glab mr create -t "Fix login bug" --template bug_fix
+			glab mr create -t "Security patch" --template security_fix.md --yes`),
 		Args: cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			opts.headRepo = ResolvedHeadRepo(cmd.Context(), f)
@@ -170,15 +173,21 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	_ = mrCreateCmd.Flags().MarkHidden("target-project")
 	_ = mrCreateCmd.Flags().MarkDeprecated("target-project", "Use --repo instead.")
 
+	mrCreateCmd.Flags().StringVar(&opts.Template, "template", "", "Name of a template in '.gitlab/merge_request_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "description")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "fill")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "related-issue")
+
 	return mrCreateCmd
 }
 
 func (o *options) complete(cmd *cobra.Command) {
 	hasTitle := cmd.Flags().Changed("title")
 	hasDescription := cmd.Flags().Changed("description")
+	hasTemplate := cmd.Flags().Changed("template")
 
-	// disable interactive mode if title and description are explicitly defined
-	o.needsPrompt = !(hasTitle && hasDescription)
+	// disable interactive mode if title and description (or template) are explicitly defined
+	o.needsPrompt = !(hasTitle && (hasDescription || hasTemplate))
 
 	// Handle boolean flags: only set if explicitly provided by user
 	// This allows users to override project defaults or use them when omitted
@@ -456,6 +465,17 @@ func (o *options) run(ctx context.Context) error {
 		})
 		if err != nil {
 			return err
+		}
+
+		if o.Template != "" && o.Description == "" {
+			content, err := cmdutils.LoadGitLabTemplate(cmdutils.MergeRequestTemplate, o.Template)
+			if err != nil {
+				return err
+			}
+			if content == "" {
+				return fmt.Errorf("template %q not found in .gitlab/merge_request_templates/", o.Template)
+			}
+			o.Description = content
 		}
 
 		if o.Autofill {

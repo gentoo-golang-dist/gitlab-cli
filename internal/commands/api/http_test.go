@@ -4,6 +4,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -288,6 +289,26 @@ hosts:
 			}
 		})
 	}
+}
+
+func Test_httpRequest_invalidURLReturnsError(t *testing.T) {
+	defer config.StubConfig(`---
+hosts:
+  gitlab.com:
+    username: monalisa
+    token: OTOKEN
+`, "")()
+	test.ClearEnvironmentVariables(t)
+
+	client := &http.Client{}
+	client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return nil, fmt.Errorf("HTTP request made with invalid URL")
+	})
+
+	httpClient := cmdtest.NewTestApiClient(t, client, "OTOKEN", "gitlab.com")
+	_, err := httpRequest(t.Context(), httpClient, http.MethodGet, "http://host:abc", nil, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid request URL")
 }
 
 func Test_addQuery(t *testing.T) {

@@ -45,22 +45,19 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "rotate <token-name|token-id>",
-		Short:   "Rotate user, group, or project access tokens",
-		Aliases: []string{"rotate", "rot"},
+		Short:   "Rotate user, group, or project access tokens.",
+		Aliases: []string{"rot"},
 		Args:    cobra.RangeArgs(1, 1),
-		Long: heredoc.Doc(`
-			Rotate user, group, or project access token, then print the new token on stdout. If multiple tokens with
-			the same name exist, you can specify the ID of the token.
+		Long: heredoc.Docf(`
+			If multiple tokens share the same name, specify the token ID to select the correct one.
 
-			The expiration date of the token will be calculated by adding the duration (default 30 days) to the
-			current date, with expiration occurring at midnight UTC on the calculated date. Alternatively you can
-			specify a different duration using days (d), weeks (w), or hours (h), or provide an explicit end date.
+			The token expires at 00:00 UTC on a date calculated by adding the duration to today's date.
+			The default duration is 30 days. You can specify a different duration in days (%[1]sd%[1]s),
+			weeks (%[1]sw%[1]s), or hours (%[1]sh%[1]s).
+			The %[1]s--duration%[1]s and %[1]s--expires-at%[1]s flags are mutually exclusive.
 
-			The output format can be either "JSON" or "text". The JSON output will show the meta information of the
-			rotated token.
-
-			Administrators can rotate personal access tokens belonging to other users.
-		`),
+			Administrators can rotate personal access tokens that belong to other users.
+		`, "`"),
 		Example: heredoc.Doc(`
 		# Rotate project access token of current project (default 30 days)
 		glab token rotate my-project-token
@@ -96,7 +93,7 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.group, "group", "g", "", "Rotate group access token. Ignored if a user or repository argument is set.")
 	fl.StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
-	fl.VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at midnight UTC on the calculated date.")
+	fl.VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at 00:00 UTC on the calculated date.")
 	fl.VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
 	cmd.MarkFlagsMutuallyExclusive("duration", "expires-at")
