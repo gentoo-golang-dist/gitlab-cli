@@ -4,7 +4,6 @@ import (
 	"image/color"
 	"io"
 	"os"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-colorable"
@@ -108,18 +107,4 @@ func detectIsColorEnabled() bool {
 
 	// If NO_COLOR doesn't exist, color is enabled by default
 	return true
-}
-
-func isTrueColorSupported() bool {
-	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
-
-	return strings.Contains(term, "24bit") || strings.Contains(term, "truecolor") ||
-		strings.Contains(colorterm, "24bit") || strings.Contains(colorterm, "truecolor")
-}
-
-func is256ColorSupported() bool {
-	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
-
-	return strings.Contains(term, "256") || strings.Contains(colorterm, "256") ||
-		isTrueColorSupported()
 }
