@@ -53,7 +53,7 @@ func (s *IOStreams) Color() *ColorPalette {
 		Yellow:  makeColorFunc(isColorfulOutput, nil, "yellow"), // not in theme, falls back to ANSI
 		Blue:    makeColorFunc(isColorfulOutput, glc.Blue, "blue"),
 		Green:   makeColorFunc(isColorfulOutput, glc.Green, "green"),
-		Gray:    makeColorFunc(isColorfulOutput, nil, "black+h"),
+		Gray:    makeColorFunc(isColorfulOutput, glc.Subtle, "black+h"),
 		Bold:    makeColorFunc(isColorfulOutput, nil, "default+b"),
 	}
 }
