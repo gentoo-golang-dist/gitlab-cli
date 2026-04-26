@@ -12,17 +12,17 @@ import (
 // These colors are designed for accessibility across different terminal backgrounds.
 type GitLabColors struct {
 	// Brand colors
-	Orange color.Color // GitLab brand orange (#FC6D26)
-	Purple color.Color // GitLab brand purple (#7759C2 light, #A989F5 dark)
+	Orange color.Color // GitLab brand orange ( #FC6D26)
+	Purple color.Color // GitLab brand purple ( #7759C2 light, #A989F5 dark)
 
 	// Semantic colors
-	Blue  color.Color // Blue for current/active states (#1068BF light, #4285F4 dark)
-	Green color.Color // Green for success (#217645 light, #34D058 dark)
-	Red   color.Color // Red for errors (#C91C00 light, #F97583 dark)
+	Blue  color.Color // Blue for current/active states ( #1068BF light, #4285F4 dark)
+	Green color.Color // Green for success ( #217645 light, #34D058 dark)
+	Red   color.Color // Red for errors ( #C91C00 light, #F97583 dark)
 
 	// Neutral colors
-	Text   color.Color // High-contrast text (#171321 light, #FAFAFA dark)
-	Subtle color.Color // Subtle elements (#6B6B73 light, #B0B0B0 dark)
+	Text   color.Color // High-contrast text ( #171321 light, #FAFAFA dark)
+	Subtle color.Color // Subtle elements ( #6B6B73 light, #B0B0B0 dark)
 }
 
 // NewGitLabColors creates GitLab brand colors using lightDarkFunc for accessibility.

@@ -95,6 +95,7 @@ func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName strin
 //
 // This allows users to disable color globally with NO_COLOR while still providing an escape hatch
 // via COLOR_ENABLED for specific use cases.
+// TODO: termenv and lipgloss (via https://github.com/charmbracelet/colorprofile) support NO_COLOR, use them
 func detectIsColorEnabled() bool {
 	// Check if NO_COLOR environment variable exists (any value disables color)
 	_, noColorVarExists := os.LookupEnv("NO_COLOR")
