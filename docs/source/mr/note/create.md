@@ -21,6 +21,11 @@ Use `--reply` to add a note to an existing discussion thread instead of
 starting a new one. The value can be a full discussion ID or a unique
 prefix of at least 8 characters.
 
+Use `--file` to place a diff comment on a specific file in the latest
+MR diff version. Combine with `--line` (new side) or `--old-line`
+(old/removed side) to target a specific line. Omit both for a
+file-level comment.
+
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
@@ -51,12 +56,27 @@ glab mr note create 123 -m "LGTM" --unique
 # Reply to an existing discussion thread
 glab mr note create 123 --reply abc12345 -m "I agree!"
 
+# Add a diff comment on line 42 of main.go
+glab mr note create 123 --file main.go --line 42 -m "Needs refactoring"
+
+# Add a diff comment on lines 10-15 (multiline range)
+glab mr note create 123 --file main.go --line 10:15 -m "Extract this block"
+
+# Add a diff comment on a removed line (old side)
+glab mr note create 123 --file main.go --old-line 7 -m "Why was this removed?"
+
+# Add a file-level diff comment (no line specified)
+glab mr note create 123 --file main.go -m "General comment on this file"
+
 ```
 
 ## Options
 
 ```plaintext
+      --file string      File path for a diff comment (targets the latest MR diff version).
+      --line string      Line in the new version: a single number or a range N:M.
   -m, --message string   Comment or note message.
+      --old-line int     Line in the old version (for commenting on removed lines).
       --reply string     Reply to an existing discussion. Accepts a full discussion ID or a prefix of 8 or more characters.
       --unique           Don't create a note if a note with the same body already exists. Reads all MR comments first.
 ```
