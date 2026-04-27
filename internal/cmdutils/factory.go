@@ -35,6 +35,7 @@ type Factory interface {
 	DefaultHostname() string
 	BuildInfo() api.BuildInfo
 	Executor() Executor
+	GitRunner() git.GitRunner
 }
 
 type DefaultFactory struct {
@@ -225,4 +226,8 @@ func (f *DefaultFactory) Executor() Executor {
 	return &factoryExecutor{
 		io: f.io,
 	}
+}
+
+func (f *DefaultFactory) GitRunner() git.GitRunner {
+	return git.StandardGitCommand{}
 }
