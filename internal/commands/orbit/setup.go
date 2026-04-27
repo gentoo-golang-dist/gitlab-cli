@@ -1,6 +1,7 @@
 package orbit
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -104,7 +105,7 @@ func newSetupCmd(f cmdutils.Factory) *cobra.Command {
 			}
 
 			if !opts.mcpOnly && skillDir != "" {
-				if err := fetchSkill(httpClient, baseURL, skillDir); err != nil {
+				if err := fetchSkill(cmd.Context(), httpClient, baseURL, skillDir); err != nil {
 					return err
 				}
 				fmt.Fprintf(streams.StdOut, "%s Skill installed: %s\n", cs.GreenCheck(), skillDir)
@@ -123,7 +124,7 @@ func newSetupCmd(f cmdutils.Factory) *cobra.Command {
 			}
 
 			fmt.Fprintln(streams.StdOut)
-			verifyOrbitAPI(httpClient, baseURL, streams)
+			verifyOrbitAPI(cmd.Context(), httpClient, baseURL, streams)
 			fmt.Fprintf(streams.StdOut, "\nOrbit is ready. Ask your agent: \"Check the Orbit API status\"\n")
 
 			return nil
@@ -190,7 +191,7 @@ func mcpConfigFor(agent string) string {
 	}
 }
 
-func fetchSkill(client *http.Client, baseURL, skillDir string) error {
+func fetchSkill(ctx context.Context, client *http.Client, baseURL, skillDir string) error {
 	if err := os.MkdirAll(filepath.Join(skillDir, "references"), 0755); err != nil {
 		return err
 	}
@@ -199,34 +200,45 @@ func fetchSkill(client *http.Client, baseURL, skillDir string) error {
 	}
 
 	for _, file := range skillFiles {
-		encoded := url.PathEscape(file)
-		rawURL := fmt.Sprintf("%sprojects/%s/repository/files/%s/raw?ref=%s", baseURL, skillRepo, encoded, skillRef)
-
-		resp, err := client.Get(rawURL) //nolint:noctx
-		if err != nil {
-			return fmt.Errorf("failed to fetch %s: %w", file, err)
+		if err := fetchSkillFile(ctx, client, baseURL, skillDir, file); err != nil {
+			return err
 		}
-		defer resp.Body.Close() //nolint:errcheck
+	}
 
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to fetch %s: HTTP %d - check glab auth and network", file, resp.StatusCode)
-		}
+	return nil
+}
 
-		relPath := strings.TrimPrefix(file, "skills/orbit/")
-		dest := filepath.Join(skillDir, relPath)
+func fetchSkillFile(ctx context.Context, client *http.Client, baseURL, skillDir, file string) error {
+	encoded := url.PathEscape(file)
+	rawURL := fmt.Sprintf("%sprojects/%s/repository/files/%s/raw?ref=%s", baseURL, skillRepo, encoded, skillRef)
 
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", file, err)
-		}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to build request for %s: %w", file, err)
+	}
 
-		if err := os.WriteFile(dest, data, 0644); err != nil { //nolint:gosec
-			return fmt.Errorf("failed to write %s: %w", dest, err)
-		}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to fetch %s: %w", file, err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
 
-		if strings.HasSuffix(file, "orbit-query") {
-			_ = os.Chmod(dest, 0755) //nolint:gosec
-		}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch %s: HTTP %d - check glab auth and network", file, resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", file, err)
+	}
+
+	dest := filepath.Join(skillDir, strings.TrimPrefix(file, "skills/orbit/"))
+	if err := os.WriteFile(dest, data, 0644); err != nil { //nolint:gosec
+		return fmt.Errorf("failed to write %s: %w", dest, err)
+	}
+
+	if strings.HasSuffix(file, "orbit-query") {
+		_ = os.Chmod(dest, 0755) //nolint:gosec
 	}
 
 	return nil
@@ -238,7 +250,9 @@ func writeMCPConfig(agent, configFile, instanceURL string) error {
 	data, _ := os.ReadFile(configFile)
 	config := map[string]interface{}{}
 	if len(data) > 0 {
-		_ = json.Unmarshal(data, &config)
+		if err := json.Unmarshal(data, &config); err != nil {
+			return fmt.Errorf("existing config at %s is not valid JSON: %w", configFile, err)
+		}
 	}
 
 	switch agent {
@@ -279,11 +293,17 @@ func writeMCPConfig(agent, configFile, instanceURL string) error {
 	return os.WriteFile(configFile, out, 0644) //nolint:gosec
 }
 
-func verifyOrbitAPI(client *http.Client, baseURL string, streams *iostreams.IOStreams) {
+func verifyOrbitAPI(ctx context.Context, client *http.Client, baseURL string, streams *iostreams.IOStreams) {
 	cs := streams.Color()
 	statusURL := baseURL + "orbit/status"
 
-	resp, err := client.Get(statusURL) //nolint:noctx
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil)
+	if err != nil {
+		fmt.Fprintf(streams.StdOut, "%s Could not build request: %v\n", cs.WarnIcon(), err)
+		return
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Fprintf(streams.StdOut, "%s Could not reach Orbit API: %v\n", cs.WarnIcon(), err)
 		return
