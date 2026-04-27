@@ -30,6 +30,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	orbitCmd.AddCommand(newServerCmd(f))
 	orbitCmd.AddCommand(newRemoveCmd(f))
 	orbitCmd.AddCommand(newCleanCmd(f))
+	orbitCmd.AddCommand(newSetupCmd(f))
 
 	return orbitCmd
 }
