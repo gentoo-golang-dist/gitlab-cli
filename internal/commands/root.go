@@ -30,6 +30,7 @@ import (
 	milestoneCmd "gitlab.com/gitlab-org/cli/internal/commands/milestone"
 	mrCmd "gitlab.com/gitlab-org/cli/internal/commands/mr"
 	opentofuCmd "gitlab.com/gitlab-org/cli/internal/commands/opentofu"
+	orbitCmd "gitlab.com/gitlab-org/cli/internal/commands/orbit"
 	projectCmd "gitlab.com/gitlab-org/cli/internal/commands/project"
 	releaseCmd "gitlab.com/gitlab-org/cli/internal/commands/release"
 	runnerCmd "gitlab.com/gitlab-org/cli/internal/commands/runner"
@@ -153,6 +154,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(clusterCmd.NewCmdCluster(f))
 	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
 	rootCmd.AddCommand(duoCmd.NewCmd(f))
+	rootCmd.AddCommand(orbitCmd.NewCmd(f))
 	rootCmd.AddCommand(gpgCmd.NewCmdGPGKey(f))
 	rootCmd.AddCommand(incidentCmd.NewCmdIncident(f))
 	rootCmd.AddCommand(issueCmd.NewCmdIssue(f))
