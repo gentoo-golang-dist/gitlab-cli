@@ -27,21 +27,45 @@ type GitRunner interface {
 	Git(args ...string) (string, error)
 }
 
-type StandardGitCommand struct{}
+// CommandRunner executes a named binary with the given args and environment,
+// returning its stdout output. This abstraction allows StandardGitCommand to
+// be decoupled from the global run.PrepareCmd.
+type CommandRunner func(name string, args []string, env []string) (string, error)
+
+// DefaultCommandRunner returns a CommandRunner that uses the legacy
+// run.PrepareCmd path. Use this when no Executor is available (e.g. tests
+// that create StandardGitCommand directly).
+func DefaultCommandRunner() CommandRunner {
+	return func(name string, args []string, env []string) (string, error) {
+		cmd := GitCommand(args...)
+		cmd.Env = env
+		output, err := run.PrepareCmd(cmd).Output()
+		if err != nil {
+			return "", err
+		}
+		return string(output), nil
+	}
+}
+
+type StandardGitCommand struct {
+	runner CommandRunner
+}
+
+// NewGitCommand creates a StandardGitCommand backed by the given CommandRunner.
+func NewGitCommand(runner CommandRunner) StandardGitCommand {
+	return StandardGitCommand{runner: runner}
+}
 
 func (gitc StandardGitCommand) Git(args ...string) (string, error) {
-	cmd := GitCommand(args...)
-
 	// Ensure output from git is in English for string matching
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "LC_ALL=C")
+	env := append(os.Environ(), "LC_ALL=C")
 
-	output, err := run.PrepareCmd(cmd).Output()
-	if err != nil {
-		return "", err
+	runner := gitc.runner
+	if runner == nil {
+		runner = DefaultCommandRunner()
 	}
 
-	return string(output), nil
+	return runner("git", args, env)
 }
 
 func SetLocalConfig(key, value string) error {
