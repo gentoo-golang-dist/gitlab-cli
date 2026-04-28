@@ -100,11 +100,7 @@ func SearchConfigFile() (string, error) {
 // checkForDuplicateConfigs warns if multiple config files exist across different locations.
 // Since we don't support config merging (yet), only the first file found is used, which can
 // be confusing if users have configs in multiple locations.
-func checkForDuplicateConfigs() {
-	checkForDuplicateConfigsTo(os.Stderr)
-}
-
-func checkForDuplicateConfigsTo(out io.Writer) {
+func checkForDuplicateConfigs(out io.Writer) {
 	// Only check if GLAB_CONFIG_DIR is not set
 	if os.Getenv("GLAB_CONFIG_DIR") != "" {
 		return
@@ -173,7 +169,7 @@ func Init() (Config, error) {
 	}
 
 	// Check for duplicate configs and warn user
-	checkForDuplicateConfigs()
+	checkForDuplicateConfigs(os.Stderr)
 
 	cachedConfig, configError = ParseDefaultConfig()
 

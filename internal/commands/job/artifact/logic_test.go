@@ -5,6 +5,7 @@ package artifact
 import (
 	"archive/zip"
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -84,7 +85,7 @@ func TestAcceptableZipFile(t *testing.T) {
 
 	var buf bytes.Buffer
 	listPaths := true
-	err = readZipTo(reader, targetDir, listPaths, defaultZIPReadLimit, defaultZIPFileLimit, &buf)
+	err = readZip(reader, targetDir, listPaths, defaultZIPReadLimit, defaultZIPFileLimit, &buf)
 	stdout := buf.String()
 	require.NoError(t, err)
 
@@ -107,7 +108,7 @@ func TestFileLimitExceeded(t *testing.T) {
 	reader, err := toByteReader(zipName)
 	require.NoError(t, err)
 
-	err = readZip(reader, t.TempDir(), false, defaultZIPReadLimit, 50)
+	err = readZip(reader, t.TempDir(), false, defaultZIPReadLimit, 50, io.Discard)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "zip archive includes too many files")
 }
@@ -118,7 +119,7 @@ func TestReadLimitExceeded(t *testing.T) {
 	reader, err := toByteReader(zipName)
 	require.NoError(t, err)
 
-	err = readZip(reader, t.TempDir(), false, 50, defaultZIPFileLimit)
+	err = readZip(reader, t.TempDir(), false, 50, defaultZIPFileLimit, io.Discard)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "extracted zip too large")
 }

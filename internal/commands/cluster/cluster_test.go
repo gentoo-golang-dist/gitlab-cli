@@ -3,7 +3,6 @@
 package cluster
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

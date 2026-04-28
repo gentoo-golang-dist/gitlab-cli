@@ -590,7 +590,7 @@ func Test_checkForDuplicateConfigs_SymlinkSameFile(t *testing.T) {
 
 	// Both paths resolve to the same file, just accessed via different paths
 	var buf bytes.Buffer
-	checkForDuplicateConfigsTo(&buf)
+	checkForDuplicateConfigs(&buf)
 
 	assert.NotContains(t, buf.String(), "Multiple config files found",
 		"Should not warn about duplicates when paths are symlinks to the same file")
@@ -623,7 +623,7 @@ func Test_checkForDuplicateConfigs_RealDuplicates(t *testing.T) {
 	xdg.Reload()
 
 	var buf bytes.Buffer
-	checkForDuplicateConfigsTo(&buf)
+	checkForDuplicateConfigs(&buf)
 
 	assert.Contains(t, buf.String(), "Multiple config files found",
 		"Should warn about duplicates when config files are genuinely different")
