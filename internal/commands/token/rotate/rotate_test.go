@@ -29,7 +29,8 @@ func parseTime(s string) *time.Time {
 }
 
 func TestRotatePersonalAccessToken(t *testing.T) {
-	t.Parallel()
+	// NOTE: Subtests cannot run in parallel because they use cmdutils.GroupOverride()
+	// which modifies global viper state (SetEnvPrefix, BindEnv).
 
 	type testCase struct {
 		name        string
@@ -127,8 +128,6 @@ func TestRotatePersonalAccessToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			// GIVEN
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
@@ -163,7 +162,8 @@ func TestRotatePersonalAccessToken(t *testing.T) {
 }
 
 func TestRotateGroupAccessToken(t *testing.T) {
-	t.Parallel()
+	// NOTE: Subtests cannot run in parallel because they use cmdutils.GroupOverride()
+	// which modifies global viper state (SetEnvPrefix, BindEnv).
 
 	type testCase struct {
 		name        string
@@ -234,8 +234,6 @@ func TestRotateGroupAccessToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			// GIVEN
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
@@ -270,7 +268,8 @@ func TestRotateGroupAccessToken(t *testing.T) {
 }
 
 func TestRotateProjectAccessToken(t *testing.T) {
-	t.Parallel()
+	// NOTE: Subtests cannot run in parallel because they use cmdutils.GroupOverride()
+	// which modifies global viper state (SetEnvPrefix, BindEnv).
 
 	type testCase struct {
 		name        string
@@ -341,8 +340,6 @@ func TestRotateProjectAccessToken(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			// GIVEN
 			testClient := gitlabtesting.NewTestClient(t)
 			tc.setupMock(testClient)
