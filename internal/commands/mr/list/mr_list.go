@@ -457,6 +457,7 @@ func listAllMRs(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions, as
 	}
 
 	merged := map[int64]*gitlab.BasicMergeRequest{}
+
 	runQuery := func() error {
 		mrs, _, err := client.MergeRequests.ListMergeRequests(opts)
 		if err != nil {
@@ -489,6 +490,16 @@ func listAllMRs(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions, as
 	for _, mr := range merged {
 		out = append(out, mr)
 	}
+
+	// Sort by CreatedAt if no custom sort is specified, otherwise let API sorting take precedence
+        // this fallback approach is mostly to make the output predictable, if order is important
+        // it's best to provide OrderBy in the query so multi-page results are sorted
+	if opts.OrderBy == nil {
+		sort.Slice(mrs, func(i, j int) bool {
+			return mrs[i].CreatedAt.After(*mrs[j].CreatedAt)
+		})
+	}
+
 	return out, nil
 }
 
