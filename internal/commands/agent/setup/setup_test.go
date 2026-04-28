@@ -22,6 +22,8 @@ func TestNewCmdSetup(t *testing.T) {
 		args       string
 		wantErr    string
 		wantStdout string
+		wantStderr string
+		preInstall bool // pre-install skills before running
 		chdir      bool // chdir to a non-git temp dir
 	}{
 		{
@@ -40,6 +42,23 @@ func TestNewCmdSetup(t *testing.T) {
 			wantErr: "not in a Git repository",
 			chdir:   true,
 		},
+		{
+			name:    "global and path are mutually exclusive",
+			args:    "setup --global --path /tmp/skills",
+			wantErr: "if any flags in the group [global path] are set none of the others can be",
+		},
+		{
+			name:       "with --force overwrites existing skills",
+			args:       "setup --force --path %s",
+			preInstall: true,
+			wantStdout: "Installed",
+		},
+		{
+			name:       "without --force skips existing skills",
+			args:       "setup --path %s",
+			preInstall: true,
+			wantStderr: "already exists. Use --force to overwrite",
+		},
 	}
 
 	for _, tt := range tests {
@@ -56,6 +75,12 @@ func TestNewCmdSetup(t *testing.T) {
 			if strings.Contains(args, "%s") {
 				tmpDir := t.TempDir()
 				args = strings.Replace(args, "%s", tmpDir, 1)
+
+				// Pre-install for tests that need existing files
+				if tt.preInstall {
+					_, err := installSkills(tmpDir, false)
+					require.NoError(t, err)
+				}
 			}
 
 			// For --global tests, override HOME to a temp dir
@@ -89,7 +114,12 @@ func TestNewCmdSetup(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Contains(t, stdout.String(), tt.wantStdout)
+			if tt.wantStdout != "" {
+				assert.Contains(t, stdout.String(), tt.wantStdout)
+			}
+			if tt.wantStderr != "" {
+				assert.Contains(t, stderr.String(), tt.wantStderr)
+			}
 		})
 	}
 }
@@ -97,7 +127,7 @@ func TestNewCmdSetup(t *testing.T) {
 func TestInstallSkills(t *testing.T) {
 	targetDir := t.TempDir()
 
-	installed, err := installSkills(targetDir)
+	installed, err := installSkills(targetDir, false)
 	require.NoError(t, err)
 
 	// Should install at least one file
@@ -115,15 +145,15 @@ func TestInstallSkills(t *testing.T) {
 	assert.Contains(t, string(content), "description:")
 }
 
-func TestInstallSkillsOverwrite(t *testing.T) {
+func TestInstallSkillsOverwriteWithForce(t *testing.T) {
 	targetDir := t.TempDir()
 
 	// Install once
-	_, err := installSkills(targetDir)
+	_, err := installSkills(targetDir, false)
 	require.NoError(t, err)
 
-	// Install again — should succeed (silent overwrite)
-	installed, err := installSkills(targetDir)
+	// Install again with force — should succeed and overwrite
+	installed, err := installSkills(targetDir, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, installed)
 
@@ -132,6 +162,19 @@ func TestInstallSkillsOverwrite(t *testing.T) {
 	content, err := os.ReadFile(skillPath)
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "name: glab")
+}
+
+func TestInstallSkillsSkipsWithoutForce(t *testing.T) {
+	targetDir := t.TempDir()
+
+	// Install once
+	_, err := installSkills(targetDir, false)
+	require.NoError(t, err)
+
+	// Install again without force — should return no installed paths
+	installed, err := installSkills(targetDir, false)
+	require.NoError(t, err)
+	require.Empty(t, installed)
 }
 
 func TestResolveTargetDir(t *testing.T) {

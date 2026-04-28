@@ -27,6 +27,8 @@ making skills available across all projects and agents.
 
 Use '--path' to install to a custom directory.
 
+Existing skill files are not overwritten unless '--force' is specified.
+
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
 For more information, see
@@ -48,11 +50,15 @@ glab agent setup --global
 # Install skills to a custom directory
 glab agent setup --path /path/to/skills
 
+# Overwrite existing skill files
+glab agent setup --force
+
 ```
 
 ## Options
 
 ```plaintext
+  -f, --force         Overwrite existing skill files.
   -g, --global        Install skills at user scope (~/.agents/skills/).
       --path string   Install skills to a custom directory.
 ```

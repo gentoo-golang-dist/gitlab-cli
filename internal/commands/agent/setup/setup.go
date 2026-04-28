@@ -20,6 +20,7 @@ type options struct {
 	io     *iostreams.IOStreams
 	global bool
 	path   string
+	force  bool
 }
 
 func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
@@ -43,6 +44,8 @@ func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
 			making skills available across all projects and agents.
 
 			Use '--path' to install to a custom directory.
+
+			Existing skill files are not overwritten unless '--force' is specified.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Install skills in the current project (default)
@@ -53,6 +56,9 @@ func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
 
 			# Install skills to a custom directory
 			glab agent setup --path /path/to/skills
+
+			# Overwrite existing skill files
+			glab agent setup --force
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runSetup(opts)
@@ -61,6 +67,8 @@ func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
 
 	cmd.Flags().BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/).")
 	cmd.Flags().StringVar(&opts.path, "path", "", "Install skills to a custom directory.")
+	cmd.Flags().BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files.")
+	cmd.MarkFlagsMutuallyExclusive("global", "path")
 
 	return cmd
 }
@@ -71,12 +79,22 @@ func runSetup(opts *options) error {
 		return err
 	}
 
-	installed, err := installSkills(targetDir)
+	installed, err := installSkills(targetDir, opts.force)
 	if err != nil {
 		return err
 	}
 
 	c := opts.io.Color()
+
+	// List files that already existed and were skipped
+	skipped, err := skippedSkills(targetDir, opts.force)
+	if err != nil {
+		return err
+	}
+	for _, path := range skipped {
+		fmt.Fprintf(opts.io.StdErr, "%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), path)
+	}
+
 	for _, path := range installed {
 		fmt.Fprintf(opts.io.StdOut, "%s Installed %s\n", c.GreenCheck(), path)
 	}
@@ -106,9 +124,42 @@ func resolveTargetDir(opts *options) (string, error) {
 	return filepath.Join(repoRoot, ".agents", "skills"), nil
 }
 
+// skippedSkills returns a list of skill file paths that already exist and
+// would be skipped (only when force is false).
+func skippedSkills(targetDir string, force bool) ([]string, error) {
+	if force {
+		return nil, nil
+	}
+
+	var skipped []string
+
+	err := fs.WalkDir(skills.BundledSkills, "bundled", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		relPath, err := filepath.Rel("bundled", path)
+		if err != nil {
+			return err
+		}
+
+		destPath := filepath.Join(targetDir, relPath)
+		if _, statErr := os.Stat(destPath); statErr == nil {
+			skipped = append(skipped, destPath)
+		}
+		return nil
+	})
+
+	return skipped, err
+}
+
 // installSkills writes the bundled SKILL.md files to the target directory.
+// If force is false, existing files are skipped.
 // Returns a list of file paths that were written.
-func installSkills(targetDir string) ([]string, error) {
+func installSkills(targetDir string, force bool) ([]string, error) {
 	var installed []string
 
 	err := fs.WalkDir(skills.BundledSkills, "bundled", func(path string, d fs.DirEntry, err error) error {
@@ -126,6 +177,13 @@ func installSkills(targetDir string) ([]string, error) {
 
 		if d.IsDir() {
 			return os.MkdirAll(destPath, 0o755)
+		}
+
+		// Skip existing files unless --force is set
+		if !force {
+			if _, statErr := os.Stat(destPath); statErr == nil {
+				return nil
+			}
 		}
 
 		content, err := skills.BundledSkills.ReadFile(path)
