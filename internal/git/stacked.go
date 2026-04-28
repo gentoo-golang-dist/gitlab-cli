@@ -3,8 +3,11 @@
 package git
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -27,16 +30,22 @@ type GitRunner interface {
 	Git(args ...string) (string, error)
 }
 
-// CommandRunner executes a named binary with the given args and environment,
-// returning its stdout output. This abstraction allows StandardGitCommand to
-// be decoupled from the global run.PrepareCmd.
-type CommandRunner func(name string, args []string, env []string) (string, error)
+type Executor interface {
+	ExecWithIO(ctx context.Context, name string, args []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error
+}
 
-// DefaultCommandRunner returns a CommandRunner that uses the legacy
-// run.PrepareCmd path. Use this when no Executor is available (e.g. tests
-// that create StandardGitCommand directly).
-func DefaultCommandRunner() CommandRunner {
-	return func(name string, args []string, env []string) (string, error) {
+type StandardGitCommand struct {
+	executor Executor
+}
+
+func NewGitCommand(executor Executor) StandardGitCommand {
+	return StandardGitCommand{executor: executor}
+}
+
+func (gitc StandardGitCommand) Git(args ...string) (string, error) {
+	env := append(os.Environ(), "LC_ALL=C")
+
+	if gitc.executor == nil {
 		cmd := GitCommand(args...)
 		cmd.Env = env
 		output, err := run.PrepareCmd(cmd).Output()
@@ -45,27 +54,17 @@ func DefaultCommandRunner() CommandRunner {
 		}
 		return string(output), nil
 	}
-}
 
-type StandardGitCommand struct {
-	runner CommandRunner
-}
-
-// NewGitCommand creates a StandardGitCommand backed by the given CommandRunner.
-func NewGitCommand(runner CommandRunner) StandardGitCommand {
-	return StandardGitCommand{runner: runner}
-}
-
-func (gitc StandardGitCommand) Git(args ...string) (string, error) {
-	// Ensure output from git is in English for string matching
-	env := append(os.Environ(), "LC_ALL=C")
-
-	runner := gitc.runner
-	if runner == nil {
-		runner = DefaultCommandRunner()
+	var stdout, stderr bytes.Buffer
+	err := gitc.executor.ExecWithIO(context.Background(), "git", args, env, nil, &stdout, &stderr)
+	if err != nil {
+		errMsg := stderr.String()
+		if errMsg != "" {
+			return "", fmt.Errorf("%s: %w", errMsg, err)
+		}
+		return "", err
 	}
-
-	return runner("git", args, env)
+	return stdout.String(), nil
 }
 
 func SetLocalConfig(key, value string) error {

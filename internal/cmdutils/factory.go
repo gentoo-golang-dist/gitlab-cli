@@ -1,7 +1,6 @@
 package cmdutils
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -230,23 +229,5 @@ func (f *DefaultFactory) Executor() Executor {
 }
 
 func (f *DefaultFactory) GitRunner() git.GitRunner {
-	executor := f.Executor()
-	return git.NewGitCommand(func(name string, args []string, env []string) (string, error) {
-		envMap := make(map[string]string, len(env))
-		for _, e := range env {
-			if k, v, ok := strings.Cut(e, "="); ok {
-				envMap[k] = v
-			}
-		}
-		var stdout, stderr bytes.Buffer
-		err := executor.ExecWithIO(context.Background(), name, args, envMap, nil, &stdout, &stderr)
-		if err != nil {
-			errMsg := stderr.String()
-			if errMsg != "" {
-				return "", fmt.Errorf("%s: %w", errMsg, err)
-			}
-			return "", err
-		}
-		return stdout.String(), nil
-	})
+	return git.NewGitCommand(f.Executor())
 }

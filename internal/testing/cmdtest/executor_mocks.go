@@ -42,7 +42,7 @@ func (m *MockExecutor) EXPECT() *MockExecutorMockRecorder {
 }
 
 // Exec mocks base method.
-func (m *MockExecutor) Exec(ctx context.Context, name string, args []string, env map[string]string) error {
+func (m *MockExecutor) Exec(ctx context.Context, name string, args, env []string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Exec", ctx, name, args, env)
 	ret0, _ := ret[0].(error)
@@ -68,19 +68,19 @@ func (c *MockExecutorExecCall) Return(arg0 error) *MockExecutorExecCall {
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockExecutorExecCall) Do(f func(context.Context, string, []string, map[string]string) error) *MockExecutorExecCall {
+func (c *MockExecutorExecCall) Do(f func(context.Context, string, []string, []string) error) *MockExecutorExecCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockExecutorExecCall) DoAndReturn(f func(context.Context, string, []string, map[string]string) error) *MockExecutorExecCall {
+func (c *MockExecutorExecCall) DoAndReturn(f func(context.Context, string, []string, []string) error) *MockExecutorExecCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ExecWithCombinedOutput mocks base method.
-func (m *MockExecutor) ExecWithCombinedOutput(ctx context.Context, name string, args []string, env map[string]string) ([]byte, error) {
+func (m *MockExecutor) ExecWithCombinedOutput(ctx context.Context, name string, args, env []string) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecWithCombinedOutput", ctx, name, args, env)
 	ret0, _ := ret[0].([]byte)
@@ -107,19 +107,19 @@ func (c *MockExecutorExecWithCombinedOutputCall) Return(arg0 []byte, arg1 error)
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockExecutorExecWithCombinedOutputCall) Do(f func(context.Context, string, []string, map[string]string) ([]byte, error)) *MockExecutorExecWithCombinedOutputCall {
+func (c *MockExecutorExecWithCombinedOutputCall) Do(f func(context.Context, string, []string, []string) ([]byte, error)) *MockExecutorExecWithCombinedOutputCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockExecutorExecWithCombinedOutputCall) DoAndReturn(f func(context.Context, string, []string, map[string]string) ([]byte, error)) *MockExecutorExecWithCombinedOutputCall {
+func (c *MockExecutorExecWithCombinedOutputCall) DoAndReturn(f func(context.Context, string, []string, []string) ([]byte, error)) *MockExecutorExecWithCombinedOutputCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // ExecWithIO mocks base method.
-func (m *MockExecutor) ExecWithIO(ctx context.Context, name string, args []string, env map[string]string, stdin io.Reader, stdout, stderr io.Writer) error {
+func (m *MockExecutor) ExecWithIO(ctx context.Context, name string, args, env []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecWithIO", ctx, name, args, env, stdin, stdout, stderr)
 	ret0, _ := ret[0].(error)
@@ -145,13 +145,13 @@ func (c *MockExecutorExecWithIOCall) Return(arg0 error) *MockExecutorExecWithIOC
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockExecutorExecWithIOCall) Do(f func(context.Context, string, []string, map[string]string, io.Reader, io.Writer, io.Writer) error) *MockExecutorExecWithIOCall {
+func (c *MockExecutorExecWithIOCall) Do(f func(context.Context, string, []string, []string, io.Reader, io.Writer, io.Writer) error) *MockExecutorExecWithIOCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockExecutorExecWithIOCall) DoAndReturn(f func(context.Context, string, []string, map[string]string, io.Reader, io.Writer, io.Writer) error) *MockExecutorExecWithIOCall {
+func (c *MockExecutorExecWithIOCall) DoAndReturn(f func(context.Context, string, []string, []string, io.Reader, io.Writer, io.Writer) error) *MockExecutorExecWithIOCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
