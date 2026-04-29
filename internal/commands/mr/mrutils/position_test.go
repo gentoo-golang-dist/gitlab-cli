@@ -26,6 +26,8 @@ func Test_ParseLine(t *testing.T) {
 		{name: "invalid number", input: "abc", wantErr: `invalid line number "abc"`},
 		{name: "invalid range end", input: "10:abc", wantErr: `invalid line range "10:abc"`},
 		{name: "reversed range", input: "15:10", wantErr: `invalid line range "15:10": end must be >= start`},
+		{name: "zero line", input: "0", wantErr: "line number must be positive, got 0"},
+		{name: "negative line", input: "-1", wantErr: "line number must be positive, got -1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -179,13 +181,5 @@ func Test_BuildDiffPosition(t *testing.T) {
 }
 
 func Test_lineCode(t *testing.T) {
-	code := lineCode("file.go", 42)
-	// lineCode should be deterministic
-	assert.Equal(t, lineCode("file.go", 42), code)
-	// Different file should produce different code
-	assert.NotEqual(t, lineCode("other.go", 42), code)
-	// Different line should produce different code
-	assert.NotEqual(t, lineCode("file.go", 43), code)
-	// Should contain the line number
-	assert.Contains(t, code, "_0_42")
+	assert.Equal(t, "a78c15ea253085032b9a8a057d8689b6fd7d0dfa_0_42", lineCode("file.go", 42))
 }

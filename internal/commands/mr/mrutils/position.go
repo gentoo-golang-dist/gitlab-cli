@@ -44,6 +44,12 @@ func FindFileDiff(version *gitlab.MergeRequestDiffVersion, filePath string) (*gi
 // lineStart/lineEnd refer to new-side lines (lineEnd > lineStart for multiline).
 // oldLine refers to an old-side (removed) line.
 // For file-level comments, pass lineStart=0 and oldLine=0.
+//
+// When targeting an "unchanged" (context) line, both OldLine and NewLine must be
+// set in the position — GitLab's API requires both sides for context lines.
+// For added lines only NewLine is set; for removed lines only OldLine.
+// Reference implementation: GitLab VS Code Extension, see
+// https://gitlab.com/gitlab-org/gitlab-vscode-extension/-/blob/main/src/common/services/mr/create_comment.ts
 func BuildDiffPosition(version *gitlab.MergeRequestDiffVersion, fileDiff *gitlab.Diff, lineStart, lineEnd, oldLine int) (*gitlab.PositionOptions, error) {
 	pos := &gitlab.PositionOptions{
 		BaseSHA:      new(version.BaseCommitSHA),
@@ -134,6 +140,9 @@ func ParseLine(s string) (int, int, error) {
 	start, err := strconv.Atoi(parts[0])
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid line number %q", s)
+	}
+	if start <= 0 {
+		return 0, 0, fmt.Errorf("line number must be positive, got %d", start)
 	}
 	if len(parts) == 2 {
 		end, err := strconv.Atoi(parts[1])

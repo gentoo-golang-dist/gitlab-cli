@@ -1,3 +1,5 @@
+//go:build !integration
+
 package diff
 
 import (
@@ -53,20 +55,33 @@ func TestFindNewLine(t *testing.T) {
 		{Unchanged, 2, 3},
 	}
 
-	oldLine, lt, err := FindNewLine(lines, 2)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name      string
+		target    int
+		wantOld   int
+		wantType  LineType
+		wantError bool
+	}{
+		{name: "added line", target: 2, wantOld: 0, wantType: Added},
+		{name: "unchanged line", target: 3, wantOld: 2, wantType: Unchanged},
+		{name: "not found", target: 99, wantError: true},
 	}
-	if lt != Added || oldLine != 0 {
-		t.Errorf("got oldLine=%d type=%d, want oldLine=0 type=Added", oldLine, lt)
-	}
-
-	oldLine, lt, err = FindNewLine(lines, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if lt != Unchanged || oldLine != 2 {
-		t.Errorf("got oldLine=%d type=%d, want oldLine=2 type=Unchanged", oldLine, lt)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldLine, lt, err := FindNewLine(lines, tt.target)
+			if tt.wantError {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if lt != tt.wantType || oldLine != tt.wantOld {
+				t.Errorf("got oldLine=%d type=%d, want oldLine=%d type=%d", oldLine, lt, tt.wantOld, tt.wantType)
+			}
+		})
 	}
 }
 
@@ -107,11 +122,32 @@ func TestFindOldLine(t *testing.T) {
 		{Unchanged, 3, 2},
 	}
 
-	newLine, lt, err := FindOldLine(lines, 2)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name      string
+		target    int
+		wantNew   int
+		wantType  LineType
+		wantError bool
+	}{
+		{name: "removed line", target: 2, wantNew: 0, wantType: Removed},
+		{name: "unchanged line", target: 1, wantNew: 1, wantType: Unchanged},
+		{name: "not found", target: 99, wantError: true},
 	}
-	if lt != Removed || newLine != 0 {
-		t.Errorf("got newLine=%d type=%d, want newLine=0 type=Removed", newLine, lt)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			newLine, lt, err := FindOldLine(lines, tt.target)
+			if tt.wantError {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if lt != tt.wantType || newLine != tt.wantNew {
+				t.Errorf("got newLine=%d type=%d, want newLine=%d type=%d", newLine, lt, tt.wantNew, tt.wantType)
+			}
+		})
 	}
 }

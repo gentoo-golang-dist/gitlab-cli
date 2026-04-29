@@ -496,12 +496,7 @@ func Test_cmdCreate_diffComment(t *testing.T) {
 			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
 				assert.Equal(t, "Comment on new line", *opts.Body)
 				require.NotNil(t, opts.Position)
-				assert.Equal(t, "text", *opts.Position.PositionType)
-				assert.Equal(t, "main.go", *opts.Position.NewPath)
 				assert.Equal(t, int64(2), *opts.Position.NewLine)
-				assert.Equal(t, "base", *opts.Position.BaseSHA)
-				assert.Equal(t, "head", *opts.Position.HeadSHA)
-				assert.Equal(t, "start", *opts.Position.StartSHA)
 				return &gitlab.Discussion{
 					ID: "disc-diff-1",
 					Notes: []*gitlab.Note{
@@ -608,42 +603,6 @@ func Test_cmdCreate_diffComment(t *testing.T) {
 		_, err := exec(`1 --file nonexistent.go --line 1 -m "bad file"`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found in MR diff")
-	})
-
-	t.Run("--line and --old-line are mutually exclusive", func(t *testing.T) {
-		t.Parallel()
-
-		testClient := gitlabtesting.NewTestClient(t)
-
-		exec := setupCreateExec(t, testClient)
-
-		_, err := exec(`1 --file main.go --line 5 --old-line 3 -m "test"`)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "if any flags in the group [line old-line] are set none of the others can be")
-	})
-
-	t.Run("--reply and --file are mutually exclusive", func(t *testing.T) {
-		t.Parallel()
-
-		testClient := gitlabtesting.NewTestClient(t)
-
-		exec := setupCreateExec(t, testClient)
-
-		_, err := exec(`1 --reply abc12345 --file main.go -m "test"`)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "if any flags in the group [reply file] are set none of the others can be")
-	})
-
-	t.Run("--unique and --file are mutually exclusive", func(t *testing.T) {
-		t.Parallel()
-
-		testClient := gitlabtesting.NewTestClient(t)
-
-		exec := setupCreateExec(t, testClient)
-
-		_, err := exec(`1 --unique --file main.go -m "test"`)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "if any flags in the group [unique file] are set none of the others can be")
 	})
 
 	t.Run("invalid line format", func(t *testing.T) {

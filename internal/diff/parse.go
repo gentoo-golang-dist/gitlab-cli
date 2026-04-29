@@ -24,13 +24,6 @@ type Line struct {
 	NewLine int // 0 if removed
 }
 
-// FileDiff holds the parsed diff for a single file.
-type FileDiff struct {
-	OldPath string
-	NewPath string
-	Lines   []Line
-}
-
 var hunkRe = regexp.MustCompile(`^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@`)
 
 // Parse parses a unified diff fragment (the "diff" field from GitLab API)
