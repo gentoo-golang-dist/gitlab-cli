@@ -3,6 +3,7 @@
 
 # Go caches
 .go/
+.gomod/
 .gocache/
 .golangci-lint/
 .golangci-lint-cache/
