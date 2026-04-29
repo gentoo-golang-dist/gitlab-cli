@@ -79,18 +79,20 @@ func runSetup(opts *options) error {
 		return err
 	}
 
+	// Determine which files already exist before installing, so we can
+	// report accurate skip warnings (checking after install would always
+	// find the files we just wrote).
+	skipped, err := skippedSkills(targetDir, opts.force)
+	if err != nil {
+		return err
+	}
+
 	installed, err := installSkills(targetDir, opts.force)
 	if err != nil {
 		return err
 	}
 
 	c := opts.io.Color()
-
-	// List files that already existed and were skipped
-	skipped, err := skippedSkills(targetDir, opts.force)
-	if err != nil {
-		return err
-	}
 	for _, path := range skipped {
 		fmt.Fprintf(opts.io.StdErr, "%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), path)
 	}

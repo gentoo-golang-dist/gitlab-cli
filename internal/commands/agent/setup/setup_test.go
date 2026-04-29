@@ -18,13 +18,14 @@ import (
 
 func TestNewCmdSetup(t *testing.T) {
 	tests := []struct {
-		name       string
-		args       string
-		wantErr    string
-		wantStdout string
-		wantStderr string
-		preInstall bool // pre-install skills before running
-		chdir      bool // chdir to a non-git temp dir
+		name         string
+		args         string
+		wantErr      string
+		wantStdout   string
+		wantStderr   string
+		noWarnStderr bool // assert stderr is empty
+		preInstall   bool // pre-install skills before running
+		chdir        bool // chdir to a non-git temp dir
 	}{
 		{
 			name:       "with --path flag",
@@ -58,6 +59,12 @@ func TestNewCmdSetup(t *testing.T) {
 			args:       "setup --path %s",
 			preInstall: true,
 			wantStderr: "already exists. Use --force to overwrite",
+		},
+		{
+			name:         "without --force fresh install shows no already-exists warnings",
+			args:         "setup --path %s",
+			wantStdout:   "Installed",
+			noWarnStderr: true,
 		},
 	}
 
@@ -119,6 +126,9 @@ func TestNewCmdSetup(t *testing.T) {
 			}
 			if tt.wantStderr != "" {
 				assert.Contains(t, stderr.String(), tt.wantStderr)
+			}
+			if tt.noWarnStderr {
+				assert.Empty(t, stderr.String(), "expected no stderr output on fresh install")
 			}
 		})
 	}
