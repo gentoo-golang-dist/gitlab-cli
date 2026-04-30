@@ -5,7 +5,6 @@ package get
 import (
 	"errors"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,14 +19,36 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
+func withApiClientErrorOption(err error) cmdtest.FactoryOption {
+	return func(f *cmdtest.Factory) {
+		f.ApiClientStub = func(string) (*api.Client, error) {
+			return nil, err
+		}
+	}
+}
+
+func TestRepoFileGet_HelpExposesRepoOverride(t *testing.T) {
+	f := cmdtest.NewTestFactory(nil)
+	cmd := NewCmdFileGet(f)
+
+	flag := cmd.PersistentFlags().Lookup("repo")
+	require.NotNil(t, flag, "repo flag must be reachable from `glab repo file get --help`")
+	assert.False(t, flag.Hidden, "repo flag must not be hidden")
+	assert.Equal(t, "R", flag.Shorthand, "repo flag must keep -R short form")
+
+	assert.NotNil(t, cmd.Flags().Lookup("output"))
+	assert.NotNil(t, cmd.Flags().Lookup("ref"))
+	assert.NotNil(t, cmd.Flags().Lookup("lfs"))
+}
+
 func TestRepoFileGet(t *testing.T) {
 	tests := []struct {
-		name          string
-		cli           string
-		setupMocks    func(t *testing.T, tc *gitlabtesting.TestClient)
-		wantErr       string
-		wantStdout    string
-		wantStdoutHas string
+		name             string
+		cli              string
+		setupMocks       func(t *testing.T, tc *gitlabtesting.TestClient)
+		apiClientInitErr error
+		wantErr          string
+		wantStdout       string
 	}{
 		{
 			name: "text output happy path",
@@ -64,7 +85,9 @@ func TestRepoFileGet(t *testing.T) {
 						SHA256:       "deadbeefdeadbeef",
 					}, nil, nil)
 			},
-			wantStdoutHas: `"file_path":"docs/index.md"`,
+			// Exact-match: guards against accidental MarshalIndent / extra newline /
+			// dropped or renamed fields.
+			wantStdout: `{"file_name":"index.md","file_path":"docs/index.md","size":12,"encoding":"base64","content":"aGVsbG8gd29ybGQK","execute_filemode":false,"ref":"deadbeef","blob_id":"abc123","commit_id":"deadbeef","content_sha256":"deadbeefdeadbeef","last_commit_id":"deadbeef"}` + "\n",
 		},
 		{
 			name:    "missing --ref errors before any API call",
@@ -152,6 +175,12 @@ func TestRepoFileGet(t *testing.T) {
 			},
 			wantStdout: "hi",
 		},
+		{
+			name:             "apiClient factory error surfaces from complete()",
+			cli:              "README.md --ref deadbeef",
+			apiClientInitErr: errors.New("api client init failed"),
+			wantErr:          "api client init failed",
+		},
 	}
 
 	for _, tc := range tests {
@@ -169,12 +198,17 @@ func TestRepoFileGet(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			cmdExec := cmdtest.SetupCmdForTest(t, NewCmdFileGet, false,
+			factoryOpts := []cmdtest.FactoryOption{
 				cmdtest.WithGitLabClient(testClient.Client),
 				cmdtest.WithBranch("main"),
 				cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
 				cmdtest.WithApiClient(apiClient),
-			)
+			}
+			if tc.apiClientInitErr != nil {
+				factoryOpts = append(factoryOpts, withApiClientErrorOption(tc.apiClientInitErr))
+			}
+
+			cmdExec := cmdtest.SetupCmdForTest(t, NewCmdFileGet, false, factoryOpts...)
 
 			out, err := cmdExec(tc.cli)
 
@@ -187,10 +221,6 @@ func TestRepoFileGet(t *testing.T) {
 			require.NoError(t, err)
 			if tc.wantStdout != "" {
 				assert.Equal(t, tc.wantStdout, out.String())
-			}
-			if tc.wantStdoutHas != "" {
-				assert.True(t, strings.Contains(out.String(), tc.wantStdoutHas),
-					"stdout = %q, want to contain %q", out.String(), tc.wantStdoutHas)
 			}
 		})
 	}
