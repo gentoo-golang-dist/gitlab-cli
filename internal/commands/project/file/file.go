@@ -11,7 +11,7 @@ import (
 func NewCmdFile(f cmdutils.Factory) *cobra.Command {
 	fileCmd := &cobra.Command{
 		Use:   "file <command> [flags]",
-		Short: "Read repository files over the API.",
+		Short: "Read files from a repository.",
 		Long: heredoc.Doc(`
 		Work with repository files at a specific ref without cloning the repository.
 

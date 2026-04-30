@@ -26,7 +26,7 @@ Pass a SHA to `--ref` (rather than a branch name) for results that are
 immutable and cacheable.
 
 ```plaintext
-glab repo file get <path> --ref <sha|branch|tag> [flags]
+glab repo file get <path> [flags]
 ```
 
 ## Examples

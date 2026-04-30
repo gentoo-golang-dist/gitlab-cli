@@ -40,7 +40,7 @@ func NewCmdFileGet(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "get <path> --ref <sha|branch|tag> [flags]",
+		Use:   "get <path>",
 		Short: "Read a file from a repository at a specific ref.",
 		Long: heredoc.Docf(`
 		Print the contents of a single file from a GitLab repository at a specific
