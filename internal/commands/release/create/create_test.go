@@ -754,6 +754,52 @@ func TestReleaseCreate_DefaultBranchDetectionForRef(t *testing.T) {
 	})
 }
 
+func TestReleaseCreate_UsePackageRegistryEnvVar(t *testing.T) {
+	// NOTE: This test cannot use t.Parallel() because it uses t.Setenv().
+	t.Setenv("CI_DEFAULT_BRANCH", "main")
+	t.Setenv("GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY", "true")
+
+	t.Run("when env var is set, files are uploaded to the package registry instead of project markdown", func(t *testing.T) {
+		testClient := gitlabtesting.NewTestClient(t, gitlab.WithBaseURL("https://"+glinstance.DefaultHostname))
+		notFoundResponse := &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}
+
+		testClient.MockTags.EXPECT().GetTag("OWNER/REPO", "0.0.1", gomock.Any()).Return(&gitlab.Tag{Name: "0.0.1"}, nil, nil)
+		testClient.MockReleases.EXPECT().GetRelease("OWNER/REPO", "0.0.1", gomock.Any()).Return(nil, notFoundResponse, errors.New("not found"))
+		testClient.MockReleases.EXPECT().CreateRelease("OWNER/REPO", gomock.Any()).Return(&gitlab.Release{
+			Name:    "test_release",
+			TagName: "0.0.1",
+			Links:   gitlab.ReleaseLinks{Self: "https://gitlab.com/OWNER/REPO/-/releases/0.0.1"},
+		}, nil, nil)
+
+		// With the env var set, the file must go through the generic package registry,
+		// not through UploadProjectMarkdown. If the bug is present (err != nil instead of
+		// err == nil), usePackageRegistry stays false and UploadProjectMarkdown is called
+		// instead — causing this expectation to fail as "expected call not received".
+		testClient.MockGenericPackages.EXPECT().
+			PublishPackageFile("OWNER/REPO", "release-assets", "0.0.1", "test_file.txt", gomock.Any(), gomock.Any()).
+			Return(&gitlab.GenericPackagesFile{}, nil, nil)
+
+		testClient.MockGenericPackages.EXPECT().
+			FormatPackageURL("OWNER/REPO", "release-assets", "0.0.1", "test_file.txt").
+			Return("/api/v4/projects/OWNER/REPO/packages/generic/release-assets/0.0.1/test_file.txt", nil)
+
+		testClient.MockReleaseLinks.EXPECT().
+			CreateReleaseLink("OWNER/REPO", "0.0.1", gomock.Any()).
+			Return(&gitlab.ReleaseLink{ID: 1, Name: "test_file.txt"}, nil, nil)
+
+		exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, false,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		)
+
+		output, err := exec(`0.0.1 --notes "test release" testdata/test_file.txt`)
+
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "Release created:")
+		assert.Empty(t, output.Stderr())
+	})
+}
+
 func TestReleaseCreate_ExperimentalNotes(t *testing.T) {
 	t.Setenv("CI_DEFAULT_BRANCH", "main")
 
