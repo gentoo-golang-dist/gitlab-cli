@@ -231,7 +231,7 @@ func (o *options) complete(flags *pflag.FlagSet, args []string) error {
 	o.noteProvided = o.notes != ""
 
 	if !flags.Changed("use-package-registry") {
-		if usePackageRegistry, err := strconv.ParseBool(os.Getenv("GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY")); err != nil {
+		if usePackageRegistry, err := strconv.ParseBool(os.Getenv("GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY")); err == nil {
 			o.usePackageRegistry = usePackageRegistry
 		}
 	}
