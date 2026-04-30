@@ -17,10 +17,11 @@ import (
 )
 
 type options struct {
-	io     *iostreams.IOStreams
-	global bool
-	path   string
-	force  bool
+	io        *iostreams.IOStreams
+	global    bool
+	path      string
+	force     bool
+	targetDir string
 }
 
 func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
@@ -43,7 +44,8 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 			Use '--global' to install at user scope in '~/.agents/skills/',
 			making skills available across all projects and agents.
 
-			Use '--path' to install to a custom directory.
+			Use '--path' to install to a custom directory. The path is resolved
+			relative to the current working directory, not the repository root.
 
 			Existing skill files are not overwritten unless '--force' is specified.
 		`) + text.ExperimentalString,
@@ -61,33 +63,43 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 			glab skills install --force
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runInstall(opts)
+			if err := opts.complete(); err != nil {
+				return err
+			}
+			return opts.run()
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/).")
-	cmd.Flags().StringVar(&opts.path, "path", "", "Install skills to a custom directory.")
-	cmd.Flags().BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files.")
+	fl := cmd.Flags()
+	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/). (default false)")
+	fl.StringVar(&opts.path, "path", "", "Install skills to a custom <directory>.")
+	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files. (default false)")
 	cmd.MarkFlagsMutuallyExclusive("global", "path")
 
 	return cmd
 }
 
-func runInstall(opts *options) error {
-	targetDir, err := resolveTargetDir(opts)
+// complete resolves the target directory based on flags and stores it on opts.
+func (opts *options) complete() error {
+	dir, err := resolveTargetDir(opts)
 	if err != nil {
 		return err
 	}
+	opts.targetDir = dir
+	return nil
+}
 
+// run executes the command's business logic.
+func (opts *options) run() error {
 	// Determine which files already exist before installing, so we can
 	// report accurate skip warnings (checking after install would always
 	// find the files we just wrote).
-	skipped, err := skippedSkills(targetDir, opts.force)
+	skipped, err := skippedSkills(opts.targetDir, opts.force)
 	if err != nil {
 		return err
 	}
 
-	installed, err := installSkills(targetDir, opts.force)
+	installed, err := installSkills(opts.targetDir, opts.force)
 	if err != nil {
 		return err
 	}

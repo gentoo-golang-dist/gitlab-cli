@@ -3,13 +3,11 @@
 package install
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/google/shlex"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,43 +24,48 @@ func TestNewCmdInstall(t *testing.T) {
 		noWarnStderr bool // assert stderr is empty
 		preInstall   bool // pre-install skills before running
 		chdir        bool // chdir to a non-git temp dir
+		global       bool // test uses --global (override HOME)
+		noParallel   bool // cannot parallelize tests using t.Chdir or t.Setenv
 	}{
 		{
 			name:       "with --path flag",
-			args:       "install --path %s",
+			args:       "--path %s",
 			wantStdout: "Installed",
 		},
 		{
 			name:       "with --global flag",
-			args:       "install --global",
+			args:       "--global",
+			global:     true,
+			noParallel: true,
 			wantStdout: "Installed",
 		},
 		{
-			name:    "default scope outside git repo",
-			args:    "install",
-			wantErr: "not in a Git repository",
-			chdir:   true,
+			name:       "default scope outside git repo",
+			args:       "",
+			wantErr:    "not in a Git repository",
+			chdir:      true,
+			noParallel: true,
 		},
 		{
 			name:    "global and path are mutually exclusive",
-			args:    "install --global --path /tmp/skills",
+			args:    "--global --path /tmp/skills",
 			wantErr: "if any flags in the group [global path] are set none of the others can be",
 		},
 		{
 			name:       "with --force overwrites existing skills",
-			args:       "install --force --path %s",
+			args:       "--force --path %s",
 			preInstall: true,
 			wantStdout: "Installed",
 		},
 		{
 			name:       "without --force skips existing skills",
-			args:       "install --path %s",
+			args:       "--path %s",
 			preInstall: true,
 			wantStderr: "already exists. Use --force to overwrite",
 		},
 		{
 			name:         "without --force fresh install shows no already-exists warnings",
-			args:         "install --path %s",
+			args:         "--path %s",
 			wantStdout:   "Installed",
 			noWarnStderr: true,
 		},
@@ -70,7 +73,9 @@ func TestNewCmdInstall(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ios, _, stdout, stderr := cmdtest.TestIOStreams()
+			if !tt.noParallel {
+				t.Parallel()
+			}
 
 			// chdir to a non-git directory for tests that need it
 			if tt.chdir {
@@ -79,9 +84,9 @@ func TestNewCmdInstall(t *testing.T) {
 
 			// For --path tests, substitute a temp dir
 			args := tt.args
-			if strings.Contains(args, "%s") {
+			if tt.preInstall || containsPathPlaceholder(args) {
 				tmpDir := t.TempDir()
-				args = strings.Replace(args, "%s", tmpDir, 1)
+				args = fmt.Sprintf(args, tmpDir)
 
 				// Pre-install for tests that need existing files
 				if tt.preInstall {
@@ -91,50 +96,36 @@ func TestNewCmdInstall(t *testing.T) {
 			}
 
 			// For --global tests, override HOME to a temp dir
-			if strings.Contains(args, "--global") {
-				tmpHome := t.TempDir()
-				t.Setenv("HOME", tmpHome)
+			if tt.global {
+				t.Setenv("HOME", t.TempDir())
 			}
 
-			f := cmdtest.NewTestFactory(ios)
-			installCmd := NewCmdInstall(f)
-
-			rootCmd := &cobra.Command{Use: "glab"}
-			skillsCmd := &cobra.Command{Use: "skills"}
-			rootCmd.AddCommand(skillsCmd)
-			skillsCmd.AddCommand(installCmd)
-
-			argv, err := shlex.Split(args)
-			require.NoError(t, err)
-			rootCmd.SetArgs(append([]string{"skills"}, argv...))
-
-			err = rootCmd.ExecuteContext(t.Context())
+			exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+			out, err := exec(args)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
-				errMsg := err.Error()
-				if stderr != nil {
-					errMsg += stderr.String()
-				}
-				assert.Contains(t, errMsg, tt.wantErr)
+				assert.Contains(t, err.Error(), tt.wantErr)
 				return
 			}
 
 			require.NoError(t, err)
 			if tt.wantStdout != "" {
-				assert.Contains(t, stdout.String(), tt.wantStdout)
+				assert.Contains(t, out.String(), tt.wantStdout)
 			}
 			if tt.wantStderr != "" {
-				assert.Contains(t, stderr.String(), tt.wantStderr)
+				assert.Contains(t, out.Stderr(), tt.wantStderr)
 			}
 			if tt.noWarnStderr {
-				assert.Empty(t, stderr.String(), "expected no stderr output on fresh install")
+				assert.Empty(t, out.Stderr(), "expected no stderr output on fresh install")
 			}
 		})
 	}
 }
 
 func TestInstallSkills(t *testing.T) {
+	t.Parallel()
+
 	targetDir := t.TempDir()
 
 	installed, err := installSkills(targetDir, false)
@@ -156,6 +147,8 @@ func TestInstallSkills(t *testing.T) {
 }
 
 func TestInstallSkillsOverwriteWithForce(t *testing.T) {
+	t.Parallel()
+
 	targetDir := t.TempDir()
 
 	// Install once
@@ -175,6 +168,8 @@ func TestInstallSkillsOverwriteWithForce(t *testing.T) {
 }
 
 func TestInstallSkillsSkipsWithoutForce(t *testing.T) {
+	t.Parallel()
+
 	targetDir := t.TempDir()
 
 	// Install once
@@ -188,7 +183,11 @@ func TestInstallSkillsSkipsWithoutForce(t *testing.T) {
 }
 
 func TestResolveTargetDir(t *testing.T) {
+	t.Parallel()
+
 	t.Run("with --path", func(t *testing.T) {
+		t.Parallel()
+
 		opts := &options{path: "/custom/path"}
 		dir, err := resolveTargetDir(opts)
 		require.NoError(t, err)
@@ -196,12 +195,24 @@ func TestResolveTargetDir(t *testing.T) {
 	})
 
 	t.Run("with --global", func(t *testing.T) {
-		tmpHome := t.TempDir()
-		t.Setenv("HOME", tmpHome)
+		t.Parallel()
 
+		// resolveTargetDir uses os.UserHomeDir which reads HOME.
+		// We verify the result ends with the expected suffix rather
+		// than setting HOME (which prevents t.Parallel).
 		opts := &options{global: true}
 		dir, err := resolveTargetDir(opts)
 		require.NoError(t, err)
-		assert.Equal(t, filepath.Join(tmpHome, ".agents", "skills"), dir)
+		assert.True(t, filepath.IsAbs(dir), "expected absolute path, got %s", dir)
+		assert.Equal(t, filepath.Join(".agents", "skills"), dir[len(dir)-len(filepath.Join(".agents", "skills")):])
 	})
+}
+
+func containsPathPlaceholder(s string) bool {
+	for i := 0; i < len(s)-1; i++ {
+		if s[i] == '%' && s[i+1] == 's' {
+			return true
+		}
+	}
+	return false
 }

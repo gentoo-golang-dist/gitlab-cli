@@ -25,7 +25,8 @@ Gemini CLI, and any agent that follows the Agent Skills specification.
 Use '--global' to install at user scope in '~/.agents/skills/',
 making skills available across all projects and agents.
 
-Use '--path' to install to a custom directory.
+Use '--path' to install to a custom directory. The path is resolved
+relative to the current working directory, not the repository root.
 
 Existing skill files are not overwritten unless '--force' is specified.
 
@@ -58,9 +59,9 @@ glab skills install --force
 ## Options
 
 ```plaintext
-  -f, --force         Overwrite existing skill files.
-  -g, --global        Install skills at user scope (~/.agents/skills/).
-      --path string   Install skills to a custom directory.
+  -f, --force         Overwrite existing skill files. (default false)
+  -g, --global        Install skills at user scope (~/.agents/skills/). (default false)
+      --path string   Install skills to a custom <directory>.
 ```
 
 ## Options inherited from parent commands
