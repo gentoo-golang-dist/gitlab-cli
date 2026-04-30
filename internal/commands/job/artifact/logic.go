@@ -35,7 +35,7 @@ func ensurePathIsCreated(filename string) error {
 	return nil
 }
 
-func readZip(artifact *bytes.Reader, path string, listPaths bool, zipReadLimit int64, zipFileLimit int) error {
+func readZip(artifact *bytes.Reader, path string, listPaths bool, zipReadLimit int64, zipFileLimit int, out io.Writer) error {
 	zipReader, err := zip.NewReader(artifact, artifact.Size())
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func readZip(artifact *bytes.Reader, path string, listPaths bool, zipReadLimit i
 			}
 
 			if listPaths {
-				fmt.Println(friendlyPath(destPath))
+				fmt.Fprintln(out, friendlyPath(destPath))
 			}
 
 			written += writtenPerFile
@@ -136,5 +136,5 @@ func DownloadArtifacts(apiClient *gitlab.Client, repo glrepo.Interface, path str
 		return err
 	}
 
-	return readZip(artifact, path, listPaths, defaultZIPReadLimit, defaultZIPFileLimit)
+	return readZip(artifact, path, listPaths, defaultZIPReadLimit, defaultZIPFileLimit, os.Stdout)
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -99,7 +100,7 @@ func SearchConfigFile() (string, error) {
 // checkForDuplicateConfigs warns if multiple config files exist across different locations.
 // Since we don't support config merging (yet), only the first file found is used, which can
 // be confusing if users have configs in multiple locations.
-func checkForDuplicateConfigs() {
+func checkForDuplicateConfigs(out io.Writer) {
 	// Only check if GLAB_CONFIG_DIR is not set
 	if os.Getenv("GLAB_CONFIG_DIR") != "" {
 		return
@@ -144,12 +145,12 @@ func checkForDuplicateConfigs() {
 
 	// Warn if multiple configs exist
 	if len(existingConfigs) > 1 {
-		fmt.Fprintf(os.Stderr, "Warning: Multiple config files found. Only the first one will be used.\n")
-		fmt.Fprintf(os.Stderr, "  Using: %s\n", existingConfigs[0].path)
+		fmt.Fprintf(out, "Warning: Multiple config files found. Only the first one will be used.\n")
+		fmt.Fprintf(out, "  Using: %s\n", existingConfigs[0].path)
 		for _, entry := range existingConfigs[1:] {
-			fmt.Fprintf(os.Stderr, "  Ignoring: %s\n", entry.path)
+			fmt.Fprintf(out, "  Ignoring: %s\n", entry.path)
 		}
-		fmt.Fprintf(os.Stderr, "Consider consolidating to one location to avoid confusion.\n")
+		fmt.Fprintf(out, "Consider consolidating to one location to avoid confusion.\n")
 	}
 }
 
@@ -168,7 +169,7 @@ func Init() (Config, error) {
 	}
 
 	// Check for duplicate configs and warn user
-	checkForDuplicateConfigs()
+	checkForDuplicateConfigs(os.Stderr)
 
 	cachedConfig, configError = ParseDefaultConfig()
 

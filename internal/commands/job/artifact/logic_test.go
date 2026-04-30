@@ -5,14 +5,13 @@ package artifact
 import (
 	"archive/zip"
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 const numTestFiles = 100
@@ -84,13 +83,10 @@ func TestAcceptableZipFile(t *testing.T) {
 
 	targetDir := t.TempDir()
 
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
+	var buf bytes.Buffer
 	listPaths := true
-	err = readZip(reader, targetDir, listPaths, defaultZIPReadLimit, defaultZIPFileLimit)
-	stdout := test.ReturnBuffer(old, r, w)
+	err = readZip(reader, targetDir, listPaths, defaultZIPReadLimit, defaultZIPFileLimit, &buf)
+	stdout := buf.String()
 	require.NoError(t, err)
 
 	files, err := listFilesInDir(targetDir)
@@ -112,7 +108,7 @@ func TestFileLimitExceeded(t *testing.T) {
 	reader, err := toByteReader(zipName)
 	require.NoError(t, err)
 
-	err = readZip(reader, t.TempDir(), false, defaultZIPReadLimit, 50)
+	err = readZip(reader, t.TempDir(), false, defaultZIPReadLimit, 50, io.Discard)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "zip archive includes too many files")
 }
@@ -123,7 +119,7 @@ func TestReadLimitExceeded(t *testing.T) {
 	reader, err := toByteReader(zipName)
 	require.NoError(t, err)
 
-	err = readZip(reader, t.TempDir(), false, 50, defaultZIPFileLimit)
+	err = readZip(reader, t.TempDir(), false, 50, defaultZIPFileLimit, io.Discard)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "extracted zip too large")
 }

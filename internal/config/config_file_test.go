@@ -3,8 +3,8 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -557,24 +557,6 @@ func Test_SearchConfigFile_LegacyLocation(t *testing.T) {
 	assert.Equal(t, legacyConfigFile, foundPath)
 }
 
-// captureStderr runs fn and returns any output written to stderr.
-func captureStderr(t *testing.T, fn func()) string {
-	t.Helper()
-	oldStderr := os.Stderr
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	os.Stderr = w
-
-	fn()
-
-	w.Close()
-	os.Stderr = oldStderr
-
-	output, err := io.ReadAll(r)
-	require.NoError(t, err)
-	return string(output)
-}
-
 func Test_checkForDuplicateConfigs_SymlinkSameFile(t *testing.T) {
 	// This test simulates Fedora Silverblue where /home is a symlink to /var/home.
 	// Both paths point to the same file, so no duplicate warning should be printed.
@@ -607,9 +589,10 @@ func Test_checkForDuplicateConfigs_SymlinkSameFile(t *testing.T) {
 	xdg.Reload()
 
 	// Both paths resolve to the same file, just accessed via different paths
-	output := captureStderr(t, checkForDuplicateConfigs)
+	var buf bytes.Buffer
+	checkForDuplicateConfigs(&buf)
 
-	assert.NotContains(t, output, "Multiple config files found",
+	assert.NotContains(t, buf.String(), "Multiple config files found",
 		"Should not warn about duplicates when paths are symlinks to the same file")
 }
 
@@ -639,8 +622,9 @@ func Test_checkForDuplicateConfigs_RealDuplicates(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", xdgDir)
 	xdg.Reload()
 
-	output := captureStderr(t, checkForDuplicateConfigs)
+	var buf bytes.Buffer
+	checkForDuplicateConfigs(&buf)
 
-	assert.Contains(t, output, "Multiple config files found",
+	assert.Contains(t, buf.String(), "Multiple config files found",
 		"Should warn about duplicates when config files are genuinely different")
 }
