@@ -98,7 +98,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	fl.BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
 	fl.StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	fl.StringSliceVarP(&opts.labels, "label", "l", []string{}, "Add label by `name`. Multiple labels can be comma-separated or specified by repeating the flag.")
-	fl.StringSliceVarP(&opts.reviewers, "reviewer", "", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
+	fl.StringSliceVar(&opts.reviewers, "reviewer", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
