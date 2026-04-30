@@ -18,10 +18,10 @@ Print the contents of a single file from a GitLab repository at a specific
 commit, branch, or tag. No local clone required.
 
 The default output is raw bytes, suitable for piping or redirecting to a file.
-Use '--output json' for a structured response containing metadata such as
-'blob_id', 'commit_id', and 'last_commit_id'.
+Use `--output json` for a structured response containing metadata such as
+`blob_id`, `commit_id`, and `last_commit_id`.
 
-Pass a SHA to '--ref' (rather than a branch name) for results that are
+Pass a SHA to `--ref` (rather than a branch name) for results that are
 immutable and cacheable.
 
 ```plaintext

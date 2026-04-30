@@ -39,17 +39,17 @@ func NewCmdFileGet(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <path> --ref <sha|branch|tag> [flags]",
 		Short: "Read a file from a repository at a specific ref.",
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 		Print the contents of a single file from a GitLab repository at a specific
 		commit, branch, or tag. No local clone required.
 
 		The default output is raw bytes, suitable for piping or redirecting to a file.
-		Use '--output json' for a structured response containing metadata such as
-		'blob_id', 'commit_id', and 'last_commit_id'.
+		Use %[1]s--output json%[1]s for a structured response containing metadata such as
+		%[1]sblob_id%[1]s, %[1]scommit_id%[1]s, and %[1]slast_commit_id%[1]s.
 
-		Pass a SHA to '--ref' (rather than a branch name) for results that are
+		Pass a SHA to %[1]s--ref%[1]s (rather than a branch name) for results that are
 		immutable and cacheable.
-		`),
+		`, "`"),
 		Example: heredoc.Doc(`
 		# Read README.md at the tip of the main branch
 		glab repo file get README.md --ref main
