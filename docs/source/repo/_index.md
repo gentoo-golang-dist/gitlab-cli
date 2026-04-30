@@ -31,6 +31,7 @@ project
 - [`contributors`](contributors.md)
 - [`create`](create.md)
 - [`delete`](delete.md)
+- [`file`](file/_index.md)
 - [`fork`](fork.md)
 - [`list`](list.md)
 - [`members`](members/_index.md)
