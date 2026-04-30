@@ -19,7 +19,8 @@ commit, branch, or tag. No local clone required.
 
 The default output is raw bytes, suitable for piping or redirecting to a file.
 Use `--output json` for a structured response containing metadata such as
-`blob_id`, `commit_id`, and `last_commit_id`.
+`blob_id`, `commit_id`, and `last_commit_id`. The `content`
+field in JSON mode is base64-encoded (matching the GitLab REST API).
 
 Pass a SHA to `--ref` (rather than a branch name) for results that are
 immutable and cacheable.
@@ -48,9 +49,10 @@ glab repo file get assets/big.bin --ref main --lfs > big.bin
 ## Options
 
 ```plaintext
-      --lfs             If the path is an LFS pointer, resolve to the underlying binary. Only applies with --output text.
-  -F, --output string   Format output as: text, json. (default "text")
-  -r, --ref string      Branch, tag, or commit SHA to read from. Required.
+      --lfs               If the path is an LFS pointer, resolve to the underlying binary. Only applies with --output text.
+  -F, --output string     Format output as: text, json. (default "text")
+  -r, --ref string        Branch, tag, or commit SHA to read from. Required.
+  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
 ```
 
 ## Options inherited from parent commands

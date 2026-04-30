@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -17,23 +16,18 @@ import (
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestRepoFileGet(t *testing.T) {
 	tests := []struct {
-		name            string
-		cli             string
-		setupMocks      func(t *testing.T, tc *gitlabtesting.TestClient)
-		wantErr         string
-		wantWrappedWith string
-		wantStdout      string
-		wantStdoutHas   string
-		repoStubOwner   string
-		repoStubRepo    string
-		repoStubHost    string
+		name          string
+		cli           string
+		setupMocks    func(t *testing.T, tc *gitlabtesting.TestClient)
+		wantErr       string
+		wantStdout    string
+		wantStdoutHas string
 	}{
 		{
 			name: "text output happy path",
@@ -73,16 +67,32 @@ func TestRepoFileGet(t *testing.T) {
 			wantStdoutHas: `"file_path":"docs/index.md"`,
 		},
 		{
-			name: "missing --ref errors before any API call",
-			cli:  "README.md",
-			setupMocks: func(t *testing.T, tc *gitlabtesting.TestClient) {
-				t.Helper()
-				// no mocks: expect zero API calls
-			},
-			wantErr: "required flag(s) \"ref\" not set",
+			name:    "missing --ref errors before any API call",
+			cli:     "README.md",
+			wantErr: `required flag(s) "ref" not set`,
 		},
 		{
-			name: "404 path is wrapped",
+			name:    "empty --ref is rejected client-side",
+			cli:     `README.md --ref ""`,
+			wantErr: `flag "--ref" cannot be empty`,
+		},
+		{
+			name:    "empty path is rejected client-side",
+			cli:     `"" --ref deadbeef`,
+			wantErr: "path argument cannot be empty",
+		},
+		{
+			name:    "whitespace-only path is rejected client-side",
+			cli:     `"   " --ref deadbeef`,
+			wantErr: "path argument cannot be empty",
+		},
+		{
+			name:    "--lfs with --output json is rejected client-side",
+			cli:     "README.md --ref deadbeef --output json --lfs",
+			wantErr: "--lfs cannot be used with --output json",
+		},
+		{
+			name: "404 surfaces both prefix and inner error",
 			cli:  "missing.md --ref deadbeef",
 			setupMocks: func(t *testing.T, tc *gitlabtesting.TestClient) {
 				t.Helper()
@@ -90,8 +100,7 @@ func TestRepoFileGet(t *testing.T) {
 					GetRawFile("OWNER/REPO", "missing.md", gomock.Any()).
 					Return(nil, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}}, errors.New("404 not found"))
 			},
-			wantErr:         "404 not found",
-			wantWrappedWith: `Failed to read "missing.md" at ref "deadbeef".`,
+			wantErr: `failed to read "missing.md" at ref "deadbeef": 404 not found`,
 		},
 		{
 			name: "--ref accepts a branch name and forwards it",
@@ -148,7 +157,9 @@ func TestRepoFileGet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			testClient := gitlabtesting.NewTestClient(t)
-			tc.setupMocks(t, testClient)
+			if tc.setupMocks != nil {
+				tc.setupMocks(t, testClient)
+			}
 
 			apiClient, err := api.NewClient(
 				func(*http.Client) (gitlab.AuthSource, error) {
@@ -158,29 +169,10 @@ func TestRepoFileGet(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			repoHost := glinstance.DefaultHostname
-			if tc.repoStubHost != "" {
-				repoHost = tc.repoStubHost
-			}
-			owner := "OWNER"
-			if tc.repoStubOwner != "" {
-				owner = tc.repoStubOwner
-			}
-			repo := "REPO"
-			if tc.repoStubRepo != "" {
-				repo = tc.repoStubRepo
-			}
-
-			cmdFn := func(f cmdutils.Factory) *cobra.Command {
-				cmd := NewCmdFileGet(f)
-				cmdutils.EnableRepoOverride(cmd, f)
-				return cmd
-			}
-
-			cmdExec := cmdtest.SetupCmdForTest(t, cmdFn, false,
+			cmdExec := cmdtest.SetupCmdForTest(t, NewCmdFileGet, false,
 				cmdtest.WithGitLabClient(testClient.Client),
 				cmdtest.WithBranch("main"),
-				cmdtest.WithBaseRepo(owner, repo, repoHost),
+				cmdtest.WithBaseRepo("OWNER", "REPO", glinstance.DefaultHostname),
 				cmdtest.WithApiClient(apiClient),
 			)
 
@@ -189,11 +181,6 @@ func TestRepoFileGet(t *testing.T) {
 			if tc.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.wantErr)
-				if tc.wantWrappedWith != "" {
-					var exitErr *cmdutils.ExitError
-					require.ErrorAs(t, err, &exitErr)
-					assert.Equal(t, tc.wantWrappedWith, exitErr.Details)
-				}
 				return
 			}
 
