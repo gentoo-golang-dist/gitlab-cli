@@ -1,6 +1,6 @@
 //go:build !integration
 
-package setup
+package install
 
 import (
 	"os"
@@ -16,7 +16,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func TestNewCmdSetup(t *testing.T) {
+func TestNewCmdInstall(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         string
@@ -29,40 +29,40 @@ func TestNewCmdSetup(t *testing.T) {
 	}{
 		{
 			name:       "with --path flag",
-			args:       "setup --path %s",
+			args:       "install --path %s",
 			wantStdout: "Installed",
 		},
 		{
 			name:       "with --global flag",
-			args:       "setup --global",
+			args:       "install --global",
 			wantStdout: "Installed",
 		},
 		{
 			name:    "default scope outside git repo",
-			args:    "setup",
+			args:    "install",
 			wantErr: "not in a Git repository",
 			chdir:   true,
 		},
 		{
 			name:    "global and path are mutually exclusive",
-			args:    "setup --global --path /tmp/skills",
+			args:    "install --global --path /tmp/skills",
 			wantErr: "if any flags in the group [global path] are set none of the others can be",
 		},
 		{
 			name:       "with --force overwrites existing skills",
-			args:       "setup --force --path %s",
+			args:       "install --force --path %s",
 			preInstall: true,
 			wantStdout: "Installed",
 		},
 		{
 			name:       "without --force skips existing skills",
-			args:       "setup --path %s",
+			args:       "install --path %s",
 			preInstall: true,
 			wantStderr: "already exists. Use --force to overwrite",
 		},
 		{
 			name:         "without --force fresh install shows no already-exists warnings",
-			args:         "setup --path %s",
+			args:         "install --path %s",
 			wantStdout:   "Installed",
 			noWarnStderr: true,
 		},
@@ -97,16 +97,16 @@ func TestNewCmdSetup(t *testing.T) {
 			}
 
 			f := cmdtest.NewTestFactory(ios)
-			setupCmd := NewCmdSetup(f)
+			installCmd := NewCmdInstall(f)
 
 			rootCmd := &cobra.Command{Use: "glab"}
-			agentCmd := &cobra.Command{Use: "agent"}
-			rootCmd.AddCommand(agentCmd)
-			agentCmd.AddCommand(setupCmd)
+			skillsCmd := &cobra.Command{Use: "skills"}
+			rootCmd.AddCommand(skillsCmd)
+			skillsCmd.AddCommand(installCmd)
 
 			argv, err := shlex.Split(args)
 			require.NoError(t, err)
-			rootCmd.SetArgs(append([]string{"agent"}, argv...))
+			rootCmd.SetArgs(append([]string{"skills"}, argv...))
 
 			err = rootCmd.ExecuteContext(t.Context())
 

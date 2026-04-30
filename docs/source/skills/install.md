@@ -1,5 +1,5 @@
 ---
-title: '`glab agent setup`'
+title: '`glab skills install`'
 stage: Create
 group: Code Review
 info: To determine the technical writer assigned to the Stage/Group associated with this page, see <https://handbook.gitlab.com/handbook/product/ux/technical-writing/#assignments>
@@ -35,23 +35,23 @@ For more information, see
 <https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
-glab agent setup [flags]
+glab skills install [flags]
 ```
 
 ## Examples
 
 ```console
 # Install skills in the current project (default)
-glab agent setup
+glab skills install
 
 # Install skills globally (user scope)
-glab agent setup --global
+glab skills install --global
 
 # Install skills to a custom directory
-glab agent setup --path /path/to/skills
+glab skills install --path /path/to/skills
 
 # Overwrite existing skill files
-glab agent setup --force
+glab skills install --force
 
 ```
 

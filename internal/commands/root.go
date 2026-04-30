@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	agentCmd "gitlab.com/gitlab-org/cli/internal/commands/agent"
 	aliasCmd "gitlab.com/gitlab-org/cli/internal/commands/alias"
 	apiCmd "gitlab.com/gitlab-org/cli/internal/commands/api"
 	attestationCmd "gitlab.com/gitlab-org/cli/internal/commands/attestation"
@@ -37,6 +36,7 @@ import (
 	runnerControllerCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
 	searchCmd "gitlab.com/gitlab-org/cli/internal/commands/search"
+	skillsCmd "gitlab.com/gitlab-org/cli/internal/commands/skills"
 	securefileCmd "gitlab.com/gitlab-org/cli/internal/commands/securefile"
 	snippetCmd "gitlab.com/gitlab-org/cli/internal/commands/snippet"
 	sshCmd "gitlab.com/gitlab-org/cli/internal/commands/ssh-key"
@@ -142,7 +142,6 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.Version = formattedVersion
 
 	// Child commands
-	rootCmd.AddCommand(agentCmd.NewCmdAgent(f))
 	rootCmd.AddCommand(aliasCmd.NewCmdAlias(f))
 	rootCmd.AddCommand(configCmd.NewCmdConfig(f))
 	rootCmd.AddCommand(completionCmd.NewCmdCompletion(f.IO()))
@@ -181,6 +180,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(userCmd.NewCmdUser(f))
 	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 	rootCmd.AddCommand(runnerControllerCmd.NewCmd(f))
+	rootCmd.AddCommand(skillsCmd.NewCmdSkills(f))
 	rootCmd.AddCommand(workitemsCmd.NewCmdWorkItems(f))
 	// TODO: This can probably be removed by GitLab 18.3
 	// See: https://gitlab.com/gitlab-org/cli/-/issues/7885

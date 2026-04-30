@@ -76,7 +76,6 @@ in the main README.
 
 ## Commands
 
-- [`glab agent`](agent/_index.md)
 - [`glab alias`](alias/_index.md)
 - [`glab api`](api/_index.md)
 - [`glab attestation`](attestation/_index.md)
@@ -106,6 +105,7 @@ in the main README.
 - [`glab schedule`](schedule/_index.md)
 - [`glab search`](search/_index.md)
 - [`glab securefile`](securefile/_index.md)
+- [`glab skills`](skills/_index.md)
 - [`glab snippet`](snippet/_index.md)
 - [`glab ssh-key`](ssh-key/_index.md)
 - [`glab stack`](stack/_index.md)

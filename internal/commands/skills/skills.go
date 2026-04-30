@@ -1,20 +1,20 @@
-package agent
+package skills
 
 import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	setupCmd "gitlab.com/gitlab-org/cli/internal/commands/agent/setup"
+	installCmd "gitlab.com/gitlab-org/cli/internal/commands/skills/install"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
-func NewCmdAgent(f cmdutils.Factory) *cobra.Command {
-	agentCmd := &cobra.Command{
-		Use:   "agent <command>",
-		Short: "Set up glab for use with AI coding agents. (EXPERIMENTAL)",
+func NewCmdSkills(f cmdutils.Factory) *cobra.Command {
+	skillsCmd := &cobra.Command{
+		Use:   "skills <command>",
+		Short: "Manage glab agent skills. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`
-			Configure glab for use with AI coding agents.
+			Manage glab agent skills.
 
 			Install glab's bundled agent skills so that AI agents can discover
 			and use glab effectively. Skills follow the Agent Skills specification
@@ -23,7 +23,7 @@ func NewCmdAgent(f cmdutils.Factory) *cobra.Command {
 		`) + text.ExperimentalString,
 	}
 
-	agentCmd.AddCommand(setupCmd.NewCmdSetup(f))
+	skillsCmd.AddCommand(installCmd.NewCmdInstall(f))
 
-	return agentCmd
+	return skillsCmd
 }

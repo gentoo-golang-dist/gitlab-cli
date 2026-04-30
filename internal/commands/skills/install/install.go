@@ -1,4 +1,4 @@
-package setup
+package install
 
 import (
 	"fmt"
@@ -23,13 +23,13 @@ type options struct {
 	force  bool
 }
 
-func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
+func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io: f.IO(),
 	}
 
 	cmd := &cobra.Command{
-		Use:   "setup",
+		Use:   "install",
 		Short: "Install glab's bundled agent skills. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`
 			Install glab's bundled SKILL.md files into your environment so AI
@@ -49,19 +49,19 @@ func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Install skills in the current project (default)
-			glab agent setup
+			glab skills install
 
 			# Install skills globally (user scope)
-			glab agent setup --global
+			glab skills install --global
 
 			# Install skills to a custom directory
-			glab agent setup --path /path/to/skills
+			glab skills install --path /path/to/skills
 
 			# Overwrite existing skill files
-			glab agent setup --force
+			glab skills install --force
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSetup(opts)
+			return runInstall(opts)
 		},
 	}
 
@@ -73,7 +73,7 @@ func NewCmdSetup(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func runSetup(opts *options) error {
+func runInstall(opts *options) error {
 	targetDir, err := resolveTargetDir(opts)
 	if err != nil {
 		return err
