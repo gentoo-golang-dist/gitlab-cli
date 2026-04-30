@@ -38,6 +38,8 @@ type options struct {
 	assignees   []string
 	assigneeIDs *[]int64
 	labels      []string
+	reviewers   []string
+	reviewerIDs *[]int64
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -76,7 +78,8 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 			glab stack sync --no-verify
 			glab stack sync --update-base
 			glab stack sync --assignee user1,user2
-			glab stack sync --label bug,priority::high`),
+			glab stack sync --label bug,priority::high
+			glab stack sync --reviewer user1 --reviewer user2`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -95,6 +98,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	fl.BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
 	fl.StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	fl.StringSliceVarP(&opts.labels, "label", "l", []string{}, "Add label by `name`. Multiple labels can be comma-separated or specified by repeating the flag.")
+	fl.StringSliceVar(&opts.reviewers, "reviewer", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 
 	return stackSaveCmd
 }
@@ -265,6 +269,13 @@ func (o *options) validate() error {
 		return fmt.Errorf("--label (-l) flag requires at least one valid label name")
 	}
 
+	rawReviewers := o.reviewers
+	o.reviewers = dedupe(filterEmpty(o.reviewers))
+
+	if len(rawReviewers) > 0 && len(o.reviewers) == 0 {
+		return fmt.Errorf("--reviewer flag requires at least one valid username")
+	}
+
 	return nil
 }
 
@@ -275,6 +286,14 @@ func (o *options) complete(client *gitlab.Client) error {
 			return fmt.Errorf("error resolving assignee usernames: %w", err)
 		}
 		o.assigneeIDs = cmdutils.IDsFromUsers(users)
+	}
+
+	if len(o.reviewers) > 0 {
+		users, err := api.UsersByNames(client, o.reviewers)
+		if err != nil {
+			return fmt.Errorf("error resolving reviewer usernames: %w", err)
+		}
+		o.reviewerIDs = cmdutils.IDsFromUsers(users)
 	}
 
 	return nil
@@ -437,6 +456,10 @@ func createMR(client *gitlab.Client, opts *options, ref *git.StackRef, gr git.Gi
 
 	if len(opts.labels) > 0 {
 		l.Labels = (*gitlab.LabelOptions)(&opts.labels)
+	}
+
+	if opts.reviewerIDs != nil {
+		l.ReviewerIDs = opts.reviewerIDs
 	}
 
 	mr, _, err := client.MergeRequests.CreateMergeRequest(opts.source.FullName(), l)
