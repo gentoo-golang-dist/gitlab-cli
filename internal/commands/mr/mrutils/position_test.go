@@ -114,10 +114,22 @@ func Test_BuildDiffPosition(t *testing.T) {
 	t.Run("new-side multiline range", func(t *testing.T) {
 		pos, err := BuildDiffPosition(version, fileDiff, 1, 3, 0)
 		require.NoError(t, err)
-		assert.Equal(t, int64(1), *pos.NewLine)
+		// NewLine anchors on the end of the range (line 3)
+		assert.Equal(t, int64(3), *pos.NewLine)
+		// Line 3 is unchanged so OldLine is also set
+		require.NotNil(t, pos.OldLine)
+		assert.Equal(t, int64(3), *pos.OldLine)
 		require.NotNil(t, pos.LineRange)
 		assert.Equal(t, "new", *pos.LineRange.Start.Type)
+		assert.Equal(t, int64(1), *pos.LineRange.Start.NewLine)
+		// Start line 1 is unchanged, so OldLine is set
+		require.NotNil(t, pos.LineRange.Start.OldLine)
+		assert.Equal(t, int64(1), *pos.LineRange.Start.OldLine)
 		assert.Equal(t, "new", *pos.LineRange.End.Type)
+		assert.Equal(t, int64(3), *pos.LineRange.End.NewLine)
+		// End line 3 is unchanged, so OldLine is set
+		require.NotNil(t, pos.LineRange.End.OldLine)
+		assert.Equal(t, int64(3), *pos.LineRange.End.OldLine)
 	})
 
 	t.Run("old-side line on removed line", func(t *testing.T) {

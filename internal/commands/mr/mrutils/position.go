@@ -87,7 +87,7 @@ func BuildDiffPosition(version *gitlab.MergeRequestDiffVersion, fileDiff *gitlab
 		return nil, fmt.Errorf("no targetable line found in diff for %s", fileDiff.NewPath)
 
 	case oldLine > 0:
-		// Targeting an old-side (removed) line
+		// Targeting an old-side (removed) line.
 		correspondingNewLine, lt, err := diff.FindOldLine(lines, oldLine)
 		if err != nil {
 			return nil, fmt.Errorf("old line %d not found in diff for %s", oldLine, fileDiff.OldPath)
@@ -97,8 +97,49 @@ func BuildDiffPosition(version *gitlab.MergeRequestDiffVersion, fileDiff *gitlab
 			pos.NewLine = new(int64(correspondingNewLine))
 		}
 
+	case lineEnd > lineStart:
+		// Multiline range on the new side.
+		// GitLab attaches the note at new_line/old_line, so those must
+		// reference the *end* of the range; line_range defines the
+		// highlighted span.
+		startOld, startLT, err := diff.FindNewLine(lines, lineStart)
+		if err != nil {
+			return nil, fmt.Errorf("line %d not found in diff for %s", lineStart, fileDiff.NewPath)
+		}
+		endOld, endLT, err := diff.FindNewLine(lines, lineEnd)
+		if err != nil {
+			return nil, fmt.Errorf("line %d not found in diff for %s", lineEnd, fileDiff.NewPath)
+		}
+		pos.NewLine = new(int64(lineEnd))
+		if endLT == diff.Unchanged {
+			pos.OldLine = new(int64(endOld))
+		}
+
+		startPos := &gitlab.LinePositionOptions{
+			LineCode: new(lineCode(fileDiff.NewPath, lineStart)),
+			Type:     new("new"),
+			NewLine:  new(int64(lineStart)),
+		}
+		if startLT == diff.Unchanged {
+			startPos.OldLine = new(int64(startOld))
+		}
+
+		endPos := &gitlab.LinePositionOptions{
+			LineCode: new(lineCode(fileDiff.NewPath, lineEnd)),
+			Type:     new("new"),
+			NewLine:  new(int64(lineEnd)),
+		}
+		if endLT == diff.Unchanged {
+			endPos.OldLine = new(int64(endOld))
+		}
+
+		pos.LineRange = &gitlab.LineRangeOptions{
+			Start: startPos,
+			End:   endPos,
+		}
+
 	default:
-		// Targeting a new-side line (possibly a range)
+		// Single new-side line.
 		oldLineNum, lt, err := diff.FindNewLine(lines, lineStart)
 		if err != nil {
 			return nil, fmt.Errorf("line %d not found in diff for %s", lineStart, fileDiff.NewPath)
@@ -106,24 +147,6 @@ func BuildDiffPosition(version *gitlab.MergeRequestDiffVersion, fileDiff *gitlab
 		pos.NewLine = new(int64(lineStart))
 		if lt == diff.Unchanged {
 			pos.OldLine = new(int64(oldLineNum))
-		}
-
-		// Validate range end if multiline
-		if lineEnd > lineStart {
-			_, _, err := diff.FindNewLine(lines, lineEnd)
-			if err != nil {
-				return nil, fmt.Errorf("line %d not found in diff for %s", lineEnd, fileDiff.NewPath)
-			}
-			pos.LineRange = &gitlab.LineRangeOptions{
-				Start: &gitlab.LinePositionOptions{
-					LineCode: new(lineCode(fileDiff.NewPath, lineStart)),
-					Type:     new("new"),
-				},
-				End: &gitlab.LinePositionOptions{
-					LineCode: new(lineCode(fileDiff.NewPath, lineEnd)),
-					Type:     new("new"),
-				},
-			}
 		}
 	}
 
