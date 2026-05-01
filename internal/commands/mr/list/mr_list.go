@@ -507,5 +507,5 @@ func mrDefaultGroup(cfg func() config.Config) string {
 	if err != nil {
 		return ""
 	}
-	return group
+	return strings.TrimSpace(group)
 }
