@@ -448,6 +448,200 @@ func Test_cmdCreate_stdin(t *testing.T) {
 	}
 }
 
+func Test_cmdCreate_diffComment(t *testing.T) {
+	t.Parallel()
+
+	diffContent := `@@ -1,5 +1,6 @@
+ line1
+-old line2
++new line2
++added line3
+ line4
+ line5
+`
+
+	makeDiffVersion := func(t *testing.T, testClient *gitlabtesting.TestClient) {
+		t.Helper()
+		testClient.MockMergeRequests.EXPECT().
+			GetMergeRequestDiffVersions("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.MergeRequestDiffVersion{
+				{ID: 10, BaseCommitSHA: "base", HeadCommitSHA: "head", StartCommitSHA: "start"},
+			}, nil, nil)
+
+		testClient.MockMergeRequests.EXPECT().
+			GetSingleMergeRequestDiffVersion("OWNER/REPO", int64(1), int64(10), gomock.Any()).
+			Return(&gitlab.MergeRequestDiffVersion{
+				ID:             10,
+				BaseCommitSHA:  "base",
+				HeadCommitSHA:  "head",
+				StartCommitSHA: "start",
+				Diffs: []*gitlab.Diff{
+					{
+						NewPath: "main.go",
+						OldPath: "main.go",
+						Diff:    diffContent,
+					},
+				},
+			}, nil, nil)
+	}
+
+	t.Run("diff comment on new-side line", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+		makeDiffVersion(t, testClient)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Comment on new line", *opts.Body)
+				require.NotNil(t, opts.Position)
+				assert.Equal(t, int64(2), *opts.Position.NewLine)
+				return &gitlab.Discussion{
+					ID: "disc-diff-1",
+					Notes: []*gitlab.Note{
+						{ID: 500},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --file main.go --line 2 -m "Comment on new line"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_500")
+	})
+
+	t.Run("diff comment on old-side line", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+		makeDiffVersion(t, testClient)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				require.NotNil(t, opts.Position)
+				assert.Equal(t, int64(2), *opts.Position.OldLine)
+				return &gitlab.Discussion{
+					ID: "disc-diff-2",
+					Notes: []*gitlab.Note{
+						{ID: 501},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --file main.go --old-line 2 -m "Comment on removed line"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_501")
+	})
+
+	t.Run("diff comment with multiline range", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+		makeDiffVersion(t, testClient)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				require.NotNil(t, opts.Position)
+				require.NotNil(t, opts.Position.LineRange)
+				assert.NotNil(t, opts.Position.LineRange.Start)
+				assert.NotNil(t, opts.Position.LineRange.End)
+				return &gitlab.Discussion{
+					ID: "disc-diff-3",
+					Notes: []*gitlab.Note{
+						{ID: 502},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --file main.go --line 2:3 -m "Range comment"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_502")
+	})
+
+	t.Run("file-level diff comment (no line)", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+		makeDiffVersion(t, testClient)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				require.NotNil(t, opts.Position)
+				assert.Equal(t, "text", *opts.Position.PositionType)
+				return &gitlab.Discussion{
+					ID: "disc-diff-4",
+					Notes: []*gitlab.Note{
+						{ID: 503},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --file main.go -m "File-level comment"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_503")
+	})
+
+	t.Run("file not found in diff", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+		makeDiffVersion(t, testClient)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --file nonexistent.go --line 1 -m "bad file"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found in MR diff")
+	})
+
+	t.Run("invalid line format", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --file main.go --line abc -m "bad line"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid line number")
+	})
+
+	t.Run("--line without --file", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --line 5 -m "test"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--line and --old-line require --file")
+	})
+
+	t.Run("--old-line without --file", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --old-line 3 -m "test"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--line and --old-line require --file")
+	})
+}
+
 // --- test helpers ---
 
 func setupMR(t *testing.T) *gitlabtesting.TestClient {
