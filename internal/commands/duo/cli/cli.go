@@ -312,7 +312,7 @@ func (o *options) checkForUpdates(ctx context.Context) {
 	color := o.io.Color()
 	if result.hasUpdate {
 		o.io.LogInfof("\n%s New Duo CLI version available: %s → %s\n", color.DotWarnIcon(), result.currentVersion, result.latestVersion)
-		o.io.LogInfof("Run 'glab duo cli --update' to upgrade\n")
+		o.io.LogInfof("Run 'glab duo cli --update' to update to the latest version\n")
 	}
 	if result.newMajorVersion != "" {
 		o.io.LogInfof("\n%s Duo CLI %s is available but requires a newer version of glab.\n", color.DotWarnIcon(), result.newMajorVersion)
