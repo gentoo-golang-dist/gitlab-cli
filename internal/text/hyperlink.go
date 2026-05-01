@@ -32,4 +32,3 @@ var osc8Pattern = regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\([^\x1b]+)\x1b\]8
 func ConvertOSC8ToMarkdown(s string) string {
 	return osc8Pattern.ReplaceAllString(s, "[$2]($1)")
 }
-
