@@ -76,6 +76,7 @@ in the main README.
 
 ## Commands
 
+- [`glab agent`](agent/_index.md)
 - [`glab alias`](alias/_index.md)
 - [`glab api`](api/_index.md)
 - [`glab attestation`](attestation/_index.md)

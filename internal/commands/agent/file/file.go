@@ -5,21 +5,22 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	repoFileGetCmd "gitlab.com/gitlab-org/cli/internal/commands/project/file/get"
+	agentFileGetCmd "gitlab.com/gitlab-org/cli/internal/commands/agent/file/get"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 func NewCmdFile(f cmdutils.Factory) *cobra.Command {
 	fileCmd := &cobra.Command{
 		Use:   "file <command> [flags]",
-		Short: "Read files from a repository.",
+		Short: "Read files from a repository. (EXPERIMENTAL)",
 		Long: heredoc.Doc(`
 		Work with repository files at a specific ref without cloning the repository.
 
 		Designed for agentic and CI workflows that need structured file access.
-		`),
+		`) + text.ExperimentalString,
 	}
 
-	fileCmd.AddCommand(repoFileGetCmd.NewCmdFileGet(f))
+	fileCmd.AddCommand(agentFileGetCmd.NewCmdFileGet(f))
 
 	return fileCmd
 }

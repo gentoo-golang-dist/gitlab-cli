@@ -17,6 +17,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -41,7 +42,7 @@ func NewCmdFileGet(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get <path>",
-		Short: "Read a file from a repository at a specific ref.",
+		Short: "Read a file from a repository at a specific ref. (EXPERIMENTAL)",
 		Long: heredoc.Docf(`
 		Print the contents of a single file from a GitLab repository at a specific
 		commit, branch, or tag. No local clone required.
@@ -53,19 +54,19 @@ func NewCmdFileGet(f cmdutils.Factory) *cobra.Command {
 
 		Pass a SHA to %[1]s--ref%[1]s (rather than a branch name) for results that are
 		immutable and cacheable.
-		`, "`"),
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 		# Read README.md at the tip of the main branch
-		glab repo file get README.md --ref main
+		glab agent file get README.md --ref main
 
 		# Read a file at a specific commit, structured output
-		glab repo file get docs/index.md --ref 1a2b3c4d --output json
+		glab agent file get docs/index.md --ref 1a2b3c4d --output json
 
 		# Read a file from a different repository
-		glab repo file get internal/main.go --repo gitlab-org/cli --ref main
+		glab agent file get internal/main.go --repo gitlab-org/cli --ref main
 
 		# Resolve an LFS pointer to the underlying binary and save it to disk
-		glab repo file get assets/big.bin --ref main --lfs > big.bin
+		glab agent file get assets/big.bin --ref main --lfs > big.bin
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
