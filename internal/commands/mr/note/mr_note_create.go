@@ -58,9 +58,16 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			prefix of at least 8 characters.
 
 			Use %[1]s--file%[1]s to place a diff comment on a specific file in the latest
-			MR diff version. Combine with %[1]s--line%[1]s (new side) or %[1]s--old-line%[1]s
-			(old/removed side) to target a specific line. Omit both for a
-			file-level comment.
+			merge request diff version. Combine with %[1]s--line%[1]s (new side) or
+			%[1]s--old-line%[1]s (old/removed side) to target a specific line. Omit
+			both flags for a file-level comment.
+
+			The flag rules are:
+
+			- %[1]s--line%[1]s and %[1]s--old-line%[1]s require %[1]s--file%[1]s, and
+			cannot be used together.
+			- %[1]s--file%[1]s, %[1]s--reply%[1]s, and %[1]s--unique%[1]s are mutually
+			exclusive.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
@@ -110,11 +117,11 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.message, "message", "m", "", "Comment or note message.")
-	fl.BoolVar(&opts.unique, "unique", false, "Don't create a note if a note with the same body already exists. Reads all MR comments first.")
+	fl.BoolVar(&opts.unique, "unique", false, "Don't create a note if a note with the same body already exists. Reads all merge request comments first.")
 	fl.StringVar(&opts.reply, "reply", "", "Reply to an existing discussion. Accepts a full discussion ID or a prefix of 8 or more characters.")
-	fl.StringVar(&opts.filePath, "file", "", "File path for a diff comment (targets the latest MR diff version).")
-	fl.StringVar(&opts.line, "line", "", "Line in the new version: a single number or a range N:M.")
-	fl.IntVar(&opts.oldLine, "old-line", 0, "Line in the old version (for commenting on removed lines).")
+	fl.StringVar(&opts.filePath, "file", "", "File path for a diff comment, like <path/to/file>. Targets the latest merge request diff version.")
+	fl.StringVar(&opts.line, "line", "", "Line in the new version. A single line number, like 42, or a range, like 10:15.")
+	fl.IntVar(&opts.oldLine, "old-line", 0, "Line in the old version, for commenting on a removed line.")
 
 	cmd.MarkFlagsMutuallyExclusive("reply", "unique")
 	cmd.MarkFlagsMutuallyExclusive("reply", "file")
