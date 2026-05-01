@@ -23,14 +23,18 @@ glab ci lint [flags]
 glab ci lint
 glab ci lint .gitlab-ci.yml
 glab ci lint path/to/.gitlab-ci.yml
+
+# Output the fully expanded CI/CD configuration
+glab ci lint --include-merged-yaml --dry-run --ref scratch
 ```
 
 ## Options
 
 ```plaintext
-      --dry-run        Run pipeline creation simulation.
-      --include-jobs   Response includes the list of jobs that would exist in a static check or pipeline simulation.
-      --ref string     When 'dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.
+      --dry-run               Run pipeline creation simulation.
+      --include-jobs          Response includes the list of jobs that would exist in a static check or pipeline simulation.
+      --include-merged-yaml   Output the fully expanded CI/CD configuration instead of the validation summary.
+      --ref string            When 'dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.
 ```
 
 ## Options inherited from parent commands
