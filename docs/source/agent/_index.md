@@ -18,7 +18,7 @@ Read repository state without a local clone.
 
 Designed for agentic coding tools (Claude Code, Cursor, Copilot, etc.)
 and CI tooling that needs to answer common repository questions over
-the GitLab API instead of falling back to git clone.
+the GitLab API instead of falling back to `git clone`.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
