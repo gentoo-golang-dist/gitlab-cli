@@ -22,9 +22,16 @@ starting a new one. The value can be a full discussion ID or a unique
 prefix of at least 8 characters.
 
 Use `--file` to place a diff comment on a specific file in the latest
-MR diff version. Combine with `--line` (new side) or `--old-line`
-(old/removed side) to target a specific line. Omit both for a
-file-level comment.
+merge request diff version. Combine with `--line` (new side) or
+`--old-line` (old/removed side) to target a specific line. Omit
+both flags for a file-level comment.
+
+The flag rules are:
+
+- `--line` and `--old-line` require `--file`, and
+cannot be used together.
+- `--file`, `--reply`, and `--unique` are mutually
+exclusive.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -73,12 +80,12 @@ glab mr note create 123 --file main.go -m "General comment on this file"
 ## Options
 
 ```plaintext
-      --file string      File path for a diff comment (targets the latest MR diff version).
-      --line string      Line in the new version: a single number or a range N:M.
+      --file string      File path for a diff comment, like <path/to/file>. Targets the latest merge request diff version.
+      --line string      Line in the new version. A single line number, like 42, or a range, like 10:15.
   -m, --message string   Comment or note message.
-      --old-line int     Line in the old version (for commenting on removed lines).
+      --old-line int     Line in the old version, for commenting on a removed line.
       --reply string     Reply to an existing discussion. Accepts a full discussion ID or a prefix of 8 or more characters.
-      --unique           Don't create a note if a note with the same body already exists. Reads all MR comments first.
+      --unique           Don't create a note if a note with the same body already exists. Reads all merge request comments first.
 ```
 
 ## Options inherited from parent commands
