@@ -182,7 +182,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 
 	issueListCmd.Flags().BoolVarP(&opts.Mine, "mine", "M", false, fmt.Sprintf("Filter only %ss assigned to me.", issueType))
 	_ = issueListCmd.Flags().MarkHidden("mine")
-	_ = issueListCmd.Flags().MarkDeprecated("mine", "use --assignee=@me")
+	_ = issueListCmd.Flags().MarkDeprecated("mine", "use --assignee=@me.")
 
 	return issueListCmd
 }
