@@ -3,12 +3,14 @@ package compile
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/ci/shared/lintcompile"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
 
@@ -45,6 +47,8 @@ func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 }
 
 func compileRun(f cmdutils.Factory, path string) error {
+	var err error
+
 	client, err := f.GitLabClient()
 	if err != nil {
 		return err
@@ -65,12 +69,25 @@ func compileRun(f cmdutils.Factory, path string) error {
 		return fmt.Errorf("reading CI/CD configuration at %s: %w", path, err)
 	}
 
-	merged, err := lintcompile.CompileYAML(client, project.ID, content)
+	compiledResult, _, err := client.Validate.ProjectNamespaceLint(
+		project.ID,
+		&gitlab.ProjectNamespaceLintOptions{
+			Content:     new(string(content)),
+			DryRun:      new(bool),
+			Ref:         new(string),
+			IncludeJobs: new(bool),
+		},
+	)
 	if err != nil {
-		return fmt.Errorf("could not compile %s: %w", path, err)
+		return err
 	}
 
-	fmt.Print(merged)
+	if !compiledResult.Valid {
+		errorsStr := strings.Join(compiledResult.Errors, ", ")
+		return fmt.Errorf("could not compile %s: %s", path, errorsStr)
+	}
+
+	fmt.Print(compiledResult.MergedYaml)
 
 	return nil
 }
