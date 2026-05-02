@@ -91,7 +91,7 @@ func NewCmdMerge(f cmdutils.Factory) *cobra.Command {
 	mrMergeCmd.Flags().BoolVarP(&opts.rebaseBeforeMerge, "rebase", "r", false, "Rebase the commits onto the base branch.")
 	mrMergeCmd.Flags().BoolVarP(&opts.skipPrompts, "yes", "y", false, "Skip submission confirmation prompt.")
 
-	mrMergeCmd.Flags().BoolVarP(&opts.setAutoMerge, "when-pipeline-succeeds", "", true, "Merge only when pipeline succeeds")
+	mrMergeCmd.Flags().BoolVarP(&opts.setAutoMerge, "when-pipeline-succeeds", "", true, "Merge only when pipeline succeeds.")
 	_ = mrMergeCmd.Flags().MarkDeprecated("when-pipeline-succeeds", "use --auto-merge instead.")
 	mrMergeCmd.MarkFlagsMutuallyExclusive("squash", "rebase")
 

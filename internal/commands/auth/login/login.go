@@ -179,8 +179,8 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
 	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
 	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts hostname or hostname:port. Use only when the API is served from a different host than the git remote.")
-	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
-	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
+	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http.")
+	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http.")
 	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.")
 	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
 
