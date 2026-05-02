@@ -67,7 +67,7 @@ func NewCmdReleaseList(f cmdutils.Factory) *cobra.Command {
 
 	releaseListCmd.Flags().StringP("tag", "t", "", "Filter releases by tag <name>.")
 	// deprecate in favour of the `release view` command
-	_ = releaseListCmd.Flags().MarkDeprecated("tag", "Use `glab release view <tag>` instead.")
+	_ = releaseListCmd.Flags().MarkDeprecated("tag", "use `glab release view <tag>` instead.")
 
 	// make it hidden but still accessible
 	// TODO: completely remove before a major release (v2.0.0+)
