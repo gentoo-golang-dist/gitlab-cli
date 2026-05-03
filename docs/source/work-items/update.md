@@ -16,7 +16,7 @@ Update work items in a project or group. (EXPERIMENTAL)
 
 The command uses your repository context to detect scope automatically.
 
-Use %[1]s--group%[1]s to target a group or subgroup. %[1]s--group%[1]s and %[1]s--repo%[1]s are mutually exclusive.
+Use `--group` to target a group or subgroup. `--group` and `--repo` are mutually exclusive.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

@@ -60,11 +60,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <iid> [flags]",
 		Short: "Update work items in a project or group. (EXPERIMENTAL)",
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 		The command uses your repository context to detect scope automatically.
 		
 		Use %[1]s--group%[1]s to target a group or subgroup. %[1]s--group%[1]s and %[1]s--repo%[1]s are mutually exclusive.
-		`) + text.ExperimentalString,
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 					# Update a work item in current project
 					glab work-items update 42 --description "this issue tracks a new feature"
