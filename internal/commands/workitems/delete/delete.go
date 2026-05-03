@@ -12,7 +12,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/api"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/utils"
-	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -24,7 +23,6 @@ type options struct {
 	io           *iostreams.IOStreams
 	baseRepo     func() (glrepo.Interface, error)
 	gitlabClient func() (*gitlab.Client, error)
-	config       func() config.Config
 
 	// Flags
 	group string
@@ -42,32 +40,33 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		io:           f.IO(),
 		baseRepo:     f.BaseRepo,
 		gitlabClient: f.GitLabClient,
-		config:       f.Config,
 	}
 
 	cmd := &cobra.Command{
 		Use:   "delete <iid>",
-		Short: "Delete a given work item in a project or group. (EXPERIMENTAL)",
-		Long: heredoc.Doc(`The command uses your repository context to detect scope automatically.
-		`) + text.ExperimentalString,
+		Short: "Delete a work item in a project or group. (EXPERIMENTAL)",
+		Long: heredoc.Docf(`
+			Delete a work item by its internal ID (IID). This action cannot be undone.
+
+			The command behavior depends on context:
+
+			- By default, deletes from the current repository's project.
+			- With %[1]s--group%[1]s, deletes from the specified group.
+			- With %[1]s--repo%[1]s, deletes from the specified project.
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
-		# Delete work item in current project
+		# Delete a work item by IID from the current project
 		glab work-items delete 42
 
-		# Delete work item in specific group
-		glab work-items delete 42 --group MYGROUP
+		# Delete a group work item
+		glab work-items delete 42 --group my-group
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			iid, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid work item ID: %w", err)
-			}
-			opts.iid = iid
-			if err := opts.complete(cmd); err != nil {
+			if err := opts.complete(cmd, args); err != nil {
 				return err
 			}
 
@@ -82,14 +81,20 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	// Flags
 	fl := cmd.Flags()
-	fl.StringVarP(&opts.group, "group", "g", "", "Delete work items for a group or subgroup.")
+	fl.StringVarP(&opts.group, "group", "g", "", "Delete a work items from a group or subgroup.")
 
 	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
 
-func (opts *options) complete(cmd *cobra.Command) error {
+func (opts *options) complete(cmd *cobra.Command, args []string) error {
+	iid, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid work item ID: %w", err)
+	}
+	opts.iid = iid
+
 	group, err := cmdutils.GroupOverride(cmd)
 	if err != nil {
 		return err
@@ -110,17 +115,24 @@ func (opts *options) run() error {
 		return fmt.Errorf("failed to get GitLab client: %w", err)
 	}
 
-	fmt.Fprintln(opts.io.StdOut, "- Deleting work item in", opts.scope.Path)
+	opts.io.LogInfo("- Deleting work item in", opts.scope.Path)
 
 	_, err = client.WorkItems.DeleteWorkItem(opts.scope.Path, opts.iid)
 	if err != nil {
 		return err
 	}
 
-	if opts.io.IsaTTY {
-		fmt.Fprintf(opts.io.StdOut, "Successfully deleted %d\n", opts.iid)
+	if opts.outputFormat == "json" {
+		err := opts.io.PrintJSON(struct {
+			DeletedWorkItemID int64 `json:"deleted_work_item_id"`
+		}{DeletedWorkItemID: opts.iid})
+		if err != nil {
+			return err
+		}
+	} else if opts.io.IsaTTY {
+		opts.io.LogInfof("Successfully deleted %d\n", opts.iid)
 	} else {
-		fmt.Fprintln(opts.io.StdOut, opts.iid)
+		opts.io.LogInfo(opts.iid)
 	}
 
 	return nil

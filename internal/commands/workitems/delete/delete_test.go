@@ -34,7 +34,7 @@ func TestWorkItemDelete(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tc := gitlabtesting.NewTestClient(t)
 				tc.MockWorkItems.EXPECT().
-					DeleteWorkItem(gomock.Any(), gomock.Any(), gomock.Any()).
+					DeleteWorkItem("OWNER/REPO", int64(1), gomock.Any()).
 					Return(&gitlab.Response{}, nil)
 
 				exec := cmdtest.SetupCmdForTest(
