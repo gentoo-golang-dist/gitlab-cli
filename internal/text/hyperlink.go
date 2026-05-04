@@ -21,6 +21,7 @@ func ConvertMarkdownLinksToOSC8(s string) string {
 	})
 }
 
+// Assumes URL and link text don't contain \x1b (safe for human-authored content).
 var osc8Pattern = regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\([^\x1b]+)\x1b\]8;;\x1b\\`)
 
 func ConvertOSC8ToMarkdown(s string) string {
