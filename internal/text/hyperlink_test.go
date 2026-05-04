@@ -59,6 +59,11 @@ func TestConvertMarkdownLinksToOSC8(t *testing.T) {
 			input:    "See [personal access token scopes](https://docs.gitlab.com/tokens) for details",
 			expected: "See \x1b]8;;https://docs.gitlab.com/tokens\x1b\\personal access token scopes\x1b]8;;\x1b\\ for details",
 		},
+		{
+			name:     "URL with closing parenthesis is truncated (known limitation)",
+			input:    "[See](https://en.wikipedia.org/wiki/Foo_(bar)) here",
+			expected: "\x1b]8;;https://en.wikipedia.org/wiki/Foo_(bar\x1b\\See\x1b]8;;\x1b\\) here",
+		},
 	}
 
 	for _, tt := range tests {

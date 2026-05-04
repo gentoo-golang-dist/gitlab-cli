@@ -179,10 +179,7 @@ func main() {
 	rootCmd.SetArgs(expandedArgs)
 
 	// Convert markdown [text](url) links in command Long and Example fields to
-	// OSC 8 terminal hyperlinks before Fang renders help text. Fang does not
-	// parse markdown, so this must be done upfront. Fang's colorprofile.Writer
-	// strips OSC 8 sequences when output is not a TTY (piped, redirected), so
-	// no additional gating is required here.
+	// OSC 8 terminal hyperlinks before Fang renders help text.
 	preprocessCommandLinks(rootCmd)
 
 	if err := fang.Execute(context.Background(), rootCmd,
@@ -249,12 +246,6 @@ func isUpdateCheckEnabled(f cmdutils.Factory) bool {
 	return checkUpdate
 }
 
-// preprocessCommandLinks walks the cobra command tree and converts markdown
-// [text](url) links in Long and Example fields to OSC 8 terminal hyperlinks.
-// Fang does not parse markdown in command descriptions, so OSC 8 sequences
-// must be embedded before Fang's help renderer is called. Only invoke this
-// when the output stream supports hyperlinks; the sequences are present but
-// invisible in terminals that do not support OSC 8.
 func preprocessCommandLinks(cmd *cobra.Command) {
 	if cmd.Long != "" {
 		cmd.Long = text.ConvertMarkdownLinksToOSC8(cmd.Long)
