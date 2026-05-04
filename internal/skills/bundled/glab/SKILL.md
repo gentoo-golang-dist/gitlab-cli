@@ -10,69 +10,69 @@ description: >
 # GitLab CLI (glab)
 
 `glab` is pre-configured and available in your environment. Use it for all
-GitLab operations. Do NOT call GitLab APIs directly; use `glab` instead.
+GitLab operations. Run `glab <command> --help` for detailed flag information.
 
-Run `glab <command> --help` for detailed flag and usage information.
-
-## Merge requests
+## Quick reference
 
 ```bash
-# Create — always use --push so the branch exists on the remote
-glab mr create --push --title "feat: add feature" --description "$(cat /tmp/mr-description.md)"
-
-# View and update
-glab mr view <iid>
-glab mr update <iid> --description "$(cat /tmp/description.md)"
-```
-
-**Templates:** Check `.gitlab/merge_request_templates/` for project-specific
-templates and follow their structure.
-
-## Issues
-
-```bash
+# Issues
 glab issue view <iid>
-glab issue list --label "priority::P1,status::doing"
-glab issue create --title "Bug: title" --description "$(cat /tmp/issue-description.md)"
-```
+glab issue list --label "bug,priority::1"
+glab issue create --title "title" --description "$(cat /tmp/desc.md)"
+glab issue note <iid> -m "comment text"
 
-**Templates:** Check `.gitlab/issue_templates/` for project-specific templates.
-**References:** Link related issues with `#123` and MRs with `!456`.
+# Merge requests
+glab mr create --push --title "fix: title" --description "$(cat /tmp/desc.md)"
+glab mr view <iid>
+glab mr list --assignee <user>
+glab mr update <iid> --description "$(cat /tmp/desc.md)"
 
-## CI/CD
+# CI/CD
+glab ci status
+glab ci list
+glab ci trace <job-id>
+glab ci retry <pipeline-id>
 
-```bash
-glab ci status              # current pipeline status
-glab ci list                # recent pipelines
-glab ci trace <job-id>      # view job log
-glab ci retry <pipeline-id> # retry failed jobs
-```
-
-## Machine-readable output
-
-Use `--output json` where available, and pipe to `jq` for processing:
-
-```bash
+# Machine-readable output
 glab mr list --output json | jq '.[].title'
-glab api projects/:id/pipelines | jq '.[0].status'
+```
+
+**Templates:** Check `.gitlab/merge_request_templates/` and
+`.gitlab/issue_templates/` for project-specific templates.
+
+**References:** Link issues with `#123`, MRs with `!456`, cross-project
+with `group/project#123`.
+
+## API calls
+
+`glab api` auto-prepends `/api/v4/`. Use relative paths:
+
+```bash
+glab api user                              # NOT /api/v4/user
+glab api projects/:id/merge_requests
+glab api projects/:id/issues | jq '.[0]'
+```
+
+When using `-f` for PUT/POST, pass simple `key=value` pairs. Array bracket
+syntax like `ids[]=1` is not supported:
+
+```bash
+glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=1"
 ```
 
 ## Gotchas
 
-- **Always `--push` on `glab mr create`** — without it, the remote branch
-  may not exist and the MR creation fails.
+- **`glab issue note`, not `issue comment`** — use `-m` for the message body.
+- **`--assignee` on `mr create` requires `read_user` token scope.** If it
+  fails with 403, create the MR without it and assign via API:
+  `glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=<uid>"`
 - **Write long text to a file first** — use `$(cat /tmp/file.md)` for
-  descriptions and comments. Do not inline long strings or strings with
-  backticks in `-m "..."` or `--description "..."`.
-- **No `--body` flag** — glab uses `--description`, not `--body` (that is `gh`).
-- **No `--jq` flag** — pipe to `jq` instead: `glab api ... | jq '...'`.
+  descriptions and comments. Use a `<< 'EOF'` heredoc (single-quoted
+  delimiter) when the content contains backticks or `$` to prevent
+  shell expansion.
+- **Always `--push` on `glab mr create`** — without it the remote branch
+  may not exist and MR creation fails.
 - **No `--state` on `mr list`** — use `--all`, `--merged`, or `--closed`.
-- **`<iid>` is the project-scoped ID** — the number shown in the GitLab UI
-  (e.g., `#123` for issues, `!456` for MRs).
-
-## Guidelines
-
-1. **Read context first** — `glab issue view` or `glab mr view` before acting.
-2. **Use project templates** — check `.gitlab/` for issue and MR templates.
-3. **Reference properly** — `Closes #123`, `Related to !456` in commits.
-4. **Quote special characters** — use single quotes: `git commit -m 'fix: resolve issue !123'`.
+- **No `--body` flag** — use `--description` for MRs/issues, `-m` for notes.
+- **Labels** — `--label` to add, `--unlabel` to remove. Scoped labels like
+  `status::doing` auto-replace within their scope.
