@@ -42,3 +42,4 @@ apps:
     completer: completion.sh
     environment:
       GIT_EDITOR: nano
+      GIT_CONFIG_NOSYSTEM: "1"
