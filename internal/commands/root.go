@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	agentCmd "gitlab.com/gitlab-org/cli/internal/commands/agent"
 	aliasCmd "gitlab.com/gitlab-org/cli/internal/commands/alias"
 	apiCmd "gitlab.com/gitlab-org/cli/internal/commands/api"
 	attestationCmd "gitlab.com/gitlab-org/cli/internal/commands/attestation"
@@ -141,6 +142,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.Version = formattedVersion
 
 	// Child commands
+	rootCmd.AddCommand(agentCmd.NewCmdAgent(f))
 	rootCmd.AddCommand(aliasCmd.NewCmdAlias(f))
 	rootCmd.AddCommand(configCmd.NewCmdConfig(f))
 	rootCmd.AddCommand(completionCmd.NewCmdCompletion(f.IO()))
