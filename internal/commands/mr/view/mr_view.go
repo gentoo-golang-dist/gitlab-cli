@@ -70,9 +70,9 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	fl.BoolVarP(&opts.showSystemLogs, "system-logs", "s", false, "Show system activities and logs.")
 	fl.BoolVar(&opts.showResolved, "resolved", false, "Show only resolved discussions (implies --comments).")
 	fl.BoolVar(&opts.showUnresolved, "unresolved", false, "Show only unresolved discussions (implies --comments).")
-	fl.BoolVar(&opts.opened, "opened", false, "Get only opened merge requests.")
-	fl.BoolVarP(&opts.merged, "merged", "M", false, "Get only merged merge requests.")
-	fl.BoolVar(&opts.closed, "closed", false, "Get only closed merge requests.")
+	fl.BoolVar(&opts.opened, "opened", false, "Get only opened merge requests. Only applies when looking up by branch, not by ID.")
+	fl.BoolVarP(&opts.merged, "merged", "M", false, "Get only merged merge requests. Only applies when looking up by branch, not by ID.")
+	fl.BoolVar(&opts.closed, "closed", false, "Get only closed merge requests. Only applies when looking up by branch, not by ID.")
 
 	cmdutils.EnableJSONOutput(mrViewCmd, &opts.outputFormat)
 
