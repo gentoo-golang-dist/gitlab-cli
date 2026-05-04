@@ -14,7 +14,7 @@ GitLab operations. Run `glab <command> --help` for detailed flag information.
 
 ## Quick reference
 
-```bash
+```shell
 # Issues
 glab issue view <iid>
 glab issue list --label "bug,priority::1"
@@ -47,7 +47,7 @@ with `group/project#123`.
 
 `glab api` auto-prepends `/api/v4/`. Use relative paths:
 
-```bash
+```shell
 glab api user                              # NOT /api/v4/user
 glab api projects/:id/merge_requests
 glab api projects/:id/issues | jq '.[0]'
@@ -56,7 +56,7 @@ glab api projects/:id/issues | jq '.[0]'
 When using `-f` for PUT/POST, pass simple `key=value` pairs. Array bracket
 syntax like `ids[]=1` is not supported:
 
-```bash
+```shell
 glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=1"
 ```
 

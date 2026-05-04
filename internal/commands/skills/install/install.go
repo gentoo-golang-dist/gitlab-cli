@@ -32,23 +32,23 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install glab's bundled agent skills. (EXPERIMENTAL)",
-		Long: heredoc.Doc(`
-			Install glab's bundled SKILL.md files into your environment so AI
-			coding agents can discover how to use glab.
+		Long: heredoc.Docf(`
+			Install the bundled %[1]sSKILL.md%[1]s files into a standard %[1]s.agents/skills/%[1]s
+			directory so that compatible AI agents can discover how to use glab.
 
-			By default, skills are installed at project scope in '.agents/skills/'
-			at the root of the current Git repository. This is the cross-agent
-			standard directory and works with GitLab Duo, Claude Code, Codex,
-			Gemini CLI, and any agent that follows the Agent Skills specification.
+			By default, skills are installed for the current project, in %[1]s.agents/skills/%[1]s
+			at the root of the current Git repository. This directory is the cross-agent
+			standard and works with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI,
+			and any agents that follow the Agent Skills specification.
 
-			Use '--global' to install at user scope in '~/.agents/skills/',
-			making skills available across all projects and agents.
+			To install skills for the current user across all projects and agents, use
+			%[1]s--global%[1]s. Skills are installed in %[1]s~/.agents/skills/%[1]s.
 
-			Use '--path' to install to a custom directory. The path is resolved
+			To install skills to a custom directory, use %[1]s--path%[1]s. The path is resolved
 			relative to the current working directory, not the repository root.
 
-			Existing skill files are not overwritten unless '--force' is specified.
-		`) + text.ExperimentalString,
+			Existing skill files are not overwritten unless %[1]s--force%[1]s is specified.
+		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Install skills in the current project (default)
 			glab skills install
@@ -71,9 +71,9 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
-	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/). (default false)")
-	fl.StringVar(&opts.path, "path", "", "Install skills to a custom <directory>.")
-	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files. (default false)")
+	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/).")
+	fl.StringVar(&opts.path, "path", "", "Install skills to the directory at <path>.")
+	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files.")
 	cmd.MarkFlagsMutuallyExclusive("global", "path")
 
 	return cmd
