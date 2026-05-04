@@ -672,3 +672,69 @@ func Test_filterDiscussionsByResolution(t *testing.T) {
 		})
 	}
 }
+
+func TestMRViewStateFlags(t *testing.T) {
+	oldGetMRForBranch := mrutils.GetMRForBranch
+	defer func() { mrutils.GetMRForBranch = oldGetMRForBranch }()
+
+	fakeMR := &gitlab.BasicMergeRequest{
+		ID:     1,
+		IID:    1,
+		Title:  "testMR",
+		State:  "opened",
+		WebURL: "https://gitlab.com/OWNER/REPO/-/merge_requests/1",
+		Author: &gitlab.BasicUser{Username: "alice"},
+	}
+
+	tests := []struct {
+		name      string
+		args      string
+		wantState string
+	}{
+		{
+			name:      "default state is any",
+			args:      "-R OWNER/REPO",
+			wantState: "any",
+		},
+		{
+			name:      "--opened flag",
+			args:      "--opened -R OWNER/REPO",
+			wantState: "opened",
+		},
+		{
+			name:      "--merged flag",
+			args:      "-M -R OWNER/REPO",
+			wantState: "merged",
+		},
+		{
+			name:      "--closed flag",
+			args:      "--closed -R OWNER/REPO",
+			wantState: "closed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedState string
+			mrutils.GetMRForBranch = func(_ context.Context, _ *iostreams.IOStreams, _ *gitlab.Client, mrOpts mrutils.MrOptions) (*gitlab.BasicMergeRequest, error) {
+				capturedState = mrOpts.State
+				return fakeMR, nil
+			}
+
+			client, _ := gitlab.NewClient("")
+			exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+				cmd := NewCmdView(f)
+				cmdutils.EnableRepoOverride(cmd, f)
+				return cmd
+			}, true,
+				cmdtest.WithConfig(testConfig),
+				cmdtest.WithGitLabClient(client),
+				cmdtest.WithBranch("test-branch"),
+			)
+
+			_, err := exec(tt.args)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantState, capturedState)
+		})
+	}
+}
