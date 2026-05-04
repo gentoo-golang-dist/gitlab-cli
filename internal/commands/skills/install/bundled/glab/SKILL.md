@@ -63,9 +63,6 @@ glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=1"
 ## Common mistakes
 
 - **`glab issue note`, not `issue comment`** — use `-m` for the message body.
-- **`--assignee` on `mr create` requires `read_user` token scope.** If it
-  fails with 403, create the MR without it and assign via API:
-  `glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=<uid>"`
 - **Write long text to a file first** — use `$(cat /tmp/file.md)` for
   descriptions and comments. Use a `<< 'EOF'` heredoc (single-quoted
   delimiter) when the content contains backticks or `$` to prevent

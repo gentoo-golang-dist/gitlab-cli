@@ -14,21 +14,21 @@ Install glab's bundled agent skills. (EXPERIMENTAL)
 
 ## Synopsis
 
-Install the bundled `SKILL.md` files into a standard `.agents/skills/`
-directory so that compatible AI agents can discover how to use glab.
+Install the bundled `SKILL.md` file to `.agents/skills/`, the
+cross-agent standard defined by the Agent Skills specification. This works with
+GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any other
+compliant agent.
 
-By default, skills are installed for the current project, in `.agents/skills/`
-at the root of the current Git repository. This directory is the cross-agent
-standard and works with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI,
-and any agents that follow the Agent Skills specification.
+Install scope:
 
-To install skills for the current user across all projects and agents, use
-`--global`. Skills are installed in `~/.agents/skills/`.
+- By default, skills are installed for the current project, in `.agents/skills/`
+  at the root of the current Git repository.
+- Use `--global` to install skills for the current user, in
+  `~/.agents/skills/`.
+- Use `--path` to install skills to a custom directory. The path is resolved
+  relative to the current working directory, not the repository root.
 
-To install skills to a custom directory, use `--path`. The path is resolved
-relative to the current working directory, not the repository root.
-
-Existing skill files are not overwritten unless `--force` is specified.
+To overwrite existing skill files, use `--force`.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

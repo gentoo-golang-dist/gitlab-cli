@@ -3,216 +3,143 @@
 package install
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func TestNewCmdInstall(t *testing.T) {
-	tests := []struct {
-		name         string
-		args         string
-		wantErr      string
-		wantStdout   string
-		wantStderr   string
-		noWarnStderr bool // assert stderr is empty
-		preInstall   bool // pre-install skills before running
-		chdir        bool // chdir to a non-git temp dir
-		global       bool // test uses --global (override HOME)
-		noParallel   bool // cannot parallelize tests using t.Chdir or t.Setenv
-	}{
-		{
-			name:       "with --path flag",
-			args:       "--path %s",
-			wantStdout: "Installed",
-		},
-		{
-			name:       "with --global flag",
-			args:       "--global",
-			global:     true,
-			noParallel: true,
-			wantStdout: "Installed",
-		},
-		{
-			name:       "default scope outside git repo",
-			args:       "",
-			wantErr:    "not in a Git repository",
-			chdir:      true,
-			noParallel: true,
-		},
-		{
-			name:    "global and path are mutually exclusive",
-			args:    "--global --path /tmp/skills",
-			wantErr: "if any flags in the group [global path] are set none of the others can be",
-		},
-		{
-			name:       "with --force overwrites existing skills",
-			args:       "--force --path %s",
-			preInstall: true,
-			wantStdout: "Installed",
-		},
-		{
-			name:       "without --force skips existing skills",
-			args:       "--path %s",
-			preInstall: true,
-			wantStderr: "already exists. Use --force to overwrite",
-		},
-		{
-			name:         "without --force fresh install shows no already-exists warnings",
-			args:         "--path %s",
-			wantStdout:   "Installed",
-			noWarnStderr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if !tt.noParallel {
-				t.Parallel()
-			}
-
-			// chdir to a non-git directory for tests that need it
-			if tt.chdir {
-				t.Chdir(t.TempDir())
-			}
-
-			// For --path tests, substitute a temp dir
-			args := tt.args
-			if tt.preInstall || containsPathPlaceholder(args) {
-				tmpDir := t.TempDir()
-				args = fmt.Sprintf(args, tmpDir)
-
-				// Pre-install for tests that need existing files
-				if tt.preInstall {
-					_, err := installSkills(tmpDir, false)
-					require.NoError(t, err)
-				}
-			}
-
-			// For --global tests, override HOME to a temp dir
-			if tt.global {
-				t.Setenv("HOME", t.TempDir())
-			}
-
-			exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
-			out, err := exec(args)
-
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-
-			require.NoError(t, err)
-			if tt.wantStdout != "" {
-				assert.Contains(t, out.String(), tt.wantStdout)
-			}
-			if tt.wantStderr != "" {
-				assert.Contains(t, out.Stderr(), tt.wantStderr)
-			}
-			if tt.noWarnStderr {
-				assert.Empty(t, out.Stderr(), "expected no stderr output on fresh install")
-			}
-		})
-	}
-}
-
-func TestInstallSkills(t *testing.T) {
+func TestNewCmdInstall_PathFlag(t *testing.T) {
 	t.Parallel()
 
-	targetDir := t.TempDir()
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("--path " + tmpDir)
 
-	installed, err := installSkills(targetDir, false)
 	require.NoError(t, err)
-
-	// Should install at least one file
-	require.NotEmpty(t, installed)
-
-	// Verify glab/SKILL.md was created
-	skillPath := filepath.Join(targetDir, "glab", "SKILL.md")
-	assert.FileExists(t, skillPath)
-
-	// Verify content has valid frontmatter
-	content, err := os.ReadFile(skillPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(content), "---")
-	assert.Contains(t, string(content), "name: glab")
-	assert.Contains(t, string(content), "description:")
+	assert.Contains(t, out.String(), "Installed")
+	assert.FileExists(t, filepath.Join(tmpDir, skillName, skillFile))
 }
 
-func TestInstallSkillsOverwriteWithForce(t *testing.T) {
+func TestNewCmdInstall_GlobalFlag(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("--global")
+
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Installed")
+	assert.FileExists(t, filepath.Join(home, skillsRelDir, skillName, skillFile))
+}
+
+func TestNewCmdInstall_DefaultScopeOutsideRepo(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	_, err := exec("")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not in a Git repository")
+}
+
+func TestNewCmdInstall_DefaultScopeInsideRepo(t *testing.T) {
+	repoDir := git.InitGitRepo(t)
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("")
+
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Installed")
+	assert.FileExists(t, filepath.Join(repoDir, skillsRelDir, skillName, skillFile))
+}
+
+func TestNewCmdInstall_GlobalAndPathMutuallyExclusive(t *testing.T) {
 	t.Parallel()
 
-	targetDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	_, err := exec("--global --path /tmp/skills")
 
-	// Install once
-	_, err := installSkills(targetDir, false)
-	require.NoError(t, err)
-
-	// Install again with force — should succeed and overwrite
-	installed, err := installSkills(targetDir, true)
-	require.NoError(t, err)
-	require.NotEmpty(t, installed)
-
-	// File should still be valid
-	skillPath := filepath.Join(targetDir, "glab", "SKILL.md")
-	content, err := os.ReadFile(skillPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(content), "name: glab")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "if any flags in the group [global path] are set none of the others can be")
 }
 
-func TestInstallSkillsSkipsWithoutForce(t *testing.T) {
+func TestNewCmdInstall_ForceOverwrites(t *testing.T) {
 	t.Parallel()
 
-	targetDir := t.TempDir()
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
 
-	// Install once
-	_, err := installSkills(targetDir, false)
+	// First install
+	_, err := exec("--path " + tmpDir)
 	require.NoError(t, err)
 
-	// Install again without force — should return no installed paths
-	installed, err := installSkills(targetDir, false)
+	// Force overwrite
+	out, err := exec("--force --path " + tmpDir)
 	require.NoError(t, err)
-	require.Empty(t, installed)
+	assert.Contains(t, out.String(), "Overwrote")
 }
 
-func TestResolveTargetDir(t *testing.T) {
+func TestNewCmdInstall_SkipsWithoutForce(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+
+	// First install
+	_, err := exec("--path " + tmpDir)
+	require.NoError(t, err)
+
+	// Second install without force
+	out, err := exec("--path " + tmpDir)
+	require.NoError(t, err)
+	assert.Contains(t, out.Stderr(), "already exists. Use --force to overwrite")
+}
+
+func TestNewCmdInstall_FreshInstallNoWarnings(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("--path " + tmpDir)
+
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Installed")
+	assert.Empty(t, out.Stderr(), "expected no stderr output on fresh install")
+}
+
+func TestComplete(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with --path", func(t *testing.T) {
 		t.Parallel()
 
-		opts := &options{path: "/custom/path"}
-		dir, err := resolveTargetDir(opts)
-		require.NoError(t, err)
-		assert.Equal(t, "/custom/path", dir)
+		o := &options{path: "/custom/path"}
+		require.NoError(t, o.complete())
+		assert.Equal(t, "/custom/path", o.targetDir)
 	})
 
 	t.Run("with --global", func(t *testing.T) {
 		t.Parallel()
 
-		// resolveTargetDir uses os.UserHomeDir which reads HOME.
-		// We verify the result ends with the expected suffix rather
-		// than setting HOME (which prevents t.Parallel).
-		opts := &options{global: true}
-		dir, err := resolveTargetDir(opts)
-		require.NoError(t, err)
-		assert.True(t, filepath.IsAbs(dir), "expected absolute path, got %s", dir)
-		assert.Equal(t, filepath.Join(".agents", "skills"), dir[len(dir)-len(filepath.Join(".agents", "skills")):])
+		o := &options{global: true}
+		require.NoError(t, o.complete())
+		assert.True(t, filepath.IsAbs(o.targetDir), "expected absolute path, got %s", o.targetDir)
+		assert.True(t, strings.HasSuffix(o.targetDir, skillsRelDir))
 	})
 }
 
-func containsPathPlaceholder(s string) bool {
-	for i := 0; i < len(s)-1; i++ {
-		if s[i] == '%' && s[i+1] == 's' {
-			return true
-		}
-	}
-	return false
+func TestBundledSkillContent(t *testing.T) {
+	t.Parallel()
+
+	require.NotEmpty(t, bundledSkillContent)
+
+	text := string(bundledSkillContent)
+	assert.Contains(t, text, "---")
+	assert.Contains(t, text, "name: glab")
+	assert.Contains(t, text, "description:")
 }

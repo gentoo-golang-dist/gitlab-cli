@@ -1,8 +1,8 @@
 package install
 
 import (
+	_ "embed"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -12,9 +12,20 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
-	"gitlab.com/gitlab-org/cli/internal/skills"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
+
+const (
+	skillName = "glab"
+	skillFile = "SKILL.md"
+)
+
+// skillsRelDir is the conventional directory for agent skills,
+// as defined by the Agent Skills specification (https://agentskills.io).
+var skillsRelDir = filepath.Join(".agents", "skills")
+
+//go:embed bundled/glab/SKILL.md
+var bundledSkillContent []byte
 
 type options struct {
 	io        *iostreams.IOStreams
@@ -33,21 +44,21 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 		Use:   "install",
 		Short: "Install glab's bundled agent skills. (EXPERIMENTAL)",
 		Long: heredoc.Docf(`
-			Install the bundled %[1]sSKILL.md%[1]s files into a standard %[1]s.agents/skills/%[1]s
-			directory so that compatible AI agents can discover how to use glab.
+			Install the bundled %[1]sSKILL.md%[1]s file to %[1]s.agents/skills/%[1]s, the
+			cross-agent standard defined by the Agent Skills specification. This works with
+			GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any other
+			compliant agent.
 
-			By default, skills are installed for the current project, in %[1]s.agents/skills/%[1]s
-			at the root of the current Git repository. This directory is the cross-agent
-			standard and works with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI,
-			and any agents that follow the Agent Skills specification.
+			Install scope:
 
-			To install skills for the current user across all projects and agents, use
-			%[1]s--global%[1]s. Skills are installed in %[1]s~/.agents/skills/%[1]s.
+			- By default, skills are installed for the current project, in %[1]s.agents/skills/%[1]s
+			  at the root of the current Git repository.
+			- Use %[1]s--global%[1]s to install skills for the current user, in
+			  %[1]s~/.agents/skills/%[1]s.
+			- Use %[1]s--path%[1]s to install skills to a custom directory. The path is resolved
+			  relative to the current working directory, not the repository root.
 
-			To install skills to a custom directory, use %[1]s--path%[1]s. The path is resolved
-			relative to the current working directory, not the repository root.
-
-			Existing skill files are not overwritten unless %[1]s--force%[1]s is specified.
+			To overwrite existing skill files, use %[1]s--force%[1]s.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Install skills in the current project (default)
@@ -79,143 +90,59 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-// complete resolves the target directory based on flags and stores it on opts.
-func (opts *options) complete() error {
-	dir, err := resolveTargetDir(opts)
-	if err != nil {
-		return err
-	}
-	opts.targetDir = dir
-	return nil
-}
-
-// run executes the command's business logic.
-func (opts *options) run() error {
-	// Determine which files already exist before installing, so we can
-	// report accurate skip warnings (checking after install would always
-	// find the files we just wrote).
-	skipped, err := skippedSkills(opts.targetDir, opts.force)
-	if err != nil {
-		return err
+func (o *options) complete() error {
+	if o.path != "" {
+		o.targetDir = o.path
+		return nil
 	}
 
-	installed, err := installSkills(opts.targetDir, opts.force)
-	if err != nil {
-		return err
-	}
-
-	c := opts.io.Color()
-	for _, path := range skipped {
-		fmt.Fprintf(opts.io.StdErr, "%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), path)
-	}
-
-	for _, path := range installed {
-		fmt.Fprintf(opts.io.StdOut, "%s Installed %s\n", c.GreenCheck(), path)
-	}
-
-	return nil
-}
-
-// resolveTargetDir determines where to install skills based on flags.
-func resolveTargetDir(opts *options) (string, error) {
-	if opts.path != "" {
-		return opts.path, nil
-	}
-
-	if opts.global {
+	if o.global {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", fmt.Errorf("could not determine home directory: %w", err)
+			return fmt.Errorf("could not determine home directory: %w", err)
 		}
-		return filepath.Join(home, ".agents", "skills"), nil
+		o.targetDir = filepath.Join(home, skillsRelDir)
+		return nil
 	}
 
-	// Default: project scope — skills/ at repo root
+	// Default: project scope — .agents/skills/ at repo root
 	repoRoot, err := git.ToplevelDir()
 	if err != nil {
-		return "", fmt.Errorf("not in a Git repository. Use --global or --path to specify a target: %w", err)
+		return fmt.Errorf("not in a Git repository. Use --global or --path to specify a target: %w", err)
 	}
-	return filepath.Join(repoRoot, ".agents", "skills"), nil
+	o.targetDir = filepath.Join(repoRoot, skillsRelDir)
+	return nil
 }
 
-// skippedSkills returns a list of skill file paths that already exist and
-// would be skipped (only when force is false).
-func skippedSkills(targetDir string, force bool) ([]string, error) {
-	if force {
-		return nil, nil
+func (o *options) run() error {
+	destPath := filepath.Join(o.targetDir, skillName, skillFile)
+	exists := fileExists(destPath)
+
+	if exists && !o.force {
+		c := o.io.Color()
+		fmt.Fprintf(o.io.StdErr, "%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), destPath)
+		return nil
 	}
 
-	var skipped []string
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return fmt.Errorf("creating directory for %s: %w", destPath, err)
+	}
 
-	err := fs.WalkDir(skills.BundledSkills, "bundled", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
+	if err := os.WriteFile(destPath, bundledSkillContent, 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", destPath, err)
+	}
 
-		relPath, err := filepath.Rel("bundled", path)
-		if err != nil {
-			return err
-		}
+	c := o.io.Color()
+	if exists {
+		fmt.Fprintf(o.io.StdOut, "%s Overwrote %s\n", c.GreenCheck(), destPath)
+	} else {
+		fmt.Fprintf(o.io.StdOut, "%s Installed %s\n", c.GreenCheck(), destPath)
+	}
 
-		destPath := filepath.Join(targetDir, relPath)
-		if _, statErr := os.Stat(destPath); statErr == nil {
-			skipped = append(skipped, destPath)
-		}
-		return nil
-	})
-
-	return skipped, err
+	return nil
 }
 
-// installSkills writes the bundled SKILL.md files to the target directory.
-// If force is false, existing files are skipped.
-// Returns a list of file paths that were written.
-func installSkills(targetDir string, force bool) ([]string, error) {
-	var installed []string
-
-	err := fs.WalkDir(skills.BundledSkills, "bundled", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Strip the "bundled/" prefix to get the relative install path
-		relPath, err := filepath.Rel("bundled", path)
-		if err != nil {
-			return err
-		}
-
-		destPath := filepath.Join(targetDir, relPath)
-
-		if d.IsDir() {
-			return os.MkdirAll(destPath, 0o755)
-		}
-
-		// Skip existing files unless --force is set
-		if !force {
-			if _, statErr := os.Stat(destPath); statErr == nil {
-				return nil
-			}
-		}
-
-		content, err := skills.BundledSkills.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("reading bundled skill %s: %w", path, err)
-		}
-
-		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-			return fmt.Errorf("creating directory for %s: %w", destPath, err)
-		}
-
-		if err := os.WriteFile(destPath, content, 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", destPath, err)
-		}
-
-		installed = append(installed, destPath)
-		return nil
-	})
-
-	return installed, err
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
