@@ -14,12 +14,12 @@ Manage glab agent skills. (EXPERIMENTAL)
 
 ## Synopsis
 
-Manage glab agent skills.
+Install the bundled glab agent skills so that AI agents can discover
+and use glab effectively.
 
-Install glab's bundled agent skills so that AI agents can discover
-and use glab effectively. Skills follow the Agent Skills specification
-(<https://agentskills.io>) and work with any compatible agent, including
-GitLab Duo, Claude Code, Codex, Gemini CLI, and others.
+Skills follow the [Agent Skills specification](https://agentskills.io) and work with
+any compatible agent, including GitLab Duo Agent Platform, Claude Code, Codex,
+and Gemini CLI.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

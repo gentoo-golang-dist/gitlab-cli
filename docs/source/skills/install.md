@@ -14,21 +14,21 @@ Install glab's bundled agent skills. (EXPERIMENTAL)
 
 ## Synopsis
 
-Install glab's bundled SKILL.md files into your environment so AI
-coding agents can discover how to use glab.
+Install the bundled `SKILL.md` files into a standard `.agents/skills/`
+directory so that compatible AI agents can discover how to use glab.
 
-By default, skills are installed at project scope in '.agents/skills/'
-at the root of the current Git repository. This is the cross-agent
-standard directory and works with GitLab Duo, Claude Code, Codex,
-Gemini CLI, and any agent that follows the Agent Skills specification.
+By default, skills are installed for the current project, in `.agents/skills/`
+at the root of the current Git repository. This directory is the cross-agent
+standard and works with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI,
+and any agents that follow the Agent Skills specification.
 
-Use '--global' to install at user scope in '~/.agents/skills/',
-making skills available across all projects and agents.
+To install skills for the current user across all projects and agents, use
+`--global`. Skills are installed in `~/.agents/skills/`.
 
-Use '--path' to install to a custom directory. The path is resolved
+To install skills to a custom directory, use `--path`. The path is resolved
 relative to the current working directory, not the repository root.
 
-Existing skill files are not overwritten unless '--force' is specified.
+Existing skill files are not overwritten unless `--force` is specified.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -59,9 +59,9 @@ glab skills install --force
 ## Options
 
 ```plaintext
-  -f, --force         Overwrite existing skill files. (default false)
-  -g, --global        Install skills at user scope (~/.agents/skills/). (default false)
-      --path string   Install skills to a custom <directory>.
+  -f, --force         Overwrite existing skill files.
+  -g, --global        Install skills at user scope (~/.agents/skills/).
+      --path string   Install skills to the directory at <path>.
 ```
 
 ## Options inherited from parent commands

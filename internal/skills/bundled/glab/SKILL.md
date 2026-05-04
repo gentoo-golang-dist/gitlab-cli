@@ -60,7 +60,7 @@ syntax like `ids[]=1` is not supported:
 glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=1"
 ```
 
-## Gotchas
+## Common mistakes
 
 - **`glab issue note`, not `issue comment`** — use `-m` for the message body.
 - **`--assignee` on `mr create` requires `read_user` token scope.** If it
@@ -73,6 +73,6 @@ glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=1"
 - **Always `--push` on `glab mr create`** — without it the remote branch
   may not exist and MR creation fails.
 - **No `--state` on `mr list`** — use `--all`, `--merged`, or `--closed`.
-- **No `--body` flag** — use `--description` for MRs/issues, `-m` for notes.
+- **No `--body` flag** — `--body` is a `gh` flag. `glab` uses `--description`.
 - **Labels** — `--label` to add, `--unlabel` to remove. Scoped labels like
   `status::doing` auto-replace within their scope.
