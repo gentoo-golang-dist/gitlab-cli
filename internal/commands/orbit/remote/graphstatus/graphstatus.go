@@ -1,8 +1,8 @@
 package graphstatus
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -27,14 +27,14 @@ type options struct {
 	apiClient func(repoHost string) (*internalAPI.Client, error)
 	io        *iostreams.IOStreams
 
-	hostname    string
-	namespaceID int64
-	projectID   int64
-	fullPath    string
-	format      string
+	hostname      string
+	namespaceID   int64
+	projectID     int64
+	fullPath      string
+	format        string
+	formatChanged bool
 }
 
-// NewCmd returns the `glab orbit remote graph-status` subcommand.
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		apiClient: f.ApiClient,
@@ -73,11 +73,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		Args: cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			if err := opts.validate(); err != nil {
-				return err
-			}
-			return opts.run()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			opts.formatChanged = cmd.Flags().Changed("format")
+			return opts.run(cmd.Context())
 		},
 	}
 
@@ -90,8 +88,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		"Project ID to inspect. Mutually exclusive with `--namespace-id` and `--full-path`.")
 	fl.StringVar(&opts.fullPath, "full-path", "",
 		"Full path of a project or group, e.g. `gitlab-org/gitlab`. Mutually exclusive with the ID flags.")
-	fl.StringVarP(&opts.format, "format", "f", "",
-		"Response format: `raw` (structured JSON) or `llm` (compact, agent-friendly). Default: `raw`.")
+	fl.VarP(cmdutils.NewEnumValue([]string{formatRaw, formatLLM}, formatRaw, &opts.format),
+		"format", "f",
+		"Response format: `raw` (structured JSON) or `llm` (compact, agent-friendly).")
 
 	cmd.MarkFlagsMutuallyExclusive("namespace-id", "project-id", "full-path")
 	cmd.MarkFlagsOneRequired("namespace-id", "project-id", "full-path")
@@ -99,32 +98,20 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *options) validate() error {
-	if o.format != "" && o.format != formatLLM && o.format != formatRaw {
-		return cmdutils.FlagError{Err: fmt.Errorf("--format must be %q or %q, got %q",
-			formatLLM, formatRaw, o.format)}
-	}
-	return nil
-}
-
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	apiOpts := &gitlab.GetGraphStatusOptions{}
 
 	if o.namespaceID != 0 {
-		nid := o.namespaceID
-		apiOpts.NamespaceID = &nid
+		apiOpts.NamespaceID = &o.namespaceID
 	}
 	if o.projectID != 0 {
-		pid := o.projectID
-		apiOpts.ProjectID = &pid
+		apiOpts.ProjectID = &o.projectID
 	}
 	if o.fullPath != "" {
-		fp := o.fullPath
-		apiOpts.FullPath = &fp
+		apiOpts.FullPath = &o.fullPath
 	}
-	if o.format != "" {
-		f := o.format
-		apiOpts.ResponseFormat = &f
+	if o.formatChanged {
+		apiOpts.ResponseFormat = &o.format
 	}
 
 	client, err := o.apiClient(o.hostname)
@@ -132,7 +119,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	status, resp, err := client.Lab().Orbit.GetGraphStatus(apiOpts)
+	status, resp, err := client.Lab().Orbit.GetGraphStatus(apiOpts, gitlab.WithContext(ctx))
 	if err != nil {
 		// `graph_status` can return 503 when the underlying GKG service
 		// is unavailable. The shared translator does not have a mapping

@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
@@ -25,7 +26,7 @@ func TestTools_HappyPath(t *testing.T) {
 	// GIVEN the Orbit service returns two MCP tool definitions
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetTools().
+		GetTools(gomock.Any()).
 		Return(&gitlab.OrbitTools{
 			Tools: []*gitlab.OrbitTool{
 				{
@@ -47,10 +48,14 @@ func TestTools_HappyPath(t *testing.T) {
 	// WHEN `glab orbit tools` runs
 	out, err := exec("")
 
-	// THEN the tool list is printed as a JSON array
+	// THEN the tool list is printed as a JSON array with expected fields
 	require.NoError(t, err)
-	assert.Contains(t, out.OutBuf.String(), `"query_graph"`)
-	assert.Contains(t, out.OutBuf.String(), `"get_graph_schema"`)
+
+	var result []*gitlab.OrbitTool
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &result))
+	require.Len(t, result, 2)
+	assert.Equal(t, "query_graph", result[0].Name)
+	assert.Equal(t, "get_graph_schema", result[1].Name)
 }
 
 func TestTools_RateLimited(t *testing.T) {
@@ -58,7 +63,7 @@ func TestTools_RateLimited(t *testing.T) {
 	// GIVEN the API returns 429
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetTools().
+		GetTools(gomock.Any()).
 		Return(nil,
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusTooManyRequests}},
 			&gitlab.ErrorResponse{

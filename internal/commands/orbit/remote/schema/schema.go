@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"context"
+
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
@@ -22,7 +24,6 @@ type options struct {
 	expand   []string
 }
 
-// NewCmd returns the `glab orbit remote schema [node...]` subcommand.
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		apiClient: f.ApiClient,
@@ -54,9 +55,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		Args: cobra.ArbitraryArgs,
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)
-			return opts.run()
+			return opts.run(cmd.Context())
 		},
 	}
 
@@ -67,12 +68,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 }
 
 func (o *options) complete(args []string) {
-	if len(args) > 0 {
-		o.expand = append([]string(nil), args...)
-	}
+	o.expand = args
 }
 
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	client, err := o.apiClient(o.hostname)
 	if err != nil {
 		return err
@@ -83,7 +82,7 @@ func (o *options) run() error {
 		schemaOpts = &gitlab.GetOrbitSchemaOptions{Expand: &o.expand}
 	}
 
-	schema, _, err := client.Lab().Orbit.GetSchema(schemaOpts)
+	schema, _, err := client.Lab().Orbit.GetSchema(schemaOpts, gitlab.WithContext(ctx))
 	if err != nil {
 		return orbiterr.Translate(err)
 	}

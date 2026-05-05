@@ -3,6 +3,7 @@
 package schema
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -25,7 +26,7 @@ func TestSchema_NoArgs(t *testing.T) {
 	// GIVEN no positional args means no expand option is sent
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetSchema(gomock.Nil()).
+		GetSchema(gomock.Nil(), gomock.Any()).
 		Return(&gitlab.OrbitSchema{
 			SchemaVersion: "1.0",
 			Domains: []*gitlab.OrbitSchemaDomain{
@@ -43,10 +44,15 @@ func TestSchema_NoArgs(t *testing.T) {
 	// WHEN `glab orbit schema` runs without arguments
 	out, err := exec("")
 
-	// THEN the schema is printed as JSON
+	// THEN the schema is printed as JSON with expected fields
 	require.NoError(t, err)
-	assert.Contains(t, out.OutBuf.String(), `"schema_version":"1.0"`)
-	assert.Contains(t, out.OutBuf.String(), `"core"`)
+
+	var result gitlab.OrbitSchema
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &result))
+	assert.Equal(t, "1.0", result.SchemaVersion)
+	require.Len(t, result.Domains, 1)
+	assert.Equal(t, "core", result.Domains[0].Name)
+	assert.Equal(t, []string{"User", "Project"}, result.Domains[0].NodeNames)
 }
 
 func TestSchema_WithExpandPositional(t *testing.T) {
@@ -54,7 +60,7 @@ func TestSchema_WithExpandPositional(t *testing.T) {
 	// GIVEN positional arguments are passed through as the expand list
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetSchema(gomock.AssignableToTypeOf(&gitlab.GetOrbitSchemaOptions{})).
+		GetSchema(gomock.AssignableToTypeOf(&gitlab.GetOrbitSchemaOptions{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.GetOrbitSchemaOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitSchema, *gitlab.Response, error) {
 			require.NotNil(t, opts)
 			require.NotNil(t, opts.Expand)
@@ -71,10 +77,14 @@ func TestSchema_WithExpandPositional(t *testing.T) {
 	)
 
 	// WHEN `glab orbit schema User Project MergeRequest` runs
-	_, err := exec("User Project MergeRequest")
+	out, err := exec("User Project MergeRequest")
 
-	// THEN no error and the expected expand list is forwarded
+	// THEN no error, the expected expand list is forwarded, and output is valid JSON
 	require.NoError(t, err)
+
+	var result gitlab.OrbitSchema
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &result))
+	assert.Equal(t, "1.0", result.SchemaVersion)
 }
 
 func TestSchema_Forbidden(t *testing.T) {
@@ -82,7 +92,7 @@ func TestSchema_Forbidden(t *testing.T) {
 	// GIVEN the API returns 403
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetSchema(gomock.Any()).
+		GetSchema(gomock.Any(), gomock.Any()).
 		Return(nil,
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusForbidden}},
 			&gitlab.ErrorResponse{

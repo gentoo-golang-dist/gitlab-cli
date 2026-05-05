@@ -1,8 +1,12 @@
 package status
 
 import (
+	"context"
+
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -19,7 +23,6 @@ type options struct {
 	hostname string
 }
 
-// NewCmd returns the `glab orbit remote status` subcommand.
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		apiClient: f.ApiClient,
@@ -42,8 +45,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		Args: cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			return opts.run()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return opts.run(cmd.Context())
 		},
 	}
 
@@ -53,13 +56,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	client, err := o.apiClient(o.hostname)
 	if err != nil {
 		return err
 	}
 
-	status, _, err := client.Lab().Orbit.GetStatus()
+	status, _, err := client.Lab().Orbit.GetStatus(gitlab.WithContext(ctx))
 	if err != nil {
 		return orbiterr.Translate(err)
 	}

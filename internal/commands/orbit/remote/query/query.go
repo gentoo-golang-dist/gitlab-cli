@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,10 +33,10 @@ type options struct {
 	hostname string
 	format   string
 
-	source string
+	source        string
+	formatChanged bool
 }
 
-// NewCmd returns the `glab orbit remote query` subcommand.
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		apiClient: f.ApiClient,
@@ -90,24 +91,19 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.complete(args)
-			if err := opts.validate(); err != nil {
-				return err
-			}
-			return opts.run()
+			opts.formatChanged = cmd.Flags().Changed("format")
+			return opts.run(cmd.Context())
 		},
 	}
 
 	fl := cmd.Flags()
 	fl.StringVar(&opts.hostname, "hostname", "",
 		"GitLab hostname to query. Defaults to the current repository's host or `gitlab.com`.")
-	// The default is intentionally the empty string so we can
-	// distinguish "user passed --format" from "user did not pass it".
-	// When unset, the body's `response_format` wins; when both are
-	// unset, the resolver falls back to `llm`.
-	fl.StringVarP(&opts.format, "format", "f", "",
-		"Response format: `llm` (compact, agent-friendly) or `raw` (structured JSON). Default: `llm`.")
+	fl.VarP(cmdutils.NewEnumValue([]string{formatLLM, formatRaw}, formatLLM, &opts.format),
+		"format", "f",
+		"Response format: `llm` (compact, agent-friendly) or `raw` (structured JSON).")
 
 	return cmd
 }
@@ -119,21 +115,13 @@ func (o *options) complete(args []string) {
 	}
 }
 
-func (o *options) validate() error {
-	if o.format != "" && o.format != formatLLM && o.format != formatRaw {
-		return cmdutils.FlagError{Err: fmt.Errorf("--format must be %q or %q, got %q",
-			formatLLM, formatRaw, o.format)}
-	}
-	return nil
-}
-
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	bodyBytes, err := readBody(o.source, o.io.In)
 	if err != nil {
 		return err
 	}
 
-	req, err := buildRequest(bodyBytes, o.format)
+	req, err := buildRequest(bodyBytes, o.format, o.formatChanged)
 	if err != nil {
 		return err
 	}
@@ -143,7 +131,7 @@ func (o *options) run() error {
 		return err
 	}
 
-	result, _, err := client.Lab().Orbit.Query(req)
+	result, _, err := client.Lab().Orbit.Query(req, gitlab.WithContext(ctx))
 	if err != nil {
 		return orbiterr.Translate(err)
 	}
@@ -177,10 +165,12 @@ func readBody(source string, stdin io.ReadCloser) ([]byte, error) {
 }
 
 // buildRequest parses the user-supplied body into an
-// `*gitlab.OrbitQueryRequest`. The user's `query` is preserved
-// verbatim; `response_format` is taken from the body when present and
-// can be overridden via `--format`.
-func buildRequest(body []byte, format string) (*gitlab.OrbitQueryRequest, error) {
+// *gitlab.OrbitQueryRequest. The user's query is preserved
+// verbatim; response_format priority is:
+//  1. --format flag (when explicitly passed by the user)
+//  2. body's response_format field
+//  3. "llm" fallback default
+func buildRequest(body []byte, format string, formatChanged bool) (*gitlab.OrbitQueryRequest, error) {
 	var raw struct {
 		Query          json.RawMessage `json:"query"`
 		ResponseFormat *string         `json:"response_format,omitempty"`
@@ -192,13 +182,14 @@ func buildRequest(body []byte, format string) (*gitlab.OrbitQueryRequest, error)
 		return nil, errors.New("query body must contain a top-level `query` object")
 	}
 
-	chosen := format
-	if chosen == "" {
-		if raw.ResponseFormat != nil {
-			chosen = *raw.ResponseFormat
-		} else {
-			chosen = formatLLM
-		}
+	var chosen string
+	switch {
+	case formatChanged:
+		chosen = format
+	case raw.ResponseFormat != nil:
+		chosen = *raw.ResponseFormat
+	default:
+		chosen = formatLLM
 	}
 	return &gitlab.OrbitQueryRequest{
 		Query:          raw.Query,
