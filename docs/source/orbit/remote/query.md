@@ -70,7 +70,7 @@ $ glab orbit query --format raw ./query.json
 ## Options
 
 ```plaintext
-  -f, --format llm            Response format: llm (compact, agent-friendly) or `raw` (structured JSON). Default: `llm`.
+  -f, --format llm            Response format: llm (compact, agent-friendly) or `raw` (structured JSON). (default "llm")
       --hostname gitlab.com   GitLab hostname to query. Defaults to the current repository's host or gitlab.com.
 ```
 

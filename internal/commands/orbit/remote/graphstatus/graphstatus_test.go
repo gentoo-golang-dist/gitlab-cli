@@ -3,6 +3,7 @@
 package graphstatus
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -25,7 +26,7 @@ func TestGraphStatus_FullPath_HappyPath(t *testing.T) {
 	// GIVEN the API returns indexing progress for a full_path
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetGraphStatus(gomock.AssignableToTypeOf(&gitlab.GetGraphStatusOptions{})).
+		GetGraphStatus(gomock.AssignableToTypeOf(&gitlab.GetGraphStatusOptions{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.GetGraphStatusOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitGraphStatus, *gitlab.Response, error) {
 			require.NotNil(t, opts)
 			require.NotNil(t, opts.FullPath)
@@ -56,11 +57,17 @@ func TestGraphStatus_FullPath_HappyPath(t *testing.T) {
 	// WHEN `glab orbit remote graph-status --full-path gitlab-org/gitlab` runs
 	out, err := exec("--full-path gitlab-org/gitlab")
 
-	// THEN the typed response is printed as JSON
+	// THEN the typed response is printed as JSON with expected fields
 	require.NoError(t, err)
-	assert.Contains(t, out.OutBuf.String(), `"indexed":5`)
-	assert.Contains(t, out.OutBuf.String(), `"MergeRequest"`)
-	assert.Contains(t, out.OutBuf.String(), `"state":"indexed"`)
+
+	var result gitlab.OrbitGraphStatus
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &result))
+	require.NotNil(t, result.Projects)
+	assert.Equal(t, int64(5), result.Projects.Indexed)
+	require.Len(t, result.Domains, 1)
+	assert.Equal(t, "SDLC", result.Domains[0].Name)
+	require.NotNil(t, result.Indexing)
+	assert.Equal(t, "indexed", result.Indexing.State)
 }
 
 func TestGraphStatus_NamespaceID(t *testing.T) {
@@ -68,7 +75,7 @@ func TestGraphStatus_NamespaceID(t *testing.T) {
 	// GIVEN the user supplies --namespace-id
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetGraphStatus(gomock.AssignableToTypeOf(&gitlab.GetGraphStatusOptions{})).
+		GetGraphStatus(gomock.AssignableToTypeOf(&gitlab.GetGraphStatusOptions{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.GetGraphStatusOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitGraphStatus, *gitlab.Response, error) {
 			require.NotNil(t, opts.NamespaceID)
 			assert.Equal(t, int64(9970), *opts.NamespaceID)
@@ -97,7 +104,7 @@ func TestGraphStatus_ProjectID_FormatLLM(t *testing.T) {
 	// GIVEN the user supplies --project-id and --format llm
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetGraphStatus(gomock.AssignableToTypeOf(&gitlab.GetGraphStatusOptions{})).
+		GetGraphStatus(gomock.AssignableToTypeOf(&gitlab.GetGraphStatusOptions{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.GetGraphStatusOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitGraphStatus, *gitlab.Response, error) {
 			require.NotNil(t, opts.ProjectID)
 			assert.Equal(t, int64(278964), *opts.ProjectID)
@@ -166,6 +173,7 @@ func TestGraphStatus_MultipleScopeFlags_Errors(t *testing.T) {
 func TestGraphStatus_InvalidFormatFlag(t *testing.T) {
 	t.Parallel()
 	// GIVEN an invalid --format value
+	// NewEnumValue rejects unknown values at flag parsing time, before RunE runs.
 	testClient := gitlabtesting.NewTestClient(t)
 	// no API call expected
 
@@ -179,10 +187,9 @@ func TestGraphStatus_InvalidFormatFlag(t *testing.T) {
 	// WHEN
 	_, err := exec("--full-path gitlab-org/gitlab --format yaml")
 
-	// THEN a flag error is returned
+	// THEN cobra rejects the flag before RunE executes
 	require.Error(t, err)
-	var fe cmdutils.FlagError
-	require.True(t, errors.As(err, &fe))
+	assert.Contains(t, err.Error(), "yaml")
 }
 
 func TestGraphStatus_FeatureFlagOff(t *testing.T) {
@@ -190,7 +197,7 @@ func TestGraphStatus_FeatureFlagOff(t *testing.T) {
 	// GIVEN the API returns 404 because the knowledge_graph FF is off
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetGraphStatus(gomock.Any()).
+		GetGraphStatus(gomock.Any(), gomock.Any()).
 		Return(nil,
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
 			&gitlab.ErrorResponse{
@@ -220,7 +227,7 @@ func TestGraphStatus_GKGServiceUnavailable(t *testing.T) {
 	// GIVEN the underlying GKG service is down (HTTP 503)
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetGraphStatus(gomock.Any()).
+		GetGraphStatus(gomock.Any(), gomock.Any()).
 		Return(nil,
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusServiceUnavailable}},
 			&gitlab.ErrorResponse{

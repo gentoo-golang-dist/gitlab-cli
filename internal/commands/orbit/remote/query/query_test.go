@@ -30,7 +30,7 @@ func TestQuery_Stdin_DefaultsToLLM(t *testing.T) {
 	// GIVEN a body on stdin and no --format flag
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{})).
+		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
 			require.NotNil(t, opts)
 			require.NotNil(t, opts.ResponseFormat)
@@ -61,7 +61,10 @@ func TestQuery_Stdin_DefaultsToLLM(t *testing.T) {
 
 	// THEN no error and the result is printed as JSON
 	require.NoError(t, err)
-	assert.Contains(t, out.OutBuf.String(), "@goon")
+
+	var result gitlab.OrbitQueryResult
+	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &result))
+	assert.Contains(t, string(result.Result), "@goon")
 }
 
 func TestQuery_FlagOverridesBodyResponseFormat(t *testing.T) {
@@ -71,7 +74,7 @@ func TestQuery_FlagOverridesBodyResponseFormat(t *testing.T) {
 
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{})).
+		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
 			require.NotNil(t, opts.ResponseFormat)
 			assert.Equal(t, "llm", *opts.ResponseFormat, "--format must override the body's response_format")
@@ -101,7 +104,7 @@ func TestQuery_BodyFormatHonoredWhenNoFlag(t *testing.T) {
 
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{})).
+		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
 			require.NotNil(t, opts.ResponseFormat)
 			// The body's response_format must win when --format is absent.
@@ -136,7 +139,7 @@ func TestQuery_FromFile(t *testing.T) {
 
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		Query(gomock.Any()).
+		Query(gomock.Any(), gomock.Any()).
 		Return(&gitlab.OrbitQueryResult{},
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil)
 
@@ -157,6 +160,7 @@ func TestQuery_FromFile(t *testing.T) {
 func TestQuery_InvalidFormatFlag(t *testing.T) {
 	t.Parallel()
 	// GIVEN a body on stdin and an invalid --format value
+	// NewEnumValue rejects unknown values at flag parsing time, before RunE runs.
 	testClient := gitlabtesting.NewTestClient(t)
 	// no API call expected
 
@@ -171,10 +175,9 @@ func TestQuery_InvalidFormatFlag(t *testing.T) {
 	// WHEN
 	_, err := exec("--format yaml -")
 
-	// THEN a flag error is returned
+	// THEN cobra rejects the flag before RunE executes
 	require.Error(t, err)
-	var fe cmdutils.FlagError
-	require.True(t, errors.As(err, &fe))
+	assert.Contains(t, err.Error(), "yaml")
 }
 
 func TestQuery_EmptyBody(t *testing.T) {
@@ -224,7 +227,7 @@ func TestQuery_Unauthorized(t *testing.T) {
 	// GIVEN the API returns 401
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		Query(gomock.Any()).
+		Query(gomock.Any(), gomock.Any()).
 		Return(nil,
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}},
 			&gitlab.ErrorResponse{
@@ -248,4 +251,25 @@ func TestQuery_Unauthorized(t *testing.T) {
 	var exitErr *cmdutils.ExitError
 	require.True(t, errors.As(err, &exitErr))
 	assert.Equal(t, orbiterr.ExitUnauthenticated, exitErr.Code)
+}
+
+// TestBuildRequest_BodyResponseFormatWinsWhenFlagAbsent is a unit test for
+// buildRequest directly, verifying the priority logic when formatChanged=false.
+func TestBuildRequest_BodyResponseFormatWinsWhenFlagAbsent(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"query":{"query_type":"traversal"},"response_format":"raw"}`)
+	req, err := buildRequest(body, formatLLM, false)
+	require.NoError(t, err)
+	require.NotNil(t, req.ResponseFormat)
+	assert.Equal(t, "raw", *req.ResponseFormat, "body's response_format must win when formatChanged=false")
+}
+
+// TestBuildRequest_FlagWinsOverBody verifies that an explicit --format overrides body.
+func TestBuildRequest_FlagWinsOverBody(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"query":{"query_type":"traversal"},"response_format":"raw"}`)
+	req, err := buildRequest(body, formatLLM, true)
+	require.NoError(t, err)
+	require.NotNil(t, req.ResponseFormat)
+	assert.Equal(t, "llm", *req.ResponseFormat, "--format must win when formatChanged=true")
 }
