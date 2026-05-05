@@ -40,7 +40,6 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			c := f.IO().Color()
 
 			client, err := f.GitLabClient()
 			if err != nil {
@@ -69,15 +68,13 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			} else if mrIID != 0 {
 				mr, _, err := client.MergeRequests.GetMergeRequest(repo.FullName(), int64(mrIID), nil)
 				if err != nil {
-					redCheck := c.Red("✘")
-					fmt.Fprintf(f.IO().StdOut, "%s Failed to get merge request !%d\n", redCheck, mrIID)
-					return err
+					return fmt.Errorf("failed to get merge request !%d: %w", mrIID, err)
 				}
 				if mr.HeadPipeline == nil {
 					return fmt.Errorf("no pipeline found for merge request !%d", mrIID)
 				}
 				pipelineId = int(mr.HeadPipeline.ID)
-				msgNotFound = fmt.Sprintf("No pipeline found for merge request !%d", mrIID)
+				msgNotFound = fmt.Sprintf("No pipeline with the given ID: %d", pipelineId)
 			} else {
 				// Use enhanced branch resolution that supports API fallback
 				branch = ciutils.GetBranch(branch, func() (string, error) {
@@ -87,8 +84,6 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				// Use GetPipelineWithFallback for robust pipeline lookup with MR fallback
 				pipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repo.FullName(), branch, f.IO())
 				if err != nil {
-					redCheck := c.Red("✘")
-					fmt.Fprintf(f.IO().StdOut, "%s %v\n", redCheck, err)
 					return err
 				}
 				pipelineId = int(pipeline.ID)
@@ -97,9 +92,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 			pipeline, _, err := client.Pipelines.GetPipeline(repo.FullName(), int64(pipelineId))
 			if err != nil {
-				redCheck := c.Red("✘")
-				fmt.Fprintf(f.IO().StdOut, "%s %s\n", redCheck, msgNotFound)
-				return err
+				return fmt.Errorf("%s: %w", msgNotFound, err)
 			}
 
 			jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
