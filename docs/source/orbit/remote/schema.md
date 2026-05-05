@@ -16,12 +16,12 @@ Show the GitLab Knowledge Graph ontology. (EXPERIMENTAL)
 
 Calls `GET /api/v4/orbit/schema` and prints the response as
 pretty-printed JSON. The response carries the authoritative graph
-ontology — domains, nodes, and edges — and is the source of truth
-when writing queries.
+ontology, including domains, nodes, and edges. It is the source
+of truth when writing queries.
 
 Positional arguments are passed through as the `expand` query
 parameter (comma-joined). Listed nodes are returned with their full
-properties, style, and incoming/outgoing edge lists; unlisted nodes
+properties, style, and incoming and outgoing edge lists. Unlisted nodes
 remain summary-only in the same response.
 
 This feature is an experiment and is not ready for production use.
@@ -36,11 +36,11 @@ glab orbit remote schema [node...] [flags]
 ## Examples
 
 ```console
-# Full schema (compact, no node detail)
-$ glab orbit schema
+# Show the full schema (compact, no node detail)
+$ glab orbit remote schema
 
-# Drill into specific nodes
-$ glab orbit schema User Project MergeRequest
+# Show details for specific nodes
+$ glab orbit remote schema User Project MergeRequest
 
 ```
 

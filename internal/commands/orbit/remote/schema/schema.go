@@ -36,20 +36,20 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			Calls `+"`GET /api/v4/orbit/schema`"+` and prints the response as
 			pretty-printed JSON. The response carries the authoritative graph
-			ontology — domains, nodes, and edges — and is the source of truth
-			when writing queries.
+			ontology, including domains, nodes, and edges. It is the source
+			of truth when writing queries.
 
 			Positional arguments are passed through as the `+"`expand`"+` query
 			parameter (comma-joined). Listed nodes are returned with their full
-			properties, style, and incoming/outgoing edge lists; unlisted nodes
+			properties, style, and incoming and outgoing edge lists. Unlisted nodes
 			remain summary-only in the same response.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Full schema (compact, no node detail)
-			$ glab orbit schema
+			# Show the full schema (compact, no node detail)
+			$ glab orbit remote schema
 
-			# Drill into specific nodes
-			$ glab orbit schema User Project MergeRequest
+			# Show details for specific nodes
+			$ glab orbit remote schema User Project MergeRequest
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

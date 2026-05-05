@@ -16,8 +16,8 @@ Show the GitLab Knowledge Graph MCP tool manifest. (EXPERIMENTAL)
 
 Calls `GET /api/v4/orbit/tools` and prints the MCP tool manifest
 as pretty-printed JSON. The manifest carries the authoritative JSON
-Schema for the query DSL inside the `query_graph` tool's
-`parameters` field — it is the source of truth for query
+Schema for the query DSL inside the `parameters` field of the
+`query_graph` tool. It is the source of truth for the query
 body shape.
 
 This feature is an experiment and is not ready for production use.
@@ -32,7 +32,7 @@ glab orbit remote tools [flags]
 ## Examples
 
 ```console
-$ glab orbit tools
+$ glab orbit remote tools
 
 ```
 
