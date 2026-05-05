@@ -26,7 +26,7 @@ func TestStatus_HappyPath(t *testing.T) {
 	// GIVEN the Orbit service reports a healthy cluster
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetStatus(gomock.Any()).
+		GetStatus(gomock.Any(), gomock.Any()).
 		Return(&gitlab.OrbitStatus{
 			Status:    "healthy",
 			Timestamp: "2026-04-28T12:00:00Z",
@@ -67,7 +67,7 @@ func TestStatus_FeatureFlagOff(t *testing.T) {
 	// GIVEN the API returns 404 because the knowledge_graph FF is off
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
-		GetStatus(gomock.Any()).
+		GetStatus(gomock.Any(), gomock.Any()).
 		Return(nil,
 			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
 			&gitlab.ErrorResponse{

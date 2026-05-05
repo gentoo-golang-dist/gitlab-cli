@@ -62,7 +62,7 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	status, _, err := client.Lab().Orbit.GetStatus(gitlab.WithContext(ctx))
+	status, _, err := client.Lab().Orbit.GetStatus(nil, gitlab.WithContext(ctx))
 	if err != nil {
 		return orbiterr.Translate(err)
 	}
