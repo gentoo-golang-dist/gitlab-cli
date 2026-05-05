@@ -183,12 +183,12 @@ func buildRequest(body []byte, format string, formatChanged bool) (*gitlab.Orbit
 		return nil, errors.New("query body must contain a top-level `query` object")
 	}
 
-	var chosen string
+	var chosen gitlab.OrbitResponseFormatValue
 	switch {
 	case formatChanged:
-		chosen = format
+		chosen = gitlab.OrbitResponseFormatValue(format)
 	case raw.ResponseFormat != nil:
-		chosen = *raw.ResponseFormat
+		chosen = gitlab.OrbitResponseFormatValue(*raw.ResponseFormat)
 	default:
 		chosen = formatLLM
 	}

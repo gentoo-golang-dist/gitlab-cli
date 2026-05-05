@@ -109,7 +109,7 @@ func TestGraphStatus_ProjectID_FormatLLM(t *testing.T) {
 			require.NotNil(t, opts.ProjectID)
 			assert.Equal(t, int64(278964), *opts.ProjectID)
 			require.NotNil(t, opts.ResponseFormat)
-			assert.Equal(t, "llm", *opts.ResponseFormat)
+			assert.Equal(t, gitlab.OrbitResponseFormatLLM, *opts.ResponseFormat)
 			return &gitlab.OrbitGraphStatus{},
 				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
 		})
