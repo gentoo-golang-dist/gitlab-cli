@@ -45,7 +45,7 @@ func TestTools_HappyPath(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit tools` runs
+	// WHEN `glab orbit remote tools` runs
 	out, err := exec("")
 
 	// THEN the tool list is printed as a JSON array with expected fields

@@ -47,7 +47,7 @@ func TestStatus_HappyPath(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit status` runs
+	// WHEN `glab orbit remote status` runs
 	out, err := exec("")
 
 	// THEN the typed status response is printed as JSON to stdout
@@ -82,7 +82,7 @@ func TestStatus_FeatureFlagOff(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit status` runs
+	// WHEN `glab orbit remote status` runs
 	_, err := exec("")
 
 	// THEN the error is mapped to ExitOrbitUnavailable (exit code 2)
