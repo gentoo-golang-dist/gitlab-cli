@@ -3,6 +3,8 @@ package list
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -492,11 +494,11 @@ func listAllMRs(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions, as
 	}
 
 	// Sort by CreatedAt if no custom sort is specified, otherwise let API sorting take precedence
-        // this fallback approach is mostly to make the output predictable, if order is important
-        // it's best to provide OrderBy in the query so multi-page results are sorted
+	// this fallback approach is mostly to make the output predictable, if order is important
+	// it's best to provide OrderBy in the query so multi-page results are sorted
 	if opts.OrderBy == nil {
-		sort.Slice(mrs, func(i, j int) bool {
-			return mrs[i].CreatedAt.After(*mrs[j].CreatedAt)
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].CreatedAt.After(*out[j].CreatedAt)
 		})
 	}
 
