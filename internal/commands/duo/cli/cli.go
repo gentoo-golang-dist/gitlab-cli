@@ -22,6 +22,8 @@ type options struct {
 	cfg     config.Config
 	manager *cliutils.BinaryManager
 	update  bool
+	install bool
+	yes     bool
 	args    []string // Arguments to pass through to Duo CLI
 }
 
@@ -58,9 +60,7 @@ Configuration options:
 - %[1]sduo_cli_auto_run%[1]s: Skip the run confirmation prompt.
 - %[1]sduo_cli_auto_download%[1]s: Skip the download confirmation prompt.
 
-All arguments and flags are passed through to the GitLab Duo CLI binary.
-
-Use %[1]s--update%[1]s to check for and install updates to the binary.
+All other arguments and flags are passed through to the GitLab Duo CLI binary.
 
 For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab.com/user/gitlab_duo_cli/).
 `, "`") + text.BetaString,
@@ -76,31 +76,57 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 		# Run the GitLab Duo CLI
 		glab duo cli
 
-		# Show Duo CLI help
+		# Show this help
 		glab duo cli --help
+
+		# Show Duo CLI help
+		glab duo cli help
+
+		# Run without prompts (for use in scripts and non-interactive environments)
+		glab duo cli --yes
+
+		# Install the Duo CLI binary
+		glab duo cli --install
+
+		# Install the Duo CLI binary without prompts
+		glab duo cli --install --yes
 
 		# Check for and install updates
 		glab duo cli --update`),
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Handle --update flag manually since DisableFlagParsing is true
-			if len(args) > 0 && args[0] == "--update" {
-				opts.update = true
-				return opts.run(cmd.Context())
-			}
-
-			// Convert --help/-h to help command for duo binary
-			for i, arg := range args {
-				if arg == "--help" || arg == "-h" {
-					args[i] = "help"
-					break
+			// Manually parse glab-owned flags since DisableFlagParsing is true.
+			// Unrecognised args are collected and passed through to the duo binary.
+			var remaining []string
+			for _, arg := range args {
+				switch arg {
+				case "--update":
+					opts.update = true
+				case "--install":
+					opts.install = true
+				case "--yes", "-y":
+					opts.yes = true
+				case "--help", "-h":
+					return cmd.Help()
+				default:
+					remaining = append(remaining, arg)
 				}
 			}
 
-			opts.complete(args)
+			if opts.install {
+				return opts.handleInstall(cmd.Context())
+			}
+
+			opts.complete(remaining)
 			return opts.run(cmd.Context())
 		},
 	}
+
+	// Registered for documentation only — DisableFlagParsing means Cobra never
+	// parses these; the RunE switch above handles them manually.
+	cmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts.")
+	cmd.Flags().Bool("install", false, "Install the Duo CLI binary without running it.")
+	cmd.Flags().Bool("update", false, "Check for and install updates to the binary.")
 
 	return cmd
 }
@@ -181,6 +207,9 @@ func (o *options) run(ctx context.Context) error {
 
 	installedVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
 	autoDownload, _ := o.cfg.Get("", "duo_cli_auto_download")
+	if o.yes {
+		autoDownload = "true"
+	}
 
 	info, err := o.manager.EnsureInstalled(ctx, installedVersion, installedPath, autoDownload)
 	if err != nil {
@@ -198,8 +227,10 @@ func (o *options) run(ctx context.Context) error {
 		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), info.Path)
 	}
 
-	if err := o.checkAutoRun(ctx); err != nil {
-		return err
+	if !o.yes {
+		if err := o.checkAutoRun(ctx); err != nil {
+			return err
+		}
 	}
 
 	return o.executeDuoCLI(ctx, info.Path, o.args)
@@ -216,6 +247,38 @@ func (o *options) saveBinaryInfo(info *cliutils.BinaryInfo) error {
 		return err
 	}
 	return o.cfg.Write()
+}
+
+func (o *options) handleInstall(ctx context.Context) error {
+	managedPath, err := cliutils.ManagedBinaryPath()
+	if err != nil {
+		return err
+	}
+
+	installedVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
+	installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
+	autoDownload, _ := o.cfg.Get("", "duo_cli_auto_download")
+
+	if o.yes {
+		autoDownload = "true"
+	}
+
+	info, err := o.manager.EnsureInstalled(ctx, installedVersion, installedPath, autoDownload)
+	if err != nil {
+		return err
+	}
+
+	if info.Path != managedPath {
+		return nil
+	}
+
+	if installedVersion != "" && info.Version == installedVersion {
+		color := o.io.Color()
+		o.io.LogInfof("%s Duo CLI version %s is already installed.\n", color.GreenCheck(), installedVersion)
+		return nil
+	}
+
+	return o.saveBinaryInfo(info)
 }
 
 func (o *options) handleUpdate(ctx context.Context) error {
