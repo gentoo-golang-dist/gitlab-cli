@@ -41,7 +41,7 @@ func TestSchema_NoArgs(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit schema` runs without arguments
+	// WHEN `glab orbit remote schema` runs without arguments
 	out, err := exec("")
 
 	// THEN the schema is printed as JSON with expected fields
@@ -76,7 +76,7 @@ func TestSchema_WithExpandPositional(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit schema User Project MergeRequest` runs
+	// WHEN `glab orbit remote schema User Project MergeRequest` runs
 	out, err := exec("User Project MergeRequest")
 
 	// THEN no error, the expected expand list is forwarded, and output is valid JSON

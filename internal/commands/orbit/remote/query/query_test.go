@@ -56,7 +56,7 @@ func TestQuery_Stdin_DefaultsToLLM(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit query -` runs (stdin)
+	// WHEN `glab orbit remote query -` runs (stdin)
 	out, err := exec("-")
 
 	// THEN no error and the result is printed as JSON
@@ -150,7 +150,7 @@ func TestQuery_FromFile(t *testing.T) {
 		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
 	)
 
-	// WHEN `glab orbit query <file>` runs
+	// WHEN `glab orbit remote query <file>` runs
 	_, err := exec(bodyPath)
 
 	// THEN no error
