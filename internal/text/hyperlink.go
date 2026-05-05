@@ -1,21 +1,20 @@
 package text
 
 import (
-	"fmt"
 	"regexp"
 )
 
 var mdLinkPattern = regexp.MustCompile(`\[([^\]]+)\]\(([^)\s]+)\)`)
 
-// ConvertMarkdownLinksToOSC8 converts markdown [text](url) syntax to OSC 8 hyperlinks.
-
-func ConvertMarkdownLinksToOSC8(s string) string {
+// ConvertMarkdownLinks converts markdown [text](url) links.
+// Typically linkFormatter is IOStreams.Hyperlink, which
+// emits OSC 8 sequences when the terminal supports them and returns plain
+// display text otherwise.
+func ConvertMarkdownLinks(s string, linkFormatter func(displayText, url string) string) string {
 	return mdLinkPattern.ReplaceAllStringFunc(s, func(match string) string {
 		parts := mdLinkPattern.FindStringSubmatch(match)
 		if len(parts) >= 3 {
-			displayText := parts[1]
-			url := parts[2]
-			return fmt.Sprintf("\x1b]8;;%s\x1b\\%s\x1b]8;;\x1b\\", url, displayText)
+			return linkFormatter(parts[1], parts[2])
 		}
 		return match
 	})

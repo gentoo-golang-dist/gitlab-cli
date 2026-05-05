@@ -180,7 +180,7 @@ func main() {
 
 	// Convert markdown [text](url) links in command Long and Example fields to
 	// OSC 8 terminal hyperlinks before Fang renders help text.
-	preprocessCommandLinks(rootCmd)
+	preprocessCommandLinks(rootCmd, cmdFactory.IO())
 
 	if err := fang.Execute(context.Background(), rootCmd,
 		fang.WithoutCompletions(),
@@ -246,14 +246,14 @@ func isUpdateCheckEnabled(f cmdutils.Factory) bool {
 	return checkUpdate
 }
 
-func preprocessCommandLinks(cmd *cobra.Command) {
+func preprocessCommandLinks(cmd *cobra.Command, io *iostreams.IOStreams) {
 	if cmd.Long != "" {
-		cmd.Long = text.ConvertMarkdownLinksToOSC8(cmd.Long)
+		cmd.Long = text.ConvertMarkdownLinks(cmd.Long, io.Hyperlink)
 	}
 	if cmd.Example != "" {
-		cmd.Example = text.ConvertMarkdownLinksToOSC8(cmd.Example)
+		cmd.Example = text.ConvertMarkdownLinks(cmd.Example, io.Hyperlink)
 	}
 	for _, sub := range cmd.Commands() {
-		preprocessCommandLinks(sub)
+		preprocessCommandLinks(sub, io)
 	}
 }
