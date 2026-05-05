@@ -124,9 +124,10 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 
 	// Registered for documentation only — DisableFlagParsing means Cobra never
 	// parses these; the RunE switch above handles them manually.
-	cmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompts.")
-	cmd.Flags().Bool("install", false, "Install the Duo CLI binary without running it.")
-	cmd.Flags().Bool("update", false, "Check for and install updates to the binary.")
+	fl := cmd.Flags()
+	fl.BoolP("yes", "y", false, "Skip confirmation prompts. (default false)")
+	fl.Bool("install", false, "Install the Duo CLI binary without running it. (default false)")
+	fl.Bool("update", false, "Check for and install updates to the binary. (default false)")
 
 	return cmd
 }

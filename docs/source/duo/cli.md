@@ -77,9 +77,9 @@ glab duo cli --update
 ## Options
 
 ```plaintext
-      --install   Install the Duo CLI binary without running it.
-      --update    Check for and install updates to the binary.
-  -y, --yes       Skip confirmation prompts.
+      --install   Install the Duo CLI binary without running it. (default false)
+      --update    Check for and install updates to the binary. (default false)
+  -y, --yes       Skip confirmation prompts. (default false)
 ```
 
 ## Options inherited from parent commands
