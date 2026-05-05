@@ -28,14 +28,15 @@ The request body must be a full Orbit query envelope:
 }
 ```
 
-`--format` overrides the body's `response_format` value
-(or sets it if absent). If neither the body nor `--format`
-specifies a format, `llm` is used by default — agent-friendly
-compact output. Use `--format raw` when piping into `jq`.
+`--format` overrides the body's `response_format` value,
+or sets it if absent. If neither the body nor `--format`
+specifies a format, `llm` is used by default. The `llm`
+format is compact and intended for agents. Use `--format raw`
+when piping into `jq`.
 
-The graph DSL JSON Schema is served by `glab orbit tools` and
-is the source of truth for the body shape. See also
-`glab orbit schema` for the graph ontology.
+The graph DSL JSON Schema is served by `glab orbit remote tools`
+and is the source of truth for the body shape. See also
+`glab orbit remote schema` for the graph ontology.
 
 For the full query language reference with examples, fetch the docs
 from the Knowledge Graph repository:
@@ -57,20 +58,20 @@ glab orbit remote query [file|-] [flags]
 
 ```console
 # Run a query from a file
-$ glab orbit query ./query.json
+$ glab orbit remote query ./query.json
 
 # Run a query from stdin
-$ cat ./query.json | glab orbit query -
+$ cat ./query.json | glab orbit remote query -
 
 # Force raw output (pipeable into jq)
-$ glab orbit query --format raw ./query.json
+$ glab orbit remote query --format raw ./query.json
 
 ```
 
 ## Options
 
 ```plaintext
-  -f, --format llm            Response format: llm (compact, agent-friendly) or `raw` (structured JSON). (default "llm")
+  -f, --format llm            Response format: llm (compact, intended for agents) or `raw` (structured JSON). (default "llm")
       --hostname gitlab.com   GitLab hostname to query. Defaults to the current repository's host or gitlab.com.
 ```
 

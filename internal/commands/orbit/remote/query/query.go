@@ -61,14 +61,15 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			}
 			%[2]s
 
-			%[1]s--format%[1]s overrides the body's %[1]sresponse_format%[1]s value
-			(or sets it if absent). If neither the body nor %[1]s--format%[1]s
-			specifies a format, %[1]sllm%[1]s is used by default — agent-friendly
-			compact output. Use %[1]s--format raw%[1]s when piping into %[1]sjq%[1]s.
+			%[1]s--format%[1]s overrides the body's %[1]sresponse_format%[1]s value,
+			or sets it if absent. If neither the body nor %[1]s--format%[1]s
+			specifies a format, %[1]sllm%[1]s is used by default. The %[1]sllm%[1]s
+			format is compact and intended for agents. Use %[1]s--format raw%[1]s
+			when piping into %[1]sjq%[1]s.
 
-			The graph DSL JSON Schema is served by %[1]sglab orbit tools%[1]s and
-			is the source of truth for the body shape. See also
-			%[1]sglab orbit schema%[1]s for the graph ontology.
+			The graph DSL JSON Schema is served by %[1]sglab orbit remote tools%[1]s
+			and is the source of truth for the body shape. See also
+			%[1]sglab orbit remote schema%[1]s for the graph ontology.
 
 			For the full query language reference with examples, fetch the docs
 			from the Knowledge Graph repository:
@@ -79,13 +80,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		`, "`", "```") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Run a query from a file
-			$ glab orbit query ./query.json
+			$ glab orbit remote query ./query.json
 
 			# Run a query from stdin
-			$ cat ./query.json | glab orbit query -
+			$ cat ./query.json | glab orbit remote query -
 
 			# Force raw output (pipeable into jq)
-			$ glab orbit query --format raw ./query.json
+			$ glab orbit remote query --format raw ./query.json
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -103,7 +104,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		"GitLab hostname to query. Defaults to the current repository's host or `gitlab.com`.")
 	fl.VarP(cmdutils.NewEnumValue([]string{formatLLM, formatRaw}, formatLLM, &opts.format),
 		"format", "f",
-		"Response format: `llm` (compact, agent-friendly) or `raw` (structured JSON).")
+		"Response format: `llm` (compact, intended for agents) or `raw` (structured JSON).")
 
 	return cmd
 }

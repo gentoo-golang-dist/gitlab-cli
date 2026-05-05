@@ -35,12 +35,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			Calls `+"`GET /api/v4/orbit/tools`"+` and prints the MCP tool manifest
 			as pretty-printed JSON. The manifest carries the authoritative JSON
-			Schema for the query DSL inside the `+"`query_graph`"+` tool's
-			`+"`parameters`"+` field — it is the source of truth for query
+			Schema for the query DSL inside the `+"`parameters`"+` field of the
+			`+"`query_graph`"+` tool. It is the source of truth for the query
 			body shape.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab orbit tools
+			$ glab orbit remote tools
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

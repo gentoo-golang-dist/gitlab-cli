@@ -27,17 +27,17 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			project-scoped) and gated behind the `+"`knowledge_graph`"+`
 			feature flag.
 
-			Always start with the discovery dance — these calls are cheap and
-			return the authoritative ontology and query DSL schema:
+			Start with these discovery commands. They return the authoritative
+			ontology and query DSL schema:
 
 			`+"```shell"+`
-			glab orbit remote status                         # is the service up?
-			glab orbit remote schema                         # what entities and edges exist?
-			glab orbit remote schema MergeRequest Project    # drill into specific nodes
-			glab orbit remote tools                          # full DSL JSON Schema
+			glab orbit remote status                         # Is the service up?
+			glab orbit remote schema                         # What entities and edges exist?
+			glab orbit remote schema MergeRequest Project    # Show details for specific nodes
+			glab orbit remote tools                          # Full DSL JSON Schema
 			`+"```"+`
 
-			Once you know the shape of the graph, run a query:
+			After you know the shape of the graph, run a query:
 
 			`+"```shell"+`
 			glab orbit remote query path/to/query.json
@@ -52,12 +52,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 			Exit codes:
 
-			- 1 — generic error
-			- 2 — Orbit endpoint unavailable (HTTP 404, e.g. feature flag off)
-			- 3 — not authenticated (HTTP 401)
-			- 4 — access denied (HTTP 403, e.g. no Knowledge Graph enabled
-			  namespaces)
-			- 5 — rate limited (HTTP 429)
+			- 1: Generic error.
+			- 2: Orbit endpoint unavailable (HTTP 404, for example, when the feature flag is off).
+			- 3: Not authenticated (HTTP 401).
+			- 4: Access denied (HTTP 403, for example, when no Knowledge Graph enabled
+			  namespaces exist).
+			- 5: Rate limited (HTTP 429).
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Discovery workflow (always start here)

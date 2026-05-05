@@ -52,11 +52,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 			Exactly one of `+"`--namespace-id`"+`, `+"`--project-id`"+`, or
 			`+"`--full-path`"+` is required. `+"`--full-path`"+` accepts the
-			full path of a project or group, e.g. `+"`gitlab-org/gitlab`"+`.
+			full path of a project or group. For example, `+"`gitlab-org/gitlab`"+`.
 
 			Unlike `+"`glab orbit remote query`"+`, this endpoint defaults to
-			the `+"`raw`"+` response format. Use `+"`--format llm`"+` for the
-			compact, agent-friendly output.
+			the `+"`raw`"+` response format. Use `+"`--format llm`"+` for
+			compact output intended for agents.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Look up indexing progress by full path
@@ -83,14 +83,14 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVar(&opts.hostname, "hostname", "",
 		"GitLab hostname to query. Defaults to the current repository's host or `gitlab.com`.")
 	fl.Int64Var(&opts.namespaceID, "namespace-id", 0,
-		"Namespace (group) ID to inspect. Mutually exclusive with `--project-id` and `--full-path`.")
+		"Namespace (group) ID to inspect. Cannot be used with --project-id or --full-path.")
 	fl.Int64Var(&opts.projectID, "project-id", 0,
-		"Project ID to inspect. Mutually exclusive with `--namespace-id` and `--full-path`.")
+		"Project ID to inspect. Cannot be used with --namespace-id or --full-path.")
 	fl.StringVar(&opts.fullPath, "full-path", "",
-		"Full path of a project or group, e.g. `gitlab-org/gitlab`. Mutually exclusive with the ID flags.")
+		"Full path of a project or group, such as `gitlab-org/gitlab`. Cannot be used with the ID flags.")
 	fl.VarP(cmdutils.NewEnumValue([]string{formatRaw, formatLLM}, formatRaw, &opts.format),
 		"format", "f",
-		"Response format: `raw` (structured JSON) or `llm` (compact, agent-friendly).")
+		"Response format: `raw` (structured JSON) or `llm` (compact, intended for agents).")
 
 	cmd.MarkFlagsMutuallyExclusive("namespace-id", "project-id", "full-path")
 	cmd.MarkFlagsOneRequired("namespace-id", "project-id", "full-path")

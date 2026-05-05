@@ -15,9 +15,9 @@ Show GitLab Knowledge Graph cluster health. (EXPERIMENTAL)
 ## Synopsis
 
 Calls `GET /api/v4/orbit/status` and prints the cluster health
-response as pretty-printed JSON. This is the cheapest way to confirm
-Orbit is enabled and reachable for your user, and it is the first
-step in the Orbit discovery workflow.
+response as pretty-printed JSON. Use this command to confirm Orbit
+is enabled and reachable for your user. It is the first step in
+the Orbit discovery workflow.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -31,7 +31,7 @@ glab orbit remote status [flags]
 ## Examples
 
 ```console
-$ glab orbit status
+$ glab orbit remote status
 
 ```
 

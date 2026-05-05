@@ -34,12 +34,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: `Show GitLab Knowledge Graph cluster health. (EXPERIMENTAL)`,
 		Long: heredoc.Doc(`
 			Calls `+"`GET /api/v4/orbit/status`"+` and prints the cluster health
-			response as pretty-printed JSON. This is the cheapest way to confirm
-			Orbit is enabled and reachable for your user, and it is the first
-			step in the Orbit discovery workflow.
+			response as pretty-printed JSON. Use this command to confirm Orbit
+			is enabled and reachable for your user. It is the first step in
+			the Orbit discovery workflow.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			$ glab orbit status
+			$ glab orbit remote status
 		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
