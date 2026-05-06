@@ -49,7 +49,9 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	mrViewCmd := &cobra.Command{
 		Use:     "view [<id | branch>]",
 		Short:   `Display the title, body, and other information about a merge request.`,
-		Long:    ``,
+		Long: heredoc.Docf(`
+			You can use a branch name or ID. Use %[1]s--web%[1]s to open in a browser.
+		`, "`"),
 		Aliases: []string{"show"},
 		Args:    cobra.MaximumNArgs(1),
 		Annotations: map[string]string{

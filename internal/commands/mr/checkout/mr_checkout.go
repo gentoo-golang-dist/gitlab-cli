@@ -28,7 +28,10 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 	mrCheckoutCmd := &cobra.Command{
 		Use:   "checkout [<id> | <branch> | <url>]",
 		Short: "Check out an open merge request.",
-		Long:  ``,
+		Long: heredoc.Docf(`
+			Defaults to the currently checked-out branch. Use %[1]s--branch%[1]s to
+			override the local branch name used for the checkout.
+		`, "`"),
 		Example: heredoc.Doc(`
 			glab mr checkout 1
 			glab mr checkout branch
