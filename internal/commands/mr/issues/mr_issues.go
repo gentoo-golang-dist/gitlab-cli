@@ -20,7 +20,8 @@ func NewCmdIssues(f cmdutils.Factory) *cobra.Command {
 		Use:   "issues [<id> | <branch>]",
 		Short: `Get issues that close when a merge request is merged.`,
 		Long: heredoc.Doc(`
-			Lists issues that close when the merge request is merged.
+			Lists issues linked to the merge request through closing patterns
+			in the description or commits.
 		`),
 		Aliases: []string{"issue"},
 		Args:    cobra.MaximumNArgs(1),

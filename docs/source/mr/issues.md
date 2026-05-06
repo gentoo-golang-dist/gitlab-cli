@@ -14,7 +14,8 @@ Get issues that close when a merge request is merged.
 
 ## Synopsis
 
-Lists issues that close when the merge request is merged.
+Lists issues linked to the merge request through closing patterns
+in the description or commits.
 
 ```plaintext
 glab mr issues [<id> | <branch>] [flags]

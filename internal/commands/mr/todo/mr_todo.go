@@ -19,9 +19,9 @@ func NewCmdTodo(f cmdutils.Factory) *cobra.Command {
 	mrToDoCmd := &cobra.Command{
 		Use:     "todo [<id> | <branch>]",
 		Aliases: []string{"add-todo"},
-		Short:   "Add a to-do item to merge request.",
+		Short:   "Add a to-do item to a merge request.",
 		Long: heredoc.Doc(`
-			Adds the merge request to your GitLab to-do list.
+			Adding a to-do item flags the merge request for follow-up in your To-Do List.
 		`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
