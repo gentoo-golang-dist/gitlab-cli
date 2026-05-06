@@ -24,6 +24,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/run"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
+	"gitlab.com/gitlab-org/cli/internal/text"
 	"gitlab.com/gitlab-org/cli/internal/theme"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
@@ -177,6 +178,10 @@ func main() {
 
 	rootCmd.SetArgs(expandedArgs)
 
+	// Convert markdown [text](url) links in command Long and Example fields to
+	// OSC 8 terminal hyperlinks before Fang renders help text.
+	preprocessCommandLinks(rootCmd, cmdFactory.IO())
+
 	if err := fang.Execute(context.Background(), rootCmd,
 		fang.WithoutCompletions(),
 		fang.WithoutManpage(),
@@ -239,4 +244,16 @@ func isUpdateCheckEnabled(f cmdutils.Factory) bool {
 	}
 
 	return checkUpdate
+}
+
+func preprocessCommandLinks(cmd *cobra.Command, io *iostreams.IOStreams) {
+	if cmd.Long != "" {
+		cmd.Long = text.ConvertMarkdownLinks(cmd.Long, io.Hyperlink)
+	}
+	if cmd.Example != "" {
+		cmd.Example = text.ConvertMarkdownLinks(cmd.Example, io.Hyperlink)
+	}
+	for _, sub := range cmd.Commands() {
+		preprocessCommandLinks(sub, io)
+	}
 }
