@@ -40,8 +40,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			Replaces the current token with a new one. Store the new token value
 			securely before closing the terminal. You cannot retrieve the token
-			again. Prompts for confirmation before rotation. Use %[1]s--force%[1]s to skip the confirmation prompt in
-			non-interactive contexts.
+			again. Prompts for confirmation before rotation. Use %[1]s--force%[1]s
+			to skip the confirmation prompt in non-interactive contexts.
 		`, "`") + text.ExperimentalString,
 		Args: cobra.ExactArgs(2),
 		Example: heredoc.Doc(`

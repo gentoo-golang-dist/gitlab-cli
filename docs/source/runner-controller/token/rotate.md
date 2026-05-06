@@ -16,8 +16,8 @@ Rotate a token for a runner controller. (EXPERIMENTAL)
 
 Replaces the current token with a new one. Store the new token value
 securely before closing the terminal. You cannot retrieve the token
-again. Prompts for confirmation before rotation. Use `--force` to skip the confirmation prompt in
-non-interactive contexts.
+again. Prompts for confirmation before rotation. Use `--force`
+to skip the confirmation prompt in non-interactive contexts.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

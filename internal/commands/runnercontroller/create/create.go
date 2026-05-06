@@ -33,10 +33,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [flags]",
 		Short: `Create a runner controller. (EXPERIMENTAL)`,
-		Long: heredoc.Docf(`
+		Long: heredoc.Doc(`
 			You must have administrator access. The runner controller can be
 			created in a disabled state for testing before you enable the runner controller.
-			%s`, text.ExperimentalString),
+		`) + text.ExperimentalString,
 		Args: cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# Create a runner controller with default settings
