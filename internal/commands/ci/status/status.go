@@ -45,8 +45,8 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 		       glab ci status --live
 
-			   # Wait to return until the pipeline is finished, and provide output without a prompt.
-			   glab ci status --wait
+		       # Wait to return until the pipeline is finished, and provide output without a prompt.
+		       glab ci status --wait
 
 		       # A more compact view
 		       glab ci status --compact

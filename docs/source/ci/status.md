@@ -25,19 +25,19 @@ stats
 ## Examples
 
 ```console
-   glab ci status --live
+glab ci status --live
 
 # Wait to return until the pipeline is finished, and provide output without a prompt.
 glab ci status --wait
 
-   # A more compact view
-   glab ci status --compact
+# A more compact view
+glab ci status --compact
 
-   # Get the pipeline for the main branch
-   glab ci status --branch=main
+# Get the pipeline for the main branch
+glab ci status --branch=main
 
-   # Get the pipeline for the current branch
-   glab ci status
+# Get the pipeline for the current branch
+glab ci status
 ```
 
 ## Options
