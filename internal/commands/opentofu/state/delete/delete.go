@@ -38,7 +38,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "delete <state> [<serial>] [flags]",
-		Short: `Delete the given state or if the serial is provided only that version of the given state.`,
+		Short: `Delete a state or a specific version of a state.`,
 		Long: heredoc.Docf(`
 			Prompts for confirmation before deletion. Use %[1]s--force%[1]s to skip
 			the confirmation prompt.
