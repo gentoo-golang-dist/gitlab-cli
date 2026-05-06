@@ -24,8 +24,8 @@ var unsubscribeFromMR = func(client *gitlab.Client, projectID any, mrID int64, o
 
 func NewCmdUnsubscribe(f cmdutils.Factory) *cobra.Command {
 	mrUnsubscribeCmd := &cobra.Command{
-		Use:     "unsubscribe [<id> | <branch>]",
-		Short:   `Unsubscribe from a merge request.`,
+		Use:   "unsubscribe [<id> | <branch>]",
+		Short: `Unsubscribe from a merge request.`,
 		Long: heredoc.Doc(`
 			You no longer receive notifications after unsubscribing.
 		`),

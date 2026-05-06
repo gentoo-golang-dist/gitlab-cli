@@ -14,8 +14,8 @@ import (
 
 func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 	mrDeleteCmd := &cobra.Command{
-		Use:     "delete [<id> | <branch>]",
-		Short:   `Delete a merge request.`,
+		Use:   "delete [<id> | <branch>]",
+		Short: `Delete a merge request.`,
 		Long: heredoc.Doc(`
 			You can delete multiple merge requests by passing multiple IDs
 			or branch names.

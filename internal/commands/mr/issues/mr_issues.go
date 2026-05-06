@@ -17,8 +17,8 @@ import (
 
 func NewCmdIssues(f cmdutils.Factory) *cobra.Command {
 	mrIssuesCmd := &cobra.Command{
-		Use:     "issues [<id> | <branch>]",
-		Short:   `Get issues related to a particular merge request.`,
+		Use:   "issues [<id> | <branch>]",
+		Short: `Get issues that close when a merge request is merged.`,
 		Long: heredoc.Doc(`
 			Lists issues that close when the merge request is merged.
 		`),

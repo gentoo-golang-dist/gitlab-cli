@@ -25,7 +25,7 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 			Creates a comment by default. Use %[1]s--resolve%[1]s or
 			%[1]s--unresolve%[1]s to manage existing discussion threads.
 		`, "`"),
-		Args:    cobra.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
