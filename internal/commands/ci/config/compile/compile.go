@@ -22,7 +22,7 @@ func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 			Defaults to the %[1]s.gitlab-ci.yml%[1]s file in the current directory.
 			You must run this command from a GitLab project repository.
 		`, "`"),
-		Args:  cobra.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
 			glab ci config compile

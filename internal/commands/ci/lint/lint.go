@@ -45,7 +45,7 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 			to simulate pipeline creation, and %[1]s--ref%[1]s to set the branch or
 			tag context for the simulation.
 		`, "`"),
-		Args:  cobra.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
 			glab ci lint
