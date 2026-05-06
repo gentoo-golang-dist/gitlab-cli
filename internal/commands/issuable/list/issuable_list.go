@@ -77,9 +77,12 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 	}
 
 	issueListCmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   fmt.Sprintf(`List project %ss.`, issueType),
-		Long:    ``,
+		Use:   "list [flags]",
+		Short: fmt.Sprintf(`List project %ss.`, issueType),
+		Long: heredoc.Docf(`
+			Defaults to open items. Use %[1]s--group%[1]s to list for a group
+			instead of the current project.
+		`, "`"),
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(fmt.Sprintf(`
 			glab %[1]s list --all
