@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -19,8 +20,10 @@ func NewCmdTodo(f cmdutils.Factory) *cobra.Command {
 		Use:     "todo [<id> | <branch>]",
 		Aliases: []string{"add-todo"},
 		Short:   "Add a to-do item to merge request.",
-		Long:    ``,
-		Args:    cobra.MaximumNArgs(1),
+		Long: heredoc.Doc(`
+			Adds the merge request to your GitLab to-do list.
+		`),
+		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

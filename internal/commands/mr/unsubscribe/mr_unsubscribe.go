@@ -26,7 +26,9 @@ func NewCmdUnsubscribe(f cmdutils.Factory) *cobra.Command {
 	mrUnsubscribeCmd := &cobra.Command{
 		Use:     "unsubscribe [<id> | <branch>]",
 		Short:   `Unsubscribe from a merge request.`,
-		Long:    ``,
+		Long: heredoc.Doc(`
+			You no longer receive notifications after unsubscribing.
+		`),
 		Aliases: []string{"unsub"},
 		Example: heredoc.Doc(`
 		# Unsubscribe from a merge request

@@ -15,7 +15,9 @@ func NewCmdRevoke(f cmdutils.Factory) *cobra.Command {
 	mrRevokeCmd := &cobra.Command{
 		Use:     "revoke [<id> | <branch>]",
 		Short:   `Revoke approval on a merge request.`,
-		Long:    ``,
+		Long: heredoc.Doc(`
+			Defaults to the currently checked-out branch.
+		`),
 		Aliases: []string{"unapprove"},
 		Example: heredoc.Doc(`
 		# Revoke approval on a merge request

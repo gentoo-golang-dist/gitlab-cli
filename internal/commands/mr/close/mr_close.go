@@ -18,7 +18,10 @@ func NewCmdClose(f cmdutils.Factory) *cobra.Command {
 	mrCloseCmd := &cobra.Command{
 		Use:   "close [<id> | <branch>]",
 		Short: `Close a merge request.`,
-		Long:  ``,
+		Long: heredoc.Doc(`
+			Defaults to the currently checked-out branch. You can close
+			multiple merge requests by passing multiple IDs or branch names.
+		`),
 		Example: heredoc.Doc(`
 			glab mr close 1
 

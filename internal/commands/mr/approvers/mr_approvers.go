@@ -3,6 +3,7 @@ package approvers
 import (
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -32,7 +33,10 @@ func NewCmdApprovers(f cmdutils.Factory) *cobra.Command {
 	mrApproversCmd := &cobra.Command{
 		Use:     "approvers [<id> | <branch>] [flags]",
 		Short:   `List eligible approvers for merge requests in any state.`,
-		Long:    ``,
+		Long: heredoc.Doc(`
+			Lists users and groups eligible to approve, based on the approval
+			rules configured for the project.
+		`),
 		Aliases: []string{},
 		Args:    cobra.MaximumNArgs(1),
 		Annotations: map[string]string{

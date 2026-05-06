@@ -17,7 +17,9 @@ func NewCmdApprove(f cmdutils.Factory) *cobra.Command {
 	mrApproveCmd := &cobra.Command{
 		Use:   "approve [<id | branch>]",
 		Short: `Approve merge requests.`,
-		Long:  ``,
+		Long: heredoc.Doc(`
+			Defaults to the currently checked-out branch.
+		`),
 		Example: heredoc.Doc(`
 			glab mr approve 235
 			glab mr approve 123 345
