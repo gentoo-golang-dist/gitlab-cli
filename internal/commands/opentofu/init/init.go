@@ -39,6 +39,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init <state> [flags]",
 		Short: `Initialize OpenTofu or Terraform.`,
+		Long: heredoc.Docf(`
+			Configures the GitLab HTTP backend for OpenTofu or Terraform state
+			and runs %[1]stofu init%[1]s. You must run this command from a GitLab
+			project repository.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Initialize state with name production in working directory
 			glab opentofu init production

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/docker/docker-credential-helpers/credentials"
 	"github.com/spf13/cobra"
 
@@ -30,6 +31,10 @@ func NewCmdConfigureDocker(f cmdutils.Factory) *cobra.Command {
 		Use:   "configure-docker",
 		Args:  cobra.ExactArgs(0),
 		Short: "Register glab as a Docker credential helper.",
+		Long: heredoc.Doc(`
+			Configures Docker to use glab for authentication with GitLab
+			container registries. Runs on Linux and macOS only.
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
