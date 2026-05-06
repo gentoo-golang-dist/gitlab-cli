@@ -50,8 +50,14 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 	}
 
 	cmd := &cobra.Command{
-		Use:     "export",
-		Short:   "Export variables from a project or group.",
+		Use:   "export",
+		Short: "Export variables from a project or group.",
+		Long: heredoc.Docf(`
+			Defaults to the current project. Use %[1]s--group%[1]s to export
+			variables for a group. Use %[1]s--output%[1]s to set the format:
+			%[1]sjson%[1]s (default), %[1]senv%[1]s (KEY=VALUE pairs), or
+			%[1]sexport%[1]s (shell export statements).
+		`, "`"),
 		Aliases: []string{"ex"},
 		Args:    cobra.ExactArgs(0),
 		Example: heredoc.Doc(`
