@@ -108,8 +108,9 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			if failedJobsOnly {
-				// Exclude jobs with allow_failure=true since they don't contribute to pipeline failure.
+			withAllowFailure, _ := cmd.Flags().GetBool("with-allow-failure")
+			if failedJobsOnly && !withAllowFailure {
+				// By default exclude allow_failure jobs since they don't contribute to pipeline failure.
 				var failedJobs []*gitlab.Job
 				for _, j := range jobs {
 					if !j.AllowFailure {
@@ -159,6 +160,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	pipelineGetCmd.Flags().BoolP("with-job-details", "d", false, "Show extended job information.")
 	pipelineGetCmd.Flags().Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
 	pipelineGetCmd.Flags().Bool("failed-jobs-only", false, "Show only failed jobs, including in JSON output. Implies --with-job-details for text output.")
+	pipelineGetCmd.Flags().Bool("with-allow-failure", false, "Include jobs with allow_failure=true when filtering with --failed-jobs-only.")
 
 	return pipelineGetCmd
 }

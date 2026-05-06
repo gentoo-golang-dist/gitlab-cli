@@ -525,6 +525,54 @@ ID	Name	Stage	Status	Duration	Failure reason	URL
 					}, lastPageResponse, nil)
 			},
 		},
+		{
+			name: "when --failed-jobs-only --with-allow-failure includes allow_failure jobs",
+			args: "-p=123 --failed-jobs-only --with-allow-failure",
+			expectedOut: `# Pipeline:
+id:	123
+status:	failed
+source:	push
+ref:	main
+sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
+tag:	false
+yaml Errors:	-
+user:	test
+created:	2023-10-10 00:00:00 +0000 UTC
+started:	2023-10-10 00:00:00 +0000 UTC
+updated:	2023-10-10 00:00:00 +0000 UTC
+
+# Jobs:
+ID	Name	Stage	Status	Duration	Failure reason	URL
+2	test	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/2
+4	flaky	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/4
+
+`,
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockPipelines.EXPECT().
+					GetPipeline("OWNER/REPO", int64(123)).
+					Return(&gitlab.Pipeline{
+						ID:         123,
+						IID:        123,
+						Status:     "failed",
+						Source:     "push",
+						Ref:        "main",
+						SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
+						User:       &gitlab.BasicUser{Username: "test"},
+						YamlErrors: "-",
+						CreatedAt:  &createdAt,
+						StartedAt:  &startedAt,
+						UpdatedAt:  &updatedAt,
+					}, nil, nil)
+				tc.MockJobs.EXPECT().
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Cond(func(opts *gitlab.ListJobsOptions) bool {
+						return opts.Scope != nil && len(*opts.Scope) == 1 && (*opts.Scope)[0] == gitlab.Failed
+					}), gomock.Any()).
+					Return([]*gitlab.Job{
+						{ID: 2, Name: "test", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/2"},
+						{ID: 4, Name: "flaky", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/4", AllowFailure: true},
+					}, lastPageResponse, nil)
+			},
+		},
 	}
 
 	for _, tc := range tests {
