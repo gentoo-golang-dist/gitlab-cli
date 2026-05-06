@@ -111,8 +111,7 @@ func (o *options) run(ctx context.Context) error {
 		apiOpts.FullPath = &o.fullPath
 	}
 	if o.formatChanged {
-		f := gitlab.OrbitResponseFormatValue(o.format)
-		apiOpts.ResponseFormat = &f
+		apiOpts.ResponseFormat = new(gitlab.OrbitResponseFormatValue(o.format))
 	}
 
 	client, err := o.apiClient(o.hostname)
