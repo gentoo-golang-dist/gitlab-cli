@@ -13,6 +13,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -34,6 +35,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <id> [flags]",
 		Short: `Update a runner controller. (EXPERIMENTAL)`,
+		Long: heredoc.Docf(`
+			You must specify at least one of %[1]s--description%[1]s or %[1]s--state%[1]s.
+		`, "`") + text.ExperimentalString,
 		Args:  cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Update a runner controller's description

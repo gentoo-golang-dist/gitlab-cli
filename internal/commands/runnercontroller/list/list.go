@@ -14,6 +14,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -34,6 +35,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
 		Short: `List runner controllers. (EXPERIMENTAL)`,
+		Long: heredoc.Docf(`
+			You must have administrator access.
+			%s`, text.ExperimentalString),
 		Args:  cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# List all runner controllers
