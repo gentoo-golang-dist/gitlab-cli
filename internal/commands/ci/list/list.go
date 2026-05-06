@@ -20,10 +20,12 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	pipelineListCmd := &cobra.Command{
 		Use:   "list [flags]",
 		Short: `Get the list of CI/CD pipelines.`,
+		Long: heredoc.Docf(`
+			Defaults to the current project. Use %[1]s--status%[1]s to filter pipelines by status.
+		`, "`"),
 		Example: heredoc.Doc(`
 			glab ci list
 			glab ci list --status=failed`),
-		Long: ``,
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
