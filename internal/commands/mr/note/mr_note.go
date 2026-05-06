@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -20,8 +21,11 @@ func NewCmdNote(f cmdutils.Factory) *cobra.Command {
 		Use:     "note [<id> | <branch>]",
 		Aliases: []string{"comment"},
 		Short:   "Manage comments and discussions on a merge request.",
-		Long:    ``,
-		Args:    cobra.MaximumNArgs(1),
+		Long: heredoc.Docf(`
+			Creates a comment by default. Use %[1]s--resolve%[1]s or
+			%[1]s--unresolve%[1]s to manage existing discussion threads.
+		`, "`"),
+		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

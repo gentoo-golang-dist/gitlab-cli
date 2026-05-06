@@ -24,9 +24,11 @@ var subscribeToMR = func(client *gitlab.Client, projectID any, mrID int64, opts 
 
 func NewCmdSubscribe(f cmdutils.Factory) *cobra.Command {
 	mrSubscribeCmd := &cobra.Command{
-		Use:     "subscribe [<id> | <branch>]",
-		Short:   `Subscribe to a merge request.`,
-		Long:    ``,
+		Use:   "subscribe [<id> | <branch>]",
+		Short: `Subscribe to a merge request.`,
+		Long: heredoc.Doc(`
+			You receive notifications for updates when subscribed.
+		`),
 		Aliases: []string{"sub"},
 		Example: heredoc.Doc(`
 		# Subscribe to a merge request

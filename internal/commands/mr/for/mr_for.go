@@ -19,9 +19,12 @@ import (
 
 func NewCmdFor(f cmdutils.Factory) *cobra.Command {
 	mrForCmd := &cobra.Command{
-		Use:     "for",
-		Short:   `Create a new merge request for an issue.`,
-		Long:    ``,
+		Use:   "for",
+		Short: `Create a new merge request for an issue.`,
+		Long: heredoc.Docf(`
+			Creates a branch and opens a merge request linked to the issue.
+			Use %[1]s--draft%[1]s to mark the merge request as a draft.
+		`, "`"),
 		Aliases: []string{"new-for", "create-for", "for-issue"},
 		Example: heredoc.Doc(`
 			# Create merge request for issue 34
