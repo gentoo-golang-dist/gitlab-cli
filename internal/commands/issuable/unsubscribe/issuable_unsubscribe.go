@@ -32,9 +32,11 @@ func NewCmdUnsubscribe(f cmdutils.Factory, issueType issuable.IssueType) *cobra.
 	}
 
 	issueUnsubscribeCmd := &cobra.Command{
-		Use:     "unsubscribe <id>",
-		Short:   fmt.Sprintf(`Unsubscribe from an %s.`, issueType),
-		Long:    ``,
+		Use:   "unsubscribe <id>",
+		Short: fmt.Sprintf(`Unsubscribe from an %s.`, issueType),
+		Long: heredoc.Docf(`
+			You no longer receive notifications about updates to the %s.
+		`, issueType),
 		Aliases: []string{"unsub"},
 		Example: heredoc.Doc(fmt.Sprintf(`
 			glab %[1]s unsubscribe 123
