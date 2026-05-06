@@ -13,6 +13,11 @@ func NewCmdTrace(f cmdutils.Factory) *cobra.Command {
 	pipelineCITraceCmd := &cobra.Command{
 		Use:   "trace [<job-id>|<job-name>] [flags]",
 		Short: `Trace a CI/CD job log in real time.`,
+		Long: heredoc.Doc(`
+			Streams the job log to the terminal. The output updates in real time
+			while the job runs. Without a job argument, you can select one
+			interactively.
+		`),
 		Example: heredoc.Doc(`
 			# Interactively select a job to trace
 			glab ci trace

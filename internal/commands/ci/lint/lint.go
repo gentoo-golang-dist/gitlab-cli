@@ -39,7 +39,13 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 	pipelineCILintCmd := &cobra.Command{
 		Use:   "lint",
 		Short: "Checks if your `.gitlab-ci.yml` file is valid.",
-		Args:  cobra.MaximumNArgs(1),
+		Long: heredoc.Docf(`
+			Defaults to the %[1]s.gitlab-ci.yml%[1]s file in the current directory.
+			You can also pass a URL to validate a remote file. Use %[1]s--dry-run%[1]s
+			to simulate pipeline creation, and %[1]s--ref%[1]s to set the branch or
+			tag context for the simulation.
+		`, "`"),
+		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
 			glab ci lint
