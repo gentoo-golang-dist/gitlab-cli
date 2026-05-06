@@ -35,8 +35,6 @@ type IOStreams struct {
 	IsInTTY        bool // stdin is a tty
 	promptDisabled bool // disable prompting for input
 
-	is256ColorEnabled bool
-
 	pagerCommand string
 	pagerProcess *os.Process
 	systemStdOut io.Writer
@@ -108,7 +106,6 @@ func WithDisplayHyperLinks(displayHyperlinks string) IOStreamsOption {
 func New(options ...IOStreamsOption) *IOStreams {
 	iostreams := &IOStreams{
 		// static configuration that we don't need to change in tests.
-		is256ColorEnabled: is256ColorSupported(),
 		displayHyperlinks: "never",
 	}
 
@@ -118,7 +115,9 @@ func New(options ...IOStreamsOption) *IOStreams {
 	}
 
 	// configure static fields that rely on option functions
-	iostreams.isColorEnabled = detectIsColorEnabled() && iostreams.IsaTTY && iostreams.IsErrTTY
+	// Enable color if the user allows it and at least one output stream is a TTY.
+	// Individual call sites, like Color() for StdOut, still gate on the specific stream's TTY.
+	iostreams.isColorEnabled = detectIsColorEnabled() && (iostreams.IsaTTY || iostreams.IsErrTTY)
 
 	return iostreams
 }
@@ -136,10 +135,6 @@ func (s *IOStreams) PromptEnabled() bool {
 
 func (s *IOStreams) ColorEnabled() bool {
 	return s.isColorEnabled
-}
-
-func (s *IOStreams) Is256ColorSupported() bool {
-	return s.is256ColorEnabled
 }
 
 func (s *IOStreams) SetPrompt(promptDisabled string) {
