@@ -38,7 +38,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			You must have administrator access.
 			%s`, text.ExperimentalString),
-		Args:  cobra.NoArgs,
+		Args: cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# List all runner controllers
 			glab runner-controller list

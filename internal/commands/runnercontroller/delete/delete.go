@@ -39,7 +39,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			Prompts for confirmation before deletion. Use %[1]s--force%[1]s to skip the
 			confirmation prompt in non-interactive contexts.
 		`, "`") + text.ExperimentalString,
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Delete a runner controller (with confirmation prompt)
 			glab runner-controller delete 42

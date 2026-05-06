@@ -40,7 +40,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			Revokes a token immediately. Prompts for confirmation before revocation.
 			Use %[1]s--force%[1]s to skip the confirmation prompt in non-interactive contexts.
 		`, "`") + text.ExperimentalString,
-		Args:  cobra.ExactArgs(2),
+		Args: cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# Revoke token 1 from runner controller 42 (with confirmation prompt)
 			glab runner-controller token revoke 42 1

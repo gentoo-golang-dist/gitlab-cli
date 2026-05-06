@@ -43,7 +43,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			again. Prompts for confirmation before rotation. Use %[1]s--force%[1]s to skip the confirmation prompt in
 			non-interactive contexts.
 		`, "`") + text.ExperimentalString,
-		Args:  cobra.ExactArgs(2),
+		Args: cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# Rotate token 1 for runner controller 42 (with confirmation prompt)
 			glab runner-controller token rotate 42 1

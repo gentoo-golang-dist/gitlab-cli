@@ -41,7 +41,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			Lists tokens for the given runner controller. Token values are not shown.
 			%s`, text.ExperimentalString),
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# List all tokens for runner controller 42
 			glab runner-controller token list 42

@@ -39,7 +39,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			Scopes can be for the instance (applies to all runners) or runner-level
 			(applies to specific runners).
 			%s`, text.ExperimentalString),
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# List all scopes for runner controller 42
 			glab runner-controller scope list 42

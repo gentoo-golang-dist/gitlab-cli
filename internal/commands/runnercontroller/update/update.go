@@ -38,7 +38,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			You must specify at least one of %[1]s--description%[1]s or %[1]s--state%[1]s.
 		`, "`") + text.ExperimentalString,
-		Args:  cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Update a runner controller's description
 			glab runner-controller update 42 --description "Updated description"
