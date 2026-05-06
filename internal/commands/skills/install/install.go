@@ -116,11 +116,12 @@ func (o *options) complete() error {
 
 func (o *options) run() error {
 	destPath := filepath.Join(o.targetDir, skillName, skillFile)
-	exists := fileExists(destPath)
+	_, statErr := os.Stat(destPath)
+	exists := statErr == nil
 
 	if exists && !o.force {
 		c := o.io.Color()
-		fmt.Fprintf(o.io.StdErr, "%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), destPath)
+		o.io.LogErrorf("%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), destPath)
 		return nil
 	}
 
@@ -134,15 +135,10 @@ func (o *options) run() error {
 
 	c := o.io.Color()
 	if exists {
-		fmt.Fprintf(o.io.StdOut, "%s Overwrote %s\n", c.GreenCheck(), destPath)
+		o.io.LogInfof("%s Overwrote %s\n", c.GreenCheck(), destPath)
 	} else {
-		fmt.Fprintf(o.io.StdOut, "%s Installed %s\n", c.GreenCheck(), destPath)
+		o.io.LogInfof("%s Installed %s\n", c.GreenCheck(), destPath)
 	}
 
 	return nil
-}
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }
