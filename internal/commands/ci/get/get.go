@@ -95,18 +95,24 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("%s: %w", msgNotFound, err)
 			}
 
+			failedJobsOnly, _ := cmd.Flags().GetBool("failed-jobs-only")
+			listOpts := &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}
+			if failedJobsOnly {
+				listOpts.Scope = &[]gitlab.BuildStateValue{gitlab.Failed}
+			}
+
 			jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
-				return client.Jobs.ListPipelineJobs(repo.FullName(), int64(pipelineId), &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+				return client.Jobs.ListPipelineJobs(repo.FullName(), int64(pipelineId), listOpts, p)
 			})
 			if err != nil {
 				return err
 			}
 
-			failedJobsOnly, _ := cmd.Flags().GetBool("failed-jobs-only")
 			if failedJobsOnly {
+				// Exclude jobs with allow_failure=true since they don't contribute to pipeline failure.
 				var failedJobs []*gitlab.Job
 				for _, j := range jobs {
-					if j.Status == "failed" {
+					if !j.AllowFailure {
 						failedJobs = append(failedJobs, j)
 					}
 				}

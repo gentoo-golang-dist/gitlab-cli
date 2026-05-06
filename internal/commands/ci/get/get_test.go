@@ -515,11 +515,13 @@ ID	Name	Stage	Status	Duration	Failure reason	URL
 						UpdatedAt:  &updatedAt,
 					}, nil, nil)
 				tc.MockJobs.EXPECT().
-					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Cond(func(opts *gitlab.ListJobsOptions) bool {
+						return opts.Scope != nil && len(*opts.Scope) == 1 && (*opts.Scope)[0] == gitlab.Failed
+					}), gomock.Any()).
 					Return([]*gitlab.Job{
-						{ID: 1, Name: "build", Stage: "build", Status: "success", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/1"},
 						{ID: 2, Name: "test", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/2"},
 						{ID: 3, Name: "lint", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/3"},
+						{ID: 4, Name: "flaky", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/4", AllowFailure: true},
 					}, lastPageResponse, nil)
 			},
 		},
