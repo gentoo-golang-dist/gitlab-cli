@@ -19,11 +19,3 @@ func ConvertMarkdownLinks(s string, linkFormatter func(displayText, url string) 
 		return match
 	})
 }
-
-// Assumes URL and link text don't contain \x1b (safe for human-authored content).
-var osc8Pattern = regexp.MustCompile(`\x1b\]8;;([^\x1b]+)\x1b\\([^\x1b]+)\x1b\]8;;\x1b\\`)
-
-// ConvertOSC8ToMarkdown converts OSC 8 hyperlinks back to markdown [text](url) syntax.
-func ConvertOSC8ToMarkdown(s string) string {
-	return osc8Pattern.ReplaceAllString(s, "[$2]($1)")
-}
