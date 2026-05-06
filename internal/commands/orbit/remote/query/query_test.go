@@ -34,7 +34,7 @@ func TestQuery_Stdin_DefaultsToLLM(t *testing.T) {
 		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
 			require.NotNil(t, opts)
 			require.NotNil(t, opts.ResponseFormat)
-			assert.Equal(t, "llm", *opts.ResponseFormat)
+			assert.Equal(t, gitlab.OrbitResponseFormatLLM, *opts.ResponseFormat)
 
 			// AND the user-supplied query is forwarded verbatim
 			var got map[string]any
@@ -77,7 +77,7 @@ func TestQuery_FlagOverridesBodyResponseFormat(t *testing.T) {
 		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
 		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
 			require.NotNil(t, opts.ResponseFormat)
-			assert.Equal(t, "llm", *opts.ResponseFormat, "--format must override the body's response_format")
+			assert.Equal(t, gitlab.OrbitResponseFormatLLM, *opts.ResponseFormat, "--format must override the body's response_format")
 			return &gitlab.OrbitQueryResult{},
 				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
 		})
@@ -109,7 +109,7 @@ func TestQuery_BodyFormatHonoredWhenNoFlag(t *testing.T) {
 			require.NotNil(t, opts.ResponseFormat)
 			// The body's response_format must win when --format is absent.
 			// Previously the cobra default of "llm" silently overrode it.
-			assert.Equal(t, "raw", *opts.ResponseFormat,
+			assert.Equal(t, gitlab.OrbitResponseFormatRaw, *opts.ResponseFormat,
 				"body's response_format must win when --format is not passed")
 			return &gitlab.OrbitQueryResult{},
 				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
@@ -261,7 +261,7 @@ func TestBuildRequest_BodyResponseFormatWinsWhenFlagAbsent(t *testing.T) {
 	req, err := buildRequest(body, formatLLM, false)
 	require.NoError(t, err)
 	require.NotNil(t, req.ResponseFormat)
-	assert.Equal(t, "raw", *req.ResponseFormat, "body's response_format must win when formatChanged=false")
+	assert.Equal(t, gitlab.OrbitResponseFormatRaw, *req.ResponseFormat, "body's response_format must win when formatChanged=false")
 }
 
 // TestBuildRequest_FlagWinsOverBody verifies that an explicit --format overrides body.
@@ -271,5 +271,5 @@ func TestBuildRequest_FlagWinsOverBody(t *testing.T) {
 	req, err := buildRequest(body, formatLLM, true)
 	require.NoError(t, err)
 	require.NotNil(t, req.ResponseFormat)
-	assert.Equal(t, "llm", *req.ResponseFormat, "--format must win when formatChanged=true")
+	assert.Equal(t, gitlab.OrbitResponseFormatLLM, *req.ResponseFormat, "--format must win when formatChanged=true")
 }
