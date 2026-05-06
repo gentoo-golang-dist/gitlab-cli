@@ -77,12 +77,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			iid, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid work item ID: %w", err)
-			}
-			opts.iid = iid
-			if err := opts.complete(cmd.Context(), cmd); err != nil {
+			if err := opts.complete(cmd.Context(), cmd, args); err != nil {
 				return err
 			}
 
@@ -114,7 +109,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (opts *options) complete(ctx context.Context, cmd *cobra.Command) error {
+func (opts *options) complete(ctx context.Context, cmd *cobra.Command, args []string) error {
+	iid, err := strconv.ParseInt(args[0], 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid work item ID: %w", err)
+	}
+	opts.iid = iid
+
 	group, err := cmdutils.GroupOverride(cmd)
 	if err != nil {
 		return err
@@ -145,7 +146,7 @@ func (opts *options) run(cmd *cobra.Command) error {
 	if opts.startDate != "" {
 		startDate, err := gitlab.ParseISOTime(opts.startDate)
 		if err != nil {
-			return cmdutils.FlagError{Err: fmt.Errorf("date is not formatted correctly")}
+			return cmdutils.FlagError{Err: fmt.Errorf("--startdate must be ISO 8601 (YYYY-MM-DD), got %q", opts.startDate)}
 		}
 		updateOpts.StartDate = new(startDate)
 	}
@@ -153,7 +154,7 @@ func (opts *options) run(cmd *cobra.Command) error {
 	if opts.dueDate != "" {
 		dueDate, err := gitlab.ParseISOTime(opts.dueDate)
 		if err != nil {
-			return cmdutils.FlagError{Err: fmt.Errorf("date is not formatted correctly")}
+			return cmdutils.FlagError{Err: fmt.Errorf("--duedate must be ISO 8601 (YYYY-MM-DD), got %q", opts.startDate)}
 		}
 		updateOpts.DueDate = new(dueDate)
 	}
@@ -162,7 +163,7 @@ func (opts *options) run(cmd *cobra.Command) error {
 		updateOpts.Title = new(opts.title)
 	}
 
-	if opts.description != "" {
+	if cmd.Flags().Changed("description") {
 		updateOpts.Description = new(opts.description)
 	}
 
@@ -236,7 +237,7 @@ func (opts *options) run(cmd *cobra.Command) error {
 	case "duplicate":
 		updateOpts.Status = gitlab.Ptr(gitlab.WorkItemStatusDuplicate)
 	default:
-		// unreachable: validate() ensures only valid statuses reach here
+		// unreachable: enum validation at flag level ensures only valid statuses reach here
 	}
 
 	wi, _, err := client.WorkItems.UpdateWorkItem(opts.scope.Path, opts.iid, &updateOpts)

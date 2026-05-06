@@ -81,7 +81,7 @@ func TestWorkItemsUpdate_FlagValidation(t *testing.T) {
 			wantErr: "must be one of",
 		},
 		{
-			name:    "wrong vlaue passed to --status",
+			name:    "wrong value passed to --status",
 			args:    "1 --status bogus",
 			wantErr: "must be one of",
 		},
