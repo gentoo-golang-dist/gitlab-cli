@@ -13,6 +13,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 // TestEveryLeafCommandHasMCPAnnotation fails when any leaf with a
@@ -20,8 +21,9 @@ import (
 // the command from the MCP tool surface; this catches that drift.
 // It checks presence, not correctness of choice.
 func TestEveryLeafCommandHasMCPAnnotation(t *testing.T) {
+	ios, _, _, _ := cmdtest.TestIOStreams()
 	factory := cmdutils.NewFactory(
-		setupIOStreams(),
+		ios,
 		false,
 		config.NewBlankConfig(),
 		api.BuildInfo{Version: "v1.0.0", Commit: "abcdefgh"},
