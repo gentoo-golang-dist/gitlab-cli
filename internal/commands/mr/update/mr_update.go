@@ -27,7 +27,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		Short: `Update a merge request.`,
 		Long: heredoc.Docf(`
 			Defaults to the currently checked-out branch. Use %[1]s--fill%[1]s to
-			autofill the title and description from the commit history.
+			automatically fill the title and description from the commit history.
 		`, "`"),
 		Example: heredoc.Doc(`
 		# Mark a merge request as ready

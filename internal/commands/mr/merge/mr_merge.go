@@ -58,8 +58,8 @@ func NewCmdMerge(f cmdutils.Factory) *cobra.Command {
 	}
 
 	mrMergeCmd := &cobra.Command{
-		Use:     "merge [<id | branch>]",
-		Short:   `Merge or accept a merge request.`,
+		Use:   "merge [<id | branch>]",
+		Short: `Merge or accept a merge request.`,
 		Long: heredoc.Docf(`
 			Defaults to the currently checked-out branch. Use %[1]s--auto-merge%[1]s
 			to merge automatically when the pipeline succeeds.
