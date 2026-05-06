@@ -25,7 +25,10 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	mrUpdateCmd := &cobra.Command{
 		Use:   "update [<id> | <branch>]",
 		Short: `Update a merge request.`,
-		Long:  ``,
+		Long: heredoc.Docf(`
+			Defaults to the currently checked-out branch. Use %[1]s--fill%[1]s to
+			automatically fill the title and description from the commit history.
+		`, "`"),
 		Example: heredoc.Doc(`
 		# Mark a merge request as ready
 		glab mr update 23 --ready

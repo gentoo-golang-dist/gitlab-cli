@@ -96,9 +96,13 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	mrCreateCmd := &cobra.Command{
-		Use:     "create",
-		Short:   `Create a new merge request.`,
-		Long:    ``,
+		Use:   "create",
+		Short: `Create a new merge request.`,
+		Long: heredoc.Docf(`
+			Defaults to the current branch as the source branch. Use %[1]s--fill%[1]s
+			to automatically fill the title and description from the commit history. Use
+			%[1]s--draft%[1]s to create a draft merge request.
+		`, "`"),
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
 			glab mr new

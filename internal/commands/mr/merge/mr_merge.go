@@ -58,9 +58,15 @@ func NewCmdMerge(f cmdutils.Factory) *cobra.Command {
 	}
 
 	mrMergeCmd := &cobra.Command{
-		Use:     "merge [<id | branch>]",
-		Short:   `Merge or accept a merge request.`,
-		Long:    ``,
+		Use:   "merge [<id | branch>]",
+		Short: `Merge or accept a merge request.`,
+		Long: heredoc.Docf(`
+			Defaults to the currently checked-out branch. When a pipeline is running,
+			auto-merge is enabled by default. Pass %[1]s--auto-merge=false%[1]s to
+			merge immediately. Use %[1]s--squash%[1]s or %[1]s--rebase%[1]s to control
+			the merge strategy, or %[1]s--remove-source-branch%[1]s to delete the
+			source branch after merging.
+		`, "`"),
 		Aliases: []string{"accept"},
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
