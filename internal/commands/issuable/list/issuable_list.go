@@ -17,6 +17,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issuable"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
+	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
@@ -64,6 +65,7 @@ type ListOptions struct {
 	IO        *iostreams.IOStreams
 	BaseRepo  func() (glrepo.Interface, error)
 	apiClient func(repoHost string) (*api.Client, error)
+	cfg       func() config.Config
 
 	JSONOutput bool
 }
@@ -73,6 +75,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 		IO:        f.IO(),
 		BaseRepo:  f.BaseRepo,
 		apiClient: f.ApiClient,
+		cfg:       f.Config,
 		IssueType: string(issueType),
 	}
 
@@ -309,16 +312,25 @@ func listRun(opts *ListOptions) error {
 		title.RepoName = opts.Group
 
 	default:
-		repo, err := opts.BaseRepo()
+		// Scope order: repo, then default_group config, then the
+		// user-level /issues endpoint. The last tier lets MCP
+		// callers running outside any repo get useful results.
+		repo, repoErr := opts.BaseRepo()
+		switch {
+		case repoErr == nil:
+			issues, _, err = client.Issues.ListProjectIssues(repo.FullName(), listOpts)
+			title.RepoName = repo.FullName()
+		case defaultGroup(opts.cfg) != "":
+			group := defaultGroup(opts.cfg)
+			issues, _, err = client.Issues.ListGroupIssues(group, projectListIssueOptionsToGroup(listOpts))
+			title.RepoName = group + " (default_group)"
+		default:
+			issues, _, err = client.Issues.ListIssues(projectListIssueOptionsToAll(listOpts))
+			title.RepoName = "all accessible projects"
+		}
 		if err != nil {
 			return err
 		}
-
-		issues, _, err = client.Issues.ListProjectIssues(repo.FullName(), listOpts)
-		if err != nil {
-			return err
-		}
-		title.RepoName = repo.FullName()
 	}
 
 	title.Page = int(listOpts.Page)
@@ -519,4 +531,69 @@ func projectListIssueOptionsToGroup(l *gitlab.ListProjectIssuesOptions) *gitlab.
 		UpdatedBefore:      l.UpdatedBefore,
 		IssueType:          l.IssueType,
 	}
+}
+
+// projectListIssueOptionsToAll maps project-scoped options onto the
+// user-level /issues shape. Scope defaults to "all" when unset; the
+// server default of "created_by_me" would be too narrow here.
+func projectListIssueOptionsToAll(l *gitlab.ListProjectIssuesOptions) *gitlab.ListIssuesOptions {
+	out := &gitlab.ListIssuesOptions{
+		ListOptions:      l.ListOptions,
+		State:            l.State,
+		Labels:           l.Labels,
+		NotLabels:        l.NotLabels,
+		WithLabelDetails: l.WithLabelDetails,
+		IIDs:             l.IIDs,
+		Milestone:        l.Milestone,
+		Scope:            l.Scope,
+		AuthorID:         l.AuthorID,
+		AssigneeID:       l.AssigneeID,
+		AssigneeUsername: l.AssigneeUsername,
+		MyReactionEmoji:  l.MyReactionEmoji,
+		OrderBy:          l.OrderBy,
+		Sort:             l.Sort,
+		Search:           l.Search,
+		In:               l.In,
+		CreatedAfter:     l.CreatedAfter,
+		CreatedBefore:    l.CreatedBefore,
+		UpdatedAfter:     l.UpdatedAfter,
+		UpdatedBefore:    l.UpdatedBefore,
+		IssueType:        l.IssueType,
+	}
+	// The user-level endpoint uses slices for these negation fields
+	// where the project-level one uses scalars. Promote them.
+	if l.NotAuthorID != nil {
+		ids := []int64{*l.NotAuthorID}
+		out.NotAuthorID = &ids
+	}
+	if l.NotAssigneeID != nil {
+		ids := []int64{*l.NotAssigneeID}
+		out.NotAssigneeID = &ids
+	}
+	if l.NotMyReactionEmoji != nil {
+		emojis := []string{*l.NotMyReactionEmoji}
+		out.NotMyReactionEmoji = &emojis
+	}
+	if out.Scope == nil {
+		scopeAll := "all"
+		out.Scope = &scopeAll
+	}
+	return out
+}
+
+// defaultGroup reads the "default_group" config key. Any failure
+// returns the empty string; callers treat that as "not configured".
+func defaultGroup(cfg func() config.Config) string {
+	if cfg == nil {
+		return ""
+	}
+	c := cfg()
+	if c == nil {
+		return ""
+	}
+	group, err := c.Get("", "default_group")
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(group)
 }

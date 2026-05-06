@@ -14,6 +14,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/duo/cli/cliutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
@@ -70,6 +71,10 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 			  Skips download, version checks, and updates. Can also be set via the
 			  %[1]sduo_cli_binary_path%[1]s configuration key.
 			`, "`"),
+			// Duo CLI opens an interactive agent session that needs a
+			// real TTY. Running it through the MCP subprocess harness
+			// would hang, so it's excluded from the MCP tool surface.
+			mcpannotations.Interactive: "true",
 		},
 
 		Example: heredoc.Docf(`
