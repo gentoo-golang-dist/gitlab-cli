@@ -477,7 +477,7 @@ test:	failed
 			},
 		},
 		{
-			name: "when --failed-jobs-only shows only failed jobs with details",
+			name: "when --failed-jobs-only shows all failed jobs including allow_failure",
 			args: "-p=123 --failed-jobs-only",
 			expectedOut: `# Pipeline:
 id:	123
@@ -496,6 +496,7 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 ID	Name	Stage	Status	Duration	Failure reason	URL
 2	test	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/2
 3	lint	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/3
+4	flaky	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/4
 
 `,
 			setupMock: func(tc *gitlabtesting.TestClient) {
@@ -526,8 +527,8 @@ ID	Name	Stage	Status	Duration	Failure reason	URL
 			},
 		},
 		{
-			name: "when --failed-jobs-only --with-allow-failure includes allow_failure jobs",
-			args: "-p=123 --failed-jobs-only --with-allow-failure",
+			name: "when --failed-jobs-only --exclude-allow-failure excludes allow_failure jobs",
+			args: "-p=123 --failed-jobs-only --exclude-allow-failure",
 			expectedOut: `# Pipeline:
 id:	123
 status:	failed
@@ -544,7 +545,6 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 # Jobs:
 ID	Name	Stage	Status	Duration	Failure reason	URL
 2	test	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/2
-4	flaky	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/4
 
 `,
 			setupMock: func(tc *gitlabtesting.TestClient) {
