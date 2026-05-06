@@ -3,23 +3,20 @@
 package alias
 
 import (
-	"os"
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 func Test_Alias(t *testing.T) {
-	old := os.Stdout // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	var buf bytes.Buffer
+	cmd := NewCmdAlias(cmdtest.NewTestFactory(nil))
+	cmd.SetOut(&buf)
 
-	assert.Nil(t, NewCmdAlias(cmdtest.NewTestFactory(nil)).Execute())
+	assert.Nil(t, cmd.Execute())
 
-	out := test.ReturnBuffer(old, r, w)
-
-	assert.Contains(t, out, "Use \"alias [command] --help\" for more information about a command.\n")
+	assert.Contains(t, buf.String(), "Use \"alias [command] --help\" for more information about a command.\n")
 }

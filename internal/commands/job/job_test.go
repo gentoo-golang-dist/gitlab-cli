@@ -3,9 +3,6 @@
 package job
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -35,40 +32,18 @@ func TestJobCmd(t *testing.T) {
 				wantedErr = test.expectedErr
 			}
 
-			// Catching Stdout & Stderr
-			oldOut := os.Stdout
-			rOut, wOut, _ := os.Pipe()
-			os.Stdout = wOut
-			outC := make(chan string)
-			go func() {
-				var buf bytes.Buffer
-				_, _ = io.Copy(&buf, rOut)
-				outC <- buf.String()
-			}()
+			ios, _, stdout, stderr := cmdtest.TestIOStreams()
+			f := cmdtest.NewTestFactory(ios)
 
-			oldErr := os.Stderr
-			rErr, wErr, _ := os.Pipe()
-			os.Stderr = wErr
-			errC := make(chan string)
-			go func() {
-				var buf bytes.Buffer
-				_, _ = io.Copy(&buf, rErr)
-				errC <- buf.String()
-			}()
+			cmd := NewCmdJob(f)
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
 
-			err := NewCmdJob(cmdtest.NewTestFactory(nil)).Execute()
-
-			// Rollbacking Stdout & Stderr
-			wOut.Close()
-			os.Stdout = oldOut
-			stdout := <-outC
-			wErr.Close()
-			os.Stderr = oldErr
-			stderr := <-errC
+			err := cmd.Execute()
 
 			if assert.NoErrorf(t, err, "error running `job %s`: %v", test.args, err) {
-				assert.Contains(t, stderr, wantedErr)
-				assert.Contains(t, stdout, test.expectedOut)
+				assert.Contains(t, stderr.String(), wantedErr)
+				assert.Contains(t, stdout.String(), test.expectedOut)
 			}
 		})
 	}

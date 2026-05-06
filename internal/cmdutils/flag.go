@@ -6,15 +6,14 @@ import (
 )
 
 func GroupOverride(cmd *cobra.Command) (string, error) {
-	// Bind cobra command persistent flags to env user viper
-	viper.SetEnvPrefix("GITLAB")
-	err := viper.BindEnv("group")
+	v := viper.New()
+	v.SetEnvPrefix("GITLAB")
+	err := v.BindEnv("group")
 	if err != nil {
 		return "", err
 	}
 
-	// Get group from env
-	groupFromEnv := viper.GetString("group")
+	groupFromEnv := v.GetString("group")
 
 	// Get group/repo flags
 	group, err := cmd.Flags().GetString("group")

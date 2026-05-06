@@ -15,6 +15,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -35,7 +36,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "revoke <controller-id> <token-id> [flags]",
 		Short: `Revoke a token from a runner controller. (EXPERIMENTAL)`,
-		Args:  cobra.ExactArgs(2),
+		Long: heredoc.Docf(`
+			Revokes a token immediately. Prompts for confirmation before revocation.
+			Use %[1]s--force%[1]s to skip the confirmation prompt in non-interactive contexts.
+		`, "`") + text.ExperimentalString,
+		Args: cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# Revoke token 1 from runner controller 42 (with confirmation prompt)
 			glab runner-controller token revoke 42 1

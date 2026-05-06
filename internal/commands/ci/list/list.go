@@ -20,10 +20,12 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	pipelineListCmd := &cobra.Command{
 		Use:   "list [flags]",
 		Short: `Get the list of CI/CD pipelines.`,
+		Long: heredoc.Docf(`
+			Defaults to the current project. Use %[1]s--status%[1]s to filter pipelines by status.
+		`, "`"),
 		Example: heredoc.Doc(`
 			glab ci list
 			glab ci list --status=failed`),
-		Long: ``,
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -130,7 +132,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			return nil
 		},
 	}
-	pipelineListCmd.Flags().StringP("status", "s", "", "Get pipeline with this status. Options: running, pending, success, failed, canceled, skipped, created, manual, waiting_for_resource, preparing, scheduled")
+	pipelineListCmd.Flags().StringP("status", "s", "", "Get pipeline with this status. Options: running, pending, success, failed, canceled, skipped, created, manual, waiting_for_resource, preparing, scheduled.")
 	pipelineListCmd.Flags().StringP("order", "o", "id", "Order pipelines by this field. Options: id, status, ref, updated_at, user_id.")
 	pipelineListCmd.Flags().String("orderBy", "id", "Deprecated: use --order instead.")
 	_ = pipelineListCmd.Flags().MarkDeprecated("orderBy", "use --order instead")

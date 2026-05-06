@@ -17,13 +17,17 @@ func NewCmdArtifact(f cmdutils.Factory) *cobra.Command {
 		glab job artifact main build
 		glab job artifact main deploy --path="artifacts/"
 		glab job artifact main deploy --list-paths
-		glab job artifact refs/merge-requests/123/head build`),
+		glab job artifact refs/merge-requests/123/head build
+		glab job artifact refs/merge-requests/123/merge build`),
 		Long: heredoc.Docf(`
 		Downloads all artifacts from the most recent successful pipeline.
 
 		%[1]s<refName>%[1]s is a branch name, tag, or merge request reference. For a branch
-		or tag, use the name directly. For a merge request pipeline, use the ref
-		%[1]srefs/merge-requests/<iid>/head%[1]s, where %[1]s<iid>%[1]s is the merge request IID.
+		or tag, use the name directly. For a merge request pipeline, replace %[1]s<iid>%[1]s
+		with the merge request IID and use the format that matches the pipeline type:
+
+		- %[1]srefs/merge-requests/<iid>/head%[1]s: Pipeline on the latest commit of the source branch.
+		- %[1]srefs/merge-requests/<iid>/merge%[1]s: Pipeline on the merged result (pipelines for merged results).
 		`, "`"),
 		Args: cobra.ExactArgs(2),
 		Annotations: map[string]string{

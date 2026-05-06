@@ -71,7 +71,7 @@ in the main README.
 
 ```plaintext
   -h, --help      Show help for this command.
-  -v, --version   show glab version information
+  -v, --version   Show glab version information.
 ```
 
 ## Commands
@@ -98,12 +98,15 @@ in the main README.
 - [`glab milestone`](milestone/_index.md)
 - [`glab mr`](mr/_index.md)
 - [`glab opentofu`](opentofu/_index.md)
+- [`glab orbit`](orbit/_index.md)
 - [`glab release`](release/_index.md)
 - [`glab repo`](repo/_index.md)
 - [`glab runner`](runner/_index.md)
 - [`glab runner-controller`](runner-controller/_index.md)
 - [`glab schedule`](schedule/_index.md)
+- [`glab search`](search/_index.md)
 - [`glab securefile`](securefile/_index.md)
+- [`glab skills`](skills/_index.md)
 - [`glab snippet`](snippet/_index.md)
 - [`glab ssh-key`](ssh-key/_index.md)
 - [`glab stack`](stack/_index.md)

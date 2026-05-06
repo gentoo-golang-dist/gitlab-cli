@@ -3,23 +3,20 @@
 package incident
 
 import (
-	"os"
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 func TestIncidentCmd(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	var buf bytes.Buffer
+	cmd := NewCmdIncident(cmdtest.NewTestFactory(nil))
+	cmd.SetOut(&buf)
 
-	assert.Nil(t, NewCmdIncident(cmdtest.NewTestFactory(nil)).Execute())
+	assert.Nil(t, cmd.Execute())
 
-	out := test.ReturnBuffer(old, r, w)
-
-	assert.Contains(t, out, "Work with GitLab incidents.\n")
+	assert.Contains(t, buf.String(), "Work with GitLab incidents.\n")
 }

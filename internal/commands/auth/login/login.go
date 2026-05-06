@@ -10,10 +10,13 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -101,8 +104,11 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			# Semi-interactive OAuth login, skipping all prompts except browser auth
 			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
-			# Non-interactive CI/CD setup
-			glab auth login --hostname $CI_SERVER_HOST --job-token $CI_JOB_TOKEN`, "`"),
+			# CI/CD setup: for most cases, prefer auto-login over manual login
+			GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
+
+			# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a personal access token
+			glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-protocol $CI_SERVER_PROTOCOL`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -142,6 +148,14 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 				}
 			}
 
+			if cmd.Flags().Changed("api-host") && strings.Contains(opts.ApiHost, "://") {
+				stripped, _ := glinstance.StripHostProtocol(opts.ApiHost)
+				if stripped == "" {
+					return &cmdutils.FlagError{Err: fmt.Errorf("error parsing '--api-host': value must be a hostname, not a URL (for example, %q or %q)", "example.com", "example.com:3443")}
+				}
+				return &cmdutils.FlagError{Err: fmt.Errorf("error parsing '--api-host': value must be a hostname, not a URL. Use %q instead", stripped)}
+			}
+
 			if !opts.Interactive && opts.Hostname == "" {
 				opts.Hostname = glinstance.DefaultHostname
 			}
@@ -164,10 +178,10 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read token from standard input.")
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
 	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
-	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "API host url.")
+	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts hostname or hostname:port. Use only when the API is served from a different host than the git remote.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
-	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint.")
+	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.")
 	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
 
 	return cmd
@@ -422,7 +436,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
-		user, _, err := apiClient.Lab().Users.CurrentUser()
+		authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 		if err == nil {
 			username := user.Username
 			keepGoing := false // default value
@@ -477,11 +493,22 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		loginType = promptLoginTypeWeb
 	}
 
+	// Re-split hostname in case it was changed by prompts
+	hostname, subfolder = splitHostnameAndSubfolder(hostname)
+
 	var token string
 	var err error
 	if strings.EqualFold(loginType, promptLoginTypeToken) {
 		token, err = showTokenPrompt(ctx, opts.IO, hostname)
 		if err != nil {
+			return err
+		}
+
+		// Clear stale OAuth fields only after the prompt succeeds, so that a
+		// cancelled or failed login leaves existing credentials intact.
+		// This handles the OAuth → PAT switch: is_oauth2 / refresh / expiry fields
+		// that were set by a previous OAuth login are removed before the PAT is saved.
+		if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
 			return err
 		}
 	} else {
@@ -490,17 +517,14 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
+		// StartFlow calls marshal() internally, which writes is_oauth2, token,
+		// oauth2_refresh_token, and oauth2_expiry_date.  No explicit ClearAuthFields
+		// is needed: marshal() overwrites every field it owns, and is_oauth2=true
+		// ensures the OAuth auth source wins over any residual job_token.
 		token, err = oauth2.StartFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
 		if err != nil {
 			return err
 		}
-	}
-
-	// Re-split hostname in case it was changed by prompts
-	hostname, subfolder = splitHostnameAndSubfolder(hostname)
-
-	if err := authutils.ClearAuthFields(cfg, hostname); err != nil {
-		return err
 	}
 
 	if err := cfg.Set(hostname, "token", token); err != nil {
@@ -605,7 +629,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 		return err
 	}
 
-	user, _, err := apiClient.Lab().Users.CurrentUser()
+	authCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	user, _, err := apiClient.Lab().Users.CurrentUser(gitlab.WithContext(authCtx))
 	if err != nil {
 		return fmt.Errorf("error using API: %w", err)
 	}

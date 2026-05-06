@@ -32,7 +32,7 @@ async function getCommitsInMr() {
   return messages;
 }
 
-const messageMatcher = r => r.test.bind(r);
+const messageMatcher = (r) => r.test.bind(r);
 
 async function isConventional(message) {
   return lint(
@@ -61,10 +61,13 @@ async function lintMr() {
     console.log(
       'INFO: The MR is set to squash. We will lint the MR Title (used as the commit message by default).',
     );
-    return isConventional(CI_MERGE_REQUEST_TITLE).then(Array.of);
+    // Strip the "Draft: " prefix that GitLab adds to draft MR titles, since it is not
+    // part of the commit message that will be used when the MR is merged.
+    const title = CI_MERGE_REQUEST_TITLE.replace(/^Draft:\s*/i, '');
+    return isConventional(title).then(Array.of);
   }
   console.log('INFO: Checking all commits that will be added by this MR.');
-  return Promise.all(commits.map(commit => isConventional(commit)));
+  return Promise.all(commits.map(isConventional));
 }
 
 async function run() {
@@ -90,7 +93,7 @@ async function run() {
   }
 }
 
-run().catch(err => {
+run().catch((err) => {
   console.error(err);
   process.exit(1);
 });

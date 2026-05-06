@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,7 @@ type options struct {
 	Milestone             int64    `json:"milestone,omitempty"`
 	MilestoneFlag         string   `json:"milestone_flag,omitempty"`
 	MRCreateTargetProject string   `json:"mr_create_target_project,omitempty"`
+	Template              string   `json:"template,omitempty"`
 
 	RelatedIssue    string `json:"related_issue,omitempty"`
 	CopyIssueLabels bool   `json:"copy_issue_labels,omitempty"`
@@ -94,16 +96,22 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	mrCreateCmd := &cobra.Command{
-		Use:     "create",
-		Short:   `Create a new merge request.`,
-		Long:    ``,
+		Use:   "create",
+		Short: `Create a new merge request.`,
+		Long: heredoc.Docf(`
+			Defaults to the current branch as the source branch. Use %[1]s--fill%[1]s
+			to automatically fill the title and description from the commit history. Use
+			%[1]s--draft%[1]s to create a draft merge request.
+		`, "`"),
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
 			glab mr new
 			glab mr create -a username -t "fix annoying bug"
 			glab mr create -f --draft --label RFC
 			glab mr create --fill --web
-			glab mr create --fill --fill-commit-body --yes`),
+			glab mr create --fill --fill-commit-body --yes
+			glab mr create -t "Fix login bug" --template bug_fix
+			glab mr create -t "Security patch" --template security_fix.md --yes`),
 		Args: cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			opts.headRepo = ResolvedHeadRepo(cmd.Context(), f)
@@ -169,15 +177,21 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	_ = mrCreateCmd.Flags().MarkHidden("target-project")
 	_ = mrCreateCmd.Flags().MarkDeprecated("target-project", "Use --repo instead.")
 
+	mrCreateCmd.Flags().StringVar(&opts.Template, "template", "", "Name of a template in '.gitlab/merge_request_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "description")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "fill")
+	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "related-issue")
+
 	return mrCreateCmd
 }
 
 func (o *options) complete(cmd *cobra.Command) {
 	hasTitle := cmd.Flags().Changed("title")
 	hasDescription := cmd.Flags().Changed("description")
+	hasTemplate := cmd.Flags().Changed("template")
 
-	// disable interactive mode if title and description are explicitly defined
-	o.needsPrompt = !(hasTitle && hasDescription)
+	// disable interactive mode if title and description (or template) are explicitly defined
+	o.needsPrompt = !(hasTitle && (hasDescription || hasTemplate))
 
 	// Handle boolean flags: only set if explicitly provided by user
 	// This allows users to override project defaults or use them when omitted
@@ -398,7 +412,11 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if o.TargetBranch == "" {
-		o.TargetBranch = o.TargetProject.DefaultBranch
+		var err error
+		o.TargetBranch, err = getTargetBranch(client, o.TargetProject, o.SourceBranch)
+		if err != nil {
+			o.io.LogErrorf("warning: failed to fetch target branch rules: %v\n", err)
+		}
 	}
 
 	if o.RelatedIssue != "" {
@@ -451,6 +469,17 @@ func (o *options) run(ctx context.Context) error {
 		})
 		if err != nil {
 			return err
+		}
+
+		if o.Template != "" && o.Description == "" {
+			content, err := cmdutils.LoadGitLabTemplate(cmdutils.MergeRequestTemplate, o.Template)
+			if err != nil {
+				return err
+			}
+			if content == "" {
+				return fmt.Errorf("template %q not found in .gitlab/merge_request_templates/", o.Template)
+			}
+			o.Description = content
 		}
 
 		if o.Autofill {
@@ -909,6 +938,32 @@ func repoRemote(opts *options, repo glrepo.Interface, project *gitlab.Project, r
 	}
 
 	return repoRemote, nil
+}
+
+func getTargetBranch(client *gitlab.Client, targetProject *gitlab.Project, sourceBranch string) (string, error) {
+	if sourceBranch != "" {
+		rules, _, err := client.Projects.ListProjectTargetBranchRules(targetProject.PathWithNamespace)
+		if err != nil {
+			return targetProject.DefaultBranch, err
+		}
+		for _, rule := range rules {
+			if matched, _ := matchBranchPattern(rule.Name, sourceBranch); matched {
+				return rule.TargetBranch, nil
+			}
+		}
+	}
+	return targetProject.DefaultBranch, nil
+}
+
+// matchBranchPattern reports whether branch matches a GitLab branch name
+// pattern. GitLab patterns are glob-style where '*' matches any sequence of
+// characters, including '/'.
+func matchBranchPattern(pattern, branch string) (bool, error) {
+	re, err := regexp.Compile("^" + strings.ReplaceAll(regexp.QuoteMeta(pattern), `\*`, `.*`) + "$")
+	if err != nil {
+		return false, err
+	}
+	return re.MatchString(branch), nil
 }
 
 // createRecoverSaveFile will try save the issue create options to a file

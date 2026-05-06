@@ -18,7 +18,11 @@ func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 	configCompileCmd := &cobra.Command{
 		Use:   "compile",
 		Short: "View the fully expanded CI/CD configuration.",
-		Args:  cobra.MaximumNArgs(1),
+		Long: heredoc.Docf(`
+			Defaults to the %[1]s.gitlab-ci.yml%[1]s file in the current directory.
+			You must run this command from a GitLab project repository.
+		`, "`"),
+		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
 			glab ci config compile

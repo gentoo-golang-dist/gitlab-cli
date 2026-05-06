@@ -21,6 +21,69 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
+func TestDisplayMultiplePipelines_UsesSinglePipelineInfo(t *testing.T) {
+	t.Parallel()
+
+	pipelines := []*gitlab.PipelineInfo{
+		{
+			ID:     456,
+			IID:    789,
+			Status: "success",
+			Ref:    "main",
+			SHA:    "abc0def0",
+			WebURL: "https://gitlab.com/project/-/pipelines/123",
+		},
+	}
+	ios, _, _, _ := cmdtest.TestIOStreams()
+
+	result := DisplayMultiplePipelines(ios, pipelines, "group/project")
+
+	assert.Contains(t, result, "success")
+	assert.Contains(t, result, "#456")
+	assert.Contains(t, result, "#789")
+	assert.Contains(t, result, "main")
+}
+
+func TestDisplayMultiplePipelines_UsesMultiplePipelinesInfo(t *testing.T) {
+	t.Parallel()
+
+	pipelines := []*gitlab.PipelineInfo{
+		{
+			ID:     900,
+			Status: "success",
+			Ref:    "main",
+		},
+		{
+			ID:     901,
+			Status: "failed",
+			Ref:    "develop",
+		},
+		{
+			ID:     902,
+			Status: "running",
+			Ref:    "feat/ure",
+		},
+	}
+	ios, _, _, _ := cmdtest.TestIOStreams()
+
+	result := DisplayMultiplePipelines(ios, pipelines, "group/project")
+
+	assert.Contains(t, result, "success")
+	assert.Contains(t, result, "failed")
+	assert.Contains(t, result, "running")
+}
+
+func TestDisplayMultiplePipelines_HandlesEmptyPipelines(t *testing.T) {
+	t.Parallel()
+
+	pipelines := []*gitlab.PipelineInfo{}
+	ios, _, _, _ := cmdtest.TestIOStreams()
+
+	result := DisplayMultiplePipelines(ios, pipelines, "group/project")
+
+	assert.Equal(t, "No Pipelines available on group/project", result)
+}
+
 func TestGetJobId(t *testing.T) {
 	t.Parallel()
 	// Response indicating last page

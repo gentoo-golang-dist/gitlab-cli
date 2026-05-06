@@ -34,7 +34,7 @@ var commandAliases = []string{"update"}
 func NewCheckUpdateCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   commandUse,
-		Short: "Check for latest glab releases.",
+		Short: "Check for the latest glab version.",
 		Long: heredoc.Doc(`Checks for the latest version of glab available on GitLab.com.
 
 		When run explicitly, this command always checks for updates regardless of when the last check occurred.

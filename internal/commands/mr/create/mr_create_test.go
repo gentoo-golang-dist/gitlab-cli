@@ -5,6 +5,8 @@ package create
 import (
 	"errors"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -56,6 +58,11 @@ func TestNewCmdCreate_tty(t *testing.T) {
 				Description: "foo",
 			},
 		}, nil, nil)
+
+	// Mock ListProjectTargetBranchRules (no rules configured)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
 
 	// Mock ListUsers
 	testClient.MockUsers.EXPECT().
@@ -166,6 +173,11 @@ func TestNewCmdCreate_RelatedIssue(t *testing.T) {
 			MergeRequestsEnabled: true,
 			PathWithNamespace:    "OWNER/REPO",
 		}, nil, nil)
+
+	// Mock ListProjectTargetBranchRules (no rules configured)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
 
 	// Mock GetIssue
 	testClient.MockIssues.EXPECT().
@@ -278,6 +290,11 @@ func TestNewCmdCreate_TemplateFromCommitMessages(t *testing.T) {
 			MergeRequestsEnabled: true,
 			PathWithNamespace:    "OWNER/REPO",
 		}, nil, nil)
+
+	// Mock ListProjectTargetBranchRules (no rules configured)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
 
 	// Mock CreateMergeRequest and verify the description contains commit messages
 	testClient.MockMergeRequests.EXPECT().
@@ -397,6 +414,11 @@ func TestNewCmdCreate_RelatedIssueWithTitleAndDescription(t *testing.T) {
 			MergeRequestsEnabled: true,
 			PathWithNamespace:    "OWNER/REPO",
 		}, nil, nil)
+
+	// Mock ListProjectTargetBranchRules (no rules configured)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
 
 	// Mock GetIssue
 	testClient.MockIssues.EXPECT().
@@ -677,6 +699,11 @@ func Test_MRCreate_With_Recover_Integration(t *testing.T) {
 			MergeRequestsEnabled: true,
 			PathWithNamespace:    "OWNER/REPO",
 		}, nil, nil)
+
+	// Mock ListProjectTargetBranchRules (called on recovery run)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
 
 	// Mock ListUsers (called on recovery)
 	testClient.MockUsers.EXPECT().
@@ -1084,6 +1111,11 @@ func TestNewCmdCreate_WithAutoMerge(t *testing.T) {
 			PathWithNamespace:    "OWNER/REPO",
 		}, nil, nil)
 
+	// Mock ListProjectTargetBranchRules (no rules configured)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
+
 	// Mock CreateMergeRequest
 	testClient.MockMergeRequests.EXPECT().
 		CreateMergeRequest("OWNER/REPO", gomock.Any()).
@@ -1210,6 +1242,11 @@ func TestNewCmdCreate_WithAutoMergeFailure(t *testing.T) {
 			PathWithNamespace:    "OWNER/REPO",
 		}, nil, nil)
 
+	// Mock ListProjectTargetBranchRules (no rules configured)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
+
 	// Mock CreateMergeRequest
 	testClient.MockMergeRequests.EXPECT().
 		CreateMergeRequest("OWNER/REPO", gomock.Any()).
@@ -1291,4 +1328,349 @@ func TestNewCmdCreate_WithAutoMergeFailure(t *testing.T) {
 	// But the MR should still be displayed
 	assert.Contains(t, output.String(), "!12 myMRtitle (feat-new-mr)")
 	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
+}
+
+func TestNewCmdCreate_TargetBranchRule(t *testing.T) {
+	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
+	t.Setenv("NO_COLOR", "true")
+
+	testClient := gitlabtesting.NewTestClient(t)
+
+	// Mock GetProject
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "main",
+			WebURL:               "http://gitlab.com/OWNER/REPO",
+			Name:                 "OWNER",
+			Path:                 "REPO",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+
+	// Mock ListProjectTargetBranchRules: "feature/*" → "development"
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{
+			{Name: "feature/*", TargetBranch: "development"},
+		}, nil, nil)
+
+	// Mock CreateMergeRequest: verify target branch is "development", not "main"
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequest("OWNER/REPO", gomock.Any()).
+		DoAndReturn(func(pid any, opts *gitlab.CreateMergeRequestOptions, options ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+			assert.Equal(t, "development", *opts.TargetBranch)
+			return &gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					ID:           1,
+					IID:          12,
+					ProjectID:    3,
+					Title:        "myMRtitle",
+					Description:  "myMRbody",
+					State:        "opened",
+					TargetBranch: "development",
+					SourceBranch: "feature/my-feature",
+					WebURL:       "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+				},
+			}, nil, nil
+		})
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: main\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feature/my-feature
+		deadbeef refs/remotes/origin/feature/my-feature
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{
+							Name:     "upstream",
+							Resolved: "head",
+							PushURL:  pu,
+						},
+						Repo: glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{
+							Name:     "origin",
+							Resolved: "base",
+							PushURL:  pu,
+						},
+						Repo: glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) {
+				return "feature/my-feature", nil
+			}
+		},
+	)
+
+	output, err := exec("-t myMRtitle -d myMRbody")
+	require.NoError(t, err)
+	assert.Contains(t, output.Stderr(), "Creating merge request for feature/my-feature into development in OWNER/REPO")
+}
+
+func TestNewCmdCreate_WithTemplate(t *testing.T) {
+	// Cannot use t.Parallel(): test mutates git.ToplevelDir, a package-level variable.
+	t.Setenv("NO_COLOR", "true")
+
+	tmpDir := t.TempDir()
+	templateDir := filepath.Join(tmpDir, ".gitlab", "merge_request_templates")
+	require.NoError(t, os.MkdirAll(templateDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "bug_fix.md"), []byte("## What does this MR do?"), 0o644))
+
+	origToplevelDir := git.ToplevelDir
+	git.ToplevelDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { git.ToplevelDir = origToplevelDir })
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "master",
+			WebURL:               "http://gitlab.com/OWNER/REPO",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequest("OWNER/REPO", gomock.Any()).
+		DoAndReturn(func(_ any, opts *gitlab.CreateMergeRequestOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+			assert.Equal(t, "## What does this MR do?", *opts.Description)
+			return &gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					IID:          12,
+					Title:        "Fix the bug",
+					SourceBranch: "feat-new-mr",
+					TargetBranch: "master",
+					WebURL:       "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+				},
+			}, nil, nil
+		})
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: master\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feat-new-mr
+		deadbeef refs/remotes/origin/feat-new-mr
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{Name: "upstream", Resolved: "head", PushURL: pu},
+						Repo:   glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{Name: "origin", Resolved: "base", PushURL: pu},
+						Repo:   glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) { return "feat-new-mr", nil }
+		},
+	)
+
+	output, err := exec(`--title "Fix the bug" --template bug_fix --source-branch feat-new-mr --yes`)
+	require.NoError(t, err)
+	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
+}
+
+func TestNewCmdCreate_WithTemplateMdExtension(t *testing.T) {
+	// Cannot use t.Parallel(): test mutates git.ToplevelDir, a package-level variable.
+	t.Setenv("NO_COLOR", "true")
+
+	tmpDir := t.TempDir()
+	templateDir := filepath.Join(tmpDir, ".gitlab", "merge_request_templates")
+	require.NoError(t, os.MkdirAll(templateDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "bug_fix.md"), []byte("## What does this MR do?"), 0o644))
+
+	origToplevelDir := git.ToplevelDir
+	git.ToplevelDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { git.ToplevelDir = origToplevelDir })
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "master",
+			WebURL:               "http://gitlab.com/OWNER/REPO",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequest("OWNER/REPO", gomock.Any()).
+		DoAndReturn(func(_ any, opts *gitlab.CreateMergeRequestOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.MergeRequest, *gitlab.Response, error) {
+			assert.Equal(t, "## What does this MR do?", *opts.Description)
+			return &gitlab.MergeRequest{
+				BasicMergeRequest: gitlab.BasicMergeRequest{
+					IID:          12,
+					Title:        "Fix the bug",
+					SourceBranch: "feat-new-mr",
+					TargetBranch: "master",
+					WebURL:       "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+				},
+			}, nil, nil
+		})
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: master\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feat-new-mr
+		deadbeef refs/remotes/origin/feat-new-mr
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{Name: "upstream", Resolved: "head", PushURL: pu},
+						Repo:   glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{Name: "origin", Resolved: "base", PushURL: pu},
+						Repo:   glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) { return "feat-new-mr", nil }
+		},
+	)
+
+	// Passing "bug_fix.md" should work the same as "bug_fix"
+	output, err := exec(`--title "Fix the bug" --template bug_fix.md --source-branch feat-new-mr --yes`)
+	require.NoError(t, err)
+	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
+}
+
+func TestNewCmdCreate_TemplateNotFound(t *testing.T) {
+	// Cannot use t.Parallel(): test mutates git.ToplevelDir, a package-level variable.
+	tmpDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, ".gitlab", "merge_request_templates"), 0o755))
+
+	origToplevelDir := git.ToplevelDir
+	git.ToplevelDir = func() (string, error) { return tmpDir, nil }
+	t.Cleanup(func() { git.ToplevelDir = origToplevelDir })
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "master",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: master\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feat-new-mr
+		deadbeef refs/remotes/origin/feat-new-mr
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{Name: "upstream", Resolved: "head", PushURL: pu},
+						Repo:   glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{Name: "origin", Resolved: "base", PushURL: pu},
+						Repo:   glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) { return "feat-new-mr", nil }
+		},
+	)
+
+	_, err := exec(`--title "Fix the bug" --template nonexistent --source-branch feat-new-mr --yes`)
+	assert.ErrorContains(t, err, `template "nonexistent" not found in .gitlab/merge_request_templates/`)
+}
+
+func TestNewCmdCreate_TemplateMutuallyExclusiveWithDescription(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, false)
+
+	_, err := exec(`--title "Fix" --template bug_fix --description "my description" --source-branch feat-new-mr`)
+	assert.Error(t, err)
+}
+
+func TestNewCmdCreate_TemplateMutuallyExclusiveWithFill(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, false)
+
+	_, err := exec(`--title "Fix" --template bug_fix --fill --source-branch feat-new-mr`)
+	assert.Error(t, err)
+}
+
+func TestMatchBranchPattern(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		pattern string
+		branch  string
+		want    bool
+	}{
+		{"*", "main", true},
+		{"*", "feature/foo", true},
+		{"feature/*", "feature/my-feature", true},
+		{"feature/*", "feature/foo/bar", true},
+		{"feature/*", "hotfix/oops", false},
+		{"hotfix/*", "hotfix/urgent", true},
+		{"main", "main", true},
+		{"main", "maintenance", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pattern+"/"+tt.branch, func(t *testing.T) {
+			t.Parallel()
+			got, err := matchBranchPattern(tt.pattern, tt.branch)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

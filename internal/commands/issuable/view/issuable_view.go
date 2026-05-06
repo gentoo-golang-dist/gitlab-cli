@@ -73,9 +73,12 @@ func NewCmdView(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Command
 		defaultHostname: f.DefaultHostname(),
 	}
 	issueViewCmd := &cobra.Command{
-		Use:     "view <id>",
-		Short:   fmt.Sprintf(`Display the title, body, and other information about an %s.`, issueType),
-		Long:    ``,
+		Use:   "view <id>",
+		Short: fmt.Sprintf(`Display the title, body, and other information about an %s.`, issueType),
+		Long: heredoc.Docf(`
+			You can use a full GitLab URL instead of an ID. Use %[1]s--web%[1]s
+			to open in a browser.
+		`, "`"),
 		Aliases: []string{"show"},
 		Example: heredoc.Doc(fmt.Sprintf(`
 			glab %[1]s view 123

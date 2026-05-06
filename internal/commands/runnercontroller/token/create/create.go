@@ -13,6 +13,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -33,7 +34,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <controller-id> [flags]",
 		Short: `Create a token for a runner controller. (EXPERIMENTAL)`,
-		Args:  cobra.ExactArgs(1),
+		Long: heredoc.Docf(`
+			Store the token value securely before closing the terminal. You cannot
+			retrieve the token again.
+			%s`, text.ExperimentalString),
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Create a token for runner controller 42
 			glab runner-controller token create 42

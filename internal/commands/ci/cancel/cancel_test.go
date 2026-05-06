@@ -3,24 +3,21 @@
 package cancel
 
 import (
-	"os"
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
-	"gitlab.com/gitlab-org/cli/test"
 )
 
 func TestIssueCmd(t *testing.T) {
-	old := os.Stdout // keep backup of the real stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	var buf bytes.Buffer
+	cmd := NewCmdCancel(cmdtest.NewTestFactory(nil))
+	cmd.SetOut(&buf)
 
-	assert.Nil(t, NewCmdCancel(cmdtest.NewTestFactory(nil)).Execute())
+	assert.Nil(t, cmd.Execute())
 
-	out := test.ReturnBuffer(old, r, w)
-
-	assert.Contains(t, out, "Cancel CI/CD jobs.\n")
-	assert.Contains(t, out, "Cancel CI/CD pipelines.\n")
+	assert.Contains(t, buf.String(), "Cancel CI/CD jobs.\n")
+	assert.Contains(t, buf.String(), "Cancel CI/CD pipelines.\n")
 }

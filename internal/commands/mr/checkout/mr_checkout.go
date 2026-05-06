@@ -12,7 +12,6 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
-	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
@@ -29,7 +28,10 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 	mrCheckoutCmd := &cobra.Command{
 		Use:   "checkout [<id> | <branch> | <url>]",
 		Short: "Check out an open merge request.",
-		Long:  ``,
+		Long: heredoc.Docf(`
+			Defaults to the currently checked-out branch. Use %[1]s--branch%[1]s to
+			override the local branch name used for the checkout.
+		`, "`"),
 		Example: heredoc.Doc(`
 			glab mr checkout 1
 			glab mr checkout branch
@@ -44,6 +46,8 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			gr := f.GitRunner()
+
 			var err error
 			var upstream string
 
@@ -108,10 +112,10 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 			repoURL := glrepo.RemoteURL(mrProject, gitProtocol)
 
 			fetchRefSpec := fmt.Sprintf("%s:%s", mrRef, mrCheckoutCfg.branch)
-			if err := git.RunCmd([]string{"fetch", repoURL, fetchRefSpec}); err != nil {
+			if _, err := gr.Git("fetch", repoURL, fetchRefSpec); err != nil {
 				// the remote may have diverged from local after git operations
 				// try fetching without updating the branch ref before giving up
-				if err := git.RunCmd([]string{"fetch", repoURL, mrRef}); err != nil {
+				if _, err := gr.Git("fetch", repoURL, mrRef); err != nil {
 					return err
 				}
 			}
@@ -119,28 +123,24 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 			// .remote is needed for `git pull` to work
 			// .pushRemote is needed for `git push` to work, if user has set `remote.pushDefault`.
 			// see https://git-scm.com/docs/git-config#Documentation/git-config.txt-branchltnamegtremote
-			if err := git.RunCmd([]string{"config", fmt.Sprintf("branch.%s.remote", mrCheckoutCfg.branch), repoURL}); err != nil {
+			if _, err := gr.Git("config", fmt.Sprintf("branch.%s.remote", mrCheckoutCfg.branch), repoURL); err != nil {
 				return err
 			}
 			if mr.AllowCollaboration {
-				if err := git.RunCmd([]string{"config", fmt.Sprintf("branch.%s.pushRemote", mrCheckoutCfg.branch), repoURL}); err != nil {
+				if _, err := gr.Git("config", fmt.Sprintf("branch.%s.pushRemote", mrCheckoutCfg.branch), repoURL); err != nil {
 					return err
 				}
 			}
-			if err := git.RunCmd([]string{"config", fmt.Sprintf("branch.%s.merge", mrCheckoutCfg.branch), mrRef}); err != nil {
+			if _, err := gr.Git("config", fmt.Sprintf("branch.%s.merge", mrCheckoutCfg.branch), mrRef); err != nil {
 				return err
 			}
 
-			// Check out branch
-			var gr git.StandardGitCommand
-
-			if err := git.CheckoutBranch(mrCheckoutCfg.branch, gr); err != nil {
-				return err
+			if _, err := gr.Git("checkout", mrCheckoutCfg.branch); err != nil {
+				return fmt.Errorf("could not checkout branch %q: %w", mrCheckoutCfg.branch, err)
 			}
 
-			// Check out the branch
 			if upstream != "" {
-				if err := git.RunCmd([]string{"branch", "--set-upstream-to", upstream}); err != nil {
+				if _, err := gr.Git("branch", "--set-upstream-to", upstream); err != nil {
 					return err
 				}
 			}

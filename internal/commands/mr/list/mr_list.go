@@ -85,9 +85,13 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	}
 
 	mrListCmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   `List merge requests.`,
-		Long:    ``,
+		Use:   "list [flags]",
+		Short: `List merge requests.`,
+		Long: heredoc.Docf(`
+			Defaults to open merge requests. Use %[1]s--all%[1]s to include closed
+			and merged requests. Use %[1]s--group%[1]s to list for a group instead
+			of the current project.
+		`, "`"),
 		Aliases: []string{"ls"},
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

@@ -30,6 +30,7 @@ func Test_projectCreateCmd(t *testing.T) {
 	origAddRemote := addRemote
 	origGitInitializer := gitInitializer
 	origRepoInitializer := repoInitializer
+	origRepoCloner := repoCloner
 
 	defer func() {
 		createProject = origCreateProject
@@ -37,6 +38,7 @@ func Test_projectCreateCmd(t *testing.T) {
 		addRemote = origAddRemote
 		gitInitializer = origGitInitializer
 		repoInitializer = origRepoInitializer
+		repoCloner = origRepoCloner
 	}()
 
 	testCases := []struct {
@@ -80,6 +82,9 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
+					return nil
+				}
 			},
 		},
 		{
@@ -113,6 +118,9 @@ func Test_projectCreateCmd(t *testing.T) {
 					return nil
 				}
 				repoInitializer = func(projectPath, remoteURL string) error {
+					return nil
+				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -150,6 +158,9 @@ func Test_projectCreateCmd(t *testing.T) {
 				repoInitializer = func(projectPath, remoteURL string) error {
 					return nil
 				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
+					return nil
+				}
 			},
 		},
 		{
@@ -173,6 +184,9 @@ func Test_projectCreateCmd(t *testing.T) {
 					return nil
 				}
 				repoInitializer = func(projectPath, remoteURL string) error {
+					return nil
+				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -209,6 +223,9 @@ func Test_projectCreateCmd(t *testing.T) {
 					return nil
 				}
 				repoInitializer = func(projectPath, remoteURL string) error {
+					return nil
+				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
 					return nil
 				}
 			},
@@ -266,16 +283,19 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 	origCurrentUser := currentUser
 	origAddRemote := addRemote
 	origGitInitializer := gitInitializer
+	origRepoCloner := repoCloner
 
 	defer func() {
 		createProject = origCreateProject
 		currentUser = origCurrentUser
 		addRemote = origAddRemote
 		gitInitializer = origGitInitializer
+		repoCloner = origRepoCloner
 	}()
 
 	testCases := []struct {
 		Name           string
+		Args           []string
 		ExpectedStdout []string
 		ExpectedStderr []string
 		SetupMocks     func()
@@ -311,6 +331,9 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 				gitInitializer = func() error {
 					return nil
 				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
+					return nil
+				}
 			},
 			wantErr: false, // Should not error, just warn
 		},
@@ -344,6 +367,44 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 					t.Error("gitInitializer should not be called when already in a git repository")
 					return nil
 				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
+					t.Error("repoCloner should not be called when already in a git repository")
+					return nil
+				}
+			},
+			wantErr: false,
+		},
+		{
+			Name: "Create project with --readme (already git init'd) - adds remote only",
+			Args: []string{"--readme"},
+			ExpectedStdout: []string{
+				"Created project on GitLab:",
+				"Added remote",
+			},
+			SetupMocks: func() {
+				createProject = func(client *gitlab.Client, opts *gitlab.CreateProjectOptions) (*gitlab.Project, error) {
+					return &gitlab.Project{
+						ID:                1,
+						Name:              "test-project",
+						NameWithNamespace: "username/test-project",
+						WebURL:            "https://gitlab.com/username/test-project",
+						SSHURLToRepo:      "git@gitlab.com:username/test-project.git",
+					}, nil
+				}
+				currentUser = func(client *gitlab.Client) (*gitlab.User, error) {
+					return &gitlab.User{ID: 1, Username: "username", Name: "name"}, nil
+				}
+				addRemote = func(name, url string) (*git.Remote, error) {
+					return &git.Remote{Name: name}, nil
+				}
+				gitInitializer = func() error {
+					t.Error("gitInitializer should not be called when already in a git repository")
+					return nil
+				}
+				repoCloner = func(cloneURL, target, remoteName string) error {
+					t.Error("repoCloner should not be called when already in a git repository")
+					return nil
+				}
 			},
 			wantErr: false,
 		},
@@ -366,8 +427,11 @@ func Test_projectCreateCmd_InCurrentDirectory(t *testing.T) {
 
 			cmd := NewCmdCreate(f)
 			cmdutils.EnableRepoOverride(cmd, f)
-			// No args - this tests creating in current directory
-			cmd.SetArgs([]string{})
+			args := tc.Args
+			if args == nil {
+				args = []string{}
+			}
+			cmd.SetArgs(args)
 
 			_, err := cmd.ExecuteC()
 

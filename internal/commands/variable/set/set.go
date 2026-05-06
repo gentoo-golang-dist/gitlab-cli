@@ -42,8 +42,12 @@ func NewCmdSet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 	}
 
 	cmd := &cobra.Command{
-		Use:     "set <key> <value>",
-		Short:   "Create a new variable for a project or group.",
+		Use:   "set <key> <value>",
+		Short: "Create a new variable for a project or group.",
+		Long: heredoc.Docf(`
+			You can pass the variable value from standard input. Use %[1]s--group%[1]s
+			to set a variable for a group instead of the current project.
+		`, "`"),
 		Aliases: []string{"new", "create"},
 		Args:    cobra.RangeArgs(1, 2),
 		Example: heredoc.Doc(`

@@ -40,12 +40,12 @@ glab snippet create --personal --title "Personal snippet" script.py
   -f, --filename string      Filename of the snippet in GitLab.
   -p, --personal             Create a personal snippet.
   -t, --title string         (required) Title of the snippet.
-  -v, --visibility string    Limit by visibility: 'public', 'internal', or 'private' (default "private")
+  -v, --visibility string    Limit by visibility: 'public', 'internal', or 'private'. (default "private")
 ```
 
 ## Options inherited from parent commands
 
 ```plaintext
-  -h, --help              Show help for this command.
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+  -h, --help          Show help for this command.
+  -R, --repo string   Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
 ```

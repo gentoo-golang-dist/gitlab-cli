@@ -43,7 +43,12 @@ func NewCmdUpdate(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 	cmd := &cobra.Command{
 		Use:   "update <key> <value>",
 		Short: "Update an existing variable for a project or group.",
-		Args:  cobra.RangeArgs(1, 2),
+		Long: heredoc.Docf(`
+			You can pass the variable value from standard input. Use %[1]s--group%[1]s
+			to update a variable for a group instead of the current project.
+			The %[1]s--scope%[1]s flag does not apply to group variables.
+		`, "`"),
+		Args: cobra.RangeArgs(1, 2),
 		Example: heredoc.Doc(`
 			glab variable update WITH_ARG "some value"
 			glab variable update FROM_FLAG -v "some value"

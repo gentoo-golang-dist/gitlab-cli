@@ -256,13 +256,22 @@ detects if it's running in a GitLab CI job and uses the predefined CI/CD variabl
 GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 ```
 
+The following predefined CI/CD variables are used automatically:
+
+| Predefined CI/CD variable  | Equivalent `glab auth login` flag |
+|----------------------------|-----------------------------------|
+| `CI_SERVER_FQDN`           | `--hostname`                      |
+| `CI_JOB_TOKEN`             | `--job-token`                     |
+| `CI_SERVER_PROTOCOL`       | `--api-protocol`                  |
+| `CI_SERVER_SHELL_SSH_HOST` | `--ssh-hostname`                  |
+
 #### Manual login
 
-Example:
+Use manual login when the command does not support CI job tokens, or you need a personal access token:
 
 ```shell
-glab auth login --job-token $CI_JOB_TOKEN --hostname $CI_SERVER_HOST --api-protocol $CI_SERVER_PROTOCOL
-GITLAB_HOST=$CI_SERVER_URL glab release list -R $CI_PROJECT_PATH
+glab auth login --job-token $CI_JOB_TOKEN --hostname $CI_SERVER_FQDN --api-protocol $CI_SERVER_PROTOCOL
+GITLAB_HOST=$CI_SERVER_FQDN glab release list -R $CI_PROJECT_PATH
 ```
 
 ## Configuration
@@ -385,7 +394,7 @@ self-signed certificates, either:
 | `GITLAB_HOST`      | `host` (this is the default host `glab` will use when the current directory is not a `git` directory) | `https://gitlab.com`                       | Alias of `GITLAB_URI`.                                                                                                                                                                                      |
 | `GITLAB_REPO`      | -                                                                                                     | -                                          | Default GitLab repository used for commands accepting the `--repo` option. Only used if no `--repo` option is given.                                                                                        |
 | `GITLAB_TOKEN`     | `hosts.<hostname>.token`                                                                              | -                                          | an authentication token for API requests. Setting this avoids being prompted to authenticate and overrides any previously stored credentials. Can be set in the config with `glab config set token xxxxxx`. |
-| `GITLAB_URI`       | not applicable                                                                                        | not applicable                             | Alias of `GITLAB_HOST`.                                                                                                                                                                                     |
+| `GITLAB_URI`       | not applicable                                                                                        | not applicable                             | Alias of `GITLAB_HOST`. |
 
 ### `glab` configuration variables
 

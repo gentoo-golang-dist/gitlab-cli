@@ -15,6 +15,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -34,7 +35,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <id> [flags]",
 		Short: `Delete a runner controller. (EXPERIMENTAL)`,
-		Args:  cobra.ExactArgs(1),
+		Long: heredoc.Docf(`
+			Prompts for confirmation before deletion. Use %[1]s--force%[1]s to skip the
+			confirmation prompt in non-interactive contexts.
+		`, "`") + text.ExperimentalString,
+		Args: cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# Delete a runner controller (with confirmation prompt)
 			glab runner-controller delete 42

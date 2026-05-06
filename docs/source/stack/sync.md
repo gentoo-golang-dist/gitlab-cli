@@ -39,18 +39,24 @@ glab stack sync [flags]
 glab stack sync
 glab stack sync --no-verify
 glab stack sync --update-base
+glab stack sync --assignee user1,user2
+glab stack sync --label bug,priority::high
+glab stack sync --reviewer user1 --reviewer user2
 ```
 
 ## Options
 
 ```plaintext
-      --no-verify     Bypass the pre-push hook. (See githooks(5) for more information.)
-      --update-base   Rebase the stack onto the latest version of the base branch.
+  -a, --assignee usernames   Assign merge request to people by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+  -l, --label name           Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.
+      --no-verify            Bypass the pre-push hook. (See githooks(5) for more information.)
+      --reviewer usernames   Request review from users by their usernames. Multiple usernames can be comma-separated or specified by repeating the flag.
+      --update-base          Rebase the stack onto the latest version of the base branch.
 ```
 
 ## Options inherited from parent commands
 
 ```plaintext
-  -h, --help              Show help for this command.
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+  -h, --help          Show help for this command.
+  -R, --repo string   Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
 ```

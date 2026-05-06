@@ -30,12 +30,15 @@ import (
 	milestoneCmd "gitlab.com/gitlab-org/cli/internal/commands/milestone"
 	mrCmd "gitlab.com/gitlab-org/cli/internal/commands/mr"
 	opentofuCmd "gitlab.com/gitlab-org/cli/internal/commands/opentofu"
+	orbitCmd "gitlab.com/gitlab-org/cli/internal/commands/orbit"
 	projectCmd "gitlab.com/gitlab-org/cli/internal/commands/project"
 	releaseCmd "gitlab.com/gitlab-org/cli/internal/commands/release"
 	runnerCmd "gitlab.com/gitlab-org/cli/internal/commands/runner"
 	runnerControllerCmd "gitlab.com/gitlab-org/cli/internal/commands/runnercontroller"
 	scheduleCmd "gitlab.com/gitlab-org/cli/internal/commands/schedule"
+	searchCmd "gitlab.com/gitlab-org/cli/internal/commands/search"
 	securefileCmd "gitlab.com/gitlab-org/cli/internal/commands/securefile"
+	skillsCmd "gitlab.com/gitlab-org/cli/internal/commands/skills"
 	snippetCmd "gitlab.com/gitlab-org/cli/internal/commands/snippet"
 	sshCmd "gitlab.com/gitlab-org/cli/internal/commands/ssh-key"
 	stackCmd "gitlab.com/gitlab-org/cli/internal/commands/stack"
@@ -162,27 +165,30 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(milestoneCmd.NewCmdMilestone(f))
 	rootCmd.AddCommand(mrCmd.NewCmdMR(f))
 	rootCmd.AddCommand(opentofuCmd.NewCmd(f))
+	rootCmd.AddCommand(orbitCmd.NewCmd(f))
 	rootCmd.AddCommand(attestationCmd.NewCmdAttestation(f))
 	rootCmd.AddCommand(pipelineCmd.NewCmdCI(f))
 	rootCmd.AddCommand(projectCmd.NewCmdRepo(f))
 	rootCmd.AddCommand(releaseCmd.NewCmdRelease(f))
 	rootCmd.AddCommand(runnerCmd.NewCmdRunner(f))
 	rootCmd.AddCommand(scheduleCmd.NewCmdSchedule(f))
+	rootCmd.AddCommand(searchCmd.NewCmd(f))
 	rootCmd.AddCommand(securefileCmd.NewCmdSecurefile(f))
 	rootCmd.AddCommand(snippetCmd.NewCmdSnippet(f))
 	rootCmd.AddCommand(sshCmd.NewCmdSSHKey(f))
 	rootCmd.AddCommand(stackCmd.NewCmdStack(f))
-	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
 	rootCmd.AddCommand(todoCmd.NewCmd(f))
+	rootCmd.AddCommand(tokenCmd.NewTokenCmd(f))
 	rootCmd.AddCommand(userCmd.NewCmdUser(f))
 	rootCmd.AddCommand(variableCmd.NewVariableCmd(f))
 	rootCmd.AddCommand(runnerControllerCmd.NewCmd(f))
+	rootCmd.AddCommand(skillsCmd.NewCmdSkills(f))
 	rootCmd.AddCommand(workitemsCmd.NewCmdWorkItems(f))
 	// TODO: This can probably be removed by GitLab 18.3
 	// See: https://gitlab.com/gitlab-org/cli/-/issues/7885
 	// Add global repo override flag but keep it hidden
 	cmdutils.AddGlobalRepoOverride(rootCmd, f)
 
-	rootCmd.Flags().BoolP("version", "v", false, "show glab version information")
+	rootCmd.Flags().BoolP("version", "v", false, "Show glab version information.")
 	return rootCmd
 }

@@ -61,6 +61,10 @@ func NewCmdFork(f cmdutils.Factory) *cobra.Command {
 	forkCmd := &cobra.Command{
 		Use:   "fork <repo>",
 		Short: "Fork a GitLab repository.",
+		Long: heredoc.Docf(`
+			Defaults to the current repository if no repository is specified.
+			Use %[1]s--clone%[1]s and %[1]s--remote%[1]s to skip the interactive prompts.
+		`, "`"),
 		Example: heredoc.Doc(`
 			glab repo fork
 			glab repo fork namespace/repo

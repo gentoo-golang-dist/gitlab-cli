@@ -1,0 +1,41 @@
+# .gitlab/duo/agent-config.yml
+#
+# Configures the CI/CD environment for GitLab Duo coding agent flows.
+# Mirrors the project's standard development setup using mise to manage
+# the full toolchain from .tool-versions.
+
+# Base image — lightweight Debian base; all tooling (including Go) is
+# installed by mise from .tool-versions, so we don't need the golang image.
+image: debian:bookworm-slim
+
+# Bootstrap the development environment before the flow executes.
+setup_script:
+  # Install system dependencies required by mise and the build toolchain
+  - apt-get update && apt-get install -y --no-install-recommends curl git make ca-certificates && rm -rf /var/lib/apt/lists/*
+  # Install mise — the project's tool version manager
+  - curl -fsSL https://mise.run | sh
+  - export PATH="$HOME/.local/bin:$PATH"
+  # Install all tools pinned in .tool-versions:
+  #   Go 1.26.1, golangci-lint 2.11.4, shellcheck 0.11.0,
+  #   markdownlint-cli2 0.22.0, vale 3.13.0, lychee 0.21.0,
+  #   Node.js 23.11.0, lefthook 2.0.2
+  - mise install
+  - eval "$(mise activate bash)"
+  # Install commitlint dependencies (validates conventional commit messages)
+  - cd scripts/commit-lint && npm install && cd ../..
+  # Pre-download Go module dependencies
+  - go mod download
+  # Activate git hooks — gives the agent automatic validation on commit/push
+  - lefthook install
+
+# Cache dependencies and tools between flow runs.
+cache:
+  key:
+    files:
+      - go.sum
+      - .tool-versions
+  paths:
+    # Go module cache (GOPATH defaults to ~/go when installed via mise)
+    - /root/go/pkg/mod/
+    # mise tool installations
+    - /root/.local/share/mise/

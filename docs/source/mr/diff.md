@@ -32,12 +32,12 @@ glab mr diff 123 --color=never
 
 ```plaintext
       --color string   Use color in diff output: always, never, auto. (default "auto")
-      --raw            Use raw diff format that can be piped to commands
+      --raw            Use raw diff format that can be piped to commands.
 ```
 
 ## Options inherited from parent commands
 
 ```plaintext
-  -h, --help              Show help for this command.
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+  -h, --help          Show help for this command.
+  -R, --repo string   Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
 ```

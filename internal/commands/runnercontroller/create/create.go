@@ -12,6 +12,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 type options struct {
@@ -32,7 +33,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [flags]",
 		Short: `Create a runner controller. (EXPERIMENTAL)`,
-		Args:  cobra.NoArgs,
+		Long: heredoc.Doc(`
+			You must have administrator access. The runner controller can be
+			created in a disabled state for testing before you enable the runner controller.
+		`) + text.ExperimentalString,
+		Args: cobra.NoArgs,
 		Example: heredoc.Doc(`
 			# Create a runner controller with default settings
 			glab runner-controller create

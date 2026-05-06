@@ -16,6 +16,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
@@ -39,6 +40,7 @@ type Factory struct {
 	IOStub           *iostreams.IOStreams
 	BuildInfoStub    api.BuildInfo
 	ExecutorStub     cmdutils.Executor
+	GitRunnerStub    git.GitRunner
 
 	repoOverride string
 
@@ -73,6 +75,7 @@ func NewTestFactory(ios *iostreams.IOStreams, opts ...FactoryOption) *Factory {
 			return "main", nil
 		},
 		BuildInfoStub: api.BuildInfo{Version: "test", Commit: "test", Platform: runtime.GOOS, Architecture: runtime.GOARCH},
+		GitRunnerStub: git.StandardGitCommand{},
 	}
 
 	// Apply all options
@@ -173,6 +176,10 @@ func (f *Factory) BuildInfo() api.BuildInfo {
 
 func (f *Factory) Executor() cmdutils.Executor {
 	return f.ExecutorStub
+}
+
+func (f *Factory) GitRunner() git.GitRunner {
+	return f.GitRunnerStub
 }
 
 // WithApiClient configures the Factory with a specific API client
@@ -277,6 +284,12 @@ func WithIOStreamsOverride(ios *iostreams.IOStreams) FactoryOption {
 func WithExecutor(exec cmdutils.Executor) FactoryOption {
 	return func(f *Factory) {
 		f.ExecutorStub = exec
+	}
+}
+
+func WithGitRunner(gr git.GitRunner) FactoryOption {
+	return func(f *Factory) {
+		f.GitRunnerStub = gr
 	}
 }
 
