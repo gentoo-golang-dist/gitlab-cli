@@ -76,6 +76,9 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 		# Run the GitLab Duo CLI
 		glab duo cli
 
+		# Pass any command or flag through to the Duo CLI binary (for example: version, run, help)
+		glab duo cli <command>
+
 		# Show this help
 		glab duo cli --help
 
@@ -97,6 +100,9 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Manually parse glab-owned flags since DisableFlagParsing is true.
 			// Unrecognised args are collected and passed through to the duo binary.
+			// --help/-h shows glab's help only when nothing has been collected for
+			// pass-through yet; otherwise it belongs to a duo subcommand
+			// (e.g. `glab duo cli run --help`).
 			var remaining []string
 			for _, arg := range args {
 				switch arg {
@@ -107,7 +113,10 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 				case "--yes", "-y":
 					opts.yes = true
 				case "--help", "-h":
-					return cmd.Help()
+					if len(remaining) == 0 {
+						return cmd.Help()
+					}
+					remaining = append(remaining, arg)
 				default:
 					remaining = append(remaining, arg)
 				}
@@ -270,6 +279,8 @@ func (o *options) handleInstall(ctx context.Context) error {
 	}
 
 	if info.Path != managedPath {
+		color := o.io.Color()
+		o.io.LogInfof("%s Using custom Duo CLI binary: %s\n", color.DotWarnIcon(), info.Path)
 		return nil
 	}
 
@@ -293,6 +304,9 @@ func (o *options) handleUpdate(ctx context.Context) error {
 		installedVersion, _ := o.cfg.Get("", "duo_cli_binary_version")
 		installedPath, _ := o.cfg.Get("", "duo_cli_binary_path")
 		autoDownload, _ := o.cfg.Get("", "duo_cli_auto_download")
+		if o.yes {
+			autoDownload = "true"
+		}
 		info, err := o.manager.EnsureInstalled(ctx, installedVersion, installedPath, autoDownload)
 		if err != nil {
 			return err

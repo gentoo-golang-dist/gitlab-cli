@@ -55,6 +55,9 @@ glab duo cli [command] [flags]
 # Run the GitLab Duo CLI
 glab duo cli
 
+# Pass any command or flag through to the Duo CLI binary (for example: version, run, help)
+glab duo cli <command>
+
 # Show this help
 glab duo cli --help
 

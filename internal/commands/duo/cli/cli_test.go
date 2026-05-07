@@ -100,7 +100,7 @@ func TestHandleInstall_CustomPath(t *testing.T) {
 		t.Skipf("skipping on unsupported platform: %v", err)
 	}
 
-	t.Run("already installed at custom path returns no error and no output", func(t *testing.T) {
+	t.Run("custom path reports the path and returns no error", func(t *testing.T) {
 		ios, _, stderr, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
 		factory := cmdtest.NewTestFactory(ios)
 		opts := &options{
@@ -116,7 +116,8 @@ func TestHandleInstall_CustomPath(t *testing.T) {
 		err := opts.handleInstall(t.Context())
 
 		require.NoError(t, err)
-		assert.Empty(t, stderr.String())
+		assert.Contains(t, stderr.String(), "Using custom Duo CLI binary:")
+		assert.Contains(t, stderr.String(), execFile)
 	})
 }
 
