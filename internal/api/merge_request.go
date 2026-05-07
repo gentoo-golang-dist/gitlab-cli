@@ -57,47 +57,17 @@ func listGroupMRsBase(client *gitlab.Client, groupID any, opts *gitlab.ListGroup
 	return mrs, nil
 }
 
-func listGroupMRsWithAssigneesOrReviewers(client *gitlab.Client, projectID any, opts *gitlab.ListGroupMergeRequestsOptions, assigneeIds []int, reviewerIds []int) ([]*gitlab.BasicMergeRequest, error) {
+func listGroupMRsWithAssigneesOrReviewers(client *gitlab.Client, groupID any, opts *gitlab.ListGroupMergeRequestsOptions, assigneeIds []int, reviewerIds []int) ([]*gitlab.BasicMergeRequest, error) {
 	if opts.PerPage == 0 {
 		opts.PerPage = DefaultListLimit
 	}
-
-	mrMap := make(map[int64]*gitlab.BasicMergeRequest)
-	for _, id := range assigneeIds {
-		opts.AssigneeID = gitlab.AssigneeID(id)
-		assigneeMrs, err := listGroupMRsBase(client, projectID, opts)
-		if err != nil {
-			return nil, err
-		}
-		for _, mr := range assigneeMrs {
-			mrMap[mr.ID] = mr
-		}
-	}
-	opts.AssigneeID = nil // reset because it's Assignee OR Reviewer
-	for _, id := range reviewerIds {
-		opts.ReviewerID = gitlab.ReviewerID(id)
-		reviewerMrs, err := listGroupMRsBase(client, projectID, opts)
-		if err != nil {
-			return nil, err
-		}
-		for _, mr := range reviewerMrs {
-			mrMap[mr.ID] = mr
-		}
-	}
-
-	mrs := make([]*gitlab.BasicMergeRequest, 0, len(mrMap))
-	for _, mr := range mrMap {
-		mrs = append(mrs, mr)
-	}
-
-	// Sort by CreatedAt if no custom sort is specified, otherwise let API sorting take precedence
-	if opts.OrderBy == nil {
-		sort.Slice(mrs, func(i, j int) bool {
-			return mrs[i].CreatedAt.After(*mrs[j].CreatedAt)
-		})
-	}
-
-	return mrs, nil
+	return fanOutMRListByAssigneeReviewer(
+		assigneeIds, reviewerIds,
+		func(v *gitlab.AssigneeIDValue) { opts.AssigneeID = v },
+		func(v *gitlab.ReviewerIDValue) { opts.ReviewerID = v },
+		opts.OrderBy,
+		func() ([]*gitlab.BasicMergeRequest, error) { return listGroupMRsBase(client, groupID, opts) },
+	)
 }
 
 // ListMRs retrieves merge requests for a given project with optional filtering by assignees or reviewers.
@@ -146,43 +116,108 @@ func listMRsWithAssigneesOrReviewers(client *gitlab.Client, projectID any, opts 
 	if opts.PerPage == 0 {
 		opts.PerPage = DefaultListLimit
 	}
+	return fanOutMRListByAssigneeReviewer(
+		assigneeIds, reviewerIds,
+		func(v *gitlab.AssigneeIDValue) { opts.AssigneeID = v },
+		func(v *gitlab.ReviewerIDValue) { opts.ReviewerID = v },
+		opts.OrderBy,
+		func() ([]*gitlab.BasicMergeRequest, error) { return listMRsBase(client, projectID, opts) },
+	)
+}
 
+// ListAllMRs queries the user-level /merge_requests endpoint (no
+// project or group scope), with optional assignee / reviewer
+// fan-out matching the project- and group-scoped helpers. Used
+// when no -R or --group is in scope, notably MCP standalone calls
+// where the caller wants everything they can see.
+//
+// Attention: this is a global variable and may be overridden in tests.
+var ListAllMRs = func(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions, listOpts ...CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
+	composedListOpts := composeCliListMROptions(listOpts...)
+	assigneeIds, reviewerIds := composedListOpts.assigneeIds, composedListOpts.reviewerIds
+
+	if len(assigneeIds) > 0 || len(reviewerIds) > 0 {
+		return listAllMRsWithAssigneesOrReviewers(client, opts, assigneeIds, reviewerIds)
+	}
+	return listAllMRsBase(client, opts)
+}
+
+func listAllMRsBase(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions) ([]*gitlab.BasicMergeRequest, error) {
+	if opts.PerPage == 0 {
+		opts.PerPage = DefaultListLimit
+	}
+	mrs, _, err := client.MergeRequests.ListMergeRequests(opts)
+	if err != nil {
+		return nil, err
+	}
+	return mrs, nil
+}
+
+func listAllMRsWithAssigneesOrReviewers(client *gitlab.Client, opts *gitlab.ListMergeRequestsOptions, assigneeIds []int, reviewerIds []int) ([]*gitlab.BasicMergeRequest, error) {
+	if opts.PerPage == 0 {
+		opts.PerPage = DefaultListLimit
+	}
+	return fanOutMRListByAssigneeReviewer(
+		assigneeIds, reviewerIds,
+		func(v *gitlab.AssigneeIDValue) { opts.AssigneeID = v },
+		func(v *gitlab.ReviewerIDValue) { opts.ReviewerID = v },
+		opts.OrderBy,
+		func() ([]*gitlab.BasicMergeRequest, error) { return listAllMRsBase(client, opts) },
+	)
+}
+
+// fanOutMRListByAssigneeReviewer runs runQuery once per assignee
+// id, resets the assignee, then once per reviewer id. Results are
+// deduped by MR ID and sorted by CreatedAt desc when orderBy is
+// nil. Shared by the project, group, and user-level list paths --
+// the GitLab API rejects multi-value assignee / reviewer filters
+// in a single request, so we fan out and merge here.
+func fanOutMRListByAssigneeReviewer(
+	assigneeIds, reviewerIds []int,
+	setAssigneeID func(*gitlab.AssigneeIDValue),
+	setReviewerID func(*gitlab.ReviewerIDValue),
+	orderBy *string,
+	runQuery func() ([]*gitlab.BasicMergeRequest, error),
+) ([]*gitlab.BasicMergeRequest, error) {
 	mrMap := make(map[int64]*gitlab.BasicMergeRequest)
+
 	for _, id := range assigneeIds {
-		opts.AssigneeID = gitlab.AssigneeID(id)
-		assigneeMrs, err := listMRsBase(client, projectID, opts)
+		setAssigneeID(gitlab.AssigneeID(id))
+		mrs, err := runQuery()
 		if err != nil {
 			return nil, err
 		}
-		for _, mr := range assigneeMrs {
+		for _, mr := range mrs {
 			mrMap[mr.ID] = mr
 		}
 	}
-	opts.AssigneeID = nil // reset because it's Assignee OR Reviewer
+	setAssigneeID(nil) // reset because it's Assignee OR Reviewer
 	for _, id := range reviewerIds {
-		opts.ReviewerID = gitlab.ReviewerID(id)
-		reviewerMrs, err := listMRsBase(client, projectID, opts)
+		setReviewerID(gitlab.ReviewerID(id))
+		mrs, err := runQuery()
 		if err != nil {
 			return nil, err
 		}
-		for _, mr := range reviewerMrs {
+		for _, mr := range mrs {
 			mrMap[mr.ID] = mr
 		}
 	}
 
-	mrs := make([]*gitlab.BasicMergeRequest, 0, len(mrMap))
+	out := make([]*gitlab.BasicMergeRequest, 0, len(mrMap))
 	for _, mr := range mrMap {
-		mrs = append(mrs, mr)
+		out = append(out, mr)
 	}
 
-	// Sort by CreatedAt if no custom sort is specified, otherwise let API sorting take precedence
-	if opts.OrderBy == nil {
-		sort.Slice(mrs, func(i, j int) bool {
-			return mrs[i].CreatedAt.After(*mrs[j].CreatedAt)
+	// Sort by CreatedAt when no custom OrderBy is set; otherwise
+	// the API's ordering wins. Note this only sorts the current
+	// page -- multi-page callers should pass an explicit OrderBy.
+	if orderBy == nil {
+		sort.Slice(out, func(i, j int) bool {
+			return out[i].CreatedAt.After(*out[j].CreatedAt)
 		})
 	}
 
-	return mrs, nil
+	return out, nil
 }
 
 // UpdateMR updates an MR

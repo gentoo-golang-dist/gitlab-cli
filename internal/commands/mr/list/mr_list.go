@@ -336,14 +336,18 @@ func (o *options) run() error {
 		mergeRequests, err = api.ListGroupMRs(client, o.group, projectListMROptionsToGroup(l), api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
 		title.RepoName = o.group
 	} else {
-		var repo glrepo.Interface
-		repo, err = o.baseRepo()
-		if err != nil {
-			return err
+		// No -R and no --group: fall back to the user-level
+		// /merge_requests endpoint with scope=all so callers
+		// running outside any repo (notably MCP) still get
+		// useful results.
+		repo, repoErr := o.baseRepo()
+		if repoErr == nil {
+			title.RepoName = repo.FullName()
+			mergeRequests, err = api.ListMRs(client, repo.FullName(), l, api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
+		} else {
+			mergeRequests, err = api.ListAllMRs(client, projectListMROptionsToAll(l), api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
+			title.RepoName = "all accessible projects"
 		}
-
-		title.RepoName = repo.FullName()
-		mergeRequests, err = api.ListMRs(client, repo.FullName(), l, api.WithMRAssignees(assigneeIds), api.WithMRReviewers(reviewerIds))
 	}
 	if err != nil {
 		return err
@@ -394,3 +398,42 @@ func projectListMROptionsToGroup(l *gitlab.ListProjectMergeRequestsOptions) *git
 		WIP:                    l.WIP,
 	}
 }
+
+// projectListMROptionsToAll maps project-scoped options onto the
+// user-level /merge_requests shape. Scope defaults to "all" when
+// unset; "created_by_me" would hide most of what the caller wants.
+func projectListMROptionsToAll(l *gitlab.ListProjectMergeRequestsOptions) *gitlab.ListMergeRequestsOptions {
+	out := &gitlab.ListMergeRequestsOptions{
+		ListOptions:            l.ListOptions,
+		State:                  l.State,
+		OrderBy:                l.OrderBy,
+		Sort:                   l.Sort,
+		Milestone:              l.Milestone,
+		View:                   l.View,
+		Labels:                 l.Labels,
+		NotLabels:              l.NotLabels,
+		WithLabelsDetails:      l.WithLabelsDetails,
+		WithMergeStatusRecheck: l.WithMergeStatusRecheck,
+		CreatedAfter:           l.CreatedAfter,
+		CreatedBefore:          l.CreatedBefore,
+		UpdatedAfter:           l.UpdatedAfter,
+		UpdatedBefore:          l.UpdatedBefore,
+		Scope:                  l.Scope,
+		AuthorID:               l.AuthorID,
+		AssigneeID:             l.AssigneeID,
+		ReviewerID:             l.ReviewerID,
+		ReviewerUsername:       l.ReviewerUsername,
+		MyReactionEmoji:        l.MyReactionEmoji,
+		SourceBranch:           l.SourceBranch,
+		TargetBranch:           l.TargetBranch,
+		Search:                 l.Search,
+		WIP:                    l.WIP,
+		Draft:                  l.Draft,
+	}
+	if out.Scope == nil {
+		scopeAll := "all"
+		out.Scope = &scopeAll
+	}
+	return out
+}
+

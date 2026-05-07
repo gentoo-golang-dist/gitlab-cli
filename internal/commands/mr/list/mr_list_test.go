@@ -23,8 +23,21 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
+
+// TestMCPSafeAnnotation pins the Safe marker.
+func TestMCPSafeAnnotation(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	factory := cmdtest.NewTestFactory(ios,
+		cmdtest.WithConfig(config.NewBlankConfig()),
+		cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+	)
+	cmd := NewCmdList(factory, nil)
+	assert.Equal(t, "true", cmd.Annotations[mcpannotations.Safe])
+}
 
 func TestNewCmdList(t *testing.T) {
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
@@ -1073,4 +1086,136 @@ func TestMergeRequestList_ExplicitSortOverridesDefault(t *testing.T) {
 
 	// THEN
 	require.NoError(t, err)
+}
+
+// TestMergeRequestList_NoRepoFallsBackToUserLevel: outside any
+// repo, the command hits /merge_requests instead of erroring.
+// This is the MCP-standalone happy path.
+func TestMergeRequestList_NoRepoFallsBackToUserLevel(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockMergeRequests.EXPECT().
+		ListMergeRequests(gomock.Any()).
+		DoAndReturn(func(opts *gitlab.ListMergeRequestsOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+			require.NotNil(t, opts.Scope, "cross-project fallback must set an explicit scope")
+			assert.Equal(t, "all", *opts.Scope, "scope defaults to 'all' so the user sees everything they can access")
+			return []*gitlab.BasicMergeRequest{{
+				IID:          1,
+				Title:        "Across projects",
+				WebURL:       "https://example.com/x/y/-/merge_requests/1",
+				TargetBranch: "main",
+				SourceBranch: "topic",
+				References:   &gitlab.IssueReferences{Full: "x/y!1", Relative: "!1", Short: "!1"},
+			}}, nil, nil
+		})
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdList(f, nil)
+	}, true,
+		cmdtest.WithConfig(config.NewBlankConfig()),
+		cmdtest.WithApiClient(apiClient),
+		cmdtest.WithBaseRepoError(assert.AnError),
+	)
+
+	out, err := exec("")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Across projects")
+}
+
+// TestMergeRequestList_NoRepoFanOutsAssigneeReviewer covers the
+// fan-out path on the user-level endpoint: --assignee + --reviewer
+// with no repo and no group should hit ListMergeRequests once per
+// id, dedupe by MR ID, and sort by CreatedAt desc.
+func TestMergeRequestList_NoRepoFanOutsAssigneeReviewer(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+
+	// Username -> ID lookup for --assignee and --reviewer.
+	testClient.MockUsers.EXPECT().
+		ListUsers(gomock.Any()).
+		DoAndReturn(func(opts *gitlab.ListUsersOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.User, *gitlab.Response, error) {
+			switch *opts.Username {
+			case "alice":
+				return []*gitlab.User{{ID: 1, Username: "alice"}}, nil, nil
+			case "bob":
+				return []*gitlab.User{{ID: 2, Username: "bob"}}, nil, nil
+			}
+			return nil, nil, nil
+		}).Times(2)
+
+	createdAtNewer, _ := time.Parse(time.RFC3339, "2026-04-15T10:00:00Z")
+	createdAtOlder, _ := time.Parse(time.RFC3339, "2026-04-10T10:00:00Z")
+
+	assigneeMR := &gitlab.BasicMergeRequest{
+		ID:           101,
+		IID:          1,
+		Title:        "Alice's MR",
+		TargetBranch: "main",
+		SourceBranch: "alice/feature",
+		WebURL:       "https://example.com/x/y/-/merge_requests/1",
+		CreatedAt:    &createdAtOlder,
+		References:   &gitlab.IssueReferences{Full: "x/y!1", Relative: "!1", Short: "!1"},
+	}
+	reviewerMR := &gitlab.BasicMergeRequest{
+		ID:           202,
+		IID:          2,
+		Title:        "Bob reviewing",
+		TargetBranch: "main",
+		SourceBranch: "topic",
+		WebURL:       "https://example.com/x/z/-/merge_requests/2",
+		CreatedAt:    &createdAtNewer,
+		References:   &gitlab.IssueReferences{Full: "x/z!2", Relative: "!2", Short: "!2"},
+	}
+
+	// One call per assignee id, one per reviewer id. Each call
+	// must set scope=all (the user-level default would hide
+	// most of what the caller wants).
+	testClient.MockMergeRequests.EXPECT().
+		ListMergeRequests(gomock.Any()).
+		DoAndReturn(func(opts *gitlab.ListMergeRequestsOptions, _ ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+			require.NotNil(t, opts.Scope)
+			assert.Equal(t, "all", *opts.Scope)
+			if opts.ReviewerID != nil {
+				return []*gitlab.BasicMergeRequest{reviewerMR}, nil, nil
+			}
+			return []*gitlab.BasicMergeRequest{assigneeMR}, nil, nil
+		}).Times(2)
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(testClient.Client),
+	)
+	require.NoError(t, err)
+
+	exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+		return NewCmdList(f, nil)
+	}, true,
+		cmdtest.WithConfig(config.NewBlankConfig()),
+		cmdtest.WithApiClient(apiClient),
+		cmdtest.WithBaseRepoError(assert.AnError),
+	)
+
+	out, err := exec("--assignee=alice --reviewer=bob")
+	require.NoError(t, err)
+
+	got := out.String()
+	// Both MRs come through (deduped by ID), and the newer one
+	// (Bob reviewing, 2026-04-15) sorts above the older one
+	// (Alice's MR, 2026-04-10) because no explicit OrderBy is set.
+	bobIdx := strings.Index(got, "Bob reviewing")
+	aliceIdx := strings.Index(got, "Alice's MR")
+	require.NotEqual(t, -1, bobIdx, "reviewer MR should appear")
+	require.NotEqual(t, -1, aliceIdx, "assignee MR should appear")
+	assert.Less(t, bobIdx, aliceIdx, "newer MR should sort first when no explicit order is set")
 }

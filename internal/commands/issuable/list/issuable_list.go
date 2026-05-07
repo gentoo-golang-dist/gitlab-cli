@@ -306,16 +306,20 @@ func listRun(opts *ListOptions) error {
 		title.RepoName = opts.Group
 
 	default:
-		repo, err := opts.BaseRepo()
+		// No -R and no --group: fall back to the user-level
+		// /issues endpoint with scope=all so callers running
+		// outside any repo (notably MCP) still get useful results.
+		repo, repoErr := opts.BaseRepo()
+		if repoErr == nil {
+			issues, _, err = client.Issues.ListProjectIssues(repo.FullName(), listOpts)
+			title.RepoName = repo.FullName()
+		} else {
+			issues, _, err = client.Issues.ListIssues(projectListIssueOptionsToAll(listOpts))
+			title.RepoName = "all accessible projects"
+		}
 		if err != nil {
 			return err
 		}
-
-		issues, _, err = client.Issues.ListProjectIssues(repo.FullName(), listOpts)
-		if err != nil {
-			return err
-		}
-		title.RepoName = repo.FullName()
 	}
 
 	title.Page = int(listOpts.Page)
@@ -517,3 +521,52 @@ func projectListIssueOptionsToGroup(l *gitlab.ListProjectIssuesOptions) *gitlab.
 		IssueType:          l.IssueType,
 	}
 }
+
+// projectListIssueOptionsToAll maps project-scoped options onto the
+// user-level /issues shape. Scope defaults to "all" when unset; the
+// server default of "created_by_me" would be too narrow here.
+func projectListIssueOptionsToAll(l *gitlab.ListProjectIssuesOptions) *gitlab.ListIssuesOptions {
+	out := &gitlab.ListIssuesOptions{
+		ListOptions:      l.ListOptions,
+		State:            l.State,
+		Labels:           l.Labels,
+		NotLabels:        l.NotLabels,
+		WithLabelDetails: l.WithLabelDetails,
+		IIDs:             l.IIDs,
+		Milestone:        l.Milestone,
+		Scope:            l.Scope,
+		AuthorID:         l.AuthorID,
+		AssigneeID:       l.AssigneeID,
+		AssigneeUsername: l.AssigneeUsername,
+		MyReactionEmoji:  l.MyReactionEmoji,
+		OrderBy:          l.OrderBy,
+		Sort:             l.Sort,
+		Search:           l.Search,
+		In:               l.In,
+		CreatedAfter:     l.CreatedAfter,
+		CreatedBefore:    l.CreatedBefore,
+		UpdatedAfter:     l.UpdatedAfter,
+		UpdatedBefore:    l.UpdatedBefore,
+		IssueType:        l.IssueType,
+	}
+	// The user-level endpoint uses slices for these negation fields
+	// where the project-level one uses scalars. Promote them.
+	if l.NotAuthorID != nil {
+		ids := []int64{*l.NotAuthorID}
+		out.NotAuthorID = &ids
+	}
+	if l.NotAssigneeID != nil {
+		ids := []int64{*l.NotAssigneeID}
+		out.NotAssigneeID = &ids
+	}
+	if l.NotMyReactionEmoji != nil {
+		emojis := []string{*l.NotMyReactionEmoji}
+		out.NotMyReactionEmoji = &emojis
+	}
+	if out.Scope == nil {
+		scopeAll := "all"
+		out.Scope = &scopeAll
+	}
+	return out
+}
+
