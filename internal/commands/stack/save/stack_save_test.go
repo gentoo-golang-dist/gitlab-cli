@@ -477,6 +477,7 @@ func Test_createShaBranch(t *testing.T) {
 		want     string
 		wantErr  bool
 		noConfig bool
+		isWindows bool
 	}{
 		{
 			name:   "standard test case",
@@ -485,11 +486,37 @@ func Test_createShaBranch(t *testing.T) {
 			want:   "asdf-cool-change-237ec83c",
 		},
 		{
-			name:     "with no config file",
+			name:     "with no config file (linux/macos)",
 			args:     args{sha: "237ec83c", title: "cool-change"},
 			prefix:   "",
 			want:     "jawn-cool-change-237ec83c",
 			noConfig: true,
+		},
+		{
+			name:     "with no config file (windows)",
+			args:     args{sha: "237ec83c", title: "cool-change"},
+			prefix:   "",
+			want:     "philly-cool-change-237ec83c",
+			noConfig: true,
+			isWindows: true,
+		},
+		{
+			name:   "prefix with trailing slash",
+			args:   args{sha: "237ec83c", title: "cool-change"},
+			prefix: "username/",
+			want:   "username/cool-change-237ec83c",
+		},
+		{
+			name:   "prefix with trailing hyphen",
+			args:   args{sha: "237ec83c", title: "cool-change"},
+			prefix: "username-",
+			want:   "username-cool-change-237ec83c",
+		},
+		{
+			name:   "prefix with trailing underscore",
+			args:   args{sha: "237ec83c", title: "cool-change"},
+			prefix: "username_",
+			want:   "username_cool-change-237ec83c",
 		},
 	}
 
@@ -502,7 +529,11 @@ func Test_createShaBranch(t *testing.T) {
 			factory := createFactoryWithConfig("branch_prefix", tt.prefix)
 
 			if tt.noConfig {
-				t.Setenv("USER", "jawn")
+				if (tt.isWindows) {
+					t.Setenv("USERNAME", "philly")
+				} else {
+					t.Setenv("USER", "jawn")
+				}
 			}
 
 			got, err := createShaBranch(factory, tt.args.sha, tt.args.title)
