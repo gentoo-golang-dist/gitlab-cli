@@ -287,3 +287,32 @@ func TestCiStatus_JSON(t *testing.T) {
 	assert.Contains(t, out.String(), `"jobs"`)
 	assert.Empty(t, out.Stderr())
 }
+
+func Test_visualLineCount(t *testing.T) {
+	tests := []struct {
+		name      string
+		frame     string
+		termWidth int
+		want      int
+	}{
+		{name: "empty", frame: "", termWidth: 80, want: 0},
+		{name: "single line no newline", frame: "abc", termWidth: 80, want: 1},
+		{name: "single line trailing newline", frame: "abc\n", termWidth: 80, want: 1},
+		{name: "two lines", frame: "a\nb\n", termWidth: 80, want: 2},
+		{name: "blank line in middle", frame: "a\n\nb\n", termWidth: 80, want: 3},
+		{name: "wraps once", frame: "abcd\n", termWidth: 3, want: 2},
+		{name: "wraps twice", frame: "abcdefg\n", termWidth: 3, want: 3},
+		{name: "exact width", frame: "abc\n", termWidth: 3, want: 1},
+		{name: "ansi escapes excluded", frame: "\x1b[31mabc\x1b[0m\n", termWidth: 3, want: 1},
+		{name: "wraps with ansi", frame: "\x1b[31mabcd\x1b[0m\n", termWidth: 3, want: 2},
+		{name: "tab expanded to next 8-stop", frame: "a\tb\n", termWidth: 80, want: 1},
+		{name: "tabs cause wrap when expanded", frame: "abc\tdef\tghi\n", termWidth: 18, want: 2},
+		{name: "no termwidth falls back to 1 per line", frame: "abcdef\nghi\n", termWidth: 0, want: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := visualLineCount([]byte(tt.frame), tt.termWidth)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

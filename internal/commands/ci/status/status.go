@@ -1,12 +1,13 @@
 package status
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	"charm.land/huh/v2"
 	"github.com/MakeNowJust/heredoc/v2"
-	"github.com/gosuri/uilive"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -17,6 +18,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
@@ -27,6 +29,68 @@ type options struct {
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
 	branch       func() (string, error)
+}
+
+// liveWriter renders successive frames in place by erasing the previous
+// frame's visual rows (cursor-up + clear-line ANSI escapes) before
+// writing the new frame.
+type liveWriter struct {
+	out       io.Writer
+	termWidth func() int
+	lineCount int
+}
+
+func (w *liveWriter) Render(frame []byte) {
+	var b bytes.Buffer
+	for i := 0; i < w.lineCount; i++ {
+		b.WriteString("\x1b[1A\x1b[2K")
+	}
+	b.Write(frame)
+	_, _ = w.out.Write(b.Bytes())
+	w.lineCount = visualLineCount(frame, w.termWidth())
+}
+
+// visualLineCount returns the number of terminal rows the frame occupies
+// after soft-wrapping at termWidth.
+func visualLineCount(frame []byte, termWidth int) int {
+	if len(frame) == 0 {
+		return 0
+	}
+	chunks := bytes.Split(frame, []byte{'\n'})
+	// A trailing empty chunk after a terminating '\n' means the cursor is at
+	// the start of the next (unused) line — no additional row consumed.
+	if len(chunks[len(chunks)-1]) == 0 {
+		chunks = chunks[:len(chunks)-1]
+	}
+	lines := 0
+	for _, chunk := range chunks {
+		width := visualWidth(string(chunk))
+		if width == 0 || termWidth <= 0 {
+			lines++
+			continue
+		}
+		lines += (width + termWidth - 1) / termWidth
+	}
+	return lines
+}
+
+const tabStop = 8
+
+// visualWidth returns the number of terminal cells the line occupies. ANSI
+// escapes are stripped and tabs advance to the next 8-column tab stop.
+// Non-ASCII runes are counted as one cell, which can miscount wide CJK or
+// emoji — acceptable for CI job names which are virtually always ASCII.
+func visualWidth(line string) int {
+	stripped := text.Strip(line)
+	width := 0
+	for _, r := range stripped {
+		if r == '\t' {
+			width += tabStop - (width % tabStop)
+			continue
+		}
+		width++
+	}
+	return width
 }
 
 func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
@@ -114,7 +178,10 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 				return opts.io.PrintJSON(output)
 			}
 
-			writer := uilive.New()
+			writer := &liveWriter{
+				out:       opts.io.StdOut,
+				termWidth: opts.io.TerminalWidth,
+			}
 
 			ctx := cmd.Context()
 
@@ -124,10 +191,6 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 				ticker = time.NewTicker(3 * time.Second)
 				defer ticker.Stop()
 			}
-
-			// start listening for updates and render
-			writer.Start()
-			defer writer.Stop()
 		loop:
 			for {
 				jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
@@ -139,8 +202,10 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 					}
 					return err
 				}
+				var frame bytes.Buffer
+				now := time.Now()
 				for _, job := range jobs {
-					end := time.Now()
+					end := now
 					if job.FinishedAt != nil {
 						end = *job.FinishedAt
 					}
@@ -164,17 +229,18 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 						status = c.Gray(s)
 					}
 					if compact {
-						fmt.Fprintf(writer, "(%s) • %s [%s]\n", status, job.Name, job.Stage)
+						fmt.Fprintf(&frame, "(%s) • %s [%s]\n", status, job.Name, job.Stage)
 					} else {
-						fmt.Fprintf(writer, "(%s) • %s\t%s\t\t%s\n", status, c.Gray(duration), job.Stage, job.Name)
+						fmt.Fprintf(&frame, "(%s) • %s\t%s\t\t%s\n", status, c.Gray(duration), job.Stage, job.Name)
 					}
 				}
 
 				if !compact {
-					fmt.Fprintf(writer.Newline(), "\n%s\n", runningPipeline.WebURL)
-					fmt.Fprintf(writer.Newline(), "SHA: %s\n", runningPipeline.SHA)
+					fmt.Fprintf(&frame, "\n%s\n", runningPipeline.WebURL)
+					fmt.Fprintf(&frame, "SHA: %s\n", runningPipeline.SHA)
 				}
-				fmt.Fprintf(writer.Newline(), "Pipeline state: %s\n\n", runningPipeline.Status)
+				fmt.Fprintf(&frame, "Pipeline state: %s\n\n", runningPipeline.Status)
+				writer.Render(frame.Bytes())
 
 				if (runningPipeline.Status == "pending" || runningPipeline.Status == "running") && live {
 					// Use fallback logic for live updates
@@ -252,7 +318,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 			}
 			// Only show "Exiting..." message if cancelled via Ctrl+C
 			if ctx.Err() != nil {
-				fmt.Fprintln(writer.Newline(), "Exiting...")
+				writer.Render([]byte("Exiting...\n"))
 			}
 			if runningPipeline.Status == "failed" {
 				return cmdutils.SilentError
