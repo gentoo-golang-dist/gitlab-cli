@@ -61,7 +61,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Example: strings.Trim(exampleHelp, "\n\r"),
 		Args:    cobra.NoArgs,
 		Annotations: map[string]string{
-			mcpannotations.Safe: "false",
+			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.validate(); err != nil {
@@ -75,10 +75,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.role, "role", "r", "developer", "Role for the user (guest, reporter, developer, maintainer, owner)")
-	fl.Int64Var(&opts.roleID, "role-id", 0, "ID of a custom role defined in the project or group")
+	fl.Int64Var(&opts.roleID, "role-id", 0, "ID of a custom role defined in the project or group.")
 	fl.StringVarP(&opts.expiresAt, "expires-at", "e", "", "Expiration date for the membership (YYYY-MM-DD)")
-	fl.IntVarP(&opts.userID, "user-id", "u", 0, "User ID instead of username")
-	fl.StringVarP(&opts.username, "username", "", "", "Username instead of user-id")
+	fl.IntVarP(&opts.userID, "user-id", "u", 0, "User ID instead of username.")
+	fl.StringVarP(&opts.username, "username", "", "", "Username instead of user-id.")
 	cmd.MarkFlagsMutuallyExclusive("username", "user-id")
 	cmd.MarkFlagsMutuallyExclusive("role", "role-id")
 

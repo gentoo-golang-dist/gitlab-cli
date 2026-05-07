@@ -16,8 +16,16 @@ import (
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
+
+func TestMCPSafeAnnotation_List(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	cmd := NewCmdList(cmdtest.NewTestFactory(ios))
+	assert.Equal(t, "true", cmd.Annotations[mcpannotations.Safe])
+}
 
 func makeMRForList(t *testing.T, tc *gitlabtesting.TestClient) {
 	t.Helper()
