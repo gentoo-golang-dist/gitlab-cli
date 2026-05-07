@@ -15,25 +15,23 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func TestNewCmd_Help(t *testing.T) {
+func TestNewCmd_Structure(t *testing.T) {
 	t.Parallel()
-
-	// This test verifies that the command is properly configured for transparent
-	// pass-through behavior, including --help flag handling. We test the command
-	// structure without executing the duo binary to avoid download prompts.
 
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
 	factory := cmdtest.NewTestFactory(ios)
 	cmd := NewCmd(factory)
 
-	// Verify DisableFlagParsing is enabled for transparent pass-through
 	assert.True(t, cmd.DisableFlagParsing, "DisableFlagParsing should be enabled for transparent pass-through")
-
-	// Verify the command accepts arbitrary arguments (no Args validator)
 	assert.Nil(t, cmd.Args, "Args should be nil to accept any arguments")
+	assert.NotNil(t, cmd.RunE, "RunE should be set")
 
-	// Verify RunE is set (the function that handles help transformation)
-	assert.NotNil(t, cmd.RunE, "RunE should be set to handle flag transformation")
+	// Verify glab-owned flags are registered for documentation
+	assert.NotNil(t, cmd.Flags().Lookup("install"), "--install flag should be registered")
+	assert.NotNil(t, cmd.Flags().Lookup("update"), "--update flag should be registered")
+	yesFlag := cmd.Flags().Lookup("yes")
+	assert.NotNil(t, yesFlag, "--yes flag should be registered")
+	assert.Equal(t, "y", yesFlag.Shorthand, "--yes should have -y shorthand")
 }
 
 func TestRunWithCustomPath_Validation(t *testing.T) {
@@ -94,6 +92,32 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		assert.Contains(t, err.Error(), "GLAB_DUO_CLI_BINARY_PATH is set to")
 		assert.Contains(t, err.Error(), "file is not executable")
 		assert.Contains(t, err.Error(), "chmod +x")
+	})
+}
+
+func TestHandleInstall_CustomPath(t *testing.T) {
+	if _, err := cliutils.ManagedBinaryPath(); errors.Is(err, cliutils.ErrUnsupportedPlatform) {
+		t.Skipf("skipping on unsupported platform: %v", err)
+	}
+
+	t.Run("custom path reports the path and returns no error", func(t *testing.T) {
+		ios, _, stderr, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+		factory := cmdtest.NewTestFactory(ios)
+		opts := &options{
+			io:  factory.IO(),
+			cfg: factory.Config(),
+		}
+
+		dir := t.TempDir()
+		execFile := filepath.Join(dir, "duo")
+		require.NoError(t, os.WriteFile(execFile, []byte("#!/bin/sh\n"), 0o755))
+
+		t.Setenv("GLAB_DUO_CLI_BINARY_PATH", execFile)
+		err := opts.handleInstall(t.Context())
+
+		require.NoError(t, err)
+		assert.Contains(t, stderr.String(), "Using custom Duo CLI binary:")
+		assert.Contains(t, stderr.String(), execFile)
 	})
 }
 
