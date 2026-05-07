@@ -282,12 +282,24 @@ func createShaBranch(f cmdutils.Factory, sha string, title string) (string, erro
 	if prefix == "" {
 		prefix = os.Getenv("USER")
 		if prefix == "" {
+			// Windows support
+			prefix = os.Getenv("USERNAME")
+		}
+		if prefix == "" {
 			prefix = "glab-stack"
 		}
 	}
 
-	branchTitle := []string{prefix, title, sha}
+	const defaultSeparator = "-"
+	const recognizedSeparators = "-/_"
+	var prefixTitle string
 
-	branch := strings.Join(branchTitle, "-")
+	if strings.Contains(recognizedSeparators, prefix[len(prefix)-1:]) {
+		prefixTitle = prefix + title
+	} else {
+		prefixTitle = prefix + defaultSeparator + title
+	}
+
+	branch := prefixTitle + defaultSeparator + sha
 	return branch, nil
 }
