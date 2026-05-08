@@ -240,15 +240,12 @@ and flag descriptions), not in the generated files in `docs/source/`.
 For documentation structure, language conventions, and guidance on experimental and beta
 features, see the [CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
 
-### Style guide quick reference
+### Deprecation messages
 
-The most commonly referenced sections of the style guide are:
+When you deprecate a flag, command, or runtime warning, always include
+a migration path in the message so users know what to do instead.
 
-- Command synopsis format
-- Flag naming conventions
-- Output formatting guidelines
-
-Bookmark the style guide for easy access during development.
+Keep deprecation messages short and actionable. Avoid passive voice.
 
 ## Commit Messages
 
