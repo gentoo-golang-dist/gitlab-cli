@@ -240,6 +240,16 @@ and flag descriptions), not in the generated files in `docs/source/`.
 For documentation structure, language conventions, and guidance on experimental and beta
 features, see the [CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
 
+### Style guide quick reference
+
+The most commonly referenced sections of the style guide are:
+
+- Command synopsis format
+- Flag naming conventions
+- Output formatting guidelines
+
+Bookmark the style guide for easy access during development.
+
 ## Commit Messages
 
 Each commit message consists of a **header**, a **body**, and a **footer**. The header has a special format that includes a **type**, a **scope**, and a **description**:
