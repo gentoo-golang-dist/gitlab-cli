@@ -5,6 +5,7 @@ package cmdutils
 import (
 	"bytes"
 	"io"
+	"sync"
 	"testing"
 
 	"github.com/google/shlex"
@@ -190,6 +191,25 @@ func TestGroupOverride(t *testing.T) {
 		// make sure the default baserepo is still used
 		gotRepo, _ := gotOpts.baseRepo()
 		assert.Equal(t, gotRepo.FullName(), "OWNER/REPO")
+	})
+
+	t.Run("concurrent calls do not race", func(t *testing.T) {
+		var wg sync.WaitGroup
+		const n = 50
+		wg.Add(n)
+
+		for range n {
+			go func() {
+				defer wg.Done()
+				cmd := NewDummyCmd(&dummyFactory{}, nil)
+				_ = cmd.ParseFlags([]string{})
+				group, err := GroupOverride(cmd)
+				assert.NoError(t, err)
+				assert.Equal(t, "GROUP/NAME", group)
+			}()
+		}
+
+		wg.Wait()
 	})
 
 	t.Run("List command with GITLAB_GROUP env var, repo and groups flags", func(t *testing.T) {

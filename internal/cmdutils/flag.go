@@ -5,15 +5,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-func GroupOverride(cmd *cobra.Command) (string, error) {
-	v := viper.New()
-	v.SetEnvPrefix("GITLAB")
-	err := v.BindEnv("group")
-	if err != nil {
-		return "", err
-	}
+var groupViper = func() *viper.Viper {
+	inst := viper.New()
+	inst.SetEnvPrefix("GITLAB")
+	inst.MustBindEnv("group")
+	return inst
+}()
 
-	groupFromEnv := v.GetString("group")
+func GroupOverride(cmd *cobra.Command) (string, error) {
+	groupFromEnv := groupViper.GetString("group")
 
 	// Get group/repo flags
 	group, err := cmd.Flags().GetString("group")
