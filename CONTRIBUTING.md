@@ -238,7 +238,15 @@ content must be authored in the `cobra.Command` definition fields (`Short`, `Lon
 and flag descriptions), not in the generated files in `docs/source/`.
 
 For documentation structure, language conventions, and guidance on experimental and beta
-features, see the [CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
+features, see the [GitLab CLI (glab) documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
+
+### Deprecation messages
+
+When you deprecate a flag, command, or runtime warning, the message format
+follows specific conventions that depend on whether the message is emitted
+directly by glab or wrapped by Cobra.
+
+For format and examples, see [deprecation messages](https://docs.gitlab.com/development/documentation/cli_styleguide/#deprecation-messages).
 
 ## Commit Messages
 
