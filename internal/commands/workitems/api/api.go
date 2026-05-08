@@ -11,8 +11,9 @@ import (
 
 // scope type constants
 const (
-	ScopeTypeGroup   = "group"
-	ScopeTypeProject = "project"
+	ScopeTypeGroup       = "group"
+	ScopeTypeProject     = "project"
+	ScopeTypeCurrentUser = "current_user"
 )
 
 // ScopeInfo contains detected scope information for work items queries
@@ -206,6 +207,26 @@ type WorkItemStatus struct {
 	Category string `json:"category"`
 }
 
+// ceWidgetSpreads covers widgets available on every GitLab tier.
+const ceWidgetSpreads = `
+	... on WorkItemWidgetAssignees {
+		assignees { nodes { username name } }
+	}
+	... on WorkItemWidgetLabels {
+		labels { nodes { title } }
+	}
+	... on WorkItemWidgetMilestone {
+		milestone { title dueDate }
+	}
+	... on WorkItemWidgetStartAndDueDate {
+		dueDate
+		startDate
+	}
+	... on WorkItemWidgetHierarchy {
+		parent { iid title webUrl }
+	}
+`
+
 // eeWidgetSpreads covers Premium/Ultimate-only widgets. On CE these
 // types don't exist and the fragment fails validation; the
 // capability probe in ee.go strips this block on retry.
@@ -223,78 +244,123 @@ const eeWidgetSpreads = `
 	}
 `
 
-// GraphQL query templates for list. Unchanged from the original
-// flat-field form -- list pagination doesn't need the widget data
-// the view command pulls.
-const (
-	groupWorkItemsQuery = `
-	query ListGroupWorkItems($groupPath: ID!, $types: [IssueType!], $state: IssuableState, $first: Int, $after: String) {
-	group(fullPath: $groupPath) {
-		workItems(types: $types, state: $state, first: $first, after: $after) {
-			nodes {
-				iid
-				title
-				state
-				workItemType {
-					name
-				}
-				author {
-					username
-				}
-				webUrl
-			}
-			pageInfo {
-				endCursor
-				hasNextPage
+// workItemFields is the node selection every list query shares.
+// includeEE toggles the Premium/Ultimate spreads.
+func workItemFields(includeEE bool) string {
+	widgets := ceWidgetSpreads
+	if includeEE {
+		widgets += eeWidgetSpreads
+	}
+	return `
+nodes {
+	iid
+	title
+	state
+	workItemType { name }
+	author { username }
+	namespace { fullPath }
+	widgets {
+		type` + widgets + `
+	}
+	createdAt
+	updatedAt
+	webUrl
+}
+pageInfo { endCursor hasNextPage }
+`
+}
+
+func groupWorkItemsQuery(includeEE bool) string {
+	return `
+	query ListGroupWorkItems($groupPath: ID!, $types: [IssueType!], $state: IssuableState, $first: Int, $after: String, $assigneeUsernames: [String!]) {
+		group(fullPath: $groupPath) {
+			workItems(types: $types, state: $state, first: $first, after: $after, assigneeUsernames: $assigneeUsernames) {` + workItemFields(includeEE) + `
 			}
 		}
 	}
+	`
 }
-`
 
-	projectWorkItemsQuery = `
-	query ListProjectWorkItems($projectPath: ID!, $types: [IssueType!], $state: IssuableState, $first: Int, $after: String) {
-	project(fullPath: $projectPath) {
-		workItems(types: $types, state: $state, first: $first, after: $after) {
-			nodes {
-				iid
-				title
-				state
-				workItemType {
-					name
-				}
-				author {
-					username
-				}
-				webUrl
-			}
-			pageInfo {
-				endCursor
-				hasNextPage
+func projectWorkItemsQuery(includeEE bool) string {
+	return `
+	query ListProjectWorkItems($projectPath: ID!, $types: [IssueType!], $state: IssuableState, $first: Int, $after: String, $assigneeUsernames: [String!]) {
+		project(fullPath: $projectPath) {
+			workItems(types: $types, state: $state, first: $first, after: $after, assigneeUsernames: $assigneeUsernames) {` + workItemFields(includeEE) + `
 			}
 		}
 	}
+	`
 }
-`
-)
 
-// FetchWorkItems retrieves all work items using cursor-based pagination
-func FetchWorkItems(ctx context.Context, client *gitlab.Client, scope *ScopeInfo, types []string, state string, after string, perPage int64) ([]WorkItem, *PageInfo, error) {
-	var queryStr string
-	var pathKey string
+// currentUserWorkItemsQuery returns items assigned to the caller
+// across every namespace they can see.
+func currentUserWorkItemsQuery(includeEE bool) string {
+	return `
+	query ListCurrentUserWorkItems($types: [IssueType!], $state: IssuableState, $first: Int, $after: String, $assigneeUsernames: [String!]) {
+		currentUser {
+			workItems(types: $types, state: $state, first: $first, after: $after, assigneeUsernames: $assigneeUsernames) {` + workItemFields(includeEE) + `
+			}
+		}
+	}
+	`
+}
 
-	switch scope.Type {
-	case ScopeTypeGroup:
-		queryStr = groupWorkItemsQuery
-		pathKey = "groupPath"
-	case ScopeTypeProject:
-		queryStr = projectWorkItemsQuery
-		pathKey = "projectPath"
-	default:
+// scopeDescriptor holds everything FetchWorkItems needs for one
+// scope: query builder, path variable (empty when the scope has
+// none, like currentUser), response connector, and error label.
+// Adding a scope is a single map entry.
+type scopeDescriptor struct {
+	queryFunc func(includeEE bool) string
+	pathKey   string
+	connector func(*WorkItemsResponse) *WorkItemsConnection
+	label     string
+}
+
+var scopeDescriptors = map[string]scopeDescriptor{
+	ScopeTypeGroup: {
+		queryFunc: groupWorkItemsQuery,
+		pathKey:   "groupPath",
+		connector: func(r *WorkItemsResponse) *WorkItemsConnection {
+			if r.Data.Group == nil {
+				return nil
+			}
+			return &r.Data.Group.WorkItems
+		},
+		label: "group",
+	},
+	ScopeTypeProject: {
+		queryFunc: projectWorkItemsQuery,
+		pathKey:   "projectPath",
+		connector: func(r *WorkItemsResponse) *WorkItemsConnection {
+			if r.Data.Project == nil {
+				return nil
+			}
+			return &r.Data.Project.WorkItems
+		},
+		label: "project",
+	},
+	ScopeTypeCurrentUser: {
+		queryFunc: currentUserWorkItemsQuery,
+		pathKey:   "",
+		connector: func(r *WorkItemsResponse) *WorkItemsConnection {
+			if r.Data.CurrentUser == nil {
+				return nil
+			}
+			return &r.Data.CurrentUser.WorkItems
+		},
+		label: "current user",
+	},
+}
+
+// FetchWorkItems paginates work items via cursor. Pass nil or an
+// empty assigneeUsernames slice to skip the assignee filter.
+func FetchWorkItems(ctx context.Context, client *gitlab.Client, scope *ScopeInfo, types []string, state string, after string, perPage int64, assigneeUsernames []string) ([]WorkItem, *PageInfo, error) {
+	desc, ok := scopeDescriptors[scope.Type]
+	if !ok {
 		return nil, nil, fmt.Errorf("invalid scope type: %s", scope.Type)
 	}
 
-	// uppercase types for GraphQL API (API exepcts EPIC not epic)
+	// GraphQL enum values are upper-case (EPIC, not epic).
 	var uppercaseTypes []string
 	if len(types) > 0 {
 		uppercaseTypes = make([]string, len(types))
@@ -303,58 +369,41 @@ func FetchWorkItems(ctx context.Context, client *gitlab.Client, scope *ScopeInfo
 		}
 	}
 
-	// Build query vars
 	variables := map[string]any{
-		pathKey: scope.Path,
-		"first": perPage, // user-specified page size (max 100)
+		"first": perPage,
 	}
-
+	if desc.pathKey != "" {
+		variables[desc.pathKey] = scope.Path
+	}
 	if after != "" {
 		variables["after"] = after
 	}
-
-	// add types filter if specified
 	if len(uppercaseTypes) > 0 {
 		variables["types"] = uppercaseTypes
 	}
-
-	// add state filter
+	// "all" means "don't filter" — leave the variable unset.
 	if state != "all" {
 		variables["state"] = state
 	}
-
-	query := gitlab.GraphQLQuery{
-		Query:     queryStr,
-		Variables: variables,
+	if len(assigneeUsernames) > 0 {
+		variables["assigneeUsernames"] = assigneeUsernames
 	}
 
 	var response WorkItemsResponse
-
-	// execute query
-	_, err := client.GraphQL.Do(query, &response, gitlab.WithContext(ctx))
-	if err != nil {
+	if err := doWithEEFallback(ctx, client, &response, func(includeEE bool) gitlab.GraphQLQuery {
+		return gitlab.GraphQLQuery{
+			Query:     desc.queryFunc(includeEE),
+			Variables: variables,
+		}
+	}); err != nil {
 		return nil, nil, fmt.Errorf("GraphQL query failed: %w", err)
 	}
 
-	// Extract work items based on scope
-	var nodes []WorkItem
-	var pageInfo PageInfo
-
-	if scope.Type == ScopeTypeGroup {
-		if response.Data.Group == nil {
-			return nil, nil, fmt.Errorf("group not found: %s", scope.Path)
-		}
-		nodes = response.Data.Group.WorkItems.Nodes
-		pageInfo = response.Data.Group.WorkItems.PageInfo
-	} else {
-		if response.Data.Project == nil {
-			return nil, nil, fmt.Errorf("project not found: %s", scope.Path)
-		}
-		nodes = response.Data.Project.WorkItems.Nodes
-		pageInfo = response.Data.Project.WorkItems.PageInfo
+	conn := desc.connector(&response)
+	if conn == nil {
+		return nil, nil, fmt.Errorf("%s not found: %s", desc.label, scope.Path)
 	}
-
-	return nodes, &pageInfo, nil
+	return conn.Nodes, &conn.PageInfo, nil
 }
 
 // workItemDetailFields is the view-side selection: adds description,
@@ -469,22 +518,13 @@ func FetchWorkItem(ctx context.Context, client *gitlab.Client, scope *ScopeInfo,
 		return nil, fmt.Errorf("GraphQL query failed: %w", err)
 	}
 
-	var conn *WorkItemsConnection
-	var label string
-	switch scope.Type {
-	case ScopeTypeGroup:
-		label = "group"
-		if response.Data.Group != nil {
-			conn = &response.Data.Group.WorkItems
-		}
-	case ScopeTypeProject:
-		label = "project"
-		if response.Data.Project != nil {
-			conn = &response.Data.Project.WorkItems
-		}
+	desc, ok := scopeDescriptors[scope.Type]
+	if !ok {
+		return nil, fmt.Errorf("invalid scope type: %s", scope.Type)
 	}
+	conn := desc.connector(&response)
 	if conn == nil {
-		return nil, fmt.Errorf("%s not found: %s", label, scope.Path)
+		return nil, fmt.Errorf("%s not found: %s", desc.label, scope.Path)
 	}
 	if len(conn.Nodes) == 0 {
 		return nil, fmt.Errorf("work item not found: %s!%s", scope.Path, iid)
@@ -493,11 +533,43 @@ func FetchWorkItem(ctx context.Context, client *gitlab.Client, scope *ScopeInfo,
 	return &wi, nil
 }
 
+// currentUserUsernameQuery is the probe behind FetchCurrentUsername.
+const currentUserUsernameQuery = `query CurrentUserUsername { currentUser { username } }`
+
+// CurrentUserInfo is exported so tests can build mocked responses
+// without matching an anonymous struct shape.
+type CurrentUserInfo struct {
+	Username string `json:"username"`
+}
+
+// CurrentUserIdentity is the FetchCurrentUsername response shape.
+type CurrentUserIdentity struct {
+	Data struct {
+		CurrentUser *CurrentUserInfo `json:"currentUser"`
+	} `json:"data"`
+}
+
+// FetchCurrentUsername returns the caller's username. A nil
+// currentUser surfaces as "no authenticated user" so callers know
+// auth is missing.
+func FetchCurrentUsername(ctx context.Context, client *gitlab.Client) (string, error) {
+	var resp CurrentUserIdentity
+	query := gitlab.GraphQLQuery{Query: currentUserUsernameQuery}
+	if _, err := client.GraphQL.Do(query, &resp, gitlab.WithContext(ctx)); err != nil {
+		return "", fmt.Errorf("fetching current user: %w", err)
+	}
+	if resp.Data.CurrentUser == nil {
+		return "", fmt.Errorf("no authenticated user")
+	}
+	return resp.Data.CurrentUser.Username, nil
+}
+
 // WorkItemsResponse represents the GraphQL response structure for work items queries
 type WorkItemsResponse struct {
 	Data struct {
-		Group   *GroupWorkItems   `json:"group,omitempty"`
-		Project *ProjectWorkItems `json:"project,omitempty"`
+		Group       *GroupWorkItems       `json:"group,omitempty"`
+		Project     *ProjectWorkItems     `json:"project,omitempty"`
+		CurrentUser *CurrentUserWorkItems `json:"currentUser,omitempty"`
 	} `json:"data"`
 }
 
@@ -507,6 +579,10 @@ type GroupWorkItems struct {
 }
 
 type ProjectWorkItems struct {
+	WorkItems WorkItemsConnection `json:"workItems"`
+}
+
+type CurrentUserWorkItems struct {
 	WorkItems WorkItemsConnection `json:"workItems"`
 }
 
