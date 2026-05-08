@@ -248,6 +248,13 @@ directly by glab or wrapped by Cobra.
 
 For format and examples, see [deprecation messages](https://docs.gitlab.com/development/documentation/cli_styleguide/#deprecation-messages).
 
+### Deprecation messages
+
+When you deprecate a flag, command, or runtime warning, always include
+a migration path in the message so users know what to do instead.
+
+Keep deprecation messages short and actionable. Avoid passive voice.
+
 ## Commit Messages
 
 Each commit message consists of a **header**, a **body**, and a **footer**. The header has a special format that includes a **type**, a **scope**, and a **description**:
