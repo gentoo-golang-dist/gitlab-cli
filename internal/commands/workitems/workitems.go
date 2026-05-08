@@ -6,6 +6,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/list"
+	"gitlab.com/gitlab-org/cli/internal/commands/workitems/view"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
@@ -23,6 +24,7 @@ func NewCmdWorkItems(f cmdutils.Factory) *cobra.Command {
 
 	// Register subcomands
 	workItemsCmd.AddCommand(list.NewCmd(f))
+	workItemsCmd.AddCommand(view.NewCmd(f))
 
 	return workItemsCmd
 }
