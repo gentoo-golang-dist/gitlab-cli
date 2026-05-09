@@ -120,6 +120,8 @@ func EnvKeyEquivalence(key string) []string {
 		return []string{"GLAB_IS_OAUTH2"}
 	case "duo_cli_binary_path":
 		return []string{"GLAB_DUO_CLI_BINARY_PATH"}
+	case "orbit_local_binary_path":
+		return []string{"GLAB_ORBIT_LOCAL_BINARY_PATH"}
 	case "user":
 		return []string{"GLAB_USER"}
 	default:
