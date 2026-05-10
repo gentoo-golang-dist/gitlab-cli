@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
@@ -30,6 +31,8 @@ type GitRunner interface {
 	Git(args ...string) (string, error)
 }
 
+// Executor is a subset of cmdutils.Executor defined here to avoid a circular
+// import: the cmdutils package already imports the git package.
 type Executor interface {
 	ExecWithIO(ctx context.Context, name string, args []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error
 }
@@ -58,7 +61,7 @@ func (gitc StandardGitCommand) Git(args ...string) (string, error) {
 	var stdout, stderr bytes.Buffer
 	err := gitc.executor.ExecWithIO(context.Background(), "git", args, env, nil, &stdout, &stderr)
 	if err != nil {
-		errMsg := stderr.String()
+		errMsg := strings.TrimSpace(stderr.String())
 		if errMsg != "" {
 			return "", fmt.Errorf("%s: %w", errMsg, err)
 		}

@@ -339,6 +339,7 @@ func TestMrCheckout(t *testing.T) {
 }
 
 func TestMrCheckout_SetUpstreamTo(t *testing.T) {
+	t.Parallel()
 	testClient := gitlabtesting.NewTestClient(t)
 
 	testClient.MockMergeRequests.EXPECT().
