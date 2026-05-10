@@ -338,6 +338,46 @@ func TestMrCheckout(t *testing.T) {
 	})
 }
 
+func TestMrCheckout_SetUpstreamTo(t *testing.T) {
+	t.Parallel()
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:              123,
+				IID:             123,
+				ProjectID:       3,
+				SourceProjectID: 3,
+				SourceBranch:    "feat-new-mr",
+				State:           "opened",
+			},
+		}, nil, nil)
+
+	testClient.MockProjects.EXPECT().
+		GetProject(gomock.Any(), gomock.Any()).
+		Return(&gitlab.Project{
+			ID:           3,
+			SSHURLToRepo: "git@gitlab.com:OWNER/REPO.git",
+		}, nil, nil)
+
+	ctrl := gomock.NewController(t)
+	mockGit := git_testing.NewMockGitRunner(ctrl)
+	mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+	mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+	mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+	mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
+	mockGit.EXPECT().Git("branch", "--set-upstream-to", "upstream/main").Return("", nil)
+
+	exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+	output, err := exec("123 --set-upstream-to upstream/main")
+
+	assert.NoError(t, err)
+	assert.Empty(t, output.String())
+	assert.Empty(t, output.Stderr())
+}
+
 func TestMrCheckout_HTTPSProtocolConfiguration(t *testing.T) {
 	testClient := gitlabtesting.NewTestClient(t)
 

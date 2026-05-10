@@ -3,10 +3,14 @@
 package git
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
@@ -27,21 +31,43 @@ type GitRunner interface {
 	Git(args ...string) (string, error)
 }
 
-type StandardGitCommand struct{}
+// Executor is a subset of cmdutils.Executor defined here to avoid a circular
+// import: the cmdutils package already imports the git package.
+type Executor interface {
+	ExecWithIO(ctx context.Context, name string, args []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error
+}
+
+type StandardGitCommand struct {
+	executor Executor
+}
+
+func NewGitCommand(executor Executor) StandardGitCommand {
+	return StandardGitCommand{executor: executor}
+}
 
 func (gitc StandardGitCommand) Git(args ...string) (string, error) {
-	cmd := GitCommand(args...)
+	env := append(os.Environ(), "LC_ALL=C")
 
-	// Ensure output from git is in English for string matching
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "LC_ALL=C")
-
-	output, err := run.PrepareCmd(cmd).Output()
-	if err != nil {
-		return "", err
+	if gitc.executor == nil {
+		cmd := GitCommand(args...)
+		cmd.Env = env
+		output, err := run.PrepareCmd(cmd).Output()
+		if err != nil {
+			return "", err
+		}
+		return string(output), nil
 	}
 
-	return string(output), nil
+	var stdout, stderr bytes.Buffer
+	err := gitc.executor.ExecWithIO(context.Background(), "git", args, env, nil, &stdout, &stderr)
+	if err != nil {
+		errMsg := strings.TrimSpace(stderr.String())
+		if errMsg != "" {
+			return "", fmt.Errorf("%s: %w", errMsg, err)
+		}
+		return "", err
+	}
+	return stdout.String(), nil
 }
 
 func SetLocalConfig(key, value string) error {

@@ -229,5 +229,5 @@ func (f *DefaultFactory) Executor() Executor {
 }
 
 func (f *DefaultFactory) GitRunner() git.GitRunner {
-	return git.StandardGitCommand{}
+	return git.NewGitCommand(f.Executor())
 }
