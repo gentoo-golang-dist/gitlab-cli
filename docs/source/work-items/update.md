@@ -46,12 +46,10 @@ glab work-items update 40 --group MYGROUP --description "this epic tracks a new 
   -d, --description string   Update the description for the work item.
       --duedate string       Update the due date for the work item.
   -g, --group string         Update work items for a group or subgroup.
-      --health string        Update health status for the work item: on-track, needs-attention or at-risk.
   -m, --milestone string     Update the work item milestone with the title or ID.
   -F, --output string        Format output as: text, json. (default "text")
   -R, --repo string          Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
       --startdate string     Update the start date for the work item.
-      --status string        Update the current status for the work item: to-do, in-progress, done, wont-do, duplicate.
   -t, --title string         Update the title for the work item.
   -w, --weight int           Update the weight value for the work item.
 ```

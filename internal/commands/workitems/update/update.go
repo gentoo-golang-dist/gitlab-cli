@@ -29,18 +29,16 @@ type options struct {
 	config       func() config.Config
 
 	// Flags
-	group        string
-	iid          int64
-	title        string
-	description  string
-	assignee     []string
-	milestone    string
-	startDate    string
-	dueDate      string
-	weight       int64
-	healthStatus string
-	color        string
-	status       string
+	group       string
+	iid         int64
+	title       string
+	description string
+	assignee    []string
+	milestone   string
+	startDate   string
+	dueDate     string
+	weight      int64
+	color       string
 
 	// internal state
 	scope *api.ScopeInfo
@@ -96,8 +94,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.title, "title", "t", "", "Update the title for the work item.")
 	fl.StringVarP(&opts.description, "description", "d", "", "Update the description for the work item.")
 	fl.Int64VarP(&opts.weight, "weight", "w", 0, "Update the weight value for the work item.")
-	fl.Var(cmdutils.NewEnumValue([]string{"on-track", "needs-attention", "at-risk"}, "", &opts.healthStatus), "health", "Update health status for the work item: on-track, needs-attention or at-risk.")
-	fl.Var(cmdutils.NewEnumValue([]string{"to-do", "in-progress", "done", "wont-do", "duplicate"}, "", &opts.status), "status", "Update the current status for the work item: to-do, in-progress, done, wont-do, duplicate.")
 	fl.StringVarP(&opts.color, "color", "c", "", "Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.")
 	fl.StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update the work item assignee with the supplied GitLab usernames.")
 	fl.StringVarP(&opts.milestone, "milestone", "m", "", "Update the work item milestone with the title or ID.")
@@ -210,34 +206,6 @@ func (opts *options) run(cmd *cobra.Command) error {
 
 	if cmd.Flags().Changed("weight") {
 		updateOpts.Weight = new(opts.weight)
-	}
-
-	switch opts.healthStatus {
-	case "on-track":
-		updateOpts.HealthStatus = new("onTrack")
-	case "needs-attention":
-		updateOpts.HealthStatus = new("needsAttention")
-	case "at-risk":
-		updateOpts.HealthStatus = new("atRisk")
-	}
-
-	if opts.color != "" {
-		updateOpts.Color = new(opts.color)
-	}
-
-	switch opts.status {
-	case "to-do":
-		updateOpts.Status = gitlab.Ptr(gitlab.WorkItemStatusToDo)
-	case "in-progress":
-		updateOpts.Status = gitlab.Ptr(gitlab.WorkItemStatusInProgress)
-	case "done":
-		updateOpts.Status = gitlab.Ptr(gitlab.WorkItemStatusDone)
-	case "wont-do":
-		updateOpts.Status = gitlab.Ptr(gitlab.WorkItemStatusWontDo)
-	case "duplicate":
-		updateOpts.Status = gitlab.Ptr(gitlab.WorkItemStatusDuplicate)
-	default:
-		// unreachable: enum validation at flag level ensures only valid statuses reach here
 	}
 
 	wi, _, err := client.WorkItems.UpdateWorkItem(opts.scope.Path, opts.iid, &updateOpts)
