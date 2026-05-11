@@ -24,21 +24,16 @@ import (
 func Test_NewCmdCreate(t *testing.T) {
 	t.Parallel()
 
-	t.Run("--message flag specified", func(t *testing.T) {
+	t.Run("--message flag specified posts a note", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := setupMR(t)
 
-		testClient.MockDiscussions.EXPECT().
-			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
 				assert.Equal(t, "Here is my note", *opts.Body)
-				return &gitlab.Discussion{
-					ID: "disc1",
-					Notes: []*gitlab.Note{
-						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
-					},
-				}, nil, nil
+				return &gitlab.Note{ID: 301}, nil, nil
 			})
 
 		exec := setupCreateExec(t, testClient)
@@ -47,6 +42,56 @@ func Test_NewCmdCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, output.Stderr())
 		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_301\n", output.String())
+	})
+
+	t.Run("--thread creates a note with a resolvable thread", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Thread body", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc1",
+					Notes: []*gitlab.Note{
+						{ID: 401, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --thread --message "Thread body"`)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_401\n", output.String())
+	})
+
+	t.Run("-t short flag aliases --thread", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Short flag body", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc-short",
+					Notes: []*gitlab.Note{
+						{ID: 405, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 -t -m "Short flag body"`)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_405\n", output.String())
 	})
 
 	t.Run("merge request not found", func(t *testing.T) {
@@ -73,8 +118,8 @@ func Test_NewCmdCreate_error(t *testing.T) {
 		unauthorizedResp := &gitlab.Response{
 			Response: &http.Response{StatusCode: http.StatusUnauthorized},
 		}
-		testClient.MockDiscussions.EXPECT().
-			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
 			Return(nil, unauthorizedResp, errors.New("401 Unauthorized"))
 
 		exec := setupCreateExec(t, testClient)
@@ -91,16 +136,11 @@ func Test_cmdCreate_prompt(t *testing.T) {
 	t.Run("message provided via prompt", func(t *testing.T) {
 		testClient := setupMR(t)
 
-		testClient.MockDiscussions.EXPECT().
-			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
 				assert.Contains(t, *opts.Body, "some note message")
-				return &gitlab.Discussion{
-					ID: "disc1",
-					Notes: []*gitlab.Note{
-						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
-					},
-				}, nil, nil
+				return &gitlab.Note{ID: 301}, nil, nil
 			})
 
 		c := ugh.New(t)
@@ -194,16 +234,11 @@ func Test_cmdCreate_unique(t *testing.T) {
 				{ID: 100, Body: "other note"},
 			}, nil, nil)
 
-		testClient.MockDiscussions.EXPECT().
-			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
 				assert.Equal(t, "brand new note", *opts.Body)
-				return &gitlab.Discussion{
-					ID: "disc1",
-					Notes: []*gitlab.Note{
-						{ID: 301, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
-					},
-				}, nil, nil
+				return &gitlab.Note{ID: 301}, nil, nil
 			})
 
 		exec := setupCreateExec(t, testClient)
@@ -211,6 +246,36 @@ func Test_cmdCreate_unique(t *testing.T) {
 		output, err := exec(`1 -m "brand new note" --unique`)
 		require.NoError(t, err)
 		assert.Contains(t, output.String(), "#note_301")
+	})
+
+	t.Run("--thread --unique creates a thread after dedup check", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockNotes.EXPECT().
+			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Note{
+				{ID: 100, Body: "other note"},
+			}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "thread body", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc1",
+					Notes: []*gitlab.Note{
+						{ID: 402, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --thread --unique -m "thread body"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_402")
 	})
 }
 
@@ -414,16 +479,11 @@ func Test_cmdCreate_stdin(t *testing.T) {
 			testClient := setupMR(t)
 
 			if tt.wantErr == "" {
-				testClient.MockDiscussions.EXPECT().
-					CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
-					DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				testClient.MockNotes.EXPECT().
+					CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
 						assert.Equal(t, "Message from stdin", *opts.Body)
-						return &gitlab.Discussion{
-							ID: "disc-stdin",
-							Notes: []*gitlab.Note{
-								{ID: 700, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
-							},
-						}, nil, nil
+						return &gitlab.Note{ID: 700}, nil, nil
 					})
 			}
 
@@ -446,6 +506,37 @@ func Test_cmdCreate_stdin(t *testing.T) {
 			assert.Equal(t, tt.expectedOut, output.String())
 		})
 	}
+
+	t.Run("--thread routes stdin body to a discussion", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "Stdin thread body", *opts.Body)
+				return &gitlab.Discussion{
+					ID: "disc-stdin-thread",
+					Notes: []*gitlab.Note{
+						{ID: 701, NoteableID: 1, NoteableType: "MergeRequest", NoteableIID: 1},
+					},
+				}, nil, nil
+			})
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdCreate(f)
+		}, false,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+			cmdtest.WithConfig(config.NewFromString("editor: vi")),
+			cmdtest.WithStdin("Stdin thread body\n"),
+		)
+
+		output, err := exec(`1 --thread`)
+		require.NoError(t, err)
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_701\n", output.String())
+	})
 }
 
 func Test_cmdCreate_diffComment(t *testing.T) {
