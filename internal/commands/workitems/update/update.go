@@ -154,7 +154,7 @@ func (opts *options) run(cmd *cobra.Command) error {
 	if opts.dueDate != "" {
 		dueDate, err := gitlab.ParseISOTime(opts.dueDate)
 		if err != nil {
-			return cmdutils.FlagError{Err: fmt.Errorf("--duedate must be ISO 8601 (YYYY-MM-DD), got %q", opts.startDate)}
+			return cmdutils.FlagError{Err: fmt.Errorf("--duedate must be ISO 8601 (YYYY-MM-DD), got %q", opts.dueDate)}
 		}
 		updateOpts.DueDate = new(dueDate)
 	}
