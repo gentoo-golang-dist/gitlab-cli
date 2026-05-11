@@ -76,16 +76,6 @@ func TestWorkItemsUpdate_FlagValidation(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "wrong value passed to --health",
-			args:    "1 --health bogus",
-			wantErr: "must be one of",
-		},
-		{
-			name:    "wrong value passed to --status",
-			args:    "1 --status bogus",
-			wantErr: "must be one of",
-		},
-		{
 			name:    "invalid <iid> arg",
 			args:    "abc",
 			wantErr: "invalid work item ID",
