@@ -86,8 +86,7 @@ func isSupportedOS(os string) bool {
 
 // normalizeArch converts Go architecture names to Duo CLI binary naming conventions.
 // - amd64 → x64 (or x64-baseline for Windows)
-// - arm64 → arm64 (unchanged)
-// - Windows ARM64 is not supported
+// - arm64/aarch64 → arm64 (unchanged, all platforms)
 func normalizeArch(goos, goarch string) (string, error) {
 	switch goarch {
 	case "amd64":
@@ -96,9 +95,6 @@ func normalizeArch(goos, goarch string) (string, error) {
 		}
 		return "x64", nil
 	case "arm64", "aarch64":
-		if goos == "windows" {
-			return "", fmt.Errorf("%w: Windows ARM64 is not supported by GitLab Duo CLI", ErrUnsupportedPlatform)
-		}
 		return "arm64", nil
 	default:
 		return "", fmt.Errorf("%w: architecture %s (supported: amd64/x64, arm64)", ErrUnsupportedPlatform, goarch)

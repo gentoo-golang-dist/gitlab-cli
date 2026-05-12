@@ -53,10 +53,10 @@ func TestNormalizeArch(t *testing.T) {
 			want:   "arm64",
 		},
 		{
-			name:        "arm64 on windows (not supported)",
-			goos:        "windows",
-			goarch:      "arm64",
-			expectError: true,
+			name:   "arm64 on windows",
+			goos:   "windows",
+			goarch: "arm64",
+			want:   "arm64",
 		},
 		{
 			name:   "aarch64 on linux",
@@ -145,6 +145,11 @@ func TestPlatformBinaryName(t *testing.T) {
 			name:     "Windows x64",
 			platform: platform{os: "windows", arch: "x64-baseline"},
 			want:     "duo-windows-x64-baseline.exe",
+		},
+		{
+			name:     "Windows ARM64",
+			platform: platform{os: "windows", arch: "arm64"},
+			want:     "duo-windows-arm64.exe",
 		},
 	}
 
