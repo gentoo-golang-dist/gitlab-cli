@@ -151,20 +151,45 @@ func Test_NewCmdLogin(t *testing.T) {
 			name:     "web with token",
 			cli:      "--hostname gl.io --web --token foo",
 			wantsErr: true,
-			err:      "'--web' cannot be combined with '--token', '--stdin', or '--job-token'",
+			err:      "none of the others can be",
 		},
 		{
 			name:     "web with stdin",
 			cli:      "--hostname gl.io --web --stdin",
 			stdin:    "abc123\n",
 			wantsErr: true,
-			err:      "'--web' cannot be combined with '--token', '--stdin', or '--job-token'",
+			err:      "none of the others can be",
 		},
 		{
 			name:     "web with job-token",
 			cli:      "--hostname gl.io --web --job-token foo",
 			wantsErr: true,
-			err:      "'--web' cannot be combined with '--token', '--stdin', or '--job-token'",
+			err:      "none of the others can be",
+		},
+		{
+			name:     "web with device",
+			cli:      "--hostname gl.io --web --device",
+			wantsErr: true,
+			err:      "none of the others can be",
+		},
+		{
+			name:     "device with token",
+			cli:      "--hostname gl.io --device --token foo",
+			wantsErr: true,
+			err:      "none of the others can be",
+		},
+		{
+			name:     "device with stdin",
+			cli:      "--hostname gl.io --device --stdin",
+			stdin:    "abc123\n",
+			wantsErr: true,
+			err:      "none of the others can be",
+		},
+		{
+			name:     "device with job-token",
+			cli:      "--hostname gl.io --device --job-token foo",
+			wantsErr: true,
+			err:      "none of the others can be",
 		},
 		// TODO: how to test survey
 		//{
@@ -191,7 +216,7 @@ func Test_NewCmdLogin(t *testing.T) {
 			name:     "token and stdin",
 			cli:      "--token xxxx --stdin",
 			wantsErr: true,
-			err:      "specify one of '--token' or '--stdin'. You cannot use both flags at the same time",
+			err:      "none of the others can be",
 		},
 		{
 			name: "no keyring, token",
@@ -306,6 +331,7 @@ func Test_NewCmdLogin(t *testing.T) {
 			assert.Equal(t, tt.wants.ApiProtocol, opts.ApiProtocol)
 			assert.Equal(t, tt.wants.GitProtocol, opts.GitProtocol)
 			assert.Equal(t, tt.wants.WebLogin, opts.WebLogin)
+			assert.Equal(t, tt.wants.DeviceLogin, opts.DeviceLogin)
 			assert.Equal(t, tt.wants.SSHHostname, opts.SSHHostname)
 			assert.Equal(t, tt.wants.ContainerRegistryDomains, opts.ContainerRegistryDomains)
 		})

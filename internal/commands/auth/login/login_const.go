@@ -7,8 +7,9 @@ const (
 	promptSelfManagedOrDedicatedInstance = "GitLab Self-Managed or GitLab Dedicated instance"
 
 	// Login type options
-	promptLoginTypeToken = "Token"
-	promptLoginTypeWeb   = "Web"
+	promptLoginTypeToken  = "Token"
+	promptLoginTypeWeb    = "Web"
+	promptLoginTypeDevice = "Device"
 
 	// Protocol options
 	promptProtocolSSH   = "SSH"

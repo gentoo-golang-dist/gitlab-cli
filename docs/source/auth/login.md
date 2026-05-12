@@ -56,6 +56,11 @@ glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443
 # Semi-interactive OAuth login, skipping all prompts except browser auth
 glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
+# OAuth device authorization flow for headless environments without a local browser.
+# glab displays a one-time code and verification URL; you authorize on any
+# other device with a browser. Requires GitLab 17.9 or later.
+glab auth login --hostname gitlab.com --device
+
 # CI/CD setup: for most cases, prefer auto-login over manual login
 GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 
@@ -70,6 +75,7 @@ glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-proto
   -a, --api-host string                     Hostname for the API endpoint, if different from --hostname. Accepts a hostname or hostname:port. Use only when the API is served from a different host than the Git remote.
   -p, --api-protocol string                 API protocol. Options: https, http.
       --container-registry-domains string   Container registry and image dependency proxy domains, comma-separated.
+      --device                              Use the OAuth 2.0 device authorization flow. Useful for headless environments where a local browser is not available. Requires GitLab 17.9 or later.
   -g, --git-protocol string                 Git protocol. Options: ssh, https, http.
       --hostname string                     The hostname of the GitLab instance to authenticate with.
   -j, --job-token string                    CI job token.
