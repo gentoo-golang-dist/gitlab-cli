@@ -95,6 +95,8 @@ func NewCmdApi(f cmdutils.Factory, runF func(*options) error) *cobra.Command {
 
 		- Literal values %[1]strue%[1]s, %[1]sfalse%[1]s, %[1]snull%[1]s, and integer numbers are converted to
 		  appropriate JSON types.
+		- Values starting with %[1]s[%[1]s or %[1]s{%[1]s are parsed as JSON arrays or objects
+		  (e.g. %[1]s-F 'topics=["my-topic","GitLab"]'%[1]s). Invalid JSON returns an error.
 		- Placeholder values %[1]s:namespace%[1]s, %[1]s:repo%[1]s, and %[1]s:branch%[1]s are populated with values
 		  from the repository of the current directory.
 		- If the value starts with %[1]s@%[1]s, the rest of the value is interpreted as a
@@ -596,7 +598,7 @@ func parseFields(opts *options) (map[string]any, error) {
 		}
 		value, err := magicFieldValue(strValue, opts)
 		if err != nil {
-			return params, fmt.Errorf("error parsing %q value: %w", key, err)
+			return params, fmt.Errorf("error parsing value for %q: %w", key, err)
 		}
 		params[key] = value
 	}
@@ -618,6 +620,17 @@ func magicFieldValue(v string, opts *options) (any, error) {
 
 	if n, err := strconv.Atoi(v); err == nil {
 		return n, nil
+	}
+
+	if strings.HasPrefix(v, "[") || strings.HasPrefix(v, "{") {
+		var parsed any
+		if err := json.Unmarshal([]byte(v), &parsed); err != nil {
+			return nil, fmt.Errorf(
+				"invalid JSON: %w. Use proper JSON syntax (e.g. -F 'key=[\"value1\",\"value2\"]') or -f to pass a literal string",
+				err,
+			)
+		}
+		return parsed, nil
 	}
 
 	switch v {

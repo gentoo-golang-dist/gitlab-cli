@@ -1217,6 +1217,36 @@ func Test_magicFieldValue(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name:    "JSON array",
+			args:    args{v: `["my-topic","GitLab"]`},
+			want:    []any{"my-topic", "GitLab"},
+			wantErr: false,
+		},
+		{
+			name:    "JSON object",
+			args:    args{v: `{"key":"value","count":42}`},
+			want:    map[string]any{"key": "value", "count": float64(42)},
+			wantErr: false,
+		},
+		{
+			name:    "nested JSON array",
+			args:    args{v: `["a",["b","c"]]`},
+			want:    []any{"a", []any{"b", "c"}},
+			wantErr: false,
+		},
+		{
+			name:    "invalid JSON with bracket prefix",
+			args:    args{v: `[api,read_api]`},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "invalid JSON with brace prefix",
+			args:    args{v: `{bad}`},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
