@@ -14,10 +14,14 @@ Install glab's bundled agent skills. (EXPERIMENTAL)
 
 ## Synopsis
 
-Install the bundled `SKILL.md` file to `.agents/skills/`, the
-cross-agent standard defined by the Agent Skills specification. This works with
-GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any other
-compliant agent.
+Install bundled `SKILL.md` files to `.agents/skills/`, the
+cross-agent standard defined by the Agent Skills specification. This works
+with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any
+other compliant agent.
+
+By default, all bundled skills are installed. Pass a positional `name`
+argument to install a single skill. Run `glab skills list` to see what
+is available.
 
 Install scope:
 
@@ -36,14 +40,17 @@ For more information, see
 <https://docs.gitlab.com/policy/development_stages_support/>.
 
 ```plaintext
-glab skills install [flags]
+glab skills install [name] [flags]
 ```
 
 ## Examples
 
 ```console
-# Install skills in the current project (default)
+# Install all bundled skills in the current project (default)
 glab skills install
+
+# Install a single skill by name
+glab skills install glab
 
 # Install skills globally (user scope)
 glab skills install --global

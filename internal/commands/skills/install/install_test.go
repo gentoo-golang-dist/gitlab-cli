@@ -3,6 +3,7 @@
 package install
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/bundled"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -23,7 +25,7 @@ func TestNewCmdInstall_PathFlag(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
-	assert.FileExists(t, filepath.Join(tmpDir, skillName, skillFile))
+	assert.FileExists(t, filepath.Join(tmpDir, "glab", bundled.FileName))
 }
 
 func TestNewCmdInstall_GlobalFlag(t *testing.T) {
@@ -35,7 +37,7 @@ func TestNewCmdInstall_GlobalFlag(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
-	assert.FileExists(t, filepath.Join(home, skillsRelDir, skillName, skillFile))
+	assert.FileExists(t, filepath.Join(home, skillsRelDir, "glab", bundled.FileName))
 }
 
 func TestNewCmdInstall_DefaultScopeOutsideRepo(t *testing.T) {
@@ -55,7 +57,7 @@ func TestNewCmdInstall_DefaultScopeInsideRepo(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
-	assert.FileExists(t, filepath.Join(repoDir, skillsRelDir, skillName, skillFile))
+	assert.FileExists(t, filepath.Join(repoDir, skillsRelDir, "glab", bundled.FileName))
 }
 
 func TestNewCmdInstall_GlobalAndPathMutuallyExclusive(t *testing.T) {
@@ -74,11 +76,9 @@ func TestNewCmdInstall_ForceOverwrites(t *testing.T) {
 	tmpDir := t.TempDir()
 	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
 
-	// First install
 	_, err := exec("--path " + tmpDir)
 	require.NoError(t, err)
 
-	// Force overwrite
 	out, err := exec("--force --path " + tmpDir)
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Overwrote")
@@ -90,11 +90,9 @@ func TestNewCmdInstall_SkipsWithoutForce(t *testing.T) {
 	tmpDir := t.TempDir()
 	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
 
-	// First install
 	_, err := exec("--path " + tmpDir)
 	require.NoError(t, err)
 
-	// Second install without force
 	out, err := exec("--path " + tmpDir)
 	require.NoError(t, err)
 	assert.Contains(t, out.Stderr(), "already exists. Use --force to overwrite")
@@ -110,6 +108,46 @@ func TestNewCmdInstall_FreshInstallNoWarnings(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
 	assert.Empty(t, out.Stderr(), "expected no stderr output on fresh install")
+}
+
+func TestNewCmdInstall_NamedSkill(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("glab --path " + tmpDir)
+
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Installed")
+
+	dest := filepath.Join(tmpDir, "glab", bundled.FileName)
+	assert.FileExists(t, dest)
+
+	content, err := os.ReadFile(dest)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "name: glab")
+}
+
+func TestNewCmdInstall_UnknownSkill(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	_, err := exec("does-not-exist --path " + tmpDir)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unknown skill "does-not-exist"`)
+	assert.Contains(t, err.Error(), "glab skills list")
+}
+
+func TestNewCmdInstall_TooManyArgs(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	_, err := exec("glab extra --path " + tmpDir)
+
+	require.Error(t, err)
 }
 
 func TestComplete(t *testing.T) {
@@ -131,15 +169,4 @@ func TestComplete(t *testing.T) {
 		assert.True(t, filepath.IsAbs(o.targetDir), "expected absolute path, got %s", o.targetDir)
 		assert.True(t, strings.HasSuffix(o.targetDir, skillsRelDir))
 	})
-}
-
-func TestBundledSkillContent(t *testing.T) {
-	t.Parallel()
-
-	require.NotEmpty(t, bundledSkillContent)
-
-	text := string(bundledSkillContent)
-	assert.Contains(t, text, "---")
-	assert.Contains(t, text, "name: glab")
-	assert.Contains(t, text, "description:")
 }
