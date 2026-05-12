@@ -82,14 +82,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	info := result.Info
 
 	if info.Path == managedPath {
-		if result.AutoDownloadPreference != "" {
-			if err := r.Cfg.Set("", r.Spec.configKey("auto_download"), result.AutoDownloadPreference); err != nil {
-				r.warnf("Failed to save preference: %v", err)
-			}
-			if err := r.Cfg.Write(); err != nil {
-				r.warnf("Failed to write config: %v", err)
-			}
-		}
+		r.saveAutoDownloadPreference(result.AutoDownloadPreference)
 		if err := r.SaveBinaryInfo(info); err != nil {
 			r.warnf("Failed to save binary metadata: %v", err)
 		}
@@ -142,6 +135,8 @@ func (r *Runner) HandleInstall(ctx context.Context) error {
 		return nil
 	}
 
+	r.saveAutoDownloadPreference(result.AutoDownloadPreference)
+	r.saveLastUpdateCheck(time.Now())
 	return r.SaveBinaryInfo(info)
 }
 
@@ -165,6 +160,8 @@ func (r *Runner) HandleUpdate(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		r.saveAutoDownloadPreference(result.AutoDownloadPreference)
+		r.saveLastUpdateCheck(time.Now())
 		return r.SaveBinaryInfo(result.Info)
 	}
 
@@ -304,6 +301,35 @@ func (r *Runner) updateCommand() string {
 		return r.UpdateCommand
 	}
 	return r.Spec.ConfigPrefix
+}
+
+// saveAutoDownloadPreference persists the user's "always download updates"
+// choice. EnsureInstalled returns "true" when the user opted in during the
+// follow-up prompt and "" otherwise; we only write on opt-in so this is a
+// no-op for the common case.
+func (r *Runner) saveAutoDownloadPreference(pref string) {
+	if pref == "" {
+		return
+	}
+	if err := r.Cfg.Set("", r.Spec.configKey("auto_download"), pref); err != nil {
+		r.warnf("Failed to save preference: %v", err)
+		return
+	}
+	if err := r.Cfg.Write(); err != nil {
+		r.warnf("Failed to write config: %v", err)
+	}
+}
+
+// saveLastUpdateCheck stamps the moment a known-current install was placed
+// on disk so the next interactive run skips the redundant registry hit.
+func (r *Runner) saveLastUpdateCheck(t time.Time) {
+	if err := r.Cfg.Set("", r.Spec.configKey("last_update_check"), t.Format(time.RFC3339)); err != nil {
+		r.warnf("Failed to save update check time: %v", err)
+		return
+	}
+	if err := r.Cfg.Write(); err != nil {
+		r.warnf("Failed to write config: %v", err)
+	}
 }
 
 func (r *Runner) warnf(format string, args ...any) {

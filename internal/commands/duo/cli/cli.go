@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -153,6 +154,10 @@ For more information, see the [GitLab Duo CLI documentation](https://docs.gitlab
 				}
 			}
 			runner.Args = remaining
+
+			if runner.Install && runner.Update {
+				return errors.New("the --install and --update flags are mutually exclusive")
+			}
 
 			if runner.Install {
 				return runner.HandleInstall(cmd.Context())

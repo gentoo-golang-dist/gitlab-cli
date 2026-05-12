@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -231,8 +232,13 @@ func TestManager_validateBinaryPath(t *testing.T) {
 		t.Parallel()
 		err := validateBinaryPath("/nonexistent/path", spec)
 		require.Error(t, err)
+		// Error must name both configuration sources and start with a
+		// lowercase word so fang's leading-token title-casing does not
+		// mangle the env-var name.
 		assert.Contains(t, err.Error(), "GLAB_TEST_CLI_BINARY_PATH")
-		assert.Contains(t, err.Error(), "file was not found")
+		assert.Contains(t, err.Error(), "test_cli_binary_path")
+		assert.Contains(t, err.Error(), "was not found")
+		assert.Truef(t, strings.HasPrefix(err.Error(), "custom"), "error should start with lowercase to survive fang title-casing, got %q", err.Error())
 	})
 
 	t.Run("directory rejected", func(t *testing.T) {

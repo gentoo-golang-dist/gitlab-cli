@@ -112,9 +112,10 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		err := runner.Run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GLAB_ORBIT_LOCAL_BINARY_PATH is set to")
+		assert.Contains(t, err.Error(), "GLAB_ORBIT_LOCAL_BINARY_PATH")
+		assert.Contains(t, err.Error(), "orbit_local_binary_path")
 		assert.Contains(t, err.Error(), "/nonexistent/path/to/orbit")
-		assert.Contains(t, err.Error(), "file was not found")
+		assert.Contains(t, err.Error(), "was not found")
 	})
 
 	t.Run("non-executable file returns clear error", func(t *testing.T) {
@@ -130,9 +131,22 @@ func TestRunWithCustomPath_Validation(t *testing.T) {
 		err := runner.Run(t.Context())
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "GLAB_ORBIT_LOCAL_BINARY_PATH is set to")
-		assert.Contains(t, err.Error(), "file is not executable")
+		assert.Contains(t, err.Error(), "GLAB_ORBIT_LOCAL_BINARY_PATH")
+		assert.Contains(t, err.Error(), "is not executable")
 	})
+}
+
+func TestRunE_InstallAndUpdateAreMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
+	factory := cmdtest.NewTestFactory(ios)
+	cmd := NewCmd(factory)
+	cmd.SetArgs([]string{"--install", "--update"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mutually exclusive")
 }
 
 func TestHandleInstall_CustomPath(t *testing.T) {

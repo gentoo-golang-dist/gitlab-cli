@@ -168,20 +168,25 @@ func (m *Manager) Update(ctx context.Context) (*BinaryInfo, error) {
 }
 
 // validateBinaryPath verifies that a custom binary path is usable.
+//
+// Error messages avoid leading with the env-var name because fang
+// Title-cases the first token of an error ("Glab_orbit_local_..."), and
+// they name both configuration sources (env var + config key) since either
+// can set the value.
 func validateBinaryPath(path string, spec Spec) error {
-	envName := spec.envVar("BINARY_PATH")
+	source := fmt.Sprintf("the %s env var or the %s config key", spec.envVar("BINARY_PATH"), spec.configKey("binary_path"))
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("%s is set to %q, but the file was not found. Check that the path is correct", envName, path)
+			return fmt.Errorf("custom %s binary path %q (set via %s) was not found. Check that the path is correct", spec.DisplayName, path, source)
 		}
-		return fmt.Errorf("%s is set to %q, but it could not be accessed: %w", envName, path, err)
+		return fmt.Errorf("custom %s binary path %q (set via %s) could not be accessed: %w", spec.DisplayName, path, source, err)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("%s is set to %q, but it is a directory, not an executable file", envName, path)
+		return fmt.Errorf("custom %s binary path %q (set via %s) is a directory, not an executable file", spec.DisplayName, path, source)
 	}
 	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
-		return fmt.Errorf("%s is set to %q, but the file is not executable. Run: chmod +x %s", envName, path, path)
+		return fmt.Errorf("custom %s binary path %q (set via %s) is not executable. Run: chmod +x %s", spec.DisplayName, path, source, path)
 	}
 	return nil
 }
