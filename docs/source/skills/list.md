@@ -26,6 +26,14 @@ For more information, see
 glab skills list [flags]
 ```
 
+## Examples
+
+```console
+# List every bundled skill with its description
+glab skills list
+
+```
+
 ## Options inherited from parent commands
 
 ```plaintext

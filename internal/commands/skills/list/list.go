@@ -30,6 +30,10 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			List the agent skills bundled with glab. Use the name of a skill with
 			'glab skills install <name>' to install just that one.
 		`) + text.ExperimentalString,
+		Example: heredoc.Doc(`
+			# List every bundled skill with its description
+			glab skills list
+		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

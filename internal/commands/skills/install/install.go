@@ -76,10 +76,7 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 		`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 1 {
-				opts.requested = args[0]
-			}
-			if err := opts.complete(); err != nil {
+			if err := opts.complete(args); err != nil {
 				return err
 			}
 			return opts.run()
@@ -87,15 +84,19 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
-	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/).")
+	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/). (default false)")
 	fl.StringVar(&opts.path, "path", "", "Install skills to the directory at <path>.")
-	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files.")
+	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files. (default false)")
 	cmd.MarkFlagsMutuallyExclusive("global", "path")
 
 	return cmd
 }
 
-func (o *options) complete() error {
+func (o *options) complete(args []string) error {
+	if len(args) == 1 {
+		o.requested = args[0]
+	}
+
 	if o.path != "" {
 		o.targetDir = o.path
 		return nil

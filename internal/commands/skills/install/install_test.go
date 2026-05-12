@@ -157,7 +157,7 @@ func TestComplete(t *testing.T) {
 		t.Parallel()
 
 		o := &options{path: "/custom/path"}
-		require.NoError(t, o.complete())
+		require.NoError(t, o.complete(nil))
 		assert.Equal(t, "/custom/path", o.targetDir)
 	})
 
@@ -165,7 +165,7 @@ func TestComplete(t *testing.T) {
 		t.Parallel()
 
 		o := &options{global: true}
-		require.NoError(t, o.complete())
+		require.NoError(t, o.complete(nil))
 		assert.True(t, filepath.IsAbs(o.targetDir), "expected absolute path, got %s", o.targetDir)
 		assert.True(t, strings.HasSuffix(o.targetDir, skillsRelDir))
 	})
