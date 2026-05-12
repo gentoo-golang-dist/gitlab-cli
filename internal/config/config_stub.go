@@ -159,6 +159,60 @@ func rootConfig() *yaml.Node {
 						Value: "",
 					},
 					{
+						HeadComment: "# Automatically run Orbit local CLI without prompting (true/false). Set to true to skip the confirmation prompt.",
+						Kind:        yaml.ScalarNode,
+						Value:       "orbit_local_auto_run",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Automatically download Orbit local CLI binary without prompting (true/false).",
+						Kind:        yaml.ScalarNode,
+						Value:       "orbit_local_auto_download",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Path to the installed Orbit local CLI binary (automatically set). Default: ~/.config/glab-cli/bin/orbit",
+						Kind:        yaml.ScalarNode,
+						Value:       "orbit_local_binary_path",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Version of the installed Orbit local CLI binary (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "orbit_local_binary_version",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# SHA256 checksum of the installed Orbit local CLI binary (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "orbit_local_binary_checksum",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
+						HeadComment: "# Last time an Orbit local CLI update check was performed (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "orbit_local_last_update_check",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
 						HeadComment: "# Configuration specific for GitLab instances.",
 						Kind:        yaml.ScalarNode,
 						Value:       "hosts",

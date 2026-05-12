@@ -239,6 +239,12 @@ func TestEnvKeyEquivalence(t *testing.T) {
 		{
 			autologinEnabled: false,
 			inCi:             false,
+			givenKey:         "orbit_local_binary_path",
+			expectedKeys:     []string{"GLAB_ORBIT_LOCAL_BINARY_PATH"},
+		},
+		{
+			autologinEnabled: false,
+			inCi:             false,
 			givenKey:         "user",
 			expectedKeys:     []string{"GLAB_USER"},
 		},

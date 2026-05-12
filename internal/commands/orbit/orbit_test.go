@@ -19,14 +19,15 @@ func TestNewCmd_RegistersRemoteSubcommand(t *testing.T) {
 	// WHEN the parent orbit command is constructed
 	cmd := NewCmd(f)
 
-	// THEN it carries the `remote` subtree and the mcp:safe annotation;
-	// the individual API commands are now registered under `remote`,
-	// not directly under `orbit`.
-	gotSubs := make(map[string]bool, 1)
+	// THEN it carries the `remote` and `local` subtrees and the mcp:safe
+	// annotation; the individual API commands are registered under
+	// `remote`, not directly under `orbit`.
+	gotSubs := make(map[string]bool, 2)
 	for _, sub := range cmd.Commands() {
 		gotSubs[sub.Name()] = true
 	}
 	assert.True(t, gotSubs["remote"], "expected `remote` subcommand to be registered")
+	assert.True(t, gotSubs["local"], "expected `local` subcommand to be registered")
 	for _, gone := range []string{"status", "schema", "tools", "query"} {
 		assert.Falsef(t, gotSubs[gone],
 			"expected %q to no longer be registered directly on `orbit`", gone)

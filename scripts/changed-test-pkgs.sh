@@ -26,11 +26,14 @@ fi
 
 # Convert file paths to package import paths, skipping repo-root files
 # (root .go files like main.go belong to the root module package, but
-# testing "./" would run everything — handle explicitly).
+# testing "./" would run everything — handle explicitly). Drop directories
+# that no longer exist on disk (deleted packages) since `go list` cannot
+# resolve them and would fail the run.
 CHANGED_PKGS=$(echo "$CHANGED_FILES" \
   | xargs -I{} dirname {} \
   | sort -u \
   | grep -v '^\.$' \
+  | while IFS= read -r dir; do [ -d "$dir" ] && echo "$dir"; done \
   | sed "s|^|${MODULE}/|")
 
 # If there are root-level .go changes, add the module root package
