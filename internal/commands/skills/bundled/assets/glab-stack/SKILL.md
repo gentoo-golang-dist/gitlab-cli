@@ -15,7 +15,7 @@ description: Manage stacked diffs and merge requests with the GitLab CLI. Use wh
 
 Each diff gets its own branch named `{branch_prefix}-{stack-title}-{8-char-hex}`. The branch prefix defaults to `$USER` (your local username), or can be set with `glab config set branch_prefix <value>`. The hash is generated at save time from the message, title, author, and timestamp — branch names are not sequential or predictable in advance. Use `glab stack list` to see the current branch names for each diff.
 
-```
+```text
 main (default branch)
  └── karmstrong-add-auth-5b337685  →  MR !1 (targets main)              ← first diff (oldest)
   └── karmstrong-add-auth-74f87791 →  MR !2 (targets karmstrong-add-auth-5b337685)
