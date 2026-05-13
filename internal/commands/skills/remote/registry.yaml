@@ -11,4 +11,9 @@
 # Manual additions need the same fields the generator produces; the
 # entry name must match the SKILL.md frontmatter `name`.
 version: 1
-skills: []
+skills:
+  - name: orbit
+    description: Query the GitLab Knowledge Graph (Orbit) via the typed `glab orbit remote` CLI subcommands. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
+    project: gitlab-org/orbit/knowledge-graph
+    ref: latest
+    path: skills/orbit
