@@ -41,7 +41,7 @@ func parseCommitSelection(input string) ([]string, error) {
 	return result, nil
 }
 
-func promptForCommits(ctx context.Context, f cmdutils.Factory, getText cmdutils.GetTextUsingEditor, gr git.GitRunner, args []string) ([]string, error) {
+func promptForCommits(ctx context.Context, f cmdutils.Factory, gr git.GitRunner, args []string) ([]string, error) {
 	if len(args) == 0 {
 		return nil, errors.New("no revision arguments provided")
 	}
@@ -101,7 +101,8 @@ func promptForCommits(ctx context.Context, f cmdutils.Factory, getText cmdutils.
 		return nil, errors.New("no TTY available")
 	}
 
-	promptResponse, err := getText(ctx, editor, "glab-stack-infer*.gitrebase", buffer.String())
+	var promptResponse string
+	err = f.IO().DirectEditor(ctx, &promptResponse, buffer.String(), editor)
 	if err != nil {
 		return nil, err
 	}

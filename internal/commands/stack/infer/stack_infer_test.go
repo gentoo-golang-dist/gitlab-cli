@@ -3,7 +3,7 @@
 package infer
 
 import (
-	"context"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -107,21 +107,38 @@ func TestCreateBranches(t *testing.T) {
 		_, err = git.AddStackRefDir(stackTitle)
 		require.NoError(t, err)
 
+		err = git.AddStackBaseBranch(stackTitle, "main")
+		require.NoError(t, err)
+
 		ctrl := gomock.NewController(t)
 		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("symbolic-ref", "--quiet", "--short", "HEAD").
+			Return("feature-branch", nil)
 
 		mockGR.EXPECT().
 			Git("log", "-1", "--format=%s", "abc123").
 			Return("First commit", nil)
 		mockGR.EXPECT().
-			Git("branch", gomock.Any(), "abc123").
+			Git("checkout", "-b", gomock.Any(), "main").
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "abc123").
 			Return("", nil)
 
 		mockGR.EXPECT().
 			Git("log", "-1", "--format=%s", "def456").
 			Return("Second commit", nil)
 		mockGR.EXPECT().
-			Git("branch", gomock.Any(), "def456").
+			Git("checkout", "-b", gomock.Any(), gomock.Any()).
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "def456").
+			Return("", nil)
+
+		mockGR.EXPECT().
+			Git("checkout", "feature-branch").
 			Return("", nil)
 
 		factory := createFactoryWithConfig("test")
@@ -163,6 +180,9 @@ func TestCreateBranches(t *testing.T) {
 		_, err = git.AddStackRefDir(stackTitle)
 		require.NoError(t, err)
 
+		err = git.AddStackBaseBranch(stackTitle, "main")
+		require.NoError(t, err)
+
 		existingRef := git.StackRef{
 			SHA:         "existing01",
 			Branch:      "test-test-stack-existing01",
@@ -175,10 +195,21 @@ func TestCreateBranches(t *testing.T) {
 		mockGR := git_testing.NewMockGitRunner(ctrl)
 
 		mockGR.EXPECT().
+			Git("symbolic-ref", "--quiet", "--short", "HEAD").
+			Return("feature-branch", nil)
+
+		mockGR.EXPECT().
 			Git("log", "-1", "--format=%s", "newcommit").
 			Return("New commit", nil)
 		mockGR.EXPECT().
-			Git("branch", gomock.Any(), "newcommit").
+			Git("checkout", "-b", gomock.Any(), "test-test-stack-existing01").
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "newcommit").
+			Return("", nil)
+
+		mockGR.EXPECT().
+			Git("checkout", "feature-branch").
 			Return("", nil)
 
 		factory := createFactoryWithConfig("test")
@@ -203,6 +234,73 @@ func TestCreateBranches(t *testing.T) {
 
 		_ = dir
 	})
+
+	t.Run("rolls back on cherry-pick conflict", func(t *testing.T) {
+		dir := git.InitGitRepoWithCommit(t)
+		defer config.StubWriteConfig(io.Discard, io.Discard)()
+
+		stackTitle := "test-stack"
+		err := git.SetLocalConfig("glab.currentstack", stackTitle)
+		require.NoError(t, err)
+
+		_, err = git.AddStackRefDir(stackTitle)
+		require.NoError(t, err)
+
+		err = git.AddStackBaseBranch(stackTitle, "main")
+		require.NoError(t, err)
+
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("symbolic-ref", "--quiet", "--short", "HEAD").
+			Return("feature-branch", nil)
+
+		mockGR.EXPECT().
+			Git("log", "-1", "--format=%s", "abc123").
+			Return("First commit", nil)
+		mockGR.EXPECT().
+			Git("checkout", "-b", gomock.Any(), "main").
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "abc123").
+			Return("", nil)
+
+		mockGR.EXPECT().
+			Git("log", "-1", "--format=%s", "def456").
+			Return("Conflicting commit", nil)
+		mockGR.EXPECT().
+			Git("checkout", "-b", gomock.Any(), gomock.Any()).
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "def456").
+			Return("", fmt.Errorf("conflict"))
+
+		mockGR.EXPECT().
+			Git("cherry-pick", "--abort").
+			Return("", nil)
+
+		mockGR.EXPECT().
+			Git("checkout", "feature-branch").
+			Return("", nil).Times(2)
+
+		mockGR.EXPECT().
+			Git("branch", "-D", gomock.Any()).
+			Return("", nil).Times(2)
+
+		factory := createFactoryWithConfig("test")
+
+		emptyStack := git.Stack{Title: stackTitle, Refs: make(map[string]git.StackRef)}
+		err = createBranches(factory, mockGR, []string{"abc123", "def456"}, stackTitle, emptyStack)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "conflict cherry-picking commit 2/2")
+
+		stack, err := git.GatherStackRefs(stackTitle)
+		require.NoError(t, err)
+		assert.Empty(t, stack.Refs)
+
+		_ = dir
+	})
 }
 
 func TestRunNoTTY(t *testing.T) {
@@ -214,10 +312,8 @@ func TestRunNoTTY(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockGR := git_testing.NewMockGitRunner(ctrl)
 
-		getText := getMockEditor("", &[]string{})
-
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
-			return NewCmdInferStack(f, mockGR, getText)
+			return NewCmdInferStack(f, mockGR)
 		}, false,
 			cmdtest.WithGitLabClient(cmdtest.NewTestApiClient(t, nil, "", "gitlab.com").Lab()),
 		)
@@ -225,13 +321,6 @@ func TestRunNoTTY(t *testing.T) {
 		_, err := exec("main..HEAD")
 		require.Error(t, err)
 	})
-}
-
-func getMockEditor(input string, prompts *[]string) cmdutils.GetTextUsingEditor {
-	return func(ctx context.Context, editor, tmpFileName, content string) (string, error) {
-		*prompts = append(*prompts, content)
-		return input, nil
-	}
 }
 
 func createFactoryWithConfig(value string) cmdutils.Factory {
