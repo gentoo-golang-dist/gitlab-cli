@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/skills/bundled"
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/registry"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
@@ -46,13 +46,13 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 }
 
 func (o *options) run() error {
-	skills, err := bundled.All()
+	skills, err := registry.All()
 	if err != nil {
 		return err
 	}
 
 	if len(skills) == 0 {
-		fmt.Fprintf(o.io.StdErr, "no bundled skills available.\n")
+		fmt.Fprintf(o.io.StdErr, "no skills available.\n")
 		return nil
 	}
 
@@ -62,9 +62,9 @@ func (o *options) run() error {
 	if w := o.io.TerminalWidth(); w > 0 {
 		table.SetTerminalWidth(w)
 	}
-	table.AddRow("Name", "Description")
+	table.AddRow("Name", "Source", "Description")
 	for _, s := range skills {
-		table.AddRow(s.Name, s.Description)
+		table.AddRow(s.Name, string(s.Source), s.Description)
 	}
 	fmt.Fprintf(o.io.StdOut, "%s", table.Render())
 	return nil

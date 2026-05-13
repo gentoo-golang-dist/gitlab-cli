@@ -10,7 +10,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/skills/bundled"
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/registry"
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/skill"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/text"
@@ -140,21 +141,21 @@ func (o *options) run() error {
 	return errors.Join(errs...)
 }
 
-func (o *options) resolveSkills() ([]bundled.Skill, error) {
+func (o *options) resolveSkills() ([]skill.Skill, error) {
 	name := o.requested
 	if name == "" {
 		name = defaultSkillName
 	}
-	s, err := bundled.Get(name)
+	s, err := registry.Get(name)
 	if err != nil {
 		return nil, err
 	}
-	return []bundled.Skill{s}, nil
+	return []skill.Skill{s}, nil
 }
 
-func (o *options) installOne(s bundled.Skill) error {
+func (o *options) installOne(s skill.Skill) error {
 	skillDir := filepath.Join(o.targetDir, s.Name)
-	skillMDPath := filepath.Join(skillDir, bundled.FileName)
+	skillMDPath := filepath.Join(skillDir, skill.FileName)
 	_, statErr := os.Stat(skillMDPath)
 	exists := statErr == nil
 

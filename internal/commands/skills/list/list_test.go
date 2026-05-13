@@ -21,8 +21,10 @@ func TestNewCmdList(t *testing.T) {
 	require.NoError(t, err)
 	stdout := out.String()
 	assert.Contains(t, stdout, "Name")
+	assert.Contains(t, stdout, "Source")
 	assert.Contains(t, stdout, "Description")
 	assert.Contains(t, stdout, "glab")
+	assert.Contains(t, stdout, "bundled", "bundled skills should show their source")
 }
 
 func TestNewCmdList_WrapsLongDescriptionsOnTTY(t *testing.T) {

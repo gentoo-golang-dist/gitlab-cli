@@ -1,0 +1,14 @@
+# Curated registry of remote agent skills hosted on gitlab.com.
+#
+# Each entry points at a directory in a public gitlab.com project that
+# contains a spec-compliant SKILL.md plus any supporting files. glab
+# fetches the entire directory tree at install time.
+#
+# To add an entry, prefer the generator:
+#
+#   go run ./scripts/skills/add-remote <full-url-to-skill-directory>
+#
+# Manual additions need the same fields the generator produces; the
+# entry name must match the SKILL.md frontmatter `name`.
+version: 1
+skills: []

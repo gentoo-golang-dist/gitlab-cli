@@ -3,11 +3,14 @@
 package bundled
 
 import (
+	"errors"
 	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/skill"
 )
 
 func TestAll(t *testing.T) {
@@ -20,7 +23,8 @@ func TestAll(t *testing.T) {
 	for _, s := range skills {
 		assert.NotEmpty(t, s.Name, "skill name should be set")
 		assert.NotEmpty(t, s.Description, "skill description should be set")
-		assert.NotEmpty(t, s.Files[FileName], "skill must include %s", FileName)
+		assert.Equal(t, skill.SourceBundled, s.Source, "Source should be set to bundled")
+		assert.NotEmpty(t, s.Files[skill.FileName], "skill must include %s", skill.FileName)
 		assert.NotEmpty(t, s.SkillFile(), "SkillFile() must return SKILL.md content")
 	}
 }
@@ -31,6 +35,7 @@ func TestGet_Known(t *testing.T) {
 	s, err := Get("glab")
 	require.NoError(t, err)
 	assert.Equal(t, "glab", s.Name)
+	assert.Equal(t, skill.SourceBundled, s.Source)
 	assert.NotEmpty(t, s.Description)
 	assert.Contains(t, string(s.SkillFile()), "name: glab")
 }
@@ -40,8 +45,7 @@ func TestGet_Unknown(t *testing.T) {
 
 	_, err := Get("does-not-exist")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `unknown skill "does-not-exist"`)
-	assert.Contains(t, err.Error(), "glab skills list")
+	assert.True(t, errors.Is(err, ErrNotFound), "error should wrap ErrNotFound")
 }
 
 func TestRelPath(t *testing.T) {
