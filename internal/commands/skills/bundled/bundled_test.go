@@ -19,7 +19,8 @@ func TestAll(t *testing.T) {
 	for _, s := range skills {
 		assert.NotEmpty(t, s.Name, "skill name should be set")
 		assert.NotEmpty(t, s.Description, "skill description should be set")
-		assert.NotEmpty(t, s.Content, "skill content should be set")
+		assert.NotEmpty(t, s.Files[FileName], "skill must include %s", FileName)
+		assert.NotEmpty(t, s.SkillFile(), "SkillFile() must return SKILL.md content")
 	}
 }
 
@@ -30,7 +31,7 @@ func TestGet_Known(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "glab", s.Name)
 	assert.NotEmpty(t, s.Description)
-	assert.Contains(t, string(s.Content), "name: glab")
+	assert.Contains(t, string(s.SkillFile()), "name: glab")
 }
 
 func TestGet_Unknown(t *testing.T) {
