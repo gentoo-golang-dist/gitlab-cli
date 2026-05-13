@@ -9,8 +9,8 @@ import (
 // based on well-known environment variables. Returns empty string if no agent
 // is detected. Only includes agents with confirmed, reliable sentinel variables.
 func DetectCodingAgent() string {
-	if os.Getenv("CLAUDECODE") == "1" {
-		return "claude-code"
+	if v := os.Getenv("AI_AGENT"); v != "" {
+		return v
 	}
 	if os.Getenv("OPENCODE") == "1" {
 		return "opencode"
@@ -26,6 +26,9 @@ func DetectCodingAgent() string {
 	}
 	if strings.Contains(os.Getenv("AWS_EXECUTION_ENV"), "AmazonQ-For-CLI") {
 		return "amazon-q"
+	}
+	if os.Getenv("CLAUDECODE") == "1" {
+		return "claude-code"
 	}
 	return ""
 }

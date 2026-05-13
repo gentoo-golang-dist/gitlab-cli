@@ -18,9 +18,14 @@ func TestDetectCodingAgent(t *testing.T) {
 			expected: "",
 		},
 		{
-			name:     "Claude Code",
-			envVars:  map[string]string{"CLAUDECODE": "1"},
-			expected: "claude-code",
+			name:     "AI_AGENT takes priority over all others",
+			envVars:  map[string]string{"AI_AGENT": "claude-code_2-1-140_agent", "CLAUDECODE": "1", "CURSOR_AGENT": "1"},
+			expected: "claude-code_2-1-140_agent",
+		},
+		{
+			name:     "AI_AGENT passes through raw value",
+			envVars:  map[string]string{"AI_AGENT": "some-custom-agent"},
+			expected: "some-custom-agent",
 		},
 		{
 			name:     "OpenCode",
@@ -53,6 +58,11 @@ func TestDetectCodingAgent(t *testing.T) {
 			expected: "amazon-q",
 		},
 		{
+			name:     "CLAUDECODE fallback when no higher priority match",
+			envVars:  map[string]string{"CLAUDECODE": "1"},
+			expected: "claude-code",
+		},
+		{
 			name:     "CLAUDECODE wrong value ignored",
 			envVars:  map[string]string{"CLAUDECODE": "true"},
 			expected: "",
@@ -62,19 +72,12 @@ func TestDetectCodingAgent(t *testing.T) {
 			envVars:  map[string]string{"CLINE_ACTIVE": "1"},
 			expected: "",
 		},
-		{
-			name: "first match wins when multiple agents set",
-			envVars: map[string]string{
-				"CLAUDECODE":   "1",
-				"CURSOR_AGENT": "1",
-			},
-			expected: "claude-code",
-		},
 	}
 
 	allAgentVars := []string{
-		"CLAUDECODE", "OPENCODE", "CURSOR_AGENT",
+		"AI_AGENT", "OPENCODE", "CURSOR_AGENT",
 		"CODEX_THREAD_ID", "CLINE_ACTIVE", "AWS_EXECUTION_ENV",
+		"CLAUDECODE",
 	}
 
 	for _, tt := range tests {
