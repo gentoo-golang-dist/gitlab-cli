@@ -19,10 +19,11 @@ import (
 )
 
 type options struct {
-	stackName string
+	stackName  string
+	baseBranch string
 }
 
-func NewCmdInferStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetTextUsingEditor) *cobra.Command {
+func NewCmdInferStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	o := &options{}
 
 	stackInferCmd := &cobra.Command{
@@ -48,7 +49,7 @@ This will append layers to an existing stack, or create a new one if needed.
 		`),
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(cmd.Context(), f, getText, gr, args, o)
+			return run(cmd.Context(), f, gr, args, o)
 		},
 	}
 
@@ -57,7 +58,18 @@ This will append layers to an existing stack, or create a new one if needed.
 	return stackInferCmd
 }
 
-func run(ctx context.Context, f cmdutils.Factory, getText cmdutils.GetTextUsingEditor, gr git.GitRunner, args []string, o *options) error {
+func parseBaseBranch(args []string) string {
+	for _, arg := range args {
+		if before, _, found := strings.Cut(arg, ".."); found {
+			return before
+		}
+	}
+	return ""
+}
+
+func run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner, args []string, o *options) error {
+	o.baseBranch = parseBaseBranch(args)
+
 	// check if in a stack
 	title, err := git.GetCurrentStackTitle()
 	if err != nil {
@@ -78,7 +90,7 @@ func run(ctx context.Context, f cmdutils.Factory, getText cmdutils.GetTextUsingE
 	io.StopSpinner("")
 	// pausing the spinner in case it's a terminal based editor
 
-	commits, err := promptForCommits(ctx, f, getText, gr, args)
+	commits, err := promptForCommits(ctx, f, gr, args)
 	if err != nil {
 		return fmt.Errorf("error getting commits for stack: %v", err)
 	}
@@ -108,30 +120,78 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 		return fmt.Errorf("error getting Git author: %v", err)
 	}
 
-	var prevSHA string
-	if !stack.Empty() {
-		prevSHA = stack.Last().SHA
+	originalBranch, err := gr.Git("symbolic-ref", "--quiet", "--short", "HEAD")
+	if err != nil {
+		return fmt.Errorf("error getting current branch: %v", err)
+	}
+	originalBranch = strings.TrimSpace(originalBranch)
+
+	restoreOriginalBranch := func() {
+		_, _ = gr.Git("checkout", originalBranch)
+	}
+	defer restoreOriginalBranch()
+
+	baseBranch, err := stack.BaseBranch(gr)
+	if err != nil {
+		return fmt.Errorf("error getting stack base branch: %v", err)
 	}
 
-	for _, commitHash := range commits {
+	var prevSHA string
+	prevBranch := baseBranch
+	if !stack.Empty() {
+		last := stack.Last()
+		prevSHA = last.SHA
+		prevBranch = last.Branch
+	}
+
+	var createdBranches []string
+	var createdRefs []git.StackRef
+
+	rollback := func() {
+		restoreOriginalBranch()
+		for _, b := range createdBranches {
+			_, _ = gr.Git("branch", "-D", b)
+		}
+		for _, ref := range createdRefs {
+			_ = git.DeleteStackRefFile(title, ref)
+		}
+	}
+
+	for i, commitHash := range commits {
 		description, err := commitSubject(gr, commitHash)
 		if err != nil {
+			rollback()
 			return fmt.Errorf("error getting commit subject for %s: %v", commitHash, err)
 		}
 
 		stackSHA, err := generateStackSha(description, title, string(author), time.Now())
 		if err != nil {
+			rollback()
 			return fmt.Errorf("error generating stack SHA: %v", err)
 		}
 
 		branchName, err := createShaBranch(f, stackSHA, title)
 		if err != nil {
+			rollback()
 			return fmt.Errorf("error creating branch name: %v", err)
 		}
 
-		_, err = gr.Git("branch", branchName, commitHash)
+		_, err = gr.Git("checkout", "-b", branchName, prevBranch)
 		if err != nil {
-			return fmt.Errorf("error creating branch %s at %s: %v", branchName, commitHash, err)
+			rollback()
+			return fmt.Errorf("error creating branch %s from %s: %v", branchName, prevBranch, err)
+		}
+		createdBranches = append(createdBranches, branchName)
+
+		_, err = gr.Git("cherry-pick", commitHash)
+		if err != nil {
+			_, _ = gr.Git("cherry-pick", "--abort")
+			rollback()
+			return fmt.Errorf(
+				"conflict cherry-picking commit %d/%d (%s %q) onto %s. "+
+					"The selected commits may not be independent — try selecting a contiguous range",
+				i+1, len(commits), commitHash, description, prevBranch,
+			)
 		}
 
 		if prevSHA != "" {
@@ -139,6 +199,7 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 			prevRef.Next = stackSHA
 			err = git.UpdateStackRefFile(title, prevRef)
 			if err != nil {
+				rollback()
 				return fmt.Errorf("error updating previous ref: %v", err)
 			}
 			stack.Refs[prevSHA] = prevRef
@@ -153,11 +214,14 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 
 		err = git.AddStackRefFile(title, newRef)
 		if err != nil {
+			rollback()
 			return fmt.Errorf("error creating stack ref file: %v", err)
 		}
 
+		createdRefs = append(createdRefs, newRef)
 		stack.Refs[stackSHA] = newRef
 		prevSHA = stackSHA
+		prevBranch = branchName
 	}
 
 	return nil
@@ -246,9 +310,12 @@ func promptAndCreateStack(ctx context.Context, f cmdutils.Factory, gr git.GitRun
 		return "", fmt.Errorf("error adding stack metadata directory: %v", err)
 	}
 
-	baseBranch, err := gr.Git("symbolic-ref", "--quiet", "--short", "HEAD")
-	if err != nil {
-		return "", fmt.Errorf("error determining current branch: %v", err)
+	baseBranch := o.baseBranch
+	if baseBranch == "" {
+		baseBranch, err = gr.Git("symbolic-ref", "--quiet", "--short", "HEAD")
+		if err != nil {
+			return "", fmt.Errorf("error determining current branch: %v", err)
+		}
 	}
 
 	err = git.AddStackBaseBranch(title, baseBranch)
