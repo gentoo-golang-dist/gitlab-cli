@@ -2,50 +2,53 @@ package infer
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/sha3"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
-	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/text"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type options struct {
-	stackName  string
-	baseBranch string
+	stackName string
 }
 
-func NewCmdInferStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
+func NewCmdInferStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetTextUsingEditor) *cobra.Command {
 	o := &options{}
 
 	stackInferCmd := &cobra.Command{
 		Use:   "infer <revision-range>",
-		Short: `Add layers to a stack based on a range of commits. (EXPERIMENTAL)`,
+		Short: `Add layers to a stack based on a range of commits. (EXPERIMENTAL.)`,
 		Long: `Add layers to a stack based on a range of commits.
 This will append layers to an existing stack, or create a new one if needed.
 ` + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Commit range syntax is similar to "git rev-list".
-			# The start of the range must be a branch name (not a relative ref like HEAD~5).
+			# Commit range syntax is similar to "git rev-list":
 
 			## Infer stack from commits between main and current branch
 			$ glab stack infer main..HEAD
 
-			## Infer stack from commits on a feature branch since it diverged from develop
-			$ glab stack infer develop..HEAD
+			## Infer stack from last 5 commits
+			$ glab stack infer HEAD~5..HEAD
+
+			## Infer stack from specific commit range
+			$ glab stack infer abc123..def456
 
 			## Create a new stack with a specific name
-			$ glab stack infer --name feature-stack main..HEAD
+			$ glab stack infer --name feature-stack HEAD~3..HEAD
 		`),
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(cmd.Context(), f, gr, args, o)
+			return run(cmd.Context(), f, getText, gr, args, o)
 		},
 	}
 
@@ -54,48 +57,7 @@ This will append layers to an existing stack, or create a new one if needed.
 	return stackInferCmd
 }
 
-func parseBaseBranch(gr git.GitRunner, args []string) (string, error) {
-	for _, arg := range args {
-		if before, _, found := strings.Cut(arg, ".."); found {
-			return resolveBaseBranch(gr, before)
-		}
-	}
-	return "", nil
-}
-
-// resolveBaseBranch resolves a revision expression to a branch name.
-// Relative refs like HEAD~3 are not valid base branches because they drift
-// as new commits are added.
-func resolveBaseBranch(gr git.GitRunner, ref string) (string, error) {
-	branch, err := gr.Git("rev-parse", "--abbrev-ref", ref)
-	if err != nil {
-		return "", fmt.Errorf("could not resolve %q to a branch: %v", ref, err)
-	}
-
-	branch = strings.TrimSpace(branch)
-
-	// rev-parse --abbrev-ref returns the ref unchanged when it can't
-	// abbreviate it to a symbolic name (e.g. HEAD~3 stays HEAD~3).
-	// Detect this by checking if the resolved name still matches the
-	// original non-branch-like ref.
-	if branch == ref && strings.ContainsAny(ref, "~^@{}") {
-		return "", fmt.Errorf(
-			"%q is a relative revision, not a branch name. "+
-				"Use a branch name as the start of the range (e.g. main..HEAD)",
-			ref,
-		)
-	}
-
-	return branch, nil
-}
-
-func run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner, args []string, o *options) error {
-	baseBranch, err := parseBaseBranch(gr, args)
-	if err != nil {
-		return err
-	}
-	o.baseBranch = baseBranch
-
+func run(ctx context.Context, f cmdutils.Factory, getText cmdutils.GetTextUsingEditor, gr git.GitRunner, args []string, o *options) error {
 	// check if in a stack
 	title, err := git.GetCurrentStackTitle()
 	if err != nil {
@@ -116,7 +78,7 @@ func run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner, args []strin
 	io.StopSpinner("")
 	// pausing the spinner in case it's a terminal based editor
 
-	commits, err := promptForCommits(ctx, f, gr, args)
+	commits, err := promptForCommits(ctx, f, getText, gr, args)
 	if err != nil {
 		return fmt.Errorf("error getting commits for stack: %v", err)
 	}
@@ -146,78 +108,30 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 		return fmt.Errorf("error getting Git author: %v", err)
 	}
 
-	originalBranch, err := gr.Git("symbolic-ref", "--quiet", "--short", "HEAD")
-	if err != nil {
-		return fmt.Errorf("error getting current branch: %v", err)
-	}
-	originalBranch = strings.TrimSpace(originalBranch)
-
-	restoreOriginalBranch := func() {
-		_, _ = gr.Git("checkout", originalBranch)
-	}
-	defer restoreOriginalBranch()
-
-	baseBranch, err := stack.BaseBranch(gr)
-	if err != nil {
-		return fmt.Errorf("error getting stack base branch: %v", err)
-	}
-
 	var prevSHA string
-	prevBranch := baseBranch
 	if !stack.Empty() {
-		last := stack.Last()
-		prevSHA = last.SHA
-		prevBranch = last.Branch
+		prevSHA = stack.Last().SHA
 	}
 
-	var createdBranches []string
-	var createdRefs []git.StackRef
-
-	rollback := func() {
-		restoreOriginalBranch()
-		for _, b := range createdBranches {
-			_, _ = gr.Git("branch", "-D", b)
-		}
-		for _, ref := range createdRefs {
-			_ = git.DeleteStackRefFile(title, ref)
-		}
-	}
-
-	for i, commitHash := range commits {
-		description, err := stackutils.CommitSubject(gr, commitHash)
+	for _, commitHash := range commits {
+		description, err := commitSubject(gr, commitHash)
 		if err != nil {
-			rollback()
 			return fmt.Errorf("error getting commit subject for %s: %v", commitHash, err)
 		}
 
-		stackSHA, err := stackutils.GenerateStackSha(description, title, string(author), time.Now())
+		stackSHA, err := generateStackSha(description, title, string(author), time.Now())
 		if err != nil {
-			rollback()
 			return fmt.Errorf("error generating stack SHA: %v", err)
 		}
 
-		branchName, err := stackutils.CreateShaBranch(f, stackSHA, title)
+		branchName, err := createShaBranch(f, stackSHA, title)
 		if err != nil {
-			rollback()
 			return fmt.Errorf("error creating branch name: %v", err)
 		}
 
-		_, err = gr.Git("checkout", "-b", branchName, prevBranch)
+		_, err = gr.Git("branch", branchName, commitHash)
 		if err != nil {
-			rollback()
-			return fmt.Errorf("error creating branch %s from %s: %v", branchName, prevBranch, err)
-		}
-		createdBranches = append(createdBranches, branchName)
-
-		_, err = gr.Git("cherry-pick", commitHash)
-		if err != nil {
-			_, _ = gr.Git("cherry-pick", "--abort")
-			rollback()
-			return fmt.Errorf(
-				"conflict cherry-picking commit %d/%d (%s %q) onto %s. "+
-					"The selected commits may not be independent — try selecting a contiguous range",
-				i+1, len(commits), commitHash, description, prevBranch,
-			)
+			return fmt.Errorf("error creating branch %s at %s: %v", branchName, commitHash, err)
 		}
 
 		if prevSHA != "" {
@@ -225,7 +139,6 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 			prevRef.Next = stackSHA
 			err = git.UpdateStackRefFile(title, prevRef)
 			if err != nil {
-				rollback()
 				return fmt.Errorf("error updating previous ref: %v", err)
 			}
 			stack.Refs[prevSHA] = prevRef
@@ -240,17 +153,56 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 
 		err = git.AddStackRefFile(title, newRef)
 		if err != nil {
-			rollback()
 			return fmt.Errorf("error creating stack ref file: %v", err)
 		}
 
-		createdRefs = append(createdRefs, newRef)
 		stack.Refs[stackSHA] = newRef
 		prevSHA = stackSHA
-		prevBranch = branchName
 	}
 
 	return nil
+}
+
+func commitSubject(gr git.GitRunner, hash string) (string, error) {
+	output, err := gr.Git("log", "-1", "--format=%s", hash)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(output), nil
+}
+
+func generateStackSha(message string, title string, author string, timestamp time.Time) (string, error) {
+	toSha := []byte(message + title + author + timestamp.String())
+	hashData := make([]byte, 4)
+
+	shakeHash := sha3.NewShake256()
+	shakeHash.Write(toSha)
+	_, err := shakeHash.Read(hashData)
+	if err != nil {
+		return "", fmt.Errorf("error generating hash for stack branch: %v", err)
+	}
+
+	return hex.EncodeToString(hashData), nil
+}
+
+func createShaBranch(f cmdutils.Factory, sha string, title string) (string, error) {
+	cfg := f.Config()
+
+	prefix, err := cfg.Get("", "branch_prefix")
+	if err != nil {
+		return "", fmt.Errorf("could not get prefix config: %v", err)
+	}
+
+	if prefix == "" {
+		prefix = os.Getenv("USER")
+		if prefix == "" {
+			prefix = "glab-stack"
+		}
+	}
+
+	branchTitle := []string{prefix, title, sha}
+	branch := strings.Join(branchTitle, "-")
+	return branch, nil
 }
 
 // promptAndCreateStack creates a new stack with the provided name or prompts for one
@@ -294,12 +246,9 @@ func promptAndCreateStack(ctx context.Context, f cmdutils.Factory, gr git.GitRun
 		return "", fmt.Errorf("error adding stack metadata directory: %v", err)
 	}
 
-	baseBranch := o.baseBranch
-	if baseBranch == "" {
-		baseBranch, err = gr.Git("symbolic-ref", "--quiet", "--short", "HEAD")
-		if err != nil {
-			return "", fmt.Errorf("error determining current branch: %v", err)
-		}
+	baseBranch, err := gr.Git("symbolic-ref", "--quiet", "--short", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("error determining current branch: %v", err)
 	}
 
 	err = git.AddStackBaseBranch(title, baseBranch)

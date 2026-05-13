@@ -3,11 +3,15 @@
 package infer
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
-	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
+	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
+	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 func TestParseCommitSelection(t *testing.T) {
@@ -151,10 +155,73 @@ func TestHasComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := stackutils.HasComment(tt.words)
+			result := hasComment(tt.words)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestPromptForCommits(t *testing.T) {
+	t.Run("returns selected commits from editor", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("log", "--format=%s%x00%h%x00%an", "--reverse", "main..HEAD").
+			Return("First commit\x00abc123\x00Author One\nSecond commit\x00def456\x00Author Two", nil)
+
+		var prompts []string
+		getText := func(_ context.Context, _, _, content string) (string, error) {
+			prompts = append(prompts, content)
+			return "abc123\ndef456\n", nil
+		}
+
+		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
+		factory := cmdtest.NewTestFactory(ios)
+
+		commits, err := promptForCommits(t.Context(), factory, getText, mockGR, []string{"main..HEAD"})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"abc123", "def456"}, commits)
+		require.Len(t, prompts, 1)
+		assert.Contains(t, prompts[0], "abc123")
+		assert.Contains(t, prompts[0], "def456")
+	})
+
+	t.Run("filters commits via editor", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("log", "--format=%s%x00%h%x00%an", "--reverse", "HEAD~3..HEAD").
+			Return("First\x00aaa111\x00Dev\nSecond\x00bbb222\x00Dev\nThird\x00ccc333\x00Dev", nil)
+
+		getText := func(_ context.Context, _, _, _ string) (string, error) {
+			return "aaa111\n# bbb222\nccc333\n", nil
+		}
+
+		ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
+		factory := cmdtest.NewTestFactory(ios)
+
+		commits, err := promptForCommits(t.Context(), factory, getText, mockGR, []string{"HEAD~3..HEAD"})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"aaa111", "ccc333"}, commits)
+	})
+
+	t.Run("returns error with no args", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		getText := func(_ context.Context, _, _, _ string) (string, error) {
+			return "", nil
+		}
+
+		ios, _, _, _ := cmdtest.TestIOStreams()
+		factory := cmdtest.NewTestFactory(ios)
+
+		_, err := promptForCommits(t.Context(), factory, getText, mockGR, []string{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no revision arguments provided")
+	})
 }
 
 func TestParseCommitSelectionErrorMessages(t *testing.T) {
