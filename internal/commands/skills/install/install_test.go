@@ -172,6 +172,29 @@ func TestInstallOne_WritesAllFiles(t *testing.T) {
 	}
 }
 
+func TestNewCmdInstall_NoNameSkipsRemoteSkills(t *testing.T) {
+	t.Parallel()
+
+	// "glab skills install" (no name) must only install bundled skills.
+	// Remote skills are opt-in by name; `registry.All()` returns them with
+	// Files == nil, and before this guarded path the installer would print
+	// a false "Installed" success without writing anything to disk.
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("--path " + tmpDir)
+
+	require.NoError(t, err)
+
+	// The `orbit` skill is a remote-only skill in the curated registry. It
+	// should not appear in install output and its directory must not exist.
+	combined := out.String() + out.Stderr()
+	assert.NotContains(t, combined, "Installed "+filepath.Join(tmpDir, "orbit"))
+	assert.NoDirExists(t, filepath.Join(tmpDir, "orbit"))
+
+	// And the bundled skills still install.
+	assert.FileExists(t, filepath.Join(tmpDir, "glab", skill.FileName))
+}
+
 func TestNewCmdInstall_TooManyArgs(t *testing.T) {
 	t.Parallel()
 

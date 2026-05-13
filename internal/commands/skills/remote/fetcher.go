@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -149,56 +150,57 @@ func (f *fetcher) listTree(project, path, ref string) ([]treeEntry, error) {
 // which avoids URL-encoding the path with %2F separators.
 func (f *fetcher) getRaw(project, ref, path string) ([]byte, error) {
 	u := f.host + "/" + project + "/-/raw/" + ref + "/" + path
-	req, err := http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := f.do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET %s: %s", u, resp.Status)
-	}
-	return io.ReadAll(resp.Body)
+	body, _, err := f.httpGet(u, nil)
+	return body, err
 }
 
 func (f *fetcher) getJSON(u string) ([]byte, error) {
-	body, _, err := f.getJSONWithHeaders(u)
+	body, _, err := f.httpGet(u, http.Header{"Accept": []string{"application/json"}})
 	return body, err
 }
 
 func (f *fetcher) getJSONWithHeaders(u string) ([]byte, http.Header, error) {
-	req, err := http.NewRequest(http.MethodGet, u, nil)
+	return f.httpGet(u, http.Header{"Accept": []string{"application/json"}})
+}
+
+// httpGet issues a GET against u with the given headers, reads the body,
+// and returns the bytes + response headers. The per-request timeout is
+// applied via context only when neither the client nor the parent
+// context already carries a deadline; the cancel scope spans the body
+// read so a default-timed fetch isn't cut off mid-stream.
+func (f *fetcher) httpGet(u string, headers http.Header) ([]byte, http.Header, error) {
+	ctx := context.Background()
+	if _, ok := ctx.Deadline(); !ok && f.client.Timeout == 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, defaultTimeout)
+		defer cancel()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
-	req.Header.Set("Accept", "application/json")
-	resp, err := f.do(req)
+	for k, vs := range headers {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
+
+	resp, err := f.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, nil, fmt.Errorf("GET %s: %s", u, resp.Status)
 	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, err
 	}
 	return body, resp.Header, nil
-}
-
-func (f *fetcher) do(req *http.Request) (*http.Response, error) {
-	// Per-request timeout via context would be more idiomatic, but the
-	// outer client may already carry one. Set a sane default if not.
-	if f.client.Timeout == 0 {
-		client := *f.client
-		client.Timeout = defaultTimeout
-		return client.Do(req)
-	}
-	return f.client.Do(req)
 }
 
 func relPath(root, full string) (string, error) {
