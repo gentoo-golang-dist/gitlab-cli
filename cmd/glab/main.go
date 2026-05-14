@@ -122,7 +122,7 @@ func main() {
 		),
 		true,
 		cfg,
-		api.BuildInfo{Version: version, Commit: commit, Platform: platform, Architecture: runtime.GOARCH},
+		api.BuildInfo{Version: version, Commit: commit, Platform: platform, Architecture: runtime.GOARCH, CodingAgent: api.DetectCodingAgent()},
 	)
 
 	// Setup command

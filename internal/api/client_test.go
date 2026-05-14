@@ -11,6 +11,50 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/config"
 )
 
+func TestBuildInfoUserAgent(t *testing.T) {
+	tests := []struct {
+		name       string
+		buildInfo  BuildInfo
+		expectedUA string
+	}{
+		{
+			name: "without coding agent",
+			buildInfo: BuildInfo{
+				Version:      "1.50.0",
+				Platform:     "linux",
+				Architecture: "amd64",
+			},
+			expectedUA: "glab/1.50.0 (linux, amd64)",
+		},
+		{
+			name: "with coding agent",
+			buildInfo: BuildInfo{
+				Version:      "1.50.0",
+				Platform:     "darwin",
+				Architecture: "arm64",
+				CodingAgent:  "claude-code",
+			},
+			expectedUA: "glab/1.50.0 (darwin, arm64) Coding-Agent/claude-code",
+		},
+		{
+			name: "empty coding agent omits suffix",
+			buildInfo: BuildInfo{
+				Version:      "DEV",
+				Platform:     "windows",
+				Architecture: "amd64",
+				CodingAgent:  "",
+			},
+			expectedUA: "glab/DEV (windows, amd64)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expectedUA, tt.buildInfo.UserAgent())
+		})
+	}
+}
+
 func TestNewClientFromConfig(t *testing.T) {
 	t.Setenv("GITLAB_TOKEN", "")
 	t.Setenv("GITLAB_ACCESS_TOKEN", "")

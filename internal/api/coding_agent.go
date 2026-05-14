@@ -1,0 +1,30 @@
+package api
+
+import (
+	"os"
+	"regexp"
+)
+
+// agentValueRE validates AI_AGENT values: alphanumeric, dots, hyphens, underscores, max 64 chars.
+var agentValueRE = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
+
+// AI_AGENT is the universal escape hatch; hardcoded agents are alphabetical, no priority implied.
+func DetectCodingAgent() string {
+	if v := os.Getenv("AI_AGENT"); agentValueRE.MatchString(v) {
+		return v
+	}
+	if os.Getenv("CLAUDECODE") == "1" {
+		return "claude-code"
+	}
+	// CODEX_THREAD_ID is an opaque thread identifier, not a boolean flag.
+	if os.Getenv("CODEX_THREAD_ID") != "" {
+		return "codex"
+	}
+	if os.Getenv("CURSOR_AGENT") == "1" {
+		return "cursor"
+	}
+	if os.Getenv("OPENCODE") == "1" {
+		return "opencode"
+	}
+	return ""
+}

@@ -28,10 +28,15 @@ type ClientOption func(*Client) error
 
 type BuildInfo struct {
 	Version, Commit, Platform, Architecture string
+	CodingAgent                             string
 }
 
 func (i BuildInfo) UserAgent() string {
-	return fmt.Sprintf("glab/%s (%s, %s)", i.Version, i.Platform, i.Architecture)
+	ua := fmt.Sprintf("glab/%s (%s, %s)", i.Version, i.Platform, i.Architecture)
+	if i.CodingAgent != "" {
+		ua += " Coding-Agent/" + i.CodingAgent
+	}
+	return ua
 }
 
 // Client represents an argument to NewClient
