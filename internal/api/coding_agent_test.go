@@ -62,6 +62,16 @@ func TestDetectCodingAgent(t *testing.T) {
 			envVars:  map[string]string{"AI_AGENT": "agent/name!@#"},
 			expected: "",
 		},
+		{
+			name:     "AI_AGENT exceeding max length is ignored",
+			envVars:  map[string]string{"AI_AGENT": "abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789XYZ"},
+			expected: "",
+		},
+		{
+			name:     "AI_AGENT at exactly max length is accepted",
+			envVars:  map[string]string{"AI_AGENT": "abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789"},
+			expected: "abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789",
+		},
 	}
 
 	allAgentVars := []string{
