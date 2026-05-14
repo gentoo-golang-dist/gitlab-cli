@@ -1,12 +1,14 @@
 package query
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -20,6 +22,12 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
+
+// utf8BOM is the byte-order mark that some editors prepend to UTF-8
+// files. Go's encoding/json rejects it with a misleading
+// "invalid character 'ï'" message; readBody strips it so users get the
+// same behaviour as `jq`, which tolerates a leading BOM.
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
 
 const (
 	formatLLM = "llm"
@@ -159,10 +167,55 @@ func readBody(source string, stdin io.ReadCloser) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading query body: %w", err)
 	}
+	// Strip a leading UTF-8 BOM if present. Some editors add it to
+	// files saved as "UTF-8 with BOM"; Go's JSON parser rejects it
+	// even though the JSON is otherwise valid (and `jq` accepts it).
+	data = bytes.TrimPrefix(data, utf8BOM)
 	if len(data) == 0 {
 		return nil, errors.New("query body is empty")
 	}
 	return data, nil
+}
+
+// wrapJSONError returns a context-rich `*cmdutils.ExitError` for a
+// JSON parse failure. The default Go error ("invalid character '@'
+// looking for beginning of value") is technically accurate but
+// historically confused users into thinking the CLI mis-handles `@`
+// inside JSON string literals — when in fact `@` outside a string is
+// just invalid JSON. This helper points the user at the real cause
+// and at `jq`, which they can use to locate the offending byte.
+//
+// The body is *not* preprocessed before JSON parsing: bytes inside
+// JSON string literals (including `@`) are forwarded verbatim.
+//
+// The detail text is baked into the wrapped error's message because
+// Fang's default error handler renders `err.Error()` and ignores
+// `ExitError.Details`.
+func wrapJSONError(body []byte, err error) *cmdutils.ExitError {
+	const base = "query body is not valid JSON"
+	details := base
+	var syn *json.SyntaxError
+	if errors.As(err, &syn) && strings.Contains(err.Error(), "looking for beginning of value") {
+		if ch, ok := byteAtOffset(body, syn.Offset); ok && ch == '@' {
+			details = fmt.Sprintf(
+				"%s: stray %q outside a string literal at byte %d. "+
+					"`@` is allowed inside JSON string values (e.g. \"user@example.com\"); "+
+					"if your file looks correct, validate it with `jq . <file>` to find the real offset",
+				base, ch, syn.Offset)
+		}
+	}
+	return cmdutils.WrapError(errors.New(details+": "+err.Error()), details)
+}
+
+// byteAtOffset returns the byte at the JSON parser's 1-indexed offset.
+// json.SyntaxError.Offset points at the byte *after* the offending
+// character, so the offending byte is at Offset-1.
+func byteAtOffset(body []byte, offset int64) (byte, bool) {
+	idx := offset - 1
+	if idx < 0 || idx >= int64(len(body)) {
+		return 0, false
+	}
+	return body[idx], true
 }
 
 // buildRequest parses the user-supplied body into an
@@ -171,13 +224,19 @@ func readBody(source string, stdin io.ReadCloser) ([]byte, error) {
 //  1. --format flag (when explicitly passed by the user)
 //  2. body's response_format field
 //  3. "llm" fallback default
+//
+// The body is parsed strictly as JSON: there is no curl-style
+// `@filename` expansion or any other preprocessing. Bytes inside JSON
+// string literals — including `@` (e.g. email addresses like
+// `user@example.com`, Ruby `@instance_var` references, or `@version`
+// annotations) — are forwarded to the API verbatim.
 func buildRequest(body []byte, format string, formatChanged bool) (*gitlab.OrbitQueryRequest, error) {
 	var raw struct {
 		Query          json.RawMessage `json:"query"`
 		ResponseFormat *string         `json:"response_format,omitempty"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, cmdutils.WrapError(err, "query body is not valid JSON")
+		return nil, wrapJSONError(body, err)
 	}
 	if len(raw.Query) == 0 {
 		return nil, errors.New("query body must contain a top-level `query` object")
