@@ -13,9 +13,9 @@ import (
 
 func TestBuildInfoUserAgent(t *testing.T) {
 	tests := []struct {
-		name        string
-		buildInfo   BuildInfo
-		expectedUA  string
+		name       string
+		buildInfo  BuildInfo
+		expectedUA string
 	}{
 		{
 			name: "without coding agent",
