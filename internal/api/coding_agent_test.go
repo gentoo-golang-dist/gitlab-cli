@@ -52,6 +52,16 @@ func TestDetectCodingAgent(t *testing.T) {
 			envVars:  map[string]string{"CURSOR_AGENT": "1"},
 			expected: "cursor",
 		},
+		{
+			name:     "AI_AGENT with spaces is ignored",
+			envVars:  map[string]string{"AI_AGENT": "has spaces", "CLAUDECODE": "1"},
+			expected: "claude-code",
+		},
+		{
+			name:     "AI_AGENT with special chars is ignored",
+			envVars:  map[string]string{"AI_AGENT": "agent/name!@#"},
+			expected: "",
+		},
 	}
 
 	allAgentVars := []string{

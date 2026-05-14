@@ -34,7 +34,7 @@ type BuildInfo struct {
 func (i BuildInfo) UserAgent() string {
 	ua := fmt.Sprintf("glab/%s (%s, %s)", i.Version, i.Platform, i.Architecture)
 	if i.CodingAgent != "" {
-		ua += " Agent/" + i.CodingAgent
+		ua += " Coding-Agent/" + i.CodingAgent
 	}
 	return ua
 }
