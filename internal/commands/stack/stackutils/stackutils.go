@@ -3,7 +3,7 @@ package stackutils
 import (
 	"encoding/hex"
 	"fmt"
-	"os"
+	"os/user"
 	"strings"
 	"time"
 
@@ -12,6 +12,9 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 )
+
+// For testing/mocking purposes
+var GetUser = user.Current
 
 func GenerateStackSha(message string, title string, author string, timestamp time.Time) (string, error) {
 	toSha := []byte(message + title + author + timestamp.String())
@@ -36,7 +39,10 @@ func CreateShaBranch(f cmdutils.Factory, sha string, title string) (string, erro
 	}
 
 	if prefix == "" {
-		prefix = os.Getenv("USER")
+		user, err := GetUser()
+		if err == nil {
+			prefix = strings.ToLower(user.Username)
+		}
 		if prefix == "" {
 			prefix = "glab-stack"
 		}
