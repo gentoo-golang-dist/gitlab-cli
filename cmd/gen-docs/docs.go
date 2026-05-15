@@ -374,7 +374,7 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 	buf.WriteString("- Ask GitLab Duo Chat (Classic) questions about Git.\n")
 	buf.WriteString("- Manage GitLab agents for Kubernetes.\n\n")
 	buf.WriteString("`glab` is available for repositories hosted on GitLab.com, GitLab Dedicated, and GitLab Self-Managed. It supports multiple authenticated GitLab instances, and automatically detects the authenticated hostname from the remotes available in your working Git directory.\n\n")
-	buf.WriteString("![command example](img/glabgettingstarted.gif)\n\n")
+	buf.WriteString("![command example](img/getting-started.gif)\n\n")
 
 	// Install and authenticate sections (moved up, with README links)
 	buf.WriteString("## Install the CLI\n\n")
