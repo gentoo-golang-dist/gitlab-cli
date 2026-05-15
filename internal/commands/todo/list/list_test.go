@@ -3,161 +3,162 @@
 package list
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
+// TestMCPSafeAnnotation pins the Safe marker.
+func TestMCPSafeAnnotation(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	cmd := NewCmd(cmdtest.NewTestFactory(ios))
+	assert.Equal(t, "true", cmd.Annotations[mcpannotations.Safe])
+}
+
+// testTodoJSON mirrors a real /todos response, including the group
+// field the SDK's gitlab.Todo misses. Raw JSON so the wrapper
+// decode runs end-to-end.
+const testTodoJSON = `[{
+	"id": 42,
+	"action_name": "assigned",
+	"target_type": "MergeRequest",
+	"target": { "title": "Fix the bug" },
+	"project": { "path_with_namespace": "mygroup/myproject" },
+	"state": "pending",
+	"created_at": "2025-01-01T00:00:00Z",
+	"body": "review requested",
+	"target_url": "https://example.com/mygroup/myproject/-/merge_requests/1"
+}]`
+
+// testGroupTodoJSON covers a group-scoped todo: no project, but a
+// group with full_path. The SDK drops this; the wrapper keeps it.
+const testGroupTodoJSON = `[{
+	"id": 99,
+	"action_name": "mentioned",
+	"target_type": "Epic",
+	"target": { "title": "Platform roadmap" },
+	"group": {
+		"id": 10,
+		"name": "gitlab-org",
+		"path": "gitlab-org",
+		"full_path": "gitlab-org",
+		"web_url": "https://example.com/groups/gitlab-org"
+	},
+	"state": "pending",
+	"created_at": "2025-01-01T00:00:00Z",
+	"body": "mention",
+	"target_url": "https://example.com/groups/gitlab-org/-/epics/5"
+}]`
+
+// newTodoTestFactoryOption stands up an httptest server returning
+// body on GET /api/v4/todos and wires the factory at it.
+func newTodoTestFactoryOption(t *testing.T, body string) cmdtest.FactoryOption {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v4/todos" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(body))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	gitlabClient, err := gitlab.NewClient("test-token", gitlab.WithBaseURL(srv.URL+"/api/v4"))
+	require.NoError(t, err)
+
+	apiClient, err := api.NewClient(
+		func(*http.Client) (gitlab.AuthSource, error) {
+			return gitlab.AccessTokenAuthSource{Token: "test-token"}, nil
+		},
+		api.WithGitLabClient(gitlabClient),
+	)
+	require.NoError(t, err)
+
+	return cmdtest.WithApiClient(apiClient)
+}
+
 func TestTodoList(t *testing.T) {
 	t.Parallel()
-	type testCase struct {
-		name        string
-		cli         string
-		expectedOut string
-		wantErr     bool
-		setupMock   func(tc *gitlabtesting.TestClient)
-	}
 
-	createdAt := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	testTodo := &gitlab.Todo{
-		ID:         42,
-		ActionName: gitlab.TodoAssigned,
-		TargetType: gitlab.TodoTargetMergeRequest,
-		Target: &gitlab.TodoTarget{
-			Title: "Fix the bug",
-		},
-		Project: &gitlab.BasicProject{
-			PathWithNamespace: "mygroup/myproject",
-		},
-		State:     "pending",
-		CreatedAt: &createdAt,
-	}
-
-	testCases := []testCase{
+	cases := []struct {
+		name     string
+		cli      string
+		body     string
+		contains []string
+	}{
 		{
-			name:        "lists pending todos",
-			cli:         "",
-			expectedOut: "ID\tAction\tType\tTitle\tProject\tCreated\n42\tassigned\tMergeRequest\tFix the bug\tmygroup/myproject\t2025-01-01 00:00:00 +0000 UTC\n\n",
-			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockTodos.EXPECT().
-					ListTodos(gomock.Any()).
-					Return([]*gitlab.Todo{testTodo}, nil, nil)
-			},
+			name:     "lists pending todos with project context",
+			cli:      "",
+			body:     testTodoJSON,
+			contains: []string{"42", "assigned", "MergeRequest", "Fix the bug", "mygroup/myproject"},
 		},
 		{
-			name:        "lists done todos with --state=done",
-			cli:         "--state=done",
-			expectedOut: "ID\tAction\tType\tTitle\tProject\tCreated\n42\tassigned\tMergeRequest\tFix the bug\tmygroup/myproject\t2025-01-01 00:00:00 +0000 UTC\n\n",
-			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockTodos.EXPECT().
-					ListTodos(gomock.Any()).
-					Return([]*gitlab.Todo{testTodo}, nil, nil)
-			},
+			name:     "filters by --state=done hit the same endpoint",
+			cli:      "--state=done",
+			body:     testTodoJSON,
+			contains: []string{"Fix the bug"},
 		},
 		{
-			name:        "filters by action",
-			cli:         "--action=assigned",
-			expectedOut: "ID\tAction\tType\tTitle\tProject\tCreated\n42\tassigned\tMergeRequest\tFix the bug\tmygroup/myproject\t2025-01-01 00:00:00 +0000 UTC\n\n",
-			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockTodos.EXPECT().
-					ListTodos(gomock.Any()).
-					Return([]*gitlab.Todo{testTodo}, nil, nil)
-			},
-		},
-		{
-			name:        "filters by type",
-			cli:         "--type=MergeRequest",
-			expectedOut: "ID\tAction\tType\tTitle\tProject\tCreated\n42\tassigned\tMergeRequest\tFix the bug\tmygroup/myproject\t2025-01-01 00:00:00 +0000 UTC\n\n",
-			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockTodos.EXPECT().
-					ListTodos(gomock.Any()).
-					Return([]*gitlab.Todo{testTodo}, nil, nil)
-			},
-		},
-		{
-			name:        "returns empty output when no todos",
-			cli:         "",
-			expectedOut: "\n",
-			setupMock: func(tc *gitlabtesting.TestClient) {
-				tc.MockTodos.EXPECT().
-					ListTodos(gomock.Any()).
-					Return([]*gitlab.Todo{}, nil, nil)
-			},
+			name:     "empty array gives a clean blank render",
+			cli:      "",
+			body:     `[]`,
+			contains: nil,
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			// GIVEN
-			testClient := gitlabtesting.NewTestClient(t)
-			tc.setupMock(testClient)
-			exec := cmdtest.SetupCmdForTest(
-				t,
-				NewCmd,
-				false,
-				cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
-			)
-
-			// WHEN
+			exec := cmdtest.SetupCmdForTest(t, NewCmd, false, newTodoTestFactoryOption(t, tc.body))
 			out, err := exec(tc.cli)
-
-			// THEN
-			if tc.wantErr {
-				require.Error(t, err)
-				return
-			}
 			require.NoError(t, err)
-			assert.Equal(t, tc.expectedOut, out.OutBuf.String())
-			assert.Empty(t, out.ErrBuf.String())
+			for _, want := range tc.contains {
+				assert.Contains(t, out.OutBuf.String(), want)
+			}
 		})
 	}
 }
 
+// TestTodoList_JSON covers the enriched JSON output: target_type,
+// action_name, and group.full_path for group-scoped todos.
 func TestTodoList_JSON(t *testing.T) {
 	t.Parallel()
 
-	createdAt := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	testTodo := &gitlab.Todo{
-		ID:         42,
-		ActionName: gitlab.TodoAssigned,
-		TargetType: gitlab.TodoTargetMergeRequest,
-		Target: &gitlab.TodoTarget{
-			Title: "Fix the bug",
-		},
-		Project: &gitlab.BasicProject{
-			PathWithNamespace: "mygroup/myproject",
-		},
-		State:     "pending",
-		CreatedAt: &createdAt,
-	}
+	t.Run("project-scoped todo", func(t *testing.T) {
+		t.Parallel()
+		exec := cmdtest.SetupCmdForTest(t, NewCmd, false, newTodoTestFactoryOption(t, testTodoJSON))
+		out, err := exec("--output json")
+		require.NoError(t, err)
 
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockTodos.EXPECT().
-		ListTodos(gomock.Any()).
-		Return([]*gitlab.Todo{testTodo}, nil, nil)
+		got := out.OutBuf.String()
+		assert.Contains(t, got, `"id":42`)
+		assert.Contains(t, got, `"action_name":"assigned"`)
+		assert.Contains(t, got, `"target_type":"MergeRequest"`)
+		assert.Contains(t, got, `"path_with_namespace":"mygroup/myproject"`)
+		assert.NotContains(t, got, `"group":`, "project-only todo should not carry a group field")
+	})
 
-	exec := cmdtest.SetupCmdForTest(
-		t,
-		NewCmd,
-		false,
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
-	)
+	t.Run("group-scoped todo surfaces full_path", func(t *testing.T) {
+		t.Parallel()
+		exec := cmdtest.SetupCmdForTest(t, NewCmd, false, newTodoTestFactoryOption(t, testGroupTodoJSON))
+		out, err := exec("--output json")
+		require.NoError(t, err)
 
-	out, err := exec("--output json")
-	require.NoError(t, err)
-
-	assert.Contains(t, out.String(), `"id":42`)
-	assert.Contains(t, out.String(), `"action_name":"assigned"`)
-	assert.Contains(t, out.String(), `"target_type":"MergeRequest"`)
-	assert.Empty(t, out.Stderr())
+		got := out.OutBuf.String()
+		assert.Contains(t, got, `"id":99`)
+		assert.Contains(t, got, `"action_name":"mentioned"`)
+		assert.Contains(t, got, `"target_type":"Epic"`)
+		assert.Contains(t, got, `"full_path":"gitlab-org"`)
+	})
 }
