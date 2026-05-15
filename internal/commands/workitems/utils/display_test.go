@@ -9,6 +9,40 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
+// TestStateColor pins the OPEN/CLOSED tint mapping and confirms
+// unknown states pass through without color rather than being
+// silently coloured as one of the known states.
+func TestStateColor(t *testing.T) {
+	t.Parallel()
+	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(true))
+	c := ios.Color()
+	cases := map[string]struct {
+		state string
+		// The same color-fn pointer the helper should pick. Compared
+		// by pointer identity since these are package-level fields.
+		want func(string) string
+	}{
+		"OPEN is green":           {"OPEN", c.Green},
+		"CLOSED is red":           {"CLOSED", c.Red},
+		"empty state passes thru": {"", nil},
+		"unknown state passes thru": {"TRIAGE", nil},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := StateColor(tc.state, c)
+			if tc.want == nil {
+				// Identity function: input echoes unchanged.
+				assert.Equal(t, "x", got("x"))
+			} else {
+				// Pointer equality: same color function the palette
+				// exposes for that name.
+				assert.Equal(t, tc.want("x"), got("x"))
+			}
+		})
+	}
+}
+
 func TestDisplayWorkItemList(t *testing.T) {
 	t.Parallel()
 

@@ -6,6 +6,20 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
+// StateColor returns the tint function for a work item state. OPEN
+// is green, CLOSED is red, anything else passes through unchanged --
+// future states surface honestly instead of being mistinted as open.
+func StateColor(state string, c *iostreams.ColorPalette) func(string) string {
+	switch state {
+	case "OPEN":
+		return c.Green
+	case "CLOSED":
+		return c.Red
+	default:
+		return func(s string) string { return s }
+	}
+}
+
 // DisplayWorkItemList formats and displays work items as a table
 func DisplayWorkItemList(streams *iostreams.IOStreams, workItems []api.WorkItem) string {
 	if len(workItems) == 0 {
@@ -19,16 +33,7 @@ func DisplayWorkItemList(streams *iostreams.IOStreams, workItems []api.WorkItem)
 	table.AddRow("TYPE", "IID", "TITLE", "STATE", "AUTHOR")
 
 	for _, wi := range workItems {
-		// evaluate color funcs once per work item
-		var stateColor func(string) string
-		switch wi.State {
-		case "OPEN":
-			stateColor = c.Green
-		case "CLOSED":
-			stateColor = c.Red
-		default:
-			stateColor = func(s string) string { return s } // no color
-		}
+		stateColor := StateColor(wi.State, c)
 
 		// TYPE column
 		table.AddCell(wi.WorkItemType.Name)

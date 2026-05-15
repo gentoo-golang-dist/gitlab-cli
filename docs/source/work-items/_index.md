@@ -34,3 +34,4 @@ For more information, see
 ## Subcommands
 
 - [`list`](list.md)
+- [`view`](view.md)
