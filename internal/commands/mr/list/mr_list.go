@@ -436,4 +436,3 @@ func projectListMROptionsToAll(l *gitlab.ListProjectMergeRequestsOptions) *gitla
 	}
 	return out
 }
-
