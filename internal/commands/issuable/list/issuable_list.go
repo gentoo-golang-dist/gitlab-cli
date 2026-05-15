@@ -569,4 +569,3 @@ func projectListIssueOptionsToAll(l *gitlab.ListProjectIssuesOptions) *gitlab.Li
 	}
 	return out
 }
-

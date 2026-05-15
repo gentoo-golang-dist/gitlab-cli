@@ -22,9 +22,9 @@ func TestStateColor(t *testing.T) {
 		// by pointer identity since these are package-level fields.
 		want func(string) string
 	}{
-		"OPEN is green":           {"OPEN", c.Green},
-		"CLOSED is red":           {"CLOSED", c.Red},
-		"empty state passes thru": {"", nil},
+		"OPEN is green":             {"OPEN", c.Green},
+		"CLOSED is red":             {"CLOSED", c.Red},
+		"empty state passes thru":   {"", nil},
 		"unknown state passes thru": {"TRIAGE", nil},
 	}
 	for name, tc := range cases {
