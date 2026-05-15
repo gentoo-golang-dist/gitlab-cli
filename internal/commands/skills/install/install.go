@@ -20,6 +20,12 @@ import (
 // as defined by the Agent Skills specification (https://agentskills.io).
 var skillsRelDir = filepath.Join(".agents", "skills")
 
+// defaultSkillName is the skill installed when no positional argument
+// is given. Keeping the default to the single core `glab` skill
+// avoids polluting an agent's context with descriptions of bundled
+// skills the user may not need.
+const defaultSkillName = "glab"
+
 type options struct {
 	io        *iostreams.IOStreams
 	global    bool
@@ -43,9 +49,9 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 			with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any
 			other compliant agent.
 
-			By default, all bundled skills are installed. Pass a positional %[1]sname%[1]s
-			argument to install a single skill. Run %[1]sglab skills list%[1]s to see what
-			is available.
+			By default, only the core %[1]sglab%[1]s skill is installed. Pass a positional
+			%[1]sname%[1]s argument to install a specific bundled skill instead. Run
+			%[1]sglab skills list%[1]s to see what is available.
 
 			Install scope:
 
@@ -56,22 +62,22 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 			- Use %[1]s--path%[1]s to install skills to a custom directory. The path is resolved
 			  relative to the current working directory, not the repository root.
 
-			To overwrite existing skill files, use %[1]s--force%[1]s.
+			To overwrite an existing skill file, use %[1]s--force%[1]s.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Install all bundled skills in the current project (default)
+			# Install the core glab skill in the current project (default)
 			glab skills install
 
-			# Install a single skill by name
-			glab skills install glab
+			# Install a specific bundled skill by name
+			glab skills install glab-stack
 
-			# Install skills globally (user scope)
+			# Install the core skill globally (user scope)
 			glab skills install --global
 
-			# Install skills to a custom directory
-			glab skills install --path /path/to/skills
+			# Install a skill to a custom directory
+			glab skills install glab-stack --path /path/to/skills
 
-			# Overwrite existing skill files
+			# Overwrite an existing skill file
 			glab skills install --force
 		`),
 		Args: cobra.MaximumNArgs(1),
@@ -135,14 +141,15 @@ func (o *options) run() error {
 }
 
 func (o *options) resolveSkills() ([]bundled.Skill, error) {
-	if o.requested != "" {
-		s, err := bundled.Get(o.requested)
-		if err != nil {
-			return nil, err
-		}
-		return []bundled.Skill{s}, nil
+	name := o.requested
+	if name == "" {
+		name = defaultSkillName
 	}
-	return bundled.All()
+	s, err := bundled.Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return []bundled.Skill{s}, nil
 }
 
 func (o *options) installOne(s bundled.Skill) error {

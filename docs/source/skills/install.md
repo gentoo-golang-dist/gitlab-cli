@@ -19,9 +19,9 @@ cross-agent standard defined by the Agent Skills specification. This works
 with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any
 other compliant agent.
 
-By default, all bundled skills are installed. Pass a positional `name`
-argument to install a single skill. Run `glab skills list` to see what
-is available.
+By default, only the core `glab` skill is installed. Pass a positional
+`name` argument to install a specific bundled skill instead. Run
+`glab skills list` to see what is available.
 
 Install scope:
 
@@ -32,7 +32,7 @@ Install scope:
 - Use `--path` to install skills to a custom directory. The path is resolved
   relative to the current working directory, not the repository root.
 
-To overwrite existing skill files, use `--force`.
+To overwrite an existing skill file, use `--force`.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -46,19 +46,19 @@ glab skills install [name] [flags]
 ## Examples
 
 ```console
-# Install all bundled skills in the current project (default)
+# Install the core glab skill in the current project (default)
 glab skills install
 
-# Install a single skill by name
-glab skills install glab
+# Install a specific bundled skill by name
+glab skills install glab-stack
 
-# Install skills globally (user scope)
+# Install the core skill globally (user scope)
 glab skills install --global
 
-# Install skills to a custom directory
-glab skills install --path /path/to/skills
+# Install a skill to a custom directory
+glab skills install glab-stack --path /path/to/skills
 
-# Overwrite existing skill files
+# Overwrite an existing skill file
 glab skills install --force
 
 ```

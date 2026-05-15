@@ -26,6 +26,11 @@ func TestNewCmdInstall_PathFlag(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
 	assert.FileExists(t, filepath.Join(tmpDir, "glab", bundled.FileName))
+	// Default install should only ship the core `glab` skill; other
+	// bundled skills are opt-in by name to avoid context-window
+	// pollution. Guard against regressing back to "install all".
+	assert.NoFileExists(t, filepath.Join(tmpDir, "glab-stack", bundled.FileName),
+		"default install must not include glab-stack")
 }
 
 func TestNewCmdInstall_GlobalFlag(t *testing.T) {
