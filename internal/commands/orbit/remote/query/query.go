@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -194,22 +193,37 @@ func readBody(source string, stdin io.ReadCloser) ([]byte, error) {
 func wrapJSONError(body []byte, err error) *cmdutils.ExitError {
 	const base = "query body is not valid JSON"
 	details := base
+	// We rely solely on `body[Offset-1] == '@'` to detect the
+	// stray-`@` case. We deliberately do NOT substring-match on the
+	// stdlib's "looking for beginning of value" wording: that string
+	// is not part of Go's API contract and could be reworded in a
+	// future release, which would silently disable this special case.
+	// The byte check is sufficient on its own — `@` inside a JSON
+	// string literal never produces a SyntaxError, so any
+	// SyntaxError whose offending byte is `@` is by definition the
+	// stray-`@` case we want to flag.
 	var syn *json.SyntaxError
-	if errors.As(err, &syn) && strings.Contains(err.Error(), "looking for beginning of value") {
+	if errors.As(err, &syn) {
 		if ch, ok := byteAtOffset(body, syn.Offset); ok && ch == '@' {
 			details = fmt.Sprintf(
-				"%s: stray %q outside a string literal at byte %d. "+
+				"%s: stray %q outside a string literal at byte %d (1-indexed). "+
 					"`@` is allowed inside JSON string values (e.g. \"user@example.com\"); "+
 					"if your file looks correct, validate it with `jq . <file>` to find the real offset",
 				base, ch, syn.Offset)
 		}
 	}
-	return cmdutils.WrapError(errors.New(details+": "+err.Error()), details)
+	// Wrap with %w so the original *json.SyntaxError remains
+	// reachable via errors.As / errors.Unwrap. Fang renders
+	// err.Error() (which contains the full hint baked in via
+	// fmt.Errorf), so the user-facing message is unchanged.
+	return cmdutils.WrapError(fmt.Errorf("%s: %w", details, err), details)
 }
 
-// byteAtOffset returns the byte at the JSON parser's 1-indexed offset.
-// json.SyntaxError.Offset points at the byte *after* the offending
-// character, so the offending byte is at Offset-1.
+// byteAtOffset returns the byte at the offending position reported by
+// `json.SyntaxError.Offset`. `Offset` is the 1-indexed byte position
+// just past the offending character (i.e. the number of bytes read
+// before the parser failed), so the offending byte itself lives at
+// `Offset-1`.
 func byteAtOffset(body []byte, offset int64) (byte, bool) {
 	idx := offset - 1
 	if idx < 0 || idx >= int64(len(body)) {

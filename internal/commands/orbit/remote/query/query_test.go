@@ -336,6 +336,27 @@ func TestBuildRequest_InvalidJSON_AtCharacterOutsideString(t *testing.T) {
 		"error message must mention that @ inside string literals is fine")
 	assert.Contains(t, exitErr.Details, "jq",
 		"error message must point users at jq for diagnosis")
+
+	// Fang's default error handler renders err.Error() and ignores
+	// ExitError.Details (see wrapJSONError godoc). Assert directly on
+	// err.Error() so that any future refactor of wrapJSONError that
+	// drops the bake-in still fails this test instead of silently
+	// regressing the user-facing message.
+	assert.Contains(t, err.Error(), "stray '@'",
+		"user-facing err.Error() must contain the stray-@ hint")
+	assert.Contains(t, err.Error(), "string literal",
+		"user-facing err.Error() must mention string literals")
+	assert.Contains(t, err.Error(), "jq",
+		"user-facing err.Error() must point at jq")
+
+	// The original *json.SyntaxError must remain reachable via the
+	// error chain so callers (or future programmatic inspection) can
+	// recover structured offset information. Guards against the
+	// previous implementation that flattened the chain through
+	// errors.New.
+	var syn *json.SyntaxError
+	assert.True(t, errors.As(err, &syn),
+		"wrapped error must preserve the original *json.SyntaxError in the chain")
 }
 
 // TestBuildRequest_InvalidJSON_NonAtCharacter verifies that the
