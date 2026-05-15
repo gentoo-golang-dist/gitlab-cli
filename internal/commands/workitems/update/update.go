@@ -176,8 +176,8 @@ func (opts *options) run(cmd *cobra.Command) error {
 	}
 
 	if opts.milestone != "" {
-		if ok, err := strconv.ParseInt(opts.milestone, 10, 64); err == nil {
-			updateOpts.MilestoneID = new(ok)
+		if milestoneID, err := strconv.ParseInt(opts.milestone, 10, 64); err == nil {
+			updateOpts.MilestoneID = new(milestoneID)
 		} else {
 			if opts.scope.Type == "project" {
 
