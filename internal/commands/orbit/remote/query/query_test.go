@@ -3,6 +3,7 @@
 package query
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -272,4 +273,198 @@ func TestBuildRequest_FlagWinsOverBody(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, req.ResponseFormat)
 	assert.Equal(t, gitlab.OrbitResponseFormatLLM, *req.ResponseFormat, "--format must win when formatChanged=true")
+}
+
+// TestBuildRequest_PreservesAtInStringLiterals locks in the contract that
+// `@` characters inside JSON string literals are NEVER preprocessed
+// (no curl-style `@filename` expansion, no field-magic). These
+// regression cases cover the historical confusion that surfaced as the
+// "Invalid character '@'" bug report on `glab orbit remote query`:
+// email addresses, Ruby `@instance_var` references, `@version`
+// annotations, and `@`-prefixed query property values.
+func TestBuildRequest_PreservesAtInStringLiterals(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		"email address":          `{"query":{"query_type":"traversal","filter":{"email":{"eq":"user@example.com"}}}}`,
+		"ruby instance variable": `{"query":{"query_type":"traversal","comment":"see @ahegyi note"}}`,
+		"@version annotation":    `{"query":{"query_type":"traversal","note":"applies to @version 2"}}`,
+		"@-prefixed value":       `{"query":{"query_type":"traversal","id":"@p"}}`,
+		"multiple @ in string":   `{"query":{"query_type":"traversal","authors":["a@ex.com","b@ex.com"]}}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			req, err := buildRequest([]byte(body), formatLLM, false)
+			require.NoError(t, err, "valid JSON containing @ inside string literals must parse")
+			require.NotNil(t, req)
+
+			// The Query field is json.RawMessage and must carry the
+			// user's bytes through verbatim — same content, possibly
+			// different whitespace, but @ characters preserved.
+			assert.Contains(t, string(req.Query), "@",
+				"@ characters inside JSON strings must survive buildRequest")
+
+			// Round-trip through encoding/json to confirm the value
+			// will reach the API verbatim.
+			marshalled, err := json.Marshal(req)
+			require.NoError(t, err)
+			assert.Contains(t, string(marshalled), "@",
+				"@ characters must survive marshalling for transmission")
+		})
+	}
+}
+
+// TestBuildRequest_InvalidJSON_AtCharacterOutsideString verifies that
+// when `@` appears OUTSIDE a string literal (e.g. unrendered template
+// placeholder like `@variable`), the user gets a helpful error that
+// points at the real cause and at `jq` for further diagnosis — rather
+// than the bare Go stdlib "invalid character '@'" message that
+// historically misled users into thinking the CLI mangled the @.
+func TestBuildRequest_InvalidJSON_AtCharacterOutsideString(t *testing.T) {
+	t.Parallel()
+	// `@variable` is unquoted — invalid JSON.
+	body := []byte(`{"query": @variable}`)
+
+	_, err := buildRequest(body, formatLLM, false)
+	require.Error(t, err)
+
+	var exitErr *cmdutils.ExitError
+	require.True(t, errors.As(err, &exitErr))
+	assert.Contains(t, exitErr.Details, "stray '@'",
+		"error message must point at the stray @ explicitly")
+	assert.Contains(t, exitErr.Details, "string literal",
+		"error message must mention that @ inside string literals is fine")
+	assert.Contains(t, exitErr.Details, "jq",
+		"error message must point users at jq for diagnosis")
+
+	// Fang's default error handler renders err.Error() and ignores
+	// ExitError.Details (see wrapJSONError godoc). Assert directly on
+	// err.Error() so that any future refactor of wrapJSONError that
+	// drops the bake-in still fails this test instead of silently
+	// regressing the user-facing message.
+	assert.Contains(t, err.Error(), "stray '@'",
+		"user-facing err.Error() must contain the stray-@ hint")
+	assert.Contains(t, err.Error(), "string literal",
+		"user-facing err.Error() must mention string literals")
+	assert.Contains(t, err.Error(), "jq",
+		"user-facing err.Error() must point at jq")
+
+	// The original *json.SyntaxError must remain reachable via the
+	// error chain so callers (or future programmatic inspection) can
+	// recover structured offset information. Guards against the
+	// previous implementation that flattened the chain through
+	// errors.New.
+	var syn *json.SyntaxError
+	assert.True(t, errors.As(err, &syn),
+		"wrapped error must preserve the original *json.SyntaxError in the chain")
+}
+
+// TestBuildRequest_InvalidJSON_NonAtCharacter verifies that the
+// generic "query body is not valid JSON" message is still used for
+// non-@ syntax errors — we only special-case @ because of the
+// historical bug report.
+func TestBuildRequest_InvalidJSON_NonAtCharacter(t *testing.T) {
+	t.Parallel()
+	body := []byte(`{"query": &foo}`)
+
+	_, err := buildRequest(body, formatLLM, false)
+	require.Error(t, err)
+
+	var exitErr *cmdutils.ExitError
+	require.True(t, errors.As(err, &exitErr))
+	assert.Equal(t, "query body is not valid JSON", exitErr.Details,
+		"non-@ syntax errors must fall back to the generic message")
+}
+
+// TestReadBody_StripsUTF8BOM exercises the defensive BOM stripping in
+// readBody: some editors save files as "UTF-8 with BOM", which Go's
+// encoding/json otherwise rejects with a confusing
+// "invalid character 'ï'" error. `jq` accepts BOM-prefixed input;
+// readBody normalises to that behaviour.
+func TestReadBody_StripsUTF8BOM(t *testing.T) {
+	t.Parallel()
+	bomBody := append([]byte{0xEF, 0xBB, 0xBF}, []byte(stdinBody)...)
+	dir := t.TempDir()
+	bodyPath := filepath.Join(dir, "q.json")
+	require.NoError(t, os.WriteFile(bodyPath, bomBody, 0o600))
+
+	data, err := readBody(bodyPath, nil)
+	require.NoError(t, err)
+
+	// BOM bytes are gone and the JSON is intact.
+	assert.False(t, bytes.HasPrefix(data, []byte{0xEF, 0xBB, 0xBF}),
+		"BOM must be stripped from the body")
+	var raw map[string]any
+	require.NoError(t, json.Unmarshal(data, &raw),
+		"after BOM stripping the body must parse as JSON")
+}
+
+// TestQuery_FromFile_WithAtInStrings is an end-to-end test confirming
+// that a file containing `@` inside JSON string literals (email
+// addresses, Ruby `@instance_var` references, `@version` annotations)
+// is forwarded to the Orbit API verbatim — no rejection, no
+// preprocessing. This is the direct regression test for the
+// "Invalid character '@'" bug reported against
+// `glab orbit remote query`.
+func TestQuery_FromFile_WithAtInStrings(t *testing.T) {
+	t.Parallel()
+	const body = `{"query":{"query_type":"traversal","node":{"id":"@p","entity":"Project"},"filter":{"email":{"eq":"user@example.com"},"note":"see @ahegyi"}}}`
+
+	dir := t.TempDir()
+	bodyPath := filepath.Join(dir, "q.json")
+	require.NoError(t, os.WriteFile(bodyPath, []byte(body), 0o600))
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockOrbit.EXPECT().
+		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
+		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
+			require.NotNil(t, opts)
+			// Every @ character in the source body must reach the API.
+			require.Contains(t, string(opts.Query), "user@example.com",
+				"email address must survive @-handling")
+			require.Contains(t, string(opts.Query), "@ahegyi",
+				"@-prefixed reference inside a string must survive")
+			require.Contains(t, string(opts.Query), `"@p"`,
+				"@-prefixed value must survive")
+			return &gitlab.OrbitQueryResult{},
+				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
+		})
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+	)
+
+	_, err := exec(bodyPath)
+	require.NoError(t, err, "valid JSON with @ inside string literals must not be rejected")
+}
+
+// TestQuery_Stdin_WithAtInStrings mirrors TestQuery_FromFile_WithAtInStrings
+// but exercises the stdin path, since the bug report explicitly called
+// out `glab orbit remote query /tmp/q.json` AND the stdin variant.
+func TestQuery_Stdin_WithAtInStrings(t *testing.T) {
+	t.Parallel()
+	const body = `{"query":{"query_type":"traversal","filter":{"email":{"eq":"user@example.com"}}}}`
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockOrbit.EXPECT().
+		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
+		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
+			require.Contains(t, string(opts.Query), "user@example.com")
+			return &gitlab.OrbitQueryResult{},
+				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
+		})
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithStdin(body),
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+	)
+
+	_, err := exec("-")
+	require.NoError(t, err)
 }
