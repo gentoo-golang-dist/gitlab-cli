@@ -30,6 +30,7 @@ type createOptions struct {
 	filePath string
 	line     string
 	oldLine  int
+	noThread bool
 
 	// Populated in complete.
 	client   *gitlab.Client
@@ -51,7 +52,12 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Short: "Create a comment or discussion on a merge request. (EXPERIMENTAL)",
 		Long: heredoc.Docf(`
 			Add a comment to a merge request. The command creates the comment as a new
-			discussion thread.
+			discussion thread by default.
+
+			Use %[1]s--no-thread%[1]s to post a non-resolvable note via the Notes API
+			instead. Non-resolvable notes don't block merging when the project requires
+			"all threads resolved before merging". Useful for automation and status
+			updates that should not require a human to resolve them.
 
 			Use %[1]s--reply%[1]s to add a note to an existing discussion thread instead of
 			starting a new one. The value can be a full discussion ID or a unique
@@ -68,6 +74,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			cannot be used together.
 			- %[1]s--file%[1]s, %[1]s--reply%[1]s, and %[1]s--unique%[1]s are mutually
 			exclusive.
+			- %[1]s--no-thread%[1]s cannot be combined with %[1]s--reply%[1]s or
+			%[1]s--file%[1]s (and therefore not with %[1]s--line%[1]s or
+			%[1]s--old-line%[1]s either), since those operate on discussion threads.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
@@ -84,6 +93,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 			# Skip if already posted
 			glab mr note create 123 -m "LGTM" --unique
+
+			# Post a non-resolvable note (won't block merge), e.g. for bot/CI status
+			glab mr note create 123 -m "Build status: green" --no-thread
 
 			# Reply to an existing discussion thread
 			glab mr note create 123 --reply abc12345 -m "I agree!"
@@ -122,11 +134,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	fl.StringVar(&opts.filePath, "file", "", "File path for a diff comment, like <path/to/file>. Targets the latest merge request diff version.")
 	fl.StringVar(&opts.line, "line", "", "Line in the new version. A single line number, like 42, or a range, like 10:15.")
 	fl.IntVar(&opts.oldLine, "old-line", 0, "Line in the old version, for commenting on a removed line.")
+	fl.BoolVar(&opts.noThread, "no-thread", false, "Post a non-resolvable note via the Notes API instead of creating a discussion thread. (default false)")
 
 	cmd.MarkFlagsMutuallyExclusive("reply", "unique")
 	cmd.MarkFlagsMutuallyExclusive("reply", "file")
 	cmd.MarkFlagsMutuallyExclusive("unique", "file")
 	cmd.MarkFlagsMutuallyExclusive("line", "old-line")
+	cmd.MarkFlagsMutuallyExclusive("no-thread", "reply")
+	cmd.MarkFlagsMutuallyExclusive("no-thread", "file")
 
 	return cmd
 }
@@ -208,6 +223,9 @@ func (o *createOptions) run(ctx context.Context) error {
 		}
 	}
 
+	if o.noThread {
+		return o.runCreateNote(ctx)
+	}
 	return o.runCreate(ctx)
 }
 
@@ -232,6 +250,21 @@ func (o *createOptions) runCreate(ctx context.Context) error {
 	}
 
 	fmt.Fprintf(o.io.StdOut, "%s#note_%d\n", o.mr.WebURL, disc.Notes[0].ID)
+	return nil
+}
+
+func (o *createOptions) runCreateNote(ctx context.Context) error {
+	note, _, err := o.client.Notes.CreateMergeRequestNote(
+		o.repo.FullName(),
+		o.mr.IID,
+		&gitlab.CreateMergeRequestNoteOptions{Body: &o.body},
+		gitlab.WithContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create note: %w", err)
+	}
+
+	fmt.Fprintf(o.io.StdOut, "%s#note_%d\n", o.mr.WebURL, note.ID)
 	return nil
 }
 

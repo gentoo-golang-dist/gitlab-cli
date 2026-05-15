@@ -346,6 +346,79 @@ func Test_cmdCreate_reply(t *testing.T) {
 	})
 }
 
+func Test_cmdCreate_noThread(t *testing.T) {
+	t.Parallel()
+
+	t.Run("--no-thread posts a plain note via the Notes API", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "Build status: green", *opts.Body)
+				return &gitlab.Note{ID: 501}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --no-thread -m "Build status: green"`)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_501\n", output.String())
+	})
+
+	t.Run("--no-thread --unique skips duplicate then posts a note", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockNotes.EXPECT().
+			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Note{
+				{ID: 100, Body: "other note"},
+			}, nil, nil)
+
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "brand new note", *opts.Body)
+				return &gitlab.Note{ID: 502}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --no-thread --unique -m "brand new note"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_502")
+	})
+
+	t.Run("--no-thread and --reply are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --no-thread --reply abc12345 -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "none of the others can be")
+	})
+
+	t.Run("--no-thread and --file are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --no-thread --file main.go -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "none of the others can be")
+	})
+}
+
 func Test_cmdCreate_reply_prompt(t *testing.T) {
 	// NOTE: This test cannot run in parallel because the huh form library
 	// uses global state (charmbracelet/bubbles runeutil sanitizer).
