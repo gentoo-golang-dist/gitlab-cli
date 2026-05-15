@@ -31,6 +31,8 @@ type options struct {
 	// Flags
 	group        string
 	types        []string
+	assignees    []string
+	mine         bool
 	outputFormat string
 	state        string
 	after        string
@@ -89,7 +91,13 @@ for group-level work items or -R to specify a different project.
 				glab work-items list --output json -g gitlab-org
 
 				# List issues in a specific project
-				glab work-items list --type issue -R gitlab-org/cli`),
+				glab work-items list --type issue -R gitlab-org/cli
+
+				# List work items assigned to you across every namespace
+				glab work-items list --mine
+
+				# Items where you and alice are both assignees, in a group
+				glab work-items list --mine --assignee alice -g gitlab-org`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -110,10 +118,12 @@ for group-level work items or -R to specify a different project.
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	// Flags
-	cmd.Flags().StringP("group", "g", "", "List work items for a group or subgroup")
+	cmd.Flags().StringP("group", "g", "", "List work items for a group or subgroup.")
 	cmd.Flags().StringSliceVarP(&opts.types, "type", "t", []string{}, "Filter by work item type (epic, issue, task, etc.) Multiple types can be comma-separated or specified by repeating the flag.")
+	cmd.Flags().StringSliceVarP(&opts.assignees, "assignee", "A", []string{}, "Filter by assignee username. Multiple usernames can be comma-separated or specified by repeating the flag.")
+	cmd.Flags().BoolVar(&opts.mine, "mine", false, "Include work items assigned to you. Combines with --assignee and falls back to a cross-namespace search when no project or group is in scope.")
 
-	cmd.Flags().StringVar(&opts.state, "state", "opened", "Filter by state: opened, closed, all")
+	cmd.Flags().StringVar(&opts.state, "state", "opened", "Filter by state: opened, closed, all.")
 	cmd.Flags().StringVar(&opts.after, "after", "", "Fetch items after this cursor (for pagination)")
 	cmd.Flags().Int64VarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page (max 100)")
 
@@ -151,18 +161,33 @@ func (opts *options) validate() error {
 }
 
 func (opts *options) run(ctx context.Context) error {
-	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
-	if err != nil {
-		return err
-	}
-
 	client, err := opts.gitlabClient()
 	if err != nil {
 		return fmt.Errorf("failed to get GitLab client: %w", err)
 	}
 
-	// fetch work items with state filtering and pagination
-	workItems, pageInfo, err := workitemsapi.FetchWorkItems(ctx, client, scope, opts.types, opts.state, opts.after, opts.perPage)
+	assignees := opts.assignees
+	if opts.mine {
+		username, err := workitemsapi.FetchCurrentUsername(ctx, client)
+		if err != nil {
+			return err
+		}
+		// Prepend so "me" leads; the echoed next-page command reads
+		// naturally this way.
+		assignees = append([]string{username}, assignees...)
+	}
+
+	scope, err := utils.DetectScope(opts.group, opts.baseRepo)
+	if err != nil {
+		// --mine falls back to currentUser.workItems, which returns
+		// everything the caller can see across every namespace.
+		if !opts.mine {
+			return err
+		}
+		scope = &workitemsapi.ScopeInfo{Type: workitemsapi.ScopeTypeCurrentUser}
+	}
+
+	workItems, pageInfo, err := workitemsapi.FetchWorkItems(ctx, client, scope, opts.types, opts.state, opts.after, opts.perPage, assignees)
 	if err != nil {
 		return err
 	}
@@ -203,6 +228,16 @@ func buildNextPageCommand(opts *options, cursor string) string {
 	// preserve type filters
 	if len(opts.types) > 0 {
 		fmt.Fprintf(&b, " --type %s", strings.Join(opts.types, ","))
+	}
+
+	// preserve assignee filters
+	if len(opts.assignees) > 0 {
+		fmt.Fprintf(&b, " --assignee %s", strings.Join(opts.assignees, ","))
+	}
+
+	// preserve --mine
+	if opts.mine {
+		b.WriteString(" --mine")
 	}
 
 	// preserve state filter (only if non-default)

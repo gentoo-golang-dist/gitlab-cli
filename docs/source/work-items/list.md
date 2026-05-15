@@ -60,18 +60,26 @@ glab work-items list --output json -g gitlab-org
 
 # List issues in a specific project
 glab work-items list --type issue -R gitlab-org/cli
+
+# List work items assigned to you across every namespace
+glab work-items list --mine
+
+# Items where you and alice are both assignees, in a group
+glab work-items list --mine --assignee alice -g gitlab-org
 ```
 
 ## Options
 
 ```plaintext
-      --after string      Fetch items after this cursor (for pagination)
-  -g, --group string      List work items for a group or subgroup
-  -F, --output string     Format output as: text, json. (default "text")
-  -P, --per-page int      Number of items to list per page (max 100) (default 20)
-  -R, --repo OWNER/REPO   Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
-      --state string      Filter by state: opened, closed, all (default "opened")
-  -t, --type strings      Filter by work item type (epic, issue, task, etc.) Multiple types can be comma-separated or specified by repeating the flag.
+      --after string       Fetch items after this cursor (for pagination)
+  -A, --assignee strings   Filter by assignee username. Multiple usernames can be comma-separated or specified by repeating the flag.
+  -g, --group string       List work items for a group or subgroup.
+      --mine               Include work items assigned to you. Combines with --assignee and falls back to a cross-namespace search when no project or group is in scope.
+  -F, --output string      Format output as: text, json. (default "text")
+  -P, --per-page int       Number of items to list per page (max 100) (default 20)
+  -R, --repo OWNER/REPO    Select another repository. Can use either OWNER/REPO or `GROUP/NAMESPACE/REPO` format. Also accepts full URL or Git URL.
+      --state string       Filter by state: opened, closed, all. (default "opened")
+  -t, --type strings       Filter by work item type (epic, issue, task, etc.) Multiple types can be comma-separated or specified by repeating the flag.
 ```
 
 ## Options inherited from parent commands
