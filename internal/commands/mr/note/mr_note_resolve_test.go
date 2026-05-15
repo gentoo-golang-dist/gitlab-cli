@@ -15,8 +15,27 @@ import (
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
+
+func TestMCPDestructiveAnnotation_ResolveAndReopen(t *testing.T) {
+	t.Parallel()
+	for name, factory := range map[string]func(cmdutils.Factory) *cobra.Command{
+		"resolve": NewCmdResolve,
+		"reopen":  NewCmdReopen,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			// Each subtest builds its own IOStreams -- NewTestFactory
+			// wraps the streams' StdOut/StdErr in multi-writers, and a
+			// shared ios across parallel subtests races on that wrap.
+			ios, _, _, _ := cmdtest.TestIOStreams()
+			cmd := factory(cmdtest.NewTestFactory(ios))
+			assert.Equal(t, "true", cmd.Annotations[mcpannotations.Destructive])
+		})
+	}
+}
 
 func makeDiscussions() []*gitlab.Discussion {
 	return []*gitlab.Discussion{

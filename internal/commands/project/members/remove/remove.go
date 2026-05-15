@@ -49,7 +49,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			glab repo members remove --user-id=123`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
-			mcpannotations.Safe: "false",
+			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.validate(); err != nil {
@@ -62,8 +62,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableRepoOverride(cmd, f)
 
 	fl := cmd.Flags()
-	fl.Int64VarP(&opts.userID, "user-id", "u", 0, "User ID instead of username")
-	fl.StringVarP(&opts.username, "username", "", "", "Username instead of user-id")
+	fl.Int64VarP(&opts.userID, "user-id", "u", 0, "User ID instead of username.")
+	fl.StringVarP(&opts.username, "username", "", "", "Username instead of user-id.")
 	cmd.MarkFlagsMutuallyExclusive("username", "user-id")
 
 	return cmd

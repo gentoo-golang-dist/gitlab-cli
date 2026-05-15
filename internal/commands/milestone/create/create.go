@@ -49,7 +49,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			glab milestone create --title='Example group milestone' --due-date='2025-12-16' --group 456`),
 		Args: cobra.MaximumNArgs(0),
 		Annotations: map[string]string{
-			mcpannotations.Safe: "false",
+			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return opts.run()
