@@ -38,7 +38,6 @@ type options struct {
 	startDate   string
 	dueDate     string
 	weight      int64
-	color       string
 
 	// internal state
 	scope *api.ScopeInfo
@@ -94,7 +93,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.title, "title", "t", "", "Update the title for the work item.")
 	fl.StringVarP(&opts.description, "description", "d", "", "Update the description for the work item.")
 	fl.Int64VarP(&opts.weight, "weight", "w", 0, "Update the weight value for the work item.")
-	fl.StringVarP(&opts.color, "color", "c", "", "Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.")
 	fl.StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Update the work item assignee with the supplied GitLab usernames.")
 	fl.StringVarP(&opts.milestone, "milestone", "m", "", "Update the work item milestone with the title or ID.")
 	fl.StringVar(&opts.startDate, "startdate", "", "Update the start date for the work item.")

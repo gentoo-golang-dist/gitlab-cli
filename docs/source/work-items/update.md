@@ -42,7 +42,6 @@ glab work-items update 40 --group MYGROUP --description "this epic tracks a new 
 
 ```plaintext
   -a, --assignee strings     Update the work item assignee with the supplied GitLab usernames.
-  -c, --color string         Update the Color for the work item, as a CSS color string. Typically a hex code like #e24329; named colors are also accepted.
   -d, --description string   Update the description for the work item.
       --duedate string       Update the due date for the work item.
   -g, --group string         Update work items for a group or subgroup.
