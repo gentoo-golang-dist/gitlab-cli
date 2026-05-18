@@ -67,9 +67,9 @@ glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-proto
 
 ```plaintext
   -a, --api-host string                     Hostname for the API endpoint, if different from --hostname. Accepts hostname or hostname:port. Use only when the API is served from a different host than the git remote.
-  -p, --api-protocol string                 API protocol: https, http
+  -p, --api-protocol string                 API protocol: https, http.
       --container-registry-domains string   Container registry and image dependency proxy domains (comma-separated).
-  -g, --git-protocol string                 Git protocol: ssh, https, http
+  -g, --git-protocol string                 Git protocol: ssh, https, http.
       --hostname string                     The hostname of the GitLab instance to authenticate with.
   -j, --job-token string                    CI job token.
       --ssh-hostname string                 SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.
