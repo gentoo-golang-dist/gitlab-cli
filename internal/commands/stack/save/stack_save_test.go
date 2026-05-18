@@ -18,6 +18,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
@@ -453,7 +454,7 @@ func Test_generateStackSha(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			git.InitGitRepo(t)
 
-			got, err := generateStackSha(tt.args.message, tt.args.title, tt.args.author, tt.args.timestamp)
+			got, err := stackutils.GenerateStackSha(tt.args.message, tt.args.title, tt.args.author, tt.args.timestamp)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -505,7 +506,7 @@ func Test_createShaBranch(t *testing.T) {
 				t.Setenv("USER", "jawn")
 			}
 
-			got, err := createShaBranch(factory, tt.args.sha, tt.args.title)
+			got, err := stackutils.CreateShaBranch(factory, tt.args.sha, tt.args.title)
 			require.Nil(t, err)
 
 			if tt.wantErr {

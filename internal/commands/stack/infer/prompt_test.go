@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 )
 
 func TestParseCommitSelection(t *testing.T) {
@@ -149,7 +151,7 @@ func TestHasComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := hasComment(tt.words)
+			result := stackutils.HasComment(tt.words)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

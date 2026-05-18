@@ -2,17 +2,15 @@ package infer
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/sha3"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/text"
 	"gitlab.com/gitlab-org/cli/internal/utils"
@@ -28,7 +26,7 @@ func NewCmdInferStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 
 	stackInferCmd := &cobra.Command{
 		Use:   "infer <revision-range>",
-		Short: `Add layers to a stack based on a range of commits. (EXPERIMENTAL.)`,
+		Short: `Add layers to a stack based on a range of commits. (EXPERIMENTAL)`,
 		Long: `Add layers to a stack based on a range of commits.
 This will append layers to an existing stack, or create a new one if needed.
 ` + text.ExperimentalString,
@@ -158,19 +156,19 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 	}
 
 	for i, commitHash := range commits {
-		description, err := commitSubject(gr, commitHash)
+		description, err := stackutils.CommitSubject(gr, commitHash)
 		if err != nil {
 			rollback()
 			return fmt.Errorf("error getting commit subject for %s: %v", commitHash, err)
 		}
 
-		stackSHA, err := generateStackSha(description, title, string(author), time.Now())
+		stackSHA, err := stackutils.GenerateStackSha(description, title, string(author), time.Now())
 		if err != nil {
 			rollback()
 			return fmt.Errorf("error generating stack SHA: %v", err)
 		}
 
-		branchName, err := createShaBranch(f, stackSHA, title)
+		branchName, err := stackutils.CreateShaBranch(f, stackSHA, title)
 		if err != nil {
 			rollback()
 			return fmt.Errorf("error creating branch name: %v", err)
@@ -225,48 +223,6 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 	}
 
 	return nil
-}
-
-func commitSubject(gr git.GitRunner, hash string) (string, error) {
-	output, err := gr.Git("log", "-1", "--format=%s", hash)
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(output), nil
-}
-
-func generateStackSha(message string, title string, author string, timestamp time.Time) (string, error) {
-	toSha := []byte(message + title + author + timestamp.String())
-	hashData := make([]byte, 4)
-
-	shakeHash := sha3.NewShake256()
-	shakeHash.Write(toSha)
-	_, err := shakeHash.Read(hashData)
-	if err != nil {
-		return "", fmt.Errorf("error generating hash for stack branch: %v", err)
-	}
-
-	return hex.EncodeToString(hashData), nil
-}
-
-func createShaBranch(f cmdutils.Factory, sha string, title string) (string, error) {
-	cfg := f.Config()
-
-	prefix, err := cfg.Get("", "branch_prefix")
-	if err != nil {
-		return "", fmt.Errorf("could not get prefix config: %v", err)
-	}
-
-	if prefix == "" {
-		prefix = os.Getenv("USER")
-		if prefix == "" {
-			prefix = "glab-stack"
-		}
-	}
-
-	branchTitle := []string{prefix, title, sha}
-	branch := strings.Join(branchTitle, "-")
-	return branch, nil
 }
 
 // promptAndCreateStack creates a new stack with the provided name or prompts for one

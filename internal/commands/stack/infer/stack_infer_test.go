@@ -15,6 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
@@ -26,10 +27,10 @@ func TestGenerateStackSha(t *testing.T) {
 
 	t.Run("produces deterministic output for same inputs", func(t *testing.T) {
 		ts := fixedTime()
-		sha1, err := generateStackSha("msg", "title", "author", ts)
+		sha1, err := stackutils.GenerateStackSha("msg", "title", "author", ts)
 		require.NoError(t, err)
 
-		sha2, err := generateStackSha("msg", "title", "author", ts)
+		sha2, err := stackutils.GenerateStackSha("msg", "title", "author", ts)
 		require.NoError(t, err)
 
 		assert.Equal(t, sha1, sha2)
@@ -37,17 +38,17 @@ func TestGenerateStackSha(t *testing.T) {
 
 	t.Run("produces different output for different inputs", func(t *testing.T) {
 		ts := fixedTime()
-		sha1, err := generateStackSha("msg1", "title", "author", ts)
+		sha1, err := stackutils.GenerateStackSha("msg1", "title", "author", ts)
 		require.NoError(t, err)
 
-		sha2, err := generateStackSha("msg2", "title", "author", ts)
+		sha2, err := stackutils.GenerateStackSha("msg2", "title", "author", ts)
 		require.NoError(t, err)
 
 		assert.NotEqual(t, sha1, sha2)
 	})
 
 	t.Run("returns 8 hex characters", func(t *testing.T) {
-		sha, err := generateStackSha("msg", "title", "author", fixedTime())
+		sha, err := stackutils.GenerateStackSha("msg", "title", "author", fixedTime())
 		require.NoError(t, err)
 		assert.Len(t, sha, 8)
 	})
@@ -62,7 +63,7 @@ func TestCreateShaBranch(t *testing.T) {
 
 		factory := createFactoryWithConfig("myprefix")
 
-		branch, err := createShaBranch(factory, "abcd1234", "my-stack")
+		branch, err := stackutils.CreateShaBranch(factory, "abcd1234", "my-stack")
 		require.NoError(t, err)
 		assert.Equal(t, "myprefix-my-stack-abcd1234", branch)
 	})
@@ -74,7 +75,7 @@ func TestCreateShaBranch(t *testing.T) {
 		t.Setenv("USER", "testuser")
 		factory := createFactoryWithConfig("")
 
-		branch, err := createShaBranch(factory, "abcd1234", "my-stack")
+		branch, err := stackutils.CreateShaBranch(factory, "abcd1234", "my-stack")
 		require.NoError(t, err)
 		assert.Equal(t, "testuser-my-stack-abcd1234", branch)
 	})
@@ -86,7 +87,7 @@ func TestCreateShaBranch(t *testing.T) {
 		t.Setenv("USER", "")
 		factory := createFactoryWithConfig("")
 
-		branch, err := createShaBranch(factory, "abcd1234", "my-stack")
+		branch, err := stackutils.CreateShaBranch(factory, "abcd1234", "my-stack")
 		require.NoError(t, err)
 		assert.Equal(t, "glab-stack-my-stack-abcd1234", branch)
 	})

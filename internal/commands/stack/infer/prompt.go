@@ -10,6 +10,7 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 )
 
@@ -31,7 +32,7 @@ func parseCommitSelection(input string) ([]string, error) {
 
 		commitLine := strings.Fields(line)
 
-		if (len(commitLine) == 1) || hasComment(commitLine) {
+		if (len(commitLine) == 1) || stackutils.HasComment(commitLine) {
 			result = append(result, commitLine[0])
 		} else {
 			return []string{},
@@ -108,8 +109,4 @@ func promptForCommits(ctx context.Context, f cmdutils.Factory, gr git.GitRunner,
 	}
 
 	return parseCommitSelection(promptResponse)
-}
-
-func hasComment(words []string) bool {
-	return len(words) > 1 && strings.HasPrefix(words[1], "#")
 }
