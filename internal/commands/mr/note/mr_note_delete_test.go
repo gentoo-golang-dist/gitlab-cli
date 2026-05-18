@@ -114,6 +114,28 @@ func Test_delete_subcommand(t *testing.T) {
 		assert.Contains(t, output.String(), "✓ Deleted note 200 from !1")
 	})
 
+	t.Run("non-TTY without --yes requires flag", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+		mockMR1(t, testClient)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return(makeDiscussionsWithAuthor(), nil, nil)
+
+		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
+			return NewCmdNote(f)
+		}, false,
+			cmdtest.WithGitLabClient(testClient.Client),
+			cmdtest.WithBaseRepo("OWNER", "REPO", ""),
+		)
+
+		_, err := exec(`delete 1 100`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--yes required when not running interactively")
+	})
+
 	t.Run("non-integer identifier", func(t *testing.T) {
 		t.Parallel()
 

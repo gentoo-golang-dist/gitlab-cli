@@ -127,7 +127,11 @@ func (o *deleteOptions) complete(ctx context.Context, args []string) error {
 }
 
 func (o *deleteOptions) run(ctx context.Context) error {
-	if !o.yes && o.io.IsInTTY {
+	if !o.yes && !o.io.PromptEnabled() {
+		return cmdutils.FlagError{Err: fmt.Errorf("--yes required when not running interactively")}
+	}
+
+	if !o.yes && o.io.PromptEnabled() {
 		body := o.note.Body
 		if len(body) > 80 {
 			body = body[:80] + "..."
