@@ -25,22 +25,22 @@ import (
 )
 
 type options struct {
-	io          *iostreams.IOStreams
-	stack       git.Stack
-	target      glrepo.Interface
-	source      glrepo.Interface
-	labClient   *gitlab.Client
-	baseRepo    func() (glrepo.Interface, error)
-	remotes     func() (glrepo.Remotes, error)
-	user        gitlab.User
+	io             *iostreams.IOStreams
+	stack          git.Stack
+	target         glrepo.Interface
+	source         glrepo.Interface
+	labClient      *gitlab.Client
+	baseRepo       func() (glrepo.Interface, error)
+	remotes        func() (glrepo.Remotes, error)
+	user           gitlab.User
 	noVerify       bool
 	updateBase     bool
 	skipMRCreation bool
 	assignees      []string
-	assigneeIDs *[]int64
-	labels      []string
-	reviewers   []string
-	reviewerIDs *[]int64
+	assigneeIDs    *[]int64
+	labels         []string
+	reviewers      []string
+	reviewerIDs    *[]int64
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
