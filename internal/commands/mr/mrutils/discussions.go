@@ -182,14 +182,8 @@ func formatMatches(matches []string) string {
 // FindDiscussionByNoteID finds the discussion containing a specific note ID.
 // Returns the discussion ID, or an error if the note is not found.
 func FindDiscussionByNoteID(discussions []*gitlab.Discussion, noteID int64) (string, error) {
-	for _, d := range discussions {
-		for _, n := range d.Notes {
-			if n.ID == noteID {
-				return d.ID, nil
-			}
-		}
-	}
-	return "", fmt.Errorf("note %d not found", noteID)
+	discussionID, _, err := FindNoteInDiscussions(discussions, noteID)
+	return discussionID, err
 }
 
 // FindNoteInDiscussions finds the discussion and note object for a specific note ID.
