@@ -31,7 +31,7 @@ func NewCmdSet(f cmdutils.Factory) *cobra.Command {
 	}
 
 	aliasSetCmd := &cobra.Command{
-		Use:   "set <alias-name> '<command>' [flags]",
+		Use:   "set <alias name> '<command>' [flags]",
 		Short: `Set an alias for a longer command.`,
 		Long: heredoc.Docf(`
 		Declare a word as an alias for a longer command.

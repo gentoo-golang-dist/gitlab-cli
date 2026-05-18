@@ -25,7 +25,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 	}
 
 	aliasDeleteCmd := &cobra.Command{
-		Use:   "delete <alias-name> [flags]",
+		Use:   "delete <alias name> [flags]",
 		Short: `Delete an alias.`,
 		Long: heredoc.Docf(`
 		Delete an alias by name. The deletion is permanent. To restore the

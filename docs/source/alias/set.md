@@ -36,7 +36,7 @@ Windows. If you installed Git in another way on Windows, shell aliases
 might not work.
 
 ```plaintext
-glab alias set <alias-name> '<command>' [flags]
+glab alias set <alias name> '<command>' [flags]
 ```
 
 ## Examples

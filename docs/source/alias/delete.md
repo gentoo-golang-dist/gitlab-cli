@@ -18,7 +18,7 @@ Delete an alias by name. The deletion is permanent. To restore the
 alias, run `glab alias set` with the original expansion.
 
 ```plaintext
-glab alias delete <alias-name> [flags]
+glab alias delete <alias name> [flags]
 ```
 
 ## Examples
