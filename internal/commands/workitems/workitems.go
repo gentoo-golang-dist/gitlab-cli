@@ -8,6 +8,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/create"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/delete"
 	"gitlab.com/gitlab-org/cli/internal/commands/workitems/list"
+	"gitlab.com/gitlab-org/cli/internal/commands/workitems/update"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
@@ -27,6 +28,7 @@ func NewCmdWorkItems(f cmdutils.Factory) *cobra.Command {
 	workItemsCmd.AddCommand(list.NewCmd(f))
 	workItemsCmd.AddCommand(create.NewCmd(f))
 	workItemsCmd.AddCommand(delete.NewCmd(f))
+	workItemsCmd.AddCommand(update.NewCmd(f))
 
 	return workItemsCmd
 }
