@@ -18,5 +18,5 @@ func TestIssueCmd(t *testing.T) {
 
 	assert.Nil(t, cmd.Execute())
 
-	assert.Contains(t, buf.String(), "Manage glab's authentication state.\n")
+	assert.Contains(t, buf.String(), "Manages authentication for glab against one or more GitLab instances.")
 }
