@@ -189,9 +189,11 @@ To authenticate your installation of `glab` with an OAuth application connected 
 
 1. Start interactive setup with `glab auth login`.
 1. For the GitLab instance you want to sign in to, select **GitLab.com**.
-1. For the login method, select **Web**. This selection launches your web browser
-   to request authorization for the GitLab CLI to use your GitLab.com account.
-1. Select **Authorize**.
+1. For the login method, select **Web** to authenticate through your local browser, or
+   **Device** for headless environments (such as SSH sessions or containers) where no
+   local browser is available. The device flow displays a one-time code and a
+   verification URL that you open on any other device with a browser.
+1. Authorize the application when prompted.
 1. Complete the authentication process in your terminal, selecting the appropriate options for your needs.
 
 ### OAuth (GitLab Self-Managed, GitLab Dedicated)
@@ -203,9 +205,14 @@ Prerequisites:
   [as an OAuth 2.0 authentication identity provider](https://docs.gitlab.com/integration/oauth_provider/)
   in the GitLab documentation.
 - Your OAuth application is configured with these parameters:
-  - **Redirect URI** is `http://localhost:7171/auth/redirect`.
+  - **Redirect URI** is `http://localhost:7171/auth/redirect`. Not required if you only intend to use `--device`.
   - **Confidential** is not selected.
   - **Scopes** are `openid`, `profile`, `read_user`, `write_repository`, and `api`.
+- To use the OAuth 2.0 device authorization flow (`glab auth login --device`), the application must
+  also have `device_code` in its allowed grant types, and the GitLab instance must be running
+  GitLab 17.9 or later. For more information, see the
+  [device authorization grant flow](https://docs.gitlab.com/api/oauth2/#device-authorization-grant-flow)
+  documentation.
 
 To authenticate your installation of `glab` with an OAuth application connected
 to your GitLab Self-Managed or GitLab Dedicated instance:
@@ -213,9 +220,12 @@ to your GitLab Self-Managed or GitLab Dedicated instance:
 1. Store the application ID with `glab config set client_id <CLIENT_ID> --host <HOSTNAME>`.
    For `<CLIENT_ID>`, provide your application ID.
 1. Start interactive setup with `glab auth login --hostname <HOSTNAME>`.
-1. For the login method, select **Web**. This selection launches your web browser
-   to request authorization for the GitLab CLI to use your GitLab Self-Managed or GitLab Dedicated account.
-1. Select **Authorize**.
+1. For the login method, select **Web** to authenticate through your local browser, or
+   **Device** for headless environments where no local browser is available.
+1. Follow the prompts to authorize the application:
+   - For **Web**, complete authorization in the browser window that opens.
+   - For **Device**, copy the displayed one-time code, open the verification URL on any
+     device with a browser, and approve the request.
 1. Complete the authentication process in your terminal, selecting the appropriate options for your needs.
 
 ### Personal access token

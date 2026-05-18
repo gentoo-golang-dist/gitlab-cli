@@ -47,8 +47,9 @@ type LoginOptions struct {
 	SSHHostname              string
 	ContainerRegistryDomains string
 
-	WebLogin   bool
-	UseKeyring bool
+	WebLogin    bool
+	DeviceLogin bool
+	UseKeyring  bool
 }
 
 var opts *LoginOptions
@@ -104,6 +105,11 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			# Semi-interactive OAuth login, skipping all prompts except browser auth
 			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
 
+			# OAuth device authorization flow for headless environments without a local browser.
+			# glab displays a one-time code and verification URL; you authorize on any
+			# other device with a browser. Requires GitLab 17.9 or later.
+			glab auth login --hostname gitlab.com --device
+
 			# CI/CD setup: for most cases, prefer auto-login over manual login
 			GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 
@@ -114,21 +120,12 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Exclude: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" && !opts.WebLogin {
-				return &cmdutils.FlagError{Err: errors.New("'--stdin', '--token', '--job-token', or '--web' required when not running interactively.")}
+			if !opts.IO.PromptEnabled() && !tokenStdin && opts.Token == "" && opts.JobToken == "" && !opts.WebLogin && !opts.DeviceLogin {
+				return &cmdutils.FlagError{Err: errors.New("'--stdin', '--token', '--job-token', '--web', or '--device' required when not running interactively.")}
 			}
 
-			if opts.JobToken != "" && (opts.Token != "" || tokenStdin) {
-				return &cmdutils.FlagError{Err: errors.New("specify one of '--job-token' or '--token' or '--stdin'. You cannot use more than one of these at the same time.")}
-			}
-
-			if opts.Token != "" && tokenStdin {
-				return &cmdutils.FlagError{Err: errors.New("specify one of '--token' or '--stdin'. You cannot use both flags at the same time.")}
-			}
-
-			if opts.WebLogin && (opts.Token != "" || tokenStdin || opts.JobToken != "") {
-				return &cmdutils.FlagError{Err: errors.New("'--web' cannot be combined with '--token', '--stdin', or '--job-token'.")}
-			}
+			// --token, --stdin, --job-token, --web, --device are pairwise mutually
+			// exclusive via cmd.MarkFlagsMutuallyExclusive below.
 
 			if tokenStdin {
 				defer opts.IO.In.Close()
@@ -179,11 +176,14 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read the token from standard input.")
 	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store the token in your operating system's keyring.")
 	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
+	cmd.Flags().BoolVar(&opts.DeviceLogin, "device", false, "Use the OAuth 2.0 device authorization flow. Useful for headless environments where a local browser is not available. Requires GitLab 17.9 or later.")
 	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts a hostname or hostname:port. Use only when the API is served from a different host than the Git remote.")
 	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol. Options: https, http.")
 	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol. Options: ssh, https, http.")
 	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. A port is not required; Git uses the port from the remote URL.")
 	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains, comma-separated.")
+
+	cmd.MarkFlagsMutuallyExclusive("token", "stdin", "job-token", "web", "device")
 
 	return cmd
 }
@@ -466,10 +466,13 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	)
 
 	if opts.Interactive {
-		if opts.WebLogin {
+		switch {
+		case opts.WebLogin:
 			loginType = promptLoginTypeWeb
-		} else {
-			loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb}
+		case opts.DeviceLogin:
+			loginType = promptLoginTypeDevice
+		default:
+			loginTypeOptions := []string{promptLoginTypeToken, promptLoginTypeWeb, promptLoginTypeDevice}
 			err := opts.IO.Select(ctx, &loginType, "How would you like to sign in?", loginTypeOptions)
 			if err != nil {
 				return fmt.Errorf("could not get sign-in type: %w", err)
@@ -492,6 +495,9 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 	} else if opts.WebLogin {
 		// Non-interactive web login: go straight to OAuth
 		loginType = promptLoginTypeWeb
+	} else if opts.DeviceLogin {
+		// Non-interactive device flow login
+		loginType = promptLoginTypeDevice
 	}
 
 	// Re-split hostname in case it was changed by prompts
@@ -518,11 +524,16 @@ func loginRun(ctx context.Context, opts *LoginOptions) error {
 			return err
 		}
 
-		// StartFlow calls marshal() internally, which writes is_oauth2, token,
-		// oauth2_refresh_token, and oauth2_expiry_date.  No explicit ClearAuthFields
-		// is needed: marshal() overwrites every field it owns, and is_oauth2=true
-		// ensures the OAuth auth source wins over any residual job_token.
-		token, err = oauth2.StartFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
+		// StartFlow / StartDeviceFlow both call marshal() internally, which writes
+		// is_oauth2, token, oauth2_refresh_token, and oauth2_expiry_date.  No
+		// explicit ClearAuthFields is needed: marshal() overwrites every field it
+		// owns, and is_oauth2=true ensures the OAuth auth source wins over any
+		// residual job_token.
+		if strings.EqualFold(loginType, promptLoginTypeDevice) {
+			token, err = oauth2.StartDeviceFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
+		} else {
+			token, err = oauth2.StartFlow(ctx, cfg, opts.IO.StdErr, client.HTTPClient(), hostname)
+		}
 		if err != nil {
 			return err
 		}
