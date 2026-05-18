@@ -69,10 +69,7 @@ func TestRootHelpFunc(t *testing.T) {
 			args: args{
 				command: alias.NewCmdAlias(cmdtest.NewTestFactory(nil)),
 			},
-			wantOut: `Create, list, and delete aliases.
-
-USAGE
-  alias [command] [flags]`,
+			wantOut: "around glab commands.\n\nUSAGE\n  alias [command] [flags]",
 		},
 
 		{
@@ -81,7 +78,7 @@ USAGE
 				command: set.NewCmdSet(cmdtest.NewTestFactory(nil)),
 				args:    []string{"set", "-h"},
 			},
-			wantOut: "USAGE\n  alias set <alias name> '<command>' [flags]\n\nFLAGS\n  -s, --shell ",
+			wantOut: "USAGE\n  alias set <alias-name> '<command>' [flags]\n\nFLAGS\n  -s, --shell ",
 		},
 	}
 	for _, tt := range tests {
