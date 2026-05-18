@@ -20,10 +20,9 @@ Replace the body of an existing note on a merge request.
 You can find note IDs with:
 
 - `glab mr note list -F json` (the `.id` field)
-- Note URLs: `…/merge_requests/1#note_12345`
+- Note URLs: `.../merge_requests/1#note_12345`
 
-Only the note body can be changed. The position of diff notes
-cannot be moved.
+You can change only the note body. You cannot move the position of diff notes.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.

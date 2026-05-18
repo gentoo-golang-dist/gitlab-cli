@@ -20,10 +20,10 @@ Permanently delete a note from a merge request.
 You can find note IDs with:
 
 - `glab mr note list -F json` (the `.id` field)
-- Note URLs: `…/merge_requests/1#note_12345`
+- Note URLs: `.../merge_requests/1#note_12345`
 
-Deletion is permanent and cannot be undone. A confirmation prompt
-is shown unless `--yes` is passed.
+Deletion is permanent and cannot be undone. Unless you pass `--yes`,
+the command prompts you to confirm.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -51,7 +51,7 @@ glab mr note delete 12345
 ## Options
 
 ```plaintext
-  -y, --yes   Skip confirmation prompt. (default false)
+  -y, --yes   Skip confirmation prompt.
 ```
 
 ## Options inherited from parent commands

@@ -54,10 +54,10 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 			You can find note IDs with:
 
 			- %[1]sglab mr note list -F json%[1]s (the %[1]s.id%[1]s field)
-			- Note URLs: %[1]s…/merge_requests/1#note_12345%[1]s
+			- Note URLs: %[1]s.../merge_requests/1#note_12345%[1]s
 
-			Deletion is permanent and cannot be undone. A confirmation prompt
-			is shown unless %[1]s--yes%[1]s is passed.
+			Deletion is permanent and cannot be undone. Unless you pass %[1]s--yes%[1]s,
+			the command prompts you to confirm.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Delete note 12345 from merge request 1
@@ -81,7 +81,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "Skip confirmation prompt. (default false)")
+	cmd.Flags().BoolVarP(&opts.yes, "yes", "y", false, "Skip confirmation prompt.")
 
 	return cmd
 }

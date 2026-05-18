@@ -54,10 +54,9 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			You can find note IDs with:
 
 			- %[1]sglab mr note list -F json%[1]s (the %[1]s.id%[1]s field)
-			- Note URLs: %[1]s…/merge_requests/1#note_12345%[1]s
+			- Note URLs: %[1]s.../merge_requests/1#note_12345%[1]s
 
-			Only the note body can be changed. The position of diff notes
-			cannot be moved.
+			You can change only the note body. You cannot move the position of diff notes.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Update note 12345 on merge request 1 with a new message
