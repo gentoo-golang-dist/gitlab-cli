@@ -192,6 +192,19 @@ func FindDiscussionByNoteID(discussions []*gitlab.Discussion, noteID int64) (str
 	return "", fmt.Errorf("note %d not found", noteID)
 }
 
+// FindNoteInDiscussions finds the discussion and note object for a specific note ID.
+// Returns the discussion ID and the Note, or an error if not found.
+func FindNoteInDiscussions(discussions []*gitlab.Discussion, noteID int64) (string, *gitlab.Note, error) {
+	for _, d := range discussions {
+		for _, n := range d.Notes {
+			if n.ID == noteID {
+				return d.ID, n, nil
+			}
+		}
+	}
+	return "", nil, fmt.Errorf("note %d not found", noteID)
+}
+
 // matchesFilePath checks if a discussion is on the specified file path.
 func matchesFilePath(discussion *gitlab.Discussion, filePath string) bool {
 	if filePath == "" {
