@@ -36,6 +36,12 @@ returns structured JSON suitable for `jq`. The server's
 response body is written to stdout verbatim regardless of format —
 no client-side decoding or re-encoding is performed.
 
+Compatibility note: prior to this change, `--format raw`
+output was re-marshalled through the SDK's typed
+`OrbitQueryResult` struct (producing indented JSON). It
+is now the server's bytes verbatim (compact JSON). Pipe into
+`jq .` if you need indented output.
+
 The graph DSL JSON Schema is served by `glab orbit remote tools`
 and is the source of truth for the body shape. See also
 `glab orbit remote schema` for the graph ontology.

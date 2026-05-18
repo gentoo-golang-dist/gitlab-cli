@@ -77,6 +77,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			response body is written to stdout verbatim regardless of format —
 			no client-side decoding or re-encoding is performed.
 
+			Compatibility note: prior to this change, %[1]s--format raw%[1]s
+			output was re-marshalled through the SDK's typed
+			%[1]sOrbitQueryResult%[1]s struct (producing indented JSON). It
+			is now the server's bytes verbatim (compact JSON). Pipe into
+			%[1]sjq .%[1]s if you need indented output.
+
 			The graph DSL JSON Schema is served by %[1]sglab orbit remote tools%[1]s
 			and is the source of truth for the body shape. See also
 			%[1]sglab orbit remote schema%[1]s for the graph ontology.
@@ -160,6 +166,9 @@ func (o *options) run(ctx context.Context) error {
 		[]gitlab.RequestOptionFunc{gitlab.WithContext(ctx)},
 	)
 	if err != nil {
+		// NewRequest failures are strictly local (bad URL, body-marshal
+		// failure) and carry no HTTP status — orbiterr.Translate is for
+		// server responses only, so plain fmt.Errorf is correct here.
 		return fmt.Errorf("building Orbit query request: %w", err)
 	}
 
