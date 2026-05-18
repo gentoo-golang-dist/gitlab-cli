@@ -43,13 +43,27 @@ func NewCmdStatus(f cmdutils.Factory, runE func(*options) error) *cobra.Command 
 		Use:   "status",
 		Args:  cobra.ExactArgs(0),
 		Short: "View authentication status.",
-		Long: heredoc.Docf(`Verifies and displays information about your authentication state.
+		Long: heredoc.Docf(`
+		Verifies and displays information about your authentication state.
 
 		By default, this command checks the authentication state of the GitLab instance
 		determined by your current context (%[1]sgit remote%[1]s, %[1]sGITLAB_HOST%[1]s environment variable,
-		or configuration). Use %[1]s--all%[1]s to check all configured instances, or %[1]s--hostname%[1]s to
-		check a specific instance.
+		or configuration). To check all configured instances, use %[1]s--all%[1]s.
+		To check a specific instance, use %[1]s--hostname%[1]s.
 		`, "`"),
+		Example: heredoc.Doc(`
+			# Check authentication status for the instance in your current context
+			glab auth status
+
+			# Check authentication status for all configured instances
+			glab auth status --all
+
+			# Check authentication status for a specific instance
+			glab auth status --hostname gitlab.example.com
+
+			# Display the authentication token alongside the status
+			glab auth status --show-token
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -62,9 +76,9 @@ func NewCmdStatus(f cmdutils.Factory, runE func(*options) error) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.hostname, "hostname", "", "", "Check a specific instance's authentication status.")
+	cmd.Flags().StringVarP(&opts.hostname, "hostname", "", "", "Check the authentication status of a specific instance.")
 	cmd.Flags().BoolVarP(&opts.showToken, "show-token", "t", false, "Display the authentication token.")
-	cmd.Flags().BoolVarP(&opts.all, "all", "a", false, "Check all configured instances.")
+	cmd.Flags().BoolVarP(&opts.all, "all", "a", false, "Check the authentication status of all configured instances.")
 
 	cmd.MarkFlagsMutuallyExclusive("all", "hostname")
 

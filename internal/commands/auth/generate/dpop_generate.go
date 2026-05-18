@@ -51,33 +51,30 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 		config: f.Config,
 	}
 	cmd := &cobra.Command{
-		Use:   "dpop-gen [flags]",
-		Short: "Generates a DPoP (demonstrating-proof-of-possession) proof JWT. (EXPERIMENTAL)",
+		Use:   "dpop-gen",
+		Short: "Generate a DPoP (demonstrating-proof-of-possession) proof JWT. (EXPERIMENTAL)",
 		Long: heredoc.Docf(`
-		Demonstrating-proof-of-possession (DPoP) is a technique to
-		cryptographically bind personal access tokens to their owners. This command provides
-		the tools to manage the client aspects of DPoP. It generates a DPoP proof JWT
-		(JSON Web Token).
+		Generates a demonstrating-proof-of-possession (DPoP) proof JSON Web Token (JWT).
+		DPoP cryptographically binds personal access tokens to their owners.
+
+		Use the JWT with a personal access token (PAT) to authenticate to the GitLab API.
+		glab signs the JWT with your SSH private key. The JWT remains valid for five
+		minutes. After it expires, generate another one.
 
 		Prerequisites:
 
-		- You must have a SSH key pair in RSA, ed25519, or ECDSA format.
-		- You have [enabled DPoP for your account](https://docs.gitlab.com/user/profile/personal_access_tokens/#use-dpop-with-personal-access-tokens).
-
-		Use the JWT in combination with a Personal Access Token (PAT) to authenticate to
-		the GitLab API. Your JWT remains valid for 5 minutes. After it expires, you must
-		generate another token. Your SSH private key is then used to sign the JWT.
+		- An SSH key pair in RSA, ed25519, or ECDSA format.
+		- [Enabled DPoP for your account](https://docs.gitlab.com/user/profile/personal_access_tokens/#use-dpop-with-personal-access-tokens).
 		%s`, text.ExperimentalString),
 		Example: heredoc.Doc(`
-			# Generate a DPoP JWT for authentication to GitLab
-			$ glab auth dpop-gen [flags]
-			$ glab auth dpop-gen --private-key "~/.ssh/id_rsa" --pat "glpat-xxxxxxxxxxxxxxxxxxxx"
+			# Generate a DPoP JWT using an SSH private key and a personal access token
+			glab auth dpop-gen --private-key "~/.ssh/id_rsa" --pat "glpat-xxxxxxxxxxxxxxxxxxxx"
 
-			# No PAT required if you previously used the 'glab auth login' command with a PAT
-			$ glab auth dpop-gen --private-key "~/.ssh/id_rsa"
+			# Generate a DPoP JWT without a PAT (uses the token from 'glab auth login')
+			glab auth dpop-gen --private-key "~/.ssh/id_rsa"
 
 			# Generate a DPoP JWT for a different GitLab instance
-			$ glab auth dpop-gen --private-key "~/.ssh/id_rsa" --hostname "https://gitlab.com"
+			glab auth dpop-gen --private-key "~/.ssh/id_rsa" --hostname "https://gitlab.com"
 		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
@@ -93,8 +90,8 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.privateKeyLocation, "private-key", "p", "", "Location of the private SSH key on the local system.")
-	cmd.Flags().StringVar(&opts.personalAccessToken, "pat", "", "Personal Access Token (PAT) to generate a DPoP proof for. Defaults to the token set with 'glab auth login'. Returns an error if both are empty.")
-	cmd.Flags().StringVarP(&opts.hostname, "hostname", "", "gitlab.com", "The hostname of the GitLab instance to authenticate with. Defaults to 'gitlab.com'.")
+	cmd.Flags().StringVar(&opts.personalAccessToken, "pat", "", "Personal access token (PAT) to generate a DPoP proof for. Defaults to the token set with 'glab auth login'.")
+	cmd.Flags().StringVarP(&opts.hostname, "hostname", "", "gitlab.com", "The hostname of the GitLab instance to authenticate with.")
 	cobra.CheckErr(cmd.MarkFlagRequired("private-key"))
 
 	return cmd
