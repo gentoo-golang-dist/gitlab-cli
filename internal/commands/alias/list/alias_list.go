@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -26,8 +27,15 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 	aliasListCmd := &cobra.Command{
 		Use:   "list [flags]",
-		Short: `List the available aliases.`,
-		Long:  ``,
+		Short: `List aliases.`,
+		Long: heredoc.Doc(`
+		List all configured aliases and their expansions. Results are sorted
+		alphabetically by alias name.
+		`),
+		Example: heredoc.Doc(`
+		# List all configured aliases
+		glab alias list
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

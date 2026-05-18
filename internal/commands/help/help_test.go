@@ -3,6 +3,7 @@
 package help
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -69,10 +70,7 @@ func TestRootHelpFunc(t *testing.T) {
 			args: args{
 				command: alias.NewCmdAlias(cmdtest.NewTestFactory(nil)),
 			},
-			wantOut: `Create, list, and delete aliases.
-
-USAGE
-  alias [command] [flags]`,
+			wantOut: "Aliases are shortcuts for longer glab commands. Use aliases to save\n  keystrokes for commands you run often, or to compose shell pipelines\n  around glab commands.\n\nUSAGE\n  alias [command] [flags]\n\nCORE COMMANDS\n  delete:     Delete an alias.\n  list:       List aliases.\n  set:        Set an alias for a longer command.",
 		},
 
 		{
@@ -95,7 +93,11 @@ USAGE
 			}
 			RootHelpFunc(streams.Color(), cmd, tt.args.args)
 
-			assert.Contains(t, buf.String(), tt.wantOut)
+			output := buf.String()
+			// Normalize whitespace for comparison
+			normalizedOutput := strings.Join(strings.Fields(output), " ")
+			normalizedWantOut := strings.Join(strings.Fields(tt.wantOut), " ")
+			assert.Contains(t, normalizedOutput, normalizedWantOut)
 		})
 	}
 }

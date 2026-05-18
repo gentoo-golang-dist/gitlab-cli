@@ -3,6 +3,7 @@ package delete
 import (
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -26,8 +27,15 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 	aliasDeleteCmd := &cobra.Command{
 		Use:   "delete <alias name> [flags]",
 		Short: `Delete an alias.`,
-		Long:  ``,
-		Args:  cobra.ExactArgs(1),
+		Long: heredoc.Docf(`
+		Delete an alias by name. The deletion is permanent. To restore the
+		alias, run %[1]sglab alias set%[1]s with the original expansion.
+		`, "`"),
+		Example: heredoc.Doc(`
+		# Delete the alias named "mrv"
+		glab alias delete mrv
+		`),
+		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

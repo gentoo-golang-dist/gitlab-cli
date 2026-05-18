@@ -36,39 +36,41 @@ func NewCmdSet(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 		Declare a word as an alias for a longer command.
 
-		Your expansion might include arguments and flags. If your expansion
+		Use quotation marks when you define a command, as shown in the examples.
+
+		Your expansion can include arguments and flags. If your expansion
 		includes positional placeholders such as %[1]s$1%[1]s or %[1]s$2%[1]s, any extra
-		arguments that follow the invocation of an alias are inserted
-		appropriately.
+		arguments that follow the invocation of the alias are inserted into
+		those placeholders.
 
-		Specify %[1]s--shell%[1]s in your alias to run it through %[1]ssh%[1]s, a shell
-		converter. Shell conversion enables you to compose commands with %[1]s|%[1]s
-		or redirect with %[1]s>%[1]s, with these caveats:
+		To run an alias through %[1]ssh%[1]s, a shell converter, specify the
+		%[1]s--shell%[1]s flag. With shell conversion, you can compose commands
+		with %[1]s|%[1]s or redirect with %[1]s>%[1]s. Shell aliases have these caveats:
 
-		- Any extra arguments following the alias are not passed to the
-		  expanded expression arguments by default.
-		- You must explicitly accept the arguments using %[1]s$1%[1]s, %[1]s$2%[1]s, and so on.
-		- Use %[1]s$@%[1]s to accept all arguments.
+		- Extra arguments that follow the alias are not passed to the expansion.
+		  To accept arguments, use %[1]s$1%[1]s, %[1]s$2%[1]s, and so on.
+		- To accept all arguments, use %[1]s$@%[1]s.
 
-		For Windows users only:
-
-		- On Windows, shell aliases are executed with %[1]ssh%[1]s as installed by
-		  Git For Windows. If you installed Git in some other way in Windows,
-		  shell aliases might not work for you.
-		- Always use quotation marks when defining a command, as in the examples.
+		On Windows, shell aliases run through %[1]ssh%[1]s as installed by Git for
+		Windows. If you installed Git in another way on Windows, shell aliases
+		might not work.
 		`, "`"),
 		Example: heredoc.Doc(`
-		$ glab alias set mrv 'mr view'
-		$ glab mrv -w 123
-		glab mr view -w 123
+		# Define an alias for "mr view"
+		glab alias set mrv 'mr view'
+		# Run the alias; it expands to "glab mr view -w 123"
+		glab mrv -w 123
 
-		$ glab alias set createissue 'glab create issue --title "$1"'
-		$ glab createissue "My Issue" --description "Something is broken."
-		glab create issue --title "My Issue" --description "Something is broken."
+		# Define an alias with a positional placeholder
+		glab alias set createissue 'glab create issue --title "$1"'
+		# Run the alias with an argument and an extra flag
+		glab createissue "My Issue" --description "Something is broken."
 
-		$ glab alias set --shell igrep 'glab issue list --assignee="$1" | grep $2'
-		$ glab igrep user foo
-		glab issue list --assignee="user" | grep "foo"`),
+		# Define a shell alias that pipes glab output to grep
+		glab alias set --shell igrep 'glab issue list --assignee="$1" | grep $2'
+		# Run the shell alias with two arguments
+		glab igrep user foo
+		`),
 		Args: cobra.ExactArgs(2),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
