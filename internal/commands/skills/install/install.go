@@ -1,7 +1,7 @@
 package install
 
 import (
-	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,28 +10,28 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/bundled"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/text"
-)
-
-const (
-	skillName = "glab"
-	skillFile = "SKILL.md"
 )
 
 // skillsRelDir is the conventional directory for agent skills,
 // as defined by the Agent Skills specification (https://agentskills.io).
 var skillsRelDir = filepath.Join(".agents", "skills")
 
-//go:embed bundled/glab/SKILL.md
-var bundledSkillContent []byte
+// defaultSkillName is the skill installed when no positional argument
+// is given. Keeping the default to the single core `glab` skill
+// avoids polluting an agent's context with descriptions of bundled
+// skills the user may not need.
+const defaultSkillName = "glab"
 
 type options struct {
 	io        *iostreams.IOStreams
 	global    bool
 	path      string
 	force     bool
+	requested string
 	targetDir string
 }
 
@@ -41,13 +41,17 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "install",
+		Use:   "install [name]",
 		Short: "Install glab's bundled agent skills. (EXPERIMENTAL)",
 		Long: heredoc.Docf(`
-			Install the bundled %[1]sSKILL.md%[1]s file to %[1]s.agents/skills/%[1]s, the
-			cross-agent standard defined by the Agent Skills specification. This works with
-			GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any other
-			compliant agent.
+			Install bundled %[1]sSKILL.md%[1]s files to %[1]s.agents/skills/%[1]s, the
+			cross-agent standard defined by the Agent Skills specification. This works
+			with GitLab Duo Agent Platform, Claude Code, Codex, Gemini CLI, and any
+			other compliant agent.
+
+			By default, only the core %[1]sglab%[1]s skill is installed. Pass a positional
+			%[1]sname%[1]s argument to install a specific bundled skill instead. Run
+			%[1]sglab skills list%[1]s to see what is available.
 
 			Install scope:
 
@@ -58,23 +62,27 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 			- Use %[1]s--path%[1]s to install skills to a custom directory. The path is resolved
 			  relative to the current working directory, not the repository root.
 
-			To overwrite existing skill files, use %[1]s--force%[1]s.
+			To overwrite an existing skill file, use %[1]s--force%[1]s.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Install skills in the current project (default)
+			# Install the core glab skill in the current project (default)
 			glab skills install
 
-			# Install skills globally (user scope)
+			# Install a specific bundled skill by name
+			glab skills install glab-stack
+
+			# Install the core skill globally (user scope)
 			glab skills install --global
 
-			# Install skills to a custom directory
-			glab skills install --path /path/to/skills
+			# Install a skill to a custom directory
+			glab skills install glab-stack --path /path/to/skills
 
-			# Overwrite existing skill files
+			# Overwrite an existing skill file
 			glab skills install --force
 		`),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := opts.complete(); err != nil {
+			if err := opts.complete(args); err != nil {
 				return err
 			}
 			return opts.run()
@@ -82,15 +90,19 @@ func NewCmdInstall(f cmdutils.Factory) *cobra.Command {
 	}
 
 	fl := cmd.Flags()
-	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/).")
+	fl.BoolVarP(&opts.global, "global", "g", false, "Install skills at user scope (~/.agents/skills/). (default false)")
 	fl.StringVar(&opts.path, "path", "", "Install skills to the directory at <path>.")
-	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files.")
+	fl.BoolVarP(&opts.force, "force", "f", false, "Overwrite existing skill files. (default false)")
 	cmd.MarkFlagsMutuallyExclusive("global", "path")
 
 	return cmd
 }
 
-func (o *options) complete() error {
+func (o *options) complete(args []string) error {
+	if len(args) == 1 {
+		o.requested = args[0]
+	}
+
 	if o.path != "" {
 		o.targetDir = o.path
 		return nil
@@ -105,7 +117,6 @@ func (o *options) complete() error {
 		return nil
 	}
 
-	// Default: project scope — .agents/skills/ at repo root
 	repoRoot, err := git.ToplevelDir()
 	if err != nil {
 		return fmt.Errorf("not in a Git repository. Use --global or --path to specify a target: %w", err)
@@ -115,12 +126,39 @@ func (o *options) complete() error {
 }
 
 func (o *options) run() error {
-	destPath := filepath.Join(o.targetDir, skillName, skillFile)
+	skills, err := o.resolveSkills()
+	if err != nil {
+		return err
+	}
+
+	var errs []error
+	for _, s := range skills {
+		if err := o.installOne(s); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (o *options) resolveSkills() ([]bundled.Skill, error) {
+	name := o.requested
+	if name == "" {
+		name = defaultSkillName
+	}
+	s, err := bundled.Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return []bundled.Skill{s}, nil
+}
+
+func (o *options) installOne(s bundled.Skill) error {
+	destPath := filepath.Join(o.targetDir, s.Name, bundled.FileName)
 	_, statErr := os.Stat(destPath)
 	exists := statErr == nil
 
+	c := o.io.Color()
 	if exists && !o.force {
-		c := o.io.Color()
 		o.io.LogErrorf("%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), destPath)
 		return nil
 	}
@@ -129,16 +167,14 @@ func (o *options) run() error {
 		return fmt.Errorf("creating directory for %s: %w", destPath, err)
 	}
 
-	if err := os.WriteFile(destPath, bundledSkillContent, 0o644); err != nil {
+	if err := os.WriteFile(destPath, s.Content, 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", destPath, err)
 	}
 
-	c := o.io.Color()
 	if exists {
 		o.io.LogInfof("%s Overwrote %s\n", c.GreenCheck(), destPath)
 	} else {
 		o.io.LogInfof("%s Installed %s\n", c.GreenCheck(), destPath)
 	}
-
 	return nil
 }

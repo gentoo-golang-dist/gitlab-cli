@@ -6,6 +6,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	installCmd "gitlab.com/gitlab-org/cli/internal/commands/skills/install"
+	listCmd "gitlab.com/gitlab-org/cli/internal/commands/skills/list"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
@@ -24,6 +25,7 @@ func NewCmdSkills(f cmdutils.Factory) *cobra.Command {
 	}
 
 	skillsCmd.AddCommand(installCmd.NewCmdInstall(f))
+	skillsCmd.AddCommand(listCmd.NewCmdList(f))
 
 	return skillsCmd
 }
