@@ -3,7 +3,9 @@ package get
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -17,6 +19,20 @@ import (
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
+
+var jobStatusValues = []gitlab.BuildStateValue{
+	gitlab.Created,
+	gitlab.WaitingForResource,
+	gitlab.Preparing,
+	gitlab.Pending,
+	gitlab.Running,
+	gitlab.Success,
+	gitlab.Failed,
+	gitlab.Canceled,
+	gitlab.Skipped,
+	gitlab.Manual,
+	gitlab.Scheduled,
+}
 
 type PipelineMergedResponse struct {
 	*gitlab.Pipeline
@@ -32,11 +48,21 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 			Defaults to the current branch. Use %[1]s--pipeline-id%[1]s to specify a pipeline
 			instead of fetching the latest for a branch.
+
+			Use %[1]s--merge-request%[1]s to target the head pipeline of a specific merge
+			request by IID. This differs from %[1]s--branch%[1]s when the MR's head pipeline
+			diverges from the latest pipeline on its source branch — for example, forks or
+			detached pipelines.
+
+			Use %[1]s--status%[1]s to filter jobs by state (passed through to the API's
+			%[1]sscope%[1]s parameter).
 		`, "`"),
 		Example: heredoc.Doc(`
 			glab ci get
 			glab ci -R some/project -p 12345
-			glab ci get --mr=42 --failed-jobs-only`),
+
+			# Show only failed jobs for the head pipeline of MR !42
+			glab ci get --merge-request=42 --status=failed --with-job-details`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -60,9 +86,12 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mrIID, err := cmd.Flags().GetInt("mr")
+			mrIID, err := cmd.Flags().GetInt("merge-request")
 			if err != nil {
 				return err
+			}
+			if mrIID == 0 {
+				mrIID, _ = cmd.Flags().GetInt("mr")
 			}
 
 			var msgNotFound string
@@ -73,11 +102,11 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to get merge request !%d: %w", mrIID, err)
 				}
-				if mr.HeadPipeline == nil {
+				if mr.HeadPipeline == nil || mr.HeadPipeline.ID == 0 {
 					return fmt.Errorf("no pipeline found for merge request !%d", mrIID)
 				}
 				pipelineId = int(mr.HeadPipeline.ID)
-				msgNotFound = fmt.Sprintf("No pipeline with the given ID: %d", pipelineId)
+				msgNotFound = fmt.Sprintf("No pipeline found for merge request !%d", mrIID)
 			} else {
 				// Use enhanced branch resolution that supports API fallback
 				branch = ciutils.GetBranch(branch, func() (string, error) {
@@ -98,10 +127,14 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("%s: %w", msgNotFound, err)
 			}
 
-			failedJobsOnly, _ := cmd.Flags().GetBool("failed-jobs-only")
+			statusFilter, _ := cmd.Flags().GetString("status")
 			listOpts := &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}
-			if failedJobsOnly {
-				listOpts.Scope = &[]gitlab.BuildStateValue{gitlab.Failed}
+			if statusFilter != "" {
+				state, err := parseJobStatus(statusFilter)
+				if err != nil {
+					return err
+				}
+				listOpts.Scope = &[]gitlab.BuildStateValue{state}
 			}
 
 			jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
@@ -109,17 +142,6 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			})
 			if err != nil {
 				return err
-			}
-
-			excludeAllowFailure, _ := cmd.Flags().GetBool("exclude-allow-failure")
-			if failedJobsOnly && excludeAllowFailure {
-				var failedJobs []*gitlab.Job
-				for _, j := range jobs {
-					if !j.AllowFailure {
-						failedJobs = append(failedJobs, j)
-					}
-				}
-				jobs = failedJobs
 			}
 
 			showVariables, _ := cmd.Flags().GetBool("with-variables")
@@ -145,26 +167,43 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			}
 
 			showJobDetails, _ := cmd.Flags().GetBool("with-job-details")
-			printTable(*mergedPipelineObject, f.IO().StdOut, showJobDetails || failedJobsOnly)
+			printTable(*mergedPipelineObject, f.IO().StdOut, showJobDetails)
 			return nil
 		},
 	}
 
-	pipelineGetCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
-	pipelineGetCmd.Flags().IntP("pipeline-id", "p", 0, "Provide pipeline ID.")
-	pipelineGetCmd.Flags().Int("mr", 0, "Show the pipeline for the given merge request IID.")
+	fl := pipelineGetCmd.Flags()
+	fl.StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
+	fl.IntP("pipeline-id", "p", 0, "Provide pipeline ID.")
+	fl.Int("merge-request", 0, "Show the pipeline for the given merge request IID.")
+	fl.Int("mr", 0, "Alias for --merge-request.")
+	_ = fl.MarkHidden("mr")
+	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "mr")
+	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "pipeline-id")
+	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "branch")
 	pipelineGetCmd.MarkFlagsMutuallyExclusive("mr", "pipeline-id")
 	pipelineGetCmd.MarkFlagsMutuallyExclusive("mr", "branch")
-	pipelineGetCmd.Flags().StringP("output", "F", "text", "Format output. Options: text, json.")
-	pipelineGetCmd.Flags().StringP("output-format", "o", "text", "Use output.")
-	_ = pipelineGetCmd.Flags().MarkHidden("output-format")
-	_ = pipelineGetCmd.Flags().MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
-	pipelineGetCmd.Flags().BoolP("with-job-details", "d", false, "Show extended job information.")
-	pipelineGetCmd.Flags().Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
-	pipelineGetCmd.Flags().Bool("failed-jobs-only", false, "Show only failed jobs, including in JSON output. Implies --with-job-details for text output.")
-	pipelineGetCmd.Flags().Bool("exclude-allow-failure", false, "Exclude jobs with allow_failure=true when filtering with --failed-jobs-only.")
+	fl.StringP("output", "F", "text", "Format output. Options: text, json.")
+	fl.StringP("output-format", "o", "text", "Use output.")
+	_ = fl.MarkHidden("output-format")
+	_ = fl.MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
+	fl.BoolP("with-job-details", "d", false, "Show extended job information. (default false)")
+	fl.Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role. (default false)")
+	fl.String("status", "", "Show only jobs in the given state. Options: created, waiting_for_resource, preparing, pending, running, success, failed, canceled, skipped, manual, scheduled.")
 
 	return pipelineGetCmd
+}
+
+func parseJobStatus(s string) (gitlab.BuildStateValue, error) {
+	v := gitlab.BuildStateValue(s)
+	if slices.Contains(jobStatusValues, v) {
+		return v, nil
+	}
+	names := make([]string, len(jobStatusValues))
+	for i, a := range jobStatusValues {
+		names[i] = string(a)
+	}
+	return "", fmt.Errorf("invalid --status %q. Options: %s", s, strings.Join(names, ", "))
 }
 
 func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool) {

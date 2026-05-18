@@ -424,8 +424,8 @@ updated:	2023-10-10 00:00:00 +0000 UTC
 			},
 		},
 		{
-			name: "when --mr flag is used to get pipeline from merge request",
-			args: "--mr=42",
+			name: "when --merge-request flag is used to get pipeline from merge request",
+			args: "--merge-request=42",
 			expectedOut: `# Pipeline:
 id:	123
 status:	failed
@@ -477,8 +477,8 @@ test:	failed
 			},
 		},
 		{
-			name: "when --failed-jobs-only shows all failed jobs including allow_failure",
-			args: "-p=123 --failed-jobs-only",
+			name: "when --status=failed --with-job-details shows all failed jobs including allow_failure",
+			args: "-p=123 --status=failed --with-job-details",
 			expectedOut: `# Pipeline:
 id:	123
 status:	failed
@@ -527,13 +527,13 @@ ID	Name	Stage	Status	Duration	Failure reason	URL
 			},
 		},
 		{
-			name: "when --failed-jobs-only --exclude-allow-failure excludes allow_failure jobs",
-			args: "-p=123 --failed-jobs-only --exclude-allow-failure",
+			name: "when --mr alias is used to get pipeline from merge request",
+			args: "--mr=42",
 			expectedOut: `# Pipeline:
 id:	123
 status:	failed
-source:	push
-ref:	main
+source:	merge_request_event
+ref:	feature-branch
 sha:	0ff3ae198f8601a285adcf5c0fff204ee6fba5fd
 tag:	false
 yaml Errors:	-
@@ -543,19 +543,24 @@ started:	2023-10-10 00:00:00 +0000 UTC
 updated:	2023-10-10 00:00:00 +0000 UTC
 
 # Jobs:
-ID	Name	Stage	Status	Duration	Failure reason	URL
-2	test	test	failed	0	script_failure	https://gitlab.com/OWNER/REPO/-/jobs/2
+build:	success
 
 `,
 			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockMergeRequests.EXPECT().
+					GetMergeRequest("OWNER/REPO", int64(42), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 42},
+						HeadPipeline:      &gitlab.Pipeline{ID: 123},
+					}, nil, nil)
 				tc.MockPipelines.EXPECT().
 					GetPipeline("OWNER/REPO", int64(123)).
 					Return(&gitlab.Pipeline{
 						ID:         123,
 						IID:        123,
 						Status:     "failed",
-						Source:     "push",
-						Ref:        "main",
+						Source:     "merge_request_event",
+						Ref:        "feature-branch",
 						SHA:        "0ff3ae198f8601a285adcf5c0fff204ee6fba5fd",
 						User:       &gitlab.BasicUser{Username: "test"},
 						YamlErrors: "-",
@@ -564,13 +569,8 @@ ID	Name	Stage	Status	Duration	Failure reason	URL
 						UpdatedAt:  &updatedAt,
 					}, nil, nil)
 				tc.MockJobs.EXPECT().
-					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Cond(func(opts *gitlab.ListJobsOptions) bool {
-						return opts.Scope != nil && len(*opts.Scope) == 1 && (*opts.Scope)[0] == gitlab.Failed
-					}), gomock.Any()).
-					Return([]*gitlab.Job{
-						{ID: 2, Name: "test", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/2"},
-						{ID: 4, Name: "flaky", Stage: "test", Status: "failed", FailureReason: "script_failure", WebURL: "https://gitlab.com/OWNER/REPO/-/jobs/4", AllowFailure: true},
-					}, lastPageResponse, nil)
+					ListPipelineJobs("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+					Return([]*gitlab.Job{{ID: 1, Name: "build", Status: "success"}}, lastPageResponse, nil)
 			},
 		},
 	}
@@ -597,6 +597,76 @@ ID	Name	Stage	Status	Duration	Failure reason	URL
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedOut, output.String())
 			assert.Empty(t, output.Stderr())
+		})
+	}
+}
+
+func TestCIGetMergeRequestErrors(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name      string
+		args      string
+		setupMock func(tc *gitlabtesting.TestClient)
+		errMsg    string
+	}
+
+	tests := []testCase{
+		{
+			name: "when MR has no head pipeline",
+			args: "--merge-request=42",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockMergeRequests.EXPECT().
+					GetMergeRequest("OWNER/REPO", int64(42), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 42},
+						HeadPipeline:      nil,
+					}, nil, nil)
+			},
+			errMsg: "no pipeline found for merge request !42",
+		},
+		{
+			name: "when MR head pipeline has zero ID",
+			args: "--merge-request=42",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockMergeRequests.EXPECT().
+					GetMergeRequest("OWNER/REPO", int64(42), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{IID: 42},
+						HeadPipeline:      &gitlab.Pipeline{ID: 0},
+					}, nil, nil)
+			},
+			errMsg: "no pipeline found for merge request !42",
+		},
+		{
+			name: "when --status receives an invalid value",
+			args: "-p=123 --status=bogus",
+			setupMock: func(tc *gitlabtesting.TestClient) {
+				tc.MockPipelines.EXPECT().
+					GetPipeline("OWNER/REPO", int64(123)).
+					Return(&gitlab.Pipeline{ID: 123, User: &gitlab.BasicUser{Username: "test"}}, nil, nil)
+			},
+			errMsg: `invalid --status "bogus"`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			testClient := gitlabtesting.NewTestClient(t)
+			tc.setupMock(testClient)
+
+			exec := cmdtest.SetupCmdForTest(
+				t,
+				NewCmdGet,
+				false,
+				cmdtest.WithGitLabClient(testClient.Client),
+			)
+
+			_, err := exec(tc.args)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.errMsg)
 		})
 	}
 }
