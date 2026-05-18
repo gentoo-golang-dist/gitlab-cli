@@ -69,10 +69,7 @@ func TestRootHelpFunc(t *testing.T) {
 			args: args{
 				command: alias.NewCmdAlias(cmdtest.NewTestFactory(nil)),
 			},
-			wantOut: `Create, list, and delete aliases.
-
-USAGE
-  alias [command] [flags]`,
+			wantOut: "Aliases are shortcuts for longer glab commands. Use aliases to save\n  keystrokes for commands you run often, or to compose shell pipelines\n  around glab commands.\n\nUSAGE\n  alias [command] [flags]",
 		},
 
 		{
