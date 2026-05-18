@@ -124,7 +124,7 @@ func (o *resolveOptions) complete(ctx context.Context, args []string) error {
 		if listErr != nil {
 			return fmt.Errorf("failed to list discussions: %w", listErr)
 		}
-		o.discussionID, err = mrutils.FindDiscussionByNoteID(discussions, noteID)
+		o.discussionID, _, err = mrutils.FindNoteInDiscussions(discussions, noteID)
 		if err != nil {
 			return fmt.Errorf("note %d not found in merge request !%d: %w", noteID, mr.IID, err)
 		}

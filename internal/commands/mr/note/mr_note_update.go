@@ -121,7 +121,7 @@ func (o *updateOptions) complete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list discussions: %w", err)
 	}
 
-	o.discussionID, err = mrutils.FindDiscussionByNoteID(discussions, noteID)
+	o.discussionID, _, err = mrutils.FindNoteInDiscussions(discussions, noteID)
 	if err != nil {
 		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 	}

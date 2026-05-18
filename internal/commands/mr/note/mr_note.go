@@ -115,7 +115,7 @@ func resolveDiscussion(ctx context.Context, client *gitlab.Client, f cmdutils.Fa
 		return fmt.Errorf("failed to list discussions: %w", err)
 	}
 
-	targetDiscussionID, err := mrutils.FindDiscussionByNoteID(discussions, noteID)
+	targetDiscussionID, _, err := mrutils.FindNoteInDiscussions(discussions, noteID)
 	if err != nil {
 		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 	}
