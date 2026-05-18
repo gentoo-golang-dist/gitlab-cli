@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -15,7 +16,15 @@ import (
 func NewCmdAuth(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth <command>",
-		Short: "Manage glab's authentication state.",
+		Short: "Manage authentication for glab.",
+		Long: heredoc.Doc(`
+		Manages authentication for glab against one or more GitLab instances. Use
+		these commands to log in, log out, check your authentication status,
+		and configure glab as a credential helper for Git and Docker.
+
+		glab can authenticate with a personal access token, an OAuth token from
+		a web flow, or a CI job token when running in a GitLab CI/CD job.
+		`),
 	}
 
 	cmd.AddCommand(authLoginCmd.NewCmdLogin(f))

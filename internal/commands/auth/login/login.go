@@ -73,20 +73,20 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			Stores your credentials in the global configuration file
 			(default %[1]s~/.config/glab-cli/config.yml%[1]s).
 			To store your token in your operating system's keyring instead, use %[1]s--use-keyring%[1]s.
-			After authentication, all %[1]sglab%[1]s commands use the stored credentials.
-			
+			After authentication, all glab commands use the stored credentials.
+
 			If %[1]sGITLAB_TOKEN%[1]s, %[1]sGITLAB_ACCESS_TOKEN%[1]s, or %[1]sOAUTH_TOKEN%[1]s are set,
-			they take precedence over the stored credentials.
-			When CI auto-login is enabled, these variables also override %[1]sCI_JOB_TOKEN%[1]s.
-			
+			they take precedence over the stored credentials. When CI auto-login is
+			enabled, these variables also override %[1]sCI_JOB_TOKEN%[1]s.
+
 			To pass a token on standard input, use %[1]s--stdin%[1]s.
-			
-			In interactive mode, %[1]sglab%[1]s detects GitLab instances from your Git remotes
+
+			In interactive mode, glab detects GitLab instances from your Git remotes
 			and lists them as options, so you do not have to type the hostname manually.
 		`, "`"),
 		Example: heredoc.Docf(`
 			# Start interactive setup
-			# (If in a Git repository, glab will detect and suggest GitLab instances from remotes)
+			# If in a Git repository, glab detects and suggests GitLab instances from remotes
 			glab auth login
 
 			# Authenticate against %[1]sgitlab.com%[1]s by reading the token from a file
@@ -98,8 +98,8 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			# Non-interactive setup
 			glab auth login --hostname gitlab.example.org --token glpat-xxx --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh
 
-			# Non-interactive setup reading token from a file
-			glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh  --stdin < myaccesstoken.txt
+			# Non-interactive setup reading the token from a file
+			glab auth login --hostname gitlab.example.org --api-host gitlab.example.org:3443 --api-protocol https --git-protocol ssh --stdin < myaccesstoken.txt
 
 			# Semi-interactive OAuth login, skipping all prompts except browser auth
 			glab auth login --hostname gitlab.com --web --git-protocol ssh --container-registry-domains "gitlab.com,gitlab.com:443,registry.gitlab.com" --use-keyring
@@ -108,7 +108,8 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 			GLAB_ENABLE_CI_AUTOLOGIN=true glab release list -R $CI_PROJECT_PATH
 
 			# CI/CD setup with manual login: use when the command does not support CI job tokens, or you need a personal access token
-			glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-protocol $CI_SERVER_PROTOCOL`, "`"),
+			glab auth login --hostname $CI_SERVER_FQDN --job-token $CI_JOB_TOKEN --api-protocol $CI_SERVER_PROTOCOL
+		`, "`"),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
@@ -175,14 +176,14 @@ func NewCmdLogin(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.Hostname, "hostname", "", "", "The hostname of the GitLab instance to authenticate with.")
 	cmd.Flags().StringVarP(&opts.Token, "token", "t", "", "Your GitLab access token.")
 	cmd.Flags().StringVarP(&opts.JobToken, "job-token", "j", "", "CI job token.")
-	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read token from standard input.")
-	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store token in your operating system's keyring.")
+	cmd.Flags().BoolVar(&tokenStdin, "stdin", false, "Read the token from standard input.")
+	cmd.Flags().BoolVar(&opts.UseKeyring, "use-keyring", false, "Store the token in your operating system's keyring.")
 	cmd.Flags().BoolVar(&opts.WebLogin, "web", false, "Skip the login type prompt and use web/OAuth login.")
-	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts hostname or hostname:port. Use only when the API is served from a different host than the git remote.")
-	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol: https, http")
-	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol: ssh, https, http")
-	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. Port is not required. Git uses the port from the remote URL directly.")
-	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains (comma-separated).")
+	cmd.Flags().StringVarP(&opts.ApiHost, "api-host", "a", "", "Hostname for the API endpoint, if different from --hostname. Accepts a hostname or hostname:port. Use only when the API is served from a different host than the Git remote.")
+	cmd.Flags().StringVarP(&opts.ApiProtocol, "api-protocol", "p", "", "API protocol. Options: https, http.")
+	cmd.Flags().StringVarP(&opts.GitProtocol, "git-protocol", "g", "", "Git protocol. Options: ssh, https, http.")
+	cmd.Flags().StringVar(&opts.SSHHostname, "ssh-hostname", "", "SSH hostname for instances with a different SSH endpoint. A port is not required; Git uses the port from the remote URL.")
+	cmd.Flags().StringVar(&opts.ContainerRegistryDomains, "container-registry-domains", "", "Container registry and image dependency proxy domains, comma-separated.")
 
 	return cmd
 }

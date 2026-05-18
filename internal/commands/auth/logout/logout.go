@@ -31,12 +31,15 @@ func NewCmdLogout(f cmdutils.Factory) *cobra.Command {
 		Args:  cobra.ExactArgs(0),
 		Short: "Log out from a GitLab instance.",
 		Long: heredoc.Docf(`
-			Log out from a GitLab instance.
-			Configuration and credentials are stored in the global configuration file (default %[1]s~/.config/glab-cli/config.yml%[1]s)
+		Logs out from a GitLab instance. The credentials for the specified instance
+		are removed from the global configuration file (default
+		%[1]s~/.config/glab-cli/config.yml%[1]s) and from the operating system's keyring,
+		if a token was stored there.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Log out of a specific instance
-			glab auth logout --hostname gitlab.example.com`),
+			glab auth logout --hostname gitlab.example.com
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
