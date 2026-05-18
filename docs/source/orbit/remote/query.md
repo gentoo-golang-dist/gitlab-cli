@@ -15,9 +15,9 @@ Execute a GitLab Knowledge Graph query. (EXPERIMENTAL)
 ## Synopsis
 
 Calls `POST /api/v4/orbit/query` with a JSON request body and
-prints the response as pretty-printed JSON. The body is read from
-a file path or from standard input when the argument is `-`
-or omitted.
+prints the server response verbatim. The body is read from a file
+path or from standard input when the argument is `-` or
+omitted.
 
 The request body must be a full Orbit query envelope:
 
@@ -31,8 +31,10 @@ The request body must be a full Orbit query envelope:
 `--format` overrides the body's `response_format` value,
 or sets it if absent. If neither the body nor `--format`
 specifies a format, `llm` is used by default. The `llm`
-format is compact and intended for agents. Use `--format raw`
-when piping into `jq`.
+format is compact GOON/TOON text intended for agents; `raw`
+returns structured JSON suitable for `jq`. The server's
+response body is written to stdout verbatim regardless of format —
+no client-side decoding or re-encoding is performed.
 
 The graph DSL JSON Schema is served by `glab orbit remote tools`
 and is the source of truth for the body shape. See also

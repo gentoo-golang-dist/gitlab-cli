@@ -6,17 +6,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
-	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -26,109 +27,150 @@ import (
 
 const stdinBody = `{"query":{"query_type":"traversal","node":{"id":"p","entity":"Project"},"limit":1}}`
 
+// orbitServer is a thin httptest.Server wrapper used by every test in
+// this file. It captures the parsed request body so individual tests
+// can assert on the query and chosen response_format without
+// re-implementing the boilerplate.
+type orbitServer struct {
+	server      *httptest.Server
+	requestBody gitlab.OrbitQueryRequest
+	rawBody     []byte
+	called      bool
+}
+
+// newOrbitServer returns an httptest.Server that serves a single
+// `POST /api/v4/orbit/query` request. The handler responds with
+// `respBody` (no Content-Type override), unless `respFn` is non-nil,
+// in which case the test takes full control of the response.
+//
+// We deliberately use a real HTTP server rather than the
+// gitlabtesting.MockOrbit mock: production now bypasses
+// `OrbitService.Query` (which decodes via json.NewDecoder and fails
+// for non-JSON `llm` responses) and streams the response body
+// verbatim, so the tests must exercise the wire format that the
+// command actually consumes.
+func newOrbitServer(t *testing.T, respBody string, respFn func(w http.ResponseWriter, r *http.Request)) *orbitServer {
+	t.Helper()
+	s := &orbitServer{}
+	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.called = true
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/api/v4/orbit/query", r.URL.Path)
+
+		raw, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		s.rawBody = raw
+		require.NoError(t, json.Unmarshal(raw, &s.requestBody))
+
+		if respFn != nil {
+			respFn(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, respBody)
+	}))
+	t.Cleanup(s.server.Close)
+	return s
+}
+
+// apiClientOption builds the *api.Client wired to point at this
+// orbitServer, ready to pass to cmdtest.WithApiClient.
+func (s *orbitServer) apiClientOption(t *testing.T) cmdtest.FactoryOption {
+	t.Helper()
+	return cmdtest.WithApiClient(
+		cmdtest.NewTestApiClient(t, nil, "", "", api.WithBaseURL(s.server.URL+"/api/v4/")),
+	)
+}
+
 func TestQuery_Stdin_DefaultsToLLM(t *testing.T) {
 	t.Parallel()
 	// GIVEN a body on stdin and no --format flag
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
-		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
-			require.NotNil(t, opts)
-			require.NotNil(t, opts.ResponseFormat)
-			assert.Equal(t, gitlab.OrbitResponseFormatLLM, *opts.ResponseFormat)
-
-			// AND the user-supplied query is forwarded verbatim
-			var got map[string]any
-			require.NoError(t, json.Unmarshal(opts.Query, &got))
-			assert.Equal(t, "traversal", got["query_type"])
-
-			return &gitlab.OrbitQueryResult{
-					Result:   json.RawMessage(`"@goon{}"`),
-					RowCount: 0,
-				},
-				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
-		})
+	respBody := "@header\nquery_type:traversal\n@nodes\nProject(1):\n278964 name=GitLab\n"
+	srv := newOrbitServer(t, "", func(w http.ResponseWriter, r *http.Request) {
+		// The server uses Content-Type: text/plain for `llm` —
+		// reproduce that here to lock in the contract that the CLI
+		// passes non-JSON bodies through verbatim.
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, respBody)
+	})
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(stdinBody),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
 	// WHEN `glab orbit remote query -` runs (stdin)
 	out, err := exec("-")
-
-	// THEN no error and the result is printed as JSON
 	require.NoError(t, err)
 
-	var result gitlab.OrbitQueryResult
-	require.NoError(t, json.Unmarshal(out.OutBuf.Bytes(), &result))
-	assert.Contains(t, string(result.Result), "@goon")
+	// THEN the body's chosen response_format is `llm` (default)
+	require.True(t, srv.called)
+	require.NotNil(t, srv.requestBody.ResponseFormat)
+	assert.Equal(t, gitlab.OrbitResponseFormatLLM, *srv.requestBody.ResponseFormat)
+
+	// AND the user-supplied query is forwarded verbatim
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(srv.requestBody.Query, &got))
+	assert.Equal(t, "traversal", got["query_type"])
+
+	// AND the non-JSON GOON body is printed verbatim to stdout —
+	// this is the regression test for the historical
+	// "Invalid character '@' looking for beginning of value" bug
+	// where the SDK tried to json.Decode a `@header...` body.
+	assert.Equal(t, respBody, out.OutBuf.String())
 }
 
 func TestQuery_FlagOverridesBodyResponseFormat(t *testing.T) {
 	t.Parallel()
 	// GIVEN the body sets response_format=raw but --format=llm is passed
 	body := `{"query":{"query_type":"neighbors","node_ids":[1]},"response_format":"raw"}`
-
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
-		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
-			require.NotNil(t, opts.ResponseFormat)
-			assert.Equal(t, gitlab.OrbitResponseFormatLLM, *opts.ResponseFormat, "--format must override the body's response_format")
-			return &gitlab.OrbitQueryResult{},
-				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
-		})
+	srv := newOrbitServer(t, `{"result":null}`, nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(body),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
-	// WHEN
 	_, err := exec("--format llm -")
-
-	// THEN
 	require.NoError(t, err)
+
+	require.True(t, srv.called)
+	require.NotNil(t, srv.requestBody.ResponseFormat)
+	assert.Equal(t, gitlab.OrbitResponseFormatLLM, *srv.requestBody.ResponseFormat,
+		"--format must override the body's response_format")
 }
 
 func TestQuery_BodyFormatHonoredWhenNoFlag(t *testing.T) {
 	t.Parallel()
 	// GIVEN the body sets response_format=raw and --format is NOT passed
 	body := `{"query":{"query_type":"neighbors","node_ids":[1]},"response_format":"raw"}`
-
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
-		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
-			require.NotNil(t, opts.ResponseFormat)
-			// The body's response_format must win when --format is absent.
-			// Previously the cobra default of "llm" silently overrode it.
-			assert.Equal(t, gitlab.OrbitResponseFormatRaw, *opts.ResponseFormat,
-				"body's response_format must win when --format is not passed")
-			return &gitlab.OrbitQueryResult{},
-				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
-		})
+	srv := newOrbitServer(t, `{"result":null}`, nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(body),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
-	// WHEN the command runs without --format
 	_, err := exec("-")
-
-	// THEN the body's response_format is forwarded to the API
 	require.NoError(t, err)
+
+	// THEN the body's response_format wins (previously the cobra
+	// default of "llm" silently overrode it).
+	require.True(t, srv.called)
+	require.NotNil(t, srv.requestBody.ResponseFormat)
+	assert.Equal(t, gitlab.OrbitResponseFormatRaw, *srv.requestBody.ResponseFormat,
+		"body's response_format must win when --format is not passed")
 }
 
 func TestQuery_FromFile(t *testing.T) {
@@ -138,120 +180,178 @@ func TestQuery_FromFile(t *testing.T) {
 	bodyPath := filepath.Join(dir, "q.json")
 	require.NoError(t, os.WriteFile(bodyPath, []byte(stdinBody), 0o600))
 
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.Any(), gomock.Any()).
-		Return(&gitlab.OrbitQueryResult{},
-			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil)
+	srv := newOrbitServer(t, `{"result":null}`, nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
 	// WHEN `glab orbit remote query <file>` runs
 	_, err := exec(bodyPath)
-
-	// THEN no error
 	require.NoError(t, err)
+	assert.True(t, srv.called)
 }
 
 func TestQuery_InvalidFormatFlag(t *testing.T) {
 	t.Parallel()
-	// GIVEN a body on stdin and an invalid --format value
-	// NewEnumValue rejects unknown values at flag parsing time, before RunE runs.
-	testClient := gitlabtesting.NewTestClient(t)
-	// no API call expected
+	// GIVEN a body on stdin and an invalid --format value.
+	// NewEnumValue rejects unknown values at flag parsing time,
+	// before RunE runs — so no HTTP call should reach the server.
+	srv := newOrbitServer(t, "", nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(stdinBody),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
-	// WHEN
 	_, err := exec("--format yaml -")
-
-	// THEN cobra rejects the flag before RunE executes
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "yaml")
+	assert.False(t, srv.called, "flag-validation errors must not hit the API")
 }
 
 func TestQuery_EmptyBody(t *testing.T) {
 	t.Parallel()
-	// GIVEN empty stdin
-	testClient := gitlabtesting.NewTestClient(t)
+	srv := newOrbitServer(t, "", nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(""),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
-	// WHEN
 	_, err := exec("-")
-
-	// THEN the user gets a clear error and no API call is attempted
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty")
+	assert.False(t, srv.called, "empty-body errors must not hit the API")
 }
 
 func TestQuery_BodyMissingQueryKey(t *testing.T) {
 	t.Parallel()
-	// GIVEN a body that parses as JSON but lacks `query`
-	testClient := gitlabtesting.NewTestClient(t)
+	srv := newOrbitServer(t, "", nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(`{"response_format":"llm"}`),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
-	// WHEN
 	_, err := exec("-")
-
-	// THEN the user gets a clear error and no API call is attempted
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "`query` object")
+	assert.False(t, srv.called, "validation errors must not hit the API")
 }
 
 func TestQuery_Unauthorized(t *testing.T) {
 	t.Parallel()
 	// GIVEN the API returns 401
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.Any(), gomock.Any()).
-		Return(nil,
-			&gitlab.Response{Response: &http.Response{StatusCode: http.StatusUnauthorized}},
-			&gitlab.ErrorResponse{
-				Response: &http.Response{StatusCode: http.StatusUnauthorized},
-				Message:  "401 Unauthorized",
-			})
+	srv := newOrbitServer(t, "", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = io.WriteString(w, `{"message":"401 Unauthorized"}`)
+	})
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(stdinBody),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
-	// WHEN
 	_, err := exec("-")
-
 	// THEN the error maps to ExitUnauthenticated (exit code 3)
 	require.Error(t, err)
 	var exitErr *cmdutils.ExitError
 	require.True(t, errors.As(err, &exitErr))
 	assert.Equal(t, orbiterr.ExitUnauthenticated, exitErr.Code)
+}
+
+// TestQuery_LLMResponseStreamedVerbatim is the direct regression test
+// for the bug that motivated this fix: when the server returns
+// `response_format=llm` (GOON/TOON text starting with `@header`), the
+// previous implementation passed the body through
+// `OrbitService.Query` → `json.NewDecoder(...).Decode(...)`, which
+// failed with the misleading
+// "Invalid character '@' looking for beginning of value" error on
+// every llm query, regardless of correctness.
+//
+// We assert here that the bytes the server writes are the bytes the
+// CLI prints, byte-for-byte. The body deliberately contains `@`
+// characters so that any future refactor that re-introduces a JSON
+// decode of the response body fails this test loudly.
+func TestQuery_LLMResponseStreamedVerbatim(t *testing.T) {
+	t.Parallel()
+	// Sample GOON output captured from a real `response_format=llm`
+	// response — every line starts with content that would break a
+	// JSON decoder.
+	respBody := strings.Join([]string{
+		"@header",
+		"query_type:traversal",
+		"goon_version:1.0.0",
+		"nodes:1",
+		"edges:0",
+		"@nodes",
+		"Project(1):",
+		"278964 name=GitLab",
+		"@edges",
+		"",
+	}, "\n")
+
+	srv := newOrbitServer(t, "", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, respBody)
+	})
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithStdin(stdinBody),
+		srv.apiClientOption(t),
+	)
+
+	out, err := exec("--format llm -")
+	require.NoError(t, err,
+		"`response_format=llm` body must be streamed verbatim — "+
+			"no JSON decode of the response is allowed")
+	assert.Equal(t, respBody, out.OutBuf.String(),
+		"every byte of the GOON response must be written to stdout unchanged")
+}
+
+// TestQuery_RawResponseStreamedVerbatim locks in that raw (JSON)
+// responses also pass through unchanged. We rely on a byte-exact
+// comparison rather than re-decoding so that any future client-side
+// re-marshalling (which would reorder keys or change whitespace) is
+// caught.
+func TestQuery_RawResponseStreamedVerbatim(t *testing.T) {
+	t.Parallel()
+	respBody := `{"result":{"format_version":"2.0.0","query_type":"traversal","nodes":[{"type":"Project","id":"278964","name":"GitLab"}],"edges":[]},"query_type":"traversal","row_count":1}`
+	srv := newOrbitServer(t, respBody, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithStdin(stdinBody),
+		srv.apiClientOption(t),
+	)
+
+	out, err := exec("--format raw -")
+	require.NoError(t, err)
+	assert.Equal(t, respBody, out.OutBuf.String(),
+		"raw JSON response must reach stdout byte-for-byte unchanged")
 }
 
 // TestBuildRequest_BodyResponseFormatWinsWhenFlagAbsent is a unit test for
@@ -414,31 +514,26 @@ func TestQuery_FromFile_WithAtInStrings(t *testing.T) {
 	bodyPath := filepath.Join(dir, "q.json")
 	require.NoError(t, os.WriteFile(bodyPath, []byte(body), 0o600))
 
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
-		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
-			require.NotNil(t, opts)
-			// Every @ character in the source body must reach the API.
-			require.Contains(t, string(opts.Query), "user@example.com",
-				"email address must survive @-handling")
-			require.Contains(t, string(opts.Query), "@ahegyi",
-				"@-prefixed reference inside a string must survive")
-			require.Contains(t, string(opts.Query), `"@p"`,
-				"@-prefixed value must survive")
-			return &gitlab.OrbitQueryResult{},
-				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
-		})
+	srv := newOrbitServer(t, `{"result":null}`, nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
 	_, err := exec(bodyPath)
 	require.NoError(t, err, "valid JSON with @ inside string literals must not be rejected")
+
+	// Every @ character in the source body must reach the API.
+	require.True(t, srv.called)
+	assert.Contains(t, string(srv.requestBody.Query), "user@example.com",
+		"email address must survive @-handling")
+	assert.Contains(t, string(srv.requestBody.Query), "@ahegyi",
+		"@-prefixed reference inside a string must survive")
+	assert.Contains(t, string(srv.requestBody.Query), `"@p"`,
+		"@-prefixed value must survive")
 }
 
 // TestQuery_Stdin_WithAtInStrings mirrors TestQuery_FromFile_WithAtInStrings
@@ -448,23 +543,19 @@ func TestQuery_Stdin_WithAtInStrings(t *testing.T) {
 	t.Parallel()
 	const body = `{"query":{"query_type":"traversal","filter":{"email":{"eq":"user@example.com"}}}}`
 
-	testClient := gitlabtesting.NewTestClient(t)
-	testClient.MockOrbit.EXPECT().
-		Query(gomock.AssignableToTypeOf(&gitlab.OrbitQueryRequest{}), gomock.Any()).
-		DoAndReturn(func(opts *gitlab.OrbitQueryRequest, _ ...gitlab.RequestOptionFunc) (*gitlab.OrbitQueryResult, *gitlab.Response, error) {
-			require.Contains(t, string(opts.Query), "user@example.com")
-			return &gitlab.OrbitQueryResult{},
-				&gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil
-		})
+	srv := newOrbitServer(t, `{"result":null}`, nil)
 
 	exec := cmdtest.SetupCmdForTest(
 		t,
 		NewCmd,
 		false,
 		cmdtest.WithStdin(body),
-		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+		srv.apiClientOption(t),
 	)
 
 	_, err := exec("-")
 	require.NoError(t, err)
+
+	require.True(t, srv.called)
+	assert.Contains(t, string(srv.requestBody.Query), "user@example.com")
 }

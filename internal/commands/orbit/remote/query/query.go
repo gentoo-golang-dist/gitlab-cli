@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -55,9 +56,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: `Execute a GitLab Knowledge Graph query. (EXPERIMENTAL)`,
 		Long: heredoc.Docf(`
 			Calls %[1]sPOST /api/v4/orbit/query%[1]s with a JSON request body and
-			prints the response as pretty-printed JSON. The body is read from
-			a file path or from standard input when the argument is %[1]s-%[1]s
-			or omitted.
+			prints the server response verbatim. The body is read from a file
+			path or from standard input when the argument is %[1]s-%[1]s or
+			omitted.
 
 			The request body must be a full Orbit query envelope:
 
@@ -71,8 +72,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			%[1]s--format%[1]s overrides the body's %[1]sresponse_format%[1]s value,
 			or sets it if absent. If neither the body nor %[1]s--format%[1]s
 			specifies a format, %[1]sllm%[1]s is used by default. The %[1]sllm%[1]s
-			format is compact and intended for agents. Use %[1]s--format raw%[1]s
-			when piping into %[1]sjq%[1]s.
+			format is compact GOON/TOON text intended for agents; %[1]sraw%[1]s
+			returns structured JSON suitable for %[1]sjq%[1]s. The server's
+			response body is written to stdout verbatim regardless of format —
+			no client-side decoding or re-encoding is performed.
 
 			The graph DSL JSON Schema is served by %[1]sglab orbit remote tools%[1]s
 			and is the source of truth for the body shape. See also
@@ -139,12 +142,34 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	result, _, err := client.Lab().Orbit.Query(req, gitlab.WithContext(ctx))
+	// We deliberately bypass `client.Lab().Orbit.Query` and instead
+	// stream the raw response body to stdout. The typed SDK helper
+	// decodes the response via `json.NewDecoder`, which is correct
+	// only for `response_format=raw` (JSON envelope) and fails with
+	// `invalid character '@' looking for beginning of value` for
+	// `response_format=llm`, where the server returns GOON/TOON text
+	// (Content-Type: text/plain) starting with `@header`.
+	//
+	// Passing `*bytes.Buffer` (an `io.Writer`) to `client.Do` makes
+	// the SDK copy the body verbatim instead of decoding it, so both
+	// formats round-trip unmodified.
+	httpReq, err := client.Lab().NewRequest(
+		http.MethodPost,
+		"orbit/query",
+		req,
+		[]gitlab.RequestOptionFunc{gitlab.WithContext(ctx)},
+	)
 	if err != nil {
+		return fmt.Errorf("building Orbit query request: %w", err)
+	}
+
+	var respBody bytes.Buffer
+	if _, err := client.Lab().Do(httpReq, &respBody); err != nil {
 		return orbiterr.Translate(err)
 	}
 
-	return o.io.PrintJSON(result)
+	_, err = o.io.StdOut.Write(respBody.Bytes())
+	return err
 }
 
 // readBody reads the request body from a file path or from `stdin`
