@@ -6,18 +6,26 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	attestationVerifyCmd "gitlab.com/gitlab-org/cli/internal/commands/attestation/verify"
+	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
 func NewCmdAttestation(f cmdutils.Factory) *cobra.Command {
 	attestationCmd := &cobra.Command{
 		Use:   "attestation <command> [flags]",
 		Short: `Manage software attestations. (EXPERIMENTAL)`,
-		Long:  ``,
+		Long: heredoc.Doc(`
+		Manage software attestations for artifacts built in GitLab CI/CD pipelines.
+		An attestation is a signed statement about an artifact, such as a provenance
+		statement that records how the artifact was built.
+
+		Use this command to verify that an artifact was built by the expected
+		GitLab project and pipeline.
+		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Verify attestation for the filename.txt file in the gitlab-org/gitlab project.
+			# Verify attestation for filename.txt in the gitlab-org/gitlab project
 			glab attestation verify gitlab-org/gitlab filename.txt
 
-			# Verify attestation for the filename.txt file in the project with ID 123.
+			# Verify attestation for filename.txt in the project with ID 123
 			glab attestation verify 123 filename.txt`),
 		Annotations: map[string]string{
 			"help:arguments": heredoc.Doc(`
