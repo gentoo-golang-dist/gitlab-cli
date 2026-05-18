@@ -81,6 +81,7 @@ point for new tapes.
 1. Update the `Output` path to point to your new GIF.
 1. Replace the script section (everything after the `Show` directive)
    with the commands you want to record.
+1. Run  `vhs <name>.tape` to generate the GIF.
 1. Commit the `.tape` file and the generated GIF together.
 
 ### Guidelines for tape content
