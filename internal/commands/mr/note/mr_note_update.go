@@ -60,10 +60,10 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			cannot be moved.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Update note 12345 on MR 1 with a new message
+			# Update note 12345 on merge request 1 with a new message
 			glab mr note update 1 12345 -m "Updated comment"
 
-			# Update a note on the current branch's MR, composing in an editor
+			# Update a note on the current branch's merge request, composing in an editor
 			glab mr note update 12345
 
 			# Pipe the new body from stdin

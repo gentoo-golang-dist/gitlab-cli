@@ -37,13 +37,13 @@ glab mr note delete [<id> | <branch>] <note-id> [flags]
 ## Examples
 
 ```console
-# Delete note 12345 from MR 1
+# Delete note 12345 from merge request 1
 glab mr note delete 1 12345
 
 # Delete without confirmation
 glab mr note delete 1 12345 --yes
 
-# Delete a note on the current branch's MR
+# Delete a note on the current branch's merge request
 glab mr note delete 12345
 
 ```

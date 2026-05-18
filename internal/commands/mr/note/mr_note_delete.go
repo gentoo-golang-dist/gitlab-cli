@@ -60,13 +60,13 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 			is shown unless %[1]s--yes%[1]s is passed.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Delete note 12345 from MR 1
+			# Delete note 12345 from merge request 1
 			glab mr note delete 1 12345
 
 			# Delete without confirmation
 			glab mr note delete 1 12345 --yes
 
-			# Delete a note on the current branch's MR
+			# Delete a note on the current branch's merge request
 			glab mr note delete 12345
 		`),
 		Args: cobra.RangeArgs(1, 2),

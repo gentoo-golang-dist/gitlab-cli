@@ -74,13 +74,13 @@ func newResolveCmd(f cmdutils.Factory, resolve bool) *cobra.Command {
 			If a prefix matches multiple discussions, an error is returned with the ambiguous matches.
 		`, capitalize(action)) + text.ExperimentalString,
 		Example: heredoc.Docf(`
-			# %s a discussion on MR 123 by prefix
+			# %s a discussion on merge request 123 by prefix
 			glab mr note %s 123 abc12345
 
 			# %s a discussion by note ID
 			glab mr note %s 3107030349
 
-			# %s a discussion by prefix (8+ chars, auto-detects MR from branch)
+			# %s a discussion by prefix (8+ chars, auto-detects merge request from branch)
 			glab mr note %s abc12345
 
 			# %s a discussion by full ID
