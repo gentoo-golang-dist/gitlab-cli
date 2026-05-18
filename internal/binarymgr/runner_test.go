@@ -13,10 +13,9 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-// runnerFor builds a Runner backed by a blank in-memory config for tests
-// that exercise persistence helpers.
 func runnerFor(t *testing.T) (*Runner, config.Config) {
 	t.Helper()
+	t.Setenv("GLAB_CONFIG_DIR", t.TempDir())
 	ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
 	cfg := config.NewBlankConfig()
 	spec := testSpec()
@@ -28,11 +27,10 @@ func runnerFor(t *testing.T) (*Runner, config.Config) {
 	}, cfg
 }
 
-func TestRunner_saveAutoDownloadPreference(t *testing.T) {
-	t.Parallel()
+// These tests use t.Setenv (via runnerFor) to point ConfigFile() at a temp dir and so cannot be parallel
 
+func TestRunner_saveAutoDownloadPreference(t *testing.T) {
 	t.Run("empty preference is a no-op", func(t *testing.T) {
-		t.Parallel()
 		r, cfg := runnerFor(t)
 		r.saveAutoDownloadPreference("")
 
@@ -41,7 +39,6 @@ func TestRunner_saveAutoDownloadPreference(t *testing.T) {
 	})
 
 	t.Run("opt-in is persisted", func(t *testing.T) {
-		t.Parallel()
 		r, cfg := runnerFor(t)
 		r.saveAutoDownloadPreference("true")
 
@@ -51,8 +48,6 @@ func TestRunner_saveAutoDownloadPreference(t *testing.T) {
 }
 
 func TestRunner_saveLastUpdateCheck(t *testing.T) {
-	t.Parallel()
-
 	r, cfg := runnerFor(t)
 	now := time.Date(2026, 5, 12, 10, 0, 0, 0, time.UTC)
 	r.saveLastUpdateCheck(now)
