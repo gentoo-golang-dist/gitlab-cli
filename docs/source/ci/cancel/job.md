@@ -17,7 +17,7 @@ Cancel CI/CD jobs.
 Cancels one or more running CI/CD jobs by ID. You can pass multiple
 job IDs as separate arguments, in a comma-separated list, or in a
 quoted space-separated list.
-	
+
 To preview which jobs would be canceled without making changes, use
 `--dry-run`.
 

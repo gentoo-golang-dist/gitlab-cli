@@ -15,7 +15,7 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 		Short: "Cancel a running pipeline or job.",
 		Long: heredoc.Docf(`
 		Cancel one or more running CI/CD pipelines or jobs.
-		
+
 		Use the %[1]spipeline%[1]s subcommand to cancel pipelines, or the %[1]sjob%[1]s
 		subcommand to cancel individual jobs.
 		`, "`"),

@@ -29,7 +29,7 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 		Cancels one or more running CI/CD jobs by ID. You can pass multiple
 		job IDs as separate arguments, in a comma-separated list, or in a
 		quoted space-separated list.
-			
+
 		To preview which jobs would be canceled without making changes, use
 		%[1]s--dry-run%[1]s.
 		`, "`"),

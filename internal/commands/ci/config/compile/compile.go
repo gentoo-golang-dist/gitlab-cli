@@ -21,14 +21,14 @@ func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Docf(`
 		Compiles your CI/CD configuration and prints the fully merged YAML
 		to standard output.
-		
+
 		All %[1]sinclude%[1]s directives are resolved,
 		and any extended jobs are flattened into their final form.
-			
+
 		By default, glab compiles the %[1]s.gitlab-ci.yml%[1]s file in the
 		current directory. To compile a different file, pass its path as an
 		argument.
-			
+
 		You must run this command from a GitLab project repository.
 		`, "`"),
 		Args: cobra.MaximumNArgs(1),

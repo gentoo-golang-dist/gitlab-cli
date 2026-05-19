@@ -19,11 +19,11 @@ to standard output.
 
 All `include` directives are resolved,
 and any extended jobs are flattened into their final form.
-	
+
 By default, glab compiles the `.gitlab-ci.yml` file in the
 current directory. To compile a different file, pass its path as an
 argument.
-	
+
 You must run this command from a GitLab project repository.
 
 ```plaintext
