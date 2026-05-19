@@ -29,19 +29,17 @@ glab stack infer <revision-range> [flags]
 ## Examples
 
 ```console
-# Commit range syntax is similar to "git rev-list":
+# Commit range syntax is similar to "git rev-list".
+# The start of the range must be a branch name (not a relative ref like HEAD~5).
 
 ## Infer stack from commits between main and current branch
 $ glab stack infer main..HEAD
 
-## Infer stack from last 5 commits
-$ glab stack infer HEAD~5..HEAD
-
-## Infer stack from specific commit range
-$ glab stack infer abc123..def456
+## Infer stack from commits on a feature branch since it diverged from develop
+$ glab stack infer develop..HEAD
 
 ## Create a new stack with a specific name
-$ glab stack infer --name feature-stack HEAD~3..HEAD
+$ glab stack infer --name feature-stack main..HEAD
 
 ```
 

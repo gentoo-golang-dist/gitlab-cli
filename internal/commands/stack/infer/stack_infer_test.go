@@ -304,6 +304,72 @@ func TestCreateBranches(t *testing.T) {
 	})
 }
 
+func TestParseBaseBranch(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+
+	t.Run("resolves branch name from revision range", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("rev-parse", "--abbrev-ref", "main").
+			Return("main", nil)
+
+		branch, err := parseBaseBranch(mockGR, []string{"main..HEAD"})
+		require.NoError(t, err)
+		assert.Equal(t, "main", branch)
+	})
+
+	t.Run("rejects relative revision like HEAD~3", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("rev-parse", "--abbrev-ref", "HEAD~3").
+			Return("HEAD~3", nil)
+
+		_, err := parseBaseBranch(mockGR, []string{"HEAD~3..HEAD"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "relative revision")
+		assert.Contains(t, err.Error(), "HEAD~3")
+	})
+
+	t.Run("rejects HEAD^ syntax", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("rev-parse", "--abbrev-ref", "HEAD^").
+			Return("HEAD^", nil)
+
+		_, err := parseBaseBranch(mockGR, []string{"HEAD^..HEAD"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "relative revision")
+	})
+
+	t.Run("returns empty string when no range provided", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		branch, err := parseBaseBranch(mockGR, []string{"abc123"})
+		require.NoError(t, err)
+		assert.Equal(t, "", branch)
+	})
+
+	t.Run("returns error when rev-parse fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("rev-parse", "--abbrev-ref", "nonexistent").
+			Return("", fmt.Errorf("unknown revision"))
+
+		_, err := parseBaseBranch(mockGR, []string{"nonexistent..HEAD"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "could not resolve")
+	})
+}
+
 func TestRunNoTTY(t *testing.T) {
 	t.Setenv("NO_COLOR", "true")
 
@@ -312,6 +378,10 @@ func TestRunNoTTY(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("rev-parse", "--abbrev-ref", "main").
+			Return("main", nil)
 
 		exec := cmdtest.SetupCmdForTest(t, func(f cmdutils.Factory) *cobra.Command {
 			return NewCmdInferStack(f, mockGR)
