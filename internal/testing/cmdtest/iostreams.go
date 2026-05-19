@@ -59,11 +59,7 @@ func TestIOStreams(options ...iostreams.IOStreamsOption) (*iostreams.IOStreams, 
 	opts := []iostreams.IOStreamsOption{
 		iostreams.WithStdin(io.NopCloser(in), false),
 		iostreams.WithStdout(out, false),
-
 		iostreams.WithStderr(errOut, false),
-		// Disable hyperlinks by default in tests to avoid OSC 8 escape sequences
-		// in test output. Tests that explicitly test hyperlink behavior should pass
-		// iostreams.WithDisplayHyperLinks("auto") or iostreams.WithDisplayHyperLinks("always").
 		iostreams.WithDisplayHyperLinks("never"),
 	}
 	opts = append(opts, options...)
