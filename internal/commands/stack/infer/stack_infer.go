@@ -31,19 +31,17 @@ func NewCmdInferStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 This will append layers to an existing stack, or create a new one if needed.
 ` + text.ExperimentalString,
 		Example: heredoc.Doc(`
-			# Commit range syntax is similar to "git rev-list":
+			# Commit range syntax is similar to "git rev-list".
+			# The start of the range must be a branch name (not a relative ref like HEAD~5).
 
 			## Infer stack from commits between main and current branch
 			$ glab stack infer main..HEAD
 
-			## Infer stack from last 5 commits
-			$ glab stack infer HEAD~5..HEAD
-
-			## Infer stack from specific commit range
-			$ glab stack infer abc123..def456
+			## Infer stack from commits on a feature branch since it diverged from develop
+			$ glab stack infer develop..HEAD
 
 			## Create a new stack with a specific name
-			$ glab stack infer --name feature-stack HEAD~3..HEAD
+			$ glab stack infer --name feature-stack main..HEAD
 		`),
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,17 +54,47 @@ This will append layers to an existing stack, or create a new one if needed.
 	return stackInferCmd
 }
 
-func parseBaseBranch(args []string) string {
+func parseBaseBranch(gr git.GitRunner, args []string) (string, error) {
 	for _, arg := range args {
 		if before, _, found := strings.Cut(arg, ".."); found {
-			return before
+			return resolveBaseBranch(gr, before)
 		}
 	}
-	return ""
+	return "", nil
+}
+
+// resolveBaseBranch resolves a revision expression to a branch name.
+// Relative refs like HEAD~3 are not valid base branches because they drift
+// as new commits are added.
+func resolveBaseBranch(gr git.GitRunner, ref string) (string, error) {
+	branch, err := gr.Git("rev-parse", "--abbrev-ref", ref)
+	if err != nil {
+		return "", fmt.Errorf("could not resolve %q to a branch: %v", ref, err)
+	}
+
+	branch = strings.TrimSpace(branch)
+
+	// rev-parse --abbrev-ref returns the ref unchanged when it can't
+	// abbreviate it to a symbolic name (e.g. HEAD~3 stays HEAD~3).
+	// Detect this by checking if the resolved name still matches the
+	// original non-branch-like ref.
+	if branch == ref && strings.ContainsAny(ref, "~^@{}") {
+		return "", fmt.Errorf(
+			"%q is a relative revision, not a branch name. "+
+				"Use a branch name as the start of the range (e.g. main..HEAD)",
+			ref,
+		)
+	}
+
+	return branch, nil
 }
 
 func run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner, args []string, o *options) error {
-	o.baseBranch = parseBaseBranch(args)
+	baseBranch, err := parseBaseBranch(gr, args)
+	if err != nil {
+		return err
+	}
+	o.baseBranch = baseBranch
 
 	// check if in a stack
 	title, err := git.GetCurrentStackTitle()
