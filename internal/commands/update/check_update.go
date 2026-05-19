@@ -35,14 +35,25 @@ func NewCheckUpdateCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   commandUse,
 		Short: "Check for the latest glab version.",
-		Long: heredoc.Doc(`Checks for the latest version of glab available on GitLab.com.
+		Long: heredoc.Docf(`
+		Checks for the latest version of glab available on GitLab.com.
 
-		When run explicitly, this command always checks for updates regardless of when the last check occurred.
+		When you run this command explicitly, glab always checks for updates,
+		even if the previous check was less than 24 hours ago.
 
-		When run automatically after other glab commands, it checks for updates at most once every 24 hours.
+		When glab runs this check automatically after other commands, it
+		checks for updates at most once every 24 hours.
 
-		To disable the automatic update check entirely, run 'glab config set check_update false'.
-		To re-enable the automatic update check, run 'glab config set check_update true'.
+		To turn off the automatic update check, run
+		%[1]sglab config set check_update false%[1]s. To turn it back on,
+		run %[1]sglab config set check_update true%[1]s.
+		`, "`"),
+		Example: heredoc.Doc(`
+		# Check for the latest glab version
+		glab check-update
+
+		# Check for the latest glab version using the alias
+		glab update
 		`),
 		Aliases: commandAliases,
 		Annotations: map[string]string{
