@@ -133,9 +133,9 @@ func (o *deleteOptions) run(ctx context.Context) error {
 
 	if !o.yes && o.io.PromptEnabled() {
 		body := o.note.Body
-		if len(body) > 80 {
-			body = body[:80] + "..."
-		}
+		if r := []rune(body); len(r) > 80 {
+                        body = string(r[:80]) + "..."
+                }
 		body = strings.ReplaceAll(body, "\n", " ")
 
 		author := ""
