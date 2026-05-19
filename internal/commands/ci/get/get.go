@@ -3,9 +3,7 @@ package get
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -19,20 +17,6 @@ import (
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
-
-var jobStatusValues = []gitlab.BuildStateValue{
-	gitlab.Created,
-	gitlab.WaitingForResource,
-	gitlab.Preparing,
-	gitlab.Pending,
-	gitlab.Running,
-	gitlab.Success,
-	gitlab.Failed,
-	gitlab.Canceled,
-	gitlab.Skipped,
-	gitlab.Manual,
-	gitlab.Scheduled,
-}
 
 type PipelineMergedResponse struct {
 	*gitlab.Pipeline
@@ -90,9 +74,6 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if mrIID == 0 {
-				mrIID, _ = cmd.Flags().GetInt("mr")
-			}
 
 			var msgNotFound string
 			if pipelineId != 0 {
@@ -130,11 +111,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			statusFilter, _ := cmd.Flags().GetString("status")
 			listOpts := &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}
 			if statusFilter != "" {
-				state, err := parseJobStatus(statusFilter)
-				if err != nil {
-					return err
-				}
-				listOpts.Scope = &[]gitlab.BuildStateValue{state}
+				listOpts.Scope = &[]gitlab.BuildStateValue{gitlab.BuildStateValue(statusFilter)}
 			}
 
 			jobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
@@ -175,35 +152,18 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	fl := pipelineGetCmd.Flags()
 	fl.StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
 	fl.IntP("pipeline-id", "p", 0, "Provide pipeline ID.")
-	fl.Int("merge-request", 0, "Show the pipeline for the given merge request IID.")
-	fl.Int("mr", 0, "Alias for --merge-request.")
-	_ = fl.MarkHidden("mr")
-	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "mr")
+	fl.Int("merge-request", 0, "Show the pipeline for the given merge request <iid>.")
 	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "pipeline-id")
 	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "branch")
-	pipelineGetCmd.MarkFlagsMutuallyExclusive("mr", "pipeline-id")
-	pipelineGetCmd.MarkFlagsMutuallyExclusive("mr", "branch")
 	fl.StringP("output", "F", "text", "Format output. Options: text, json.")
 	fl.StringP("output-format", "o", "text", "Use output.")
 	_ = fl.MarkHidden("output-format")
 	_ = fl.MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
 	fl.BoolP("with-job-details", "d", false, "Show extended job information. (default false)")
 	fl.Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role. (default false)")
-	fl.String("status", "", "Show only jobs in the given state. Options: created, waiting_for_resource, preparing, pending, running, success, failed, canceled, skipped, manual, scheduled.")
+	fl.StringP("status", "s", "", "Show only jobs in the given <state>. Passed through to the API's scope parameter.")
 
 	return pipelineGetCmd
-}
-
-func parseJobStatus(s string) (gitlab.BuildStateValue, error) {
-	v := gitlab.BuildStateValue(s)
-	if slices.Contains(jobStatusValues, v) {
-		return v, nil
-	}
-	names := make([]string, len(jobStatusValues))
-	for i, a := range jobStatusValues {
-		names[i] = string(a)
-	}
-	return "", fmt.Errorf("invalid --status %q. Options: %s", s, strings.Join(names, ", "))
 }
 
 func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool) {

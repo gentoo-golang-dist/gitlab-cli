@@ -49,10 +49,10 @@ glab ci get --merge-request=42 --status=failed --with-job-details
 
 ```plaintext
   -b, --branch string       Check pipeline status for a branch. (default current branch)
-      --merge-request int   Show the pipeline for the given merge request IID.
+      --merge-request int   Show the pipeline for the given merge request <iid>.
   -F, --output string       Format output. Options: text, json. (default "text")
   -p, --pipeline-id int     Provide pipeline ID.
-      --status string       Show only jobs in the given state. Options: created, waiting_for_resource, preparing, pending, running, success, failed, canceled, skipped, manual, scheduled.
+  -s, --status string       Show only jobs in the given <state>. Passed through to the API's scope parameter.
   -d, --with-job-details    Show extended job information. (default false)
       --with-variables      Show variables in pipeline. Requires the Maintainer role. (default false)
 ```
