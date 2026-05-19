@@ -37,7 +37,7 @@ func NewCmdCI(f cmdutils.Factory) *cobra.Command {
 
 		The %[1]spipe%[1]s and %[1]spipeline%[1]s aliases are deprecated. Use %[1]sci%[1]s instead.
 		`, "`"),
-    Aliases: []string{"pipe", "pipeline"},
+		Aliases: []string{"pipe", "pipeline"},
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
