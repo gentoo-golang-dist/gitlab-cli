@@ -23,11 +23,11 @@ func NewCmdGenerate(f cmdutils.Factory) *cobra.Command {
 		Generates a changelog from the commits in your project's Git
 		repository. If you do not pass %[1]s--version%[1]s, glab determines
 		the version by running %[1]sgit describe%[1]s against your local tags.
-			
+		
 		By default, GitLab reads the changelog configuration from
 		%[1]s.gitlab/changelog_config.yml%[1]s in the project. To use a
 		different file, pass %[1]s--config-file%[1]s.
-			
+		
 		To limit the range of commits, use %[1]s--from%[1]s and %[1]s--to%[1]s.
 		glab excludes the %[1]s--from%[1]s commit from the range and includes
 		the %[1]s--to%[1]s commit. The %[1]s--to%[1]s commit defaults to

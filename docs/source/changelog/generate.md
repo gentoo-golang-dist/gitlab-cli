@@ -17,11 +17,11 @@ Generate a changelog for the current project.
 Generates a changelog from the commits in your project's Git
 repository. If you do not pass `--version`, glab determines
 the version by running `git describe` against your local tags.
-	
+
 By default, GitLab reads the changelog configuration from
 `.gitlab/changelog_config.yml` in the project. To use a
 different file, pass `--config-file`.
-	
+
 To limit the range of commits, use `--from` and `--to`.
 glab excludes the `--from` commit from the range and includes
 the `--to` commit. The `--to` commit defaults to
