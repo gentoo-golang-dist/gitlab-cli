@@ -3,6 +3,7 @@ package ci
 import (
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -28,8 +29,15 @@ func NewCmdCI(f cmdutils.Factory) *cobra.Command {
 	ciCmd := &cobra.Command{
 		Use:     "ci <command> [flags]",
 		Short:   `Work with GitLab CI/CD pipelines and jobs.`,
-		Long:    ``,
-		Aliases: []string{"pipe", "pipeline"},
+		Long: heredoc.Docf(`
+		Manages CI/CD pipelines and jobs in your GitLab project.
+		
+		Use these commands to manage CI/CD pipelines and jobs. You can also
+		lint and compile CI/CD configuration files.		
+		
+		The %[1]spipe%[1]s and %[1]spipeline%[1]s aliases are deprecated. Use %[1]sci%[1]s instead.
+		`, "`"),
+    Aliases: []string{"pipe", "pipeline"},
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

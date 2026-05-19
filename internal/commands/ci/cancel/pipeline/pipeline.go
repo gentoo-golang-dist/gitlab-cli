@@ -23,16 +23,29 @@ const (
 
 func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 	pipelineCancelCmd := &cobra.Command{
-		Use:   "pipeline <id> [flags]",
+		Use:   "pipeline <id> [<id>...] [flags]",
 		Short: `Cancel CI/CD pipelines.`,
 		Long: heredoc.Docf(`
-			Use %[1]s--dry-run%[1]s to list pipelines that would be canceled without making changes.
+		Cancels one or more running CI/CD pipelines by ID. You can pass
+		multiple pipeline IDs as separate arguments, in a comma-separated
+		list, or in a quoted space-separated list.
+
+		To preview which pipelines would be canceled without making changes,
+		use %[1]s--dry-run%[1]s.
 		`, "`"),
 		Example: heredoc.Doc(`
+			# Cancel a single pipeline
 			glab ci cancel pipeline 1504182795
+
+			# Cancel multiple pipelines, comma-separated
 			glab ci cancel pipeline 1504182795,1504182796
+
+			# Cancel multiple pipelines, space-separated in quotes
 			glab ci cancel pipeline "1504182795 1504182796"
-			glab ci cancel pipeline 1504182795,1504182796 --dry-run`),
+
+			# Preview which pipelines would be canceled
+			glab ci cancel pipeline 1504182795,1504182796 --dry-run
+		`),
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return fmt.Errorf("You must pass a pipeline ID.")
@@ -72,7 +85,7 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 }
 
 func SetupCommandFlags(flags *pflag.FlagSet) {
-	flags.BoolP(FlagDryRun, "", false, "Simulates process, but does not cancel anything.")
+	flags.BoolP(FlagDryRun, "", false, "Show which pipelines would be canceled, without canceling them.")
 }
 
 func runCancelation(
