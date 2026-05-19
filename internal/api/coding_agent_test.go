@@ -76,7 +76,7 @@ func TestDetectCodingAgent(t *testing.T) {
 
 	allAgentVars := []string{
 		"AI_AGENT", "CLAUDECODE", "CODEX_THREAD_ID",
-		"OPENCODE", "CURSOR_AGENT",
+		"OPENCODE", "CURSOR_AGENT", "GEMINI_CLI",
 	}
 
 	for _, tt := range tests {
