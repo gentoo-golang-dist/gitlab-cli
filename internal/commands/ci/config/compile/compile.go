@@ -16,18 +16,32 @@ import (
 
 func NewCmdConfigCompile(f cmdutils.Factory) *cobra.Command {
 	configCompileCmd := &cobra.Command{
-		Use:   "compile",
-		Short: "View the fully expanded CI/CD configuration.",
+		Use:   "compile [<path>]",
+		Short: "View the merged CI/CD configuration.",
 		Long: heredoc.Docf(`
-			Defaults to the %[1]s.gitlab-ci.yml%[1]s file in the current directory.
-			You must run this command from a GitLab project repository.
+		Compiles your CI/CD configuration and prints the fully merged YAML
+		to standard output.
+
+		All %[1]sinclude%[1]s directives are resolved,
+		and any extended jobs are flattened into their final form.
+
+		By default, glab compiles the %[1]s.gitlab-ci.yml%[1]s file in the
+		current directory. To compile a different file, pass its path as an
+		argument.
+
+		You must run this command from a GitLab project repository.
 		`, "`"),
 		Args: cobra.MaximumNArgs(1),
 		Example: heredoc.Doc(`
-			# Uses .gitlab-ci.yml in the current directory
+			# Compile .gitlab-ci.yml in the current directory
 			glab ci config compile
+
+			# Compile a specific file in the current directory
 			glab ci config compile .gitlab-ci.yml
-			glab ci config compile path/to/.gitlab-ci.yml`),
+
+			# Compile a file at a relative path
+			glab ci config compile path/to/.gitlab-ci.yml
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
