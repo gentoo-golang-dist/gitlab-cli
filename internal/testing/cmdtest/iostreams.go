@@ -60,6 +60,11 @@ func TestIOStreams(options ...iostreams.IOStreamsOption) (*iostreams.IOStreams, 
 		iostreams.WithStdin(io.NopCloser(in), false),
 		iostreams.WithStdout(out, false),
 		iostreams.WithStderr(errOut, false),
+		// Default to never displaying hyperlinks in tests, so that tests which don't
+		// explicitly test hyperlink behavior are not affected by the default "auto" mode.
+		// Tests that want to verify hyperlink output should pass iostreams.WithDisplayHyperLinks
+		// explicitly as one of the options (which will override this default).
+		iostreams.WithDisplayHyperLinks("never"),
 	}
 	opts = append(opts, options...)
 
