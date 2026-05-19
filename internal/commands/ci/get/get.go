@@ -1,26 +1,39 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"strconv"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/ci/ciutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/tableprinter"
 )
 
 const NoVariablesInPipelineMessage = "No variables found in pipeline."
 
+type PipelineBridge struct {
+	Bridge    *gitlab.Bridge             `json:"bridge"`
+	Pipeline  *gitlab.Pipeline           `json:"pipeline"`
+	Jobs      []*gitlab.Job              `json:"jobs"`
+	Variables []*gitlab.PipelineVariable `json:"variables"`
+}
+
 type PipelineMergedResponse struct {
 	*gitlab.Pipeline
 	Jobs      []*gitlab.Job              `json:"jobs"`
+	Bridges   []PipelineBridge           `json:"bridges"`
 	Variables []*gitlab.PipelineVariable `json:"variables"`
 }
 
@@ -70,14 +83,30 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 					return f.Branch()
 				}, repo, client)
 
-				// Use GetPipelineWithFallback for robust pipeline lookup with MR fallback
-				pipeline, err := ciutils.GetPipelineWithFallback(cmd.Context(), client, repo.FullName(), branch, f.IO())
+				commit, _, err := client.Commits.GetCommit(repo.FullName(), branch, nil)
 				if err != nil {
 					redCheck := c.Red("✘")
 					fmt.Fprintf(f.IO().StdOut, "%s %v\n", redCheck, err)
 					return err
 				}
-				pipelineId = int(pipeline.ID)
+
+				// The latest commit on the branch won't work with a merged
+				// result pipeline
+				if commit.LastPipeline == nil {
+					mr, _, err := mrutils.MRFromArgs(cmd.Context(), f, args, "any")
+					if err != nil {
+						return err
+					}
+
+					if mr.HeadPipeline == nil {
+						return fmt.Errorf("no pipeline found. It might not exist yet. If this problem continues, check your pipeline configuration")
+					} else {
+						pipelineId = int(mr.HeadPipeline.ID)
+					}
+
+				} else {
+					pipelineId = int(commit.LastPipeline.ID)
+				}
 				msgNotFound = fmt.Sprintf("No pipelines running or available on branch: %s", branch)
 			}
 
@@ -95,7 +124,68 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
+			showJobDetails, _ := cmd.Flags().GetBool("with-job-details")
 			showVariables, _ := cmd.Flags().GetBool("with-variables")
+			withDownstreamPipelines, _ := cmd.Flags().GetBool("with-downstream-pipelines")
+			var pipelineBridges []PipelineBridge
+
+			if withDownstreamPipelines {
+				bridges, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Bridge, *gitlab.Response, error) {
+					return client.Jobs.ListPipelineBridges(repo.FullName(), int64(pipelineId), &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p)
+				})
+				if err != nil {
+					return err
+				}
+
+				// Build a filtered list of bridges that actually have downstream pipelines.
+				var filteredBridges []*gitlab.Bridge
+				for _, bridge := range bridges {
+					if bridge.DownstreamPipeline != nil {
+						filteredBridges = append(filteredBridges, bridge)
+					}
+				}
+
+				results := make([]PipelineBridge, len(filteredBridges))
+
+				g, ctx := errgroup.WithContext(cmd.Context())
+				sem := semaphore.NewWeighted(int64(runtime.GOMAXPROCS(0)))
+
+				for i, bridge := range filteredBridges {
+					if err := sem.Acquire(ctx, 1); err != nil {
+						// If context is cancelled or acquire fails, stop and return error.
+						return err
+					}
+
+					g.Go(func() error {
+						// Ensure the token is released when the worker finishes.
+						defer sem.Release(1)
+
+						pb, err := fetchDownstreamPipeline(ctx, client, bridge, showVariables)
+						if err != nil {
+							// Provide context about which downstream pipeline failed, including a link when possible.
+							dp := bridge.DownstreamPipeline
+							baseMsg := fmt.Sprintf(
+								"failed to fetch downstream pipeline for parent_pipeline_id=%d downstream_project_id=%d downstream_pipeline_id=%d web_url=%s",
+								pipelineId,
+								dp.ProjectID,
+								dp.ID,
+								dp.WebURL,
+							)
+							return fmt.Errorf("%s: %w", baseMsg, err)
+						}
+						results[i] = pb
+						return nil
+					})
+				}
+
+				// Wait for all workers and return any error.
+				if err := g.Wait(); err != nil {
+					return err
+				}
+
+				// Assign collected downstream pipelines
+				pipelineBridges = results
+			}
 
 			var variables []*gitlab.PipelineVariable
 			if showVariables {
@@ -109,6 +199,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				Pipeline:  pipeline,
 				Jobs:      jobs,
 				Variables: variables,
+				Bridges:   pipelineBridges,
 			}
 
 			outputFormat, _ := cmd.Flags().GetString("output-format")
@@ -116,9 +207,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 			if output == "json" || outputFormat == "json" {
 				return f.IO().PrintJSON(*mergedPipelineObject)
 			}
-
-			showJobDetails, _ := cmd.Flags().GetBool("with-job-details")
-			printTable(*mergedPipelineObject, f.IO().StdOut, showJobDetails)
+			printTable(*mergedPipelineObject, f.IO().StdOut, showJobDetails, withDownstreamPipelines)
 			return nil
 		},
 	}
@@ -131,24 +220,43 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	_ = pipelineGetCmd.Flags().MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
 	pipelineGetCmd.Flags().BoolP("with-job-details", "d", false, "Show extended job information.")
 	pipelineGetCmd.Flags().Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
+	pipelineGetCmd.Flags().Bool("with-downstream-pipelines", false, "Show downstream pipelines.")
 
 	return pipelineGetCmd
 }
 
-func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool) {
-	printPipelineTable(p, dest)
+func printTable(p PipelineMergedResponse, dest io.Writer, showJobDetails bool, withDownstreamPipelines bool) {
+	printPipelineTable(p.Pipeline, dest)
 
 	if showJobDetails {
-		printJobTable(p, dest)
+		printJobTable(p.Jobs, dest)
 	} else {
-		printJobText(p, dest)
+		printJobText(p.Jobs, dest)
 	}
 
-	printVariables(p, dest)
+	printVariables(p.Variables, dest)
+
+	if withDownstreamPipelines {
+		for idx, bridge := range p.Bridges {
+			normalIdx := idx + 1
+			printPipelineTable(bridge.Pipeline, dest, normalIdx)
+			if showJobDetails {
+				printJobTable(bridge.Jobs, dest, normalIdx)
+			} else {
+				printJobText(bridge.Jobs, dest, normalIdx)
+			}
+
+			printVariables(bridge.Variables, dest, normalIdx)
+		}
+	}
 }
 
-func printPipelineTable(p PipelineMergedResponse, dest io.Writer) {
-	fmt.Fprint(dest, "# Pipeline:\n")
+func printPipelineTable(p *gitlab.Pipeline, dest io.Writer, isDownstream ...int) {
+	if len(isDownstream) > 0 {
+		fmt.Fprintf(dest, "# Downstream %d pipeline :\n", isDownstream[0])
+	} else {
+		fmt.Fprint(dest, "# Pipeline:\n")
+	}
 	pipelineTable := tableprinter.NewTablePrinter()
 	pipelineTable.AddRow("id:", strconv.FormatInt(p.ID, 10))
 	pipelineTable.AddRow("status:", p.Status)
@@ -164,36 +272,80 @@ func printPipelineTable(p PipelineMergedResponse, dest io.Writer) {
 	fmt.Fprintln(dest, pipelineTable.String())
 }
 
-func printJobTable(p PipelineMergedResponse, dest io.Writer) {
-	fmt.Fprint(dest, "# Jobs:\n")
+func printJobTable(p []*gitlab.Job, dest io.Writer, isDownstream ...int) {
+	if len(isDownstream) > 0 {
+		fmt.Fprintf(dest, "# Downstream %d jobs :\n", isDownstream[0])
+	} else {
+		fmt.Fprint(dest, "# Jobs:\n")
+	}
 	jobTable := tableprinter.NewTablePrinter()
 	jobTable.AddRow("ID", "Name", "Status", "Duration", "Failure reason")
-	for _, j := range p.Jobs {
+	for _, j := range p {
 		jobTable.AddRow(j.ID, j.Name, j.Status, j.Duration, j.FailureReason)
 	}
 	fmt.Fprintln(dest, jobTable.String())
 }
 
-func printJobText(p PipelineMergedResponse, dest io.Writer) {
-	fmt.Fprint(dest, "# Jobs:\n")
+func printJobText(p []*gitlab.Job, dest io.Writer, isDownstream ...int) {
+	if len(isDownstream) > 0 {
+		fmt.Fprintf(dest, "# Downstream %d jobs :\n", isDownstream[0])
+	} else {
+		fmt.Fprint(dest, "# Jobs:\n")
+	}
 	jobTable := tableprinter.NewTablePrinter()
-	for _, j := range p.Jobs {
+	for _, j := range p {
 		jobTable.AddRow(j.Name+":", j.Status)
 	}
 	fmt.Fprintln(dest, jobTable.String())
 }
 
-func printVariables(p PipelineMergedResponse, dest io.Writer) {
-	if p.Variables != nil {
-		fmt.Fprint(dest, "# Variables:\n")
-		if len(p.Variables) == 0 {
+func printVariables(vars []*gitlab.PipelineVariable, dest io.Writer, isDownstream ...int) {
+	if vars != nil {
+		if len(isDownstream) > 0 {
+			fmt.Fprintf(dest, "# Downstream %d variables :\n", isDownstream[0])
+		} else {
+			fmt.Fprint(dest, "# Variables:\n")
+		}
+		if len(vars) == 0 {
 			fmt.Fprint(dest, NoVariablesInPipelineMessage)
 		}
 
 		varTable := tableprinter.NewTablePrinter()
-		for _, v := range p.Variables {
+		for _, v := range vars {
 			varTable.AddRow(v.Key+":", v.Value)
 		}
 		fmt.Fprintln(dest, varTable.String())
 	}
+}
+
+func fetchDownstreamPipeline(ctx context.Context, apiClient *gitlab.Client, br *gitlab.Bridge, showVariables bool) (PipelineBridge, error) {
+	// Get the downstream pipeline
+	downstreamPipeline, _, err := apiClient.Pipelines.GetPipeline(br.DownstreamPipeline.ProjectID, br.DownstreamPipeline.ID, gitlab.WithContext(ctx))
+	if err != nil {
+		return PipelineBridge{}, err
+	}
+
+	// Get jobs for the downstream pipeline
+	downstreamJobs, err := gitlab.ScanAndCollect(func(p gitlab.PaginationOptionFunc) ([]*gitlab.Job, *gitlab.Response, error) {
+		return apiClient.Jobs.ListPipelineJobs(br.DownstreamPipeline.ProjectID, downstreamPipeline.ID, &gitlab.ListJobsOptions{ListOptions: gitlab.ListOptions{PerPage: 100}}, p, gitlab.WithContext(ctx))
+	})
+	if err != nil {
+		return PipelineBridge{}, err
+	}
+
+	// Optionally fetch variables
+	var downstreamVariables []*gitlab.PipelineVariable
+	if showVariables {
+		downstreamVariables, _, err = apiClient.Pipelines.GetPipelineVariables(br.DownstreamPipeline.ProjectID, downstreamPipeline.ID, gitlab.WithContext(ctx))
+		if err != nil {
+			return PipelineBridge{}, err
+		}
+	}
+
+	return PipelineBridge{
+		Pipeline:  downstreamPipeline,
+		Bridge:    br,
+		Jobs:      downstreamJobs,
+		Variables: downstreamVariables,
+	}, nil
 }
