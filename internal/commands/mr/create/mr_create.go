@@ -175,7 +175,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 	mrCreateCmd.Flags().StringVarP(&opts.MRCreateTargetProject, "target-project", "", "", "Add target project by id, OWNER/REPO, or GROUP/NAMESPACE/REPO.")
 	_ = mrCreateCmd.Flags().MarkHidden("target-project")
-	_ = mrCreateCmd.Flags().MarkDeprecated("target-project", "Use --repo instead.")
+	_ = mrCreateCmd.Flags().MarkDeprecated("target-project", "use --repo instead.")
 
 	mrCreateCmd.Flags().StringVar(&opts.Template, "template", "", "Name of a template in '.gitlab/merge_request_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.")
 	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "description")

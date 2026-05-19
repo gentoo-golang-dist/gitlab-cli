@@ -149,7 +149,7 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 	}
 	mrCheckoutCmd.Flags().StringVarP(&mrCheckoutCfg.branch, "branch", "b", "", "Check out merge request with name <branch>.")
 	mrCheckoutCmd.Flags().BoolVarP(&mrCheckoutCfg.track, "track", "t", true, "Set checked out branch to track the remote branch.")
-	_ = mrCheckoutCmd.Flags().MarkDeprecated("track", "Now enabled by default")
+	_ = mrCheckoutCmd.Flags().MarkDeprecated("track", "now enabled by default.")
 	mrCheckoutCmd.Flags().StringVarP(&mrCheckoutCfg.upstream, "set-upstream-to", "u", "", "Set tracking of checked-out branch to [REMOTE/]BRANCH.")
 	return mrCheckoutCmd
 }

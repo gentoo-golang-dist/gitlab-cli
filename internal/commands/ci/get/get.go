@@ -128,7 +128,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	pipelineGetCmd.Flags().StringP("output", "F", "text", "Format output. Options: text, json.")
 	pipelineGetCmd.Flags().StringP("output-format", "o", "text", "Use output.")
 	_ = pipelineGetCmd.Flags().MarkHidden("output-format")
-	_ = pipelineGetCmd.Flags().MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
+	_ = pipelineGetCmd.Flags().MarkDeprecated("output-format", "use --output instead.")
 	pipelineGetCmd.Flags().BoolP("with-job-details", "d", false, "Show extended job information.")
 	pipelineGetCmd.Flags().Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
 
