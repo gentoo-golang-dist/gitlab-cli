@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -326,9 +325,7 @@ func listRun(opts *ListOptions) error {
 	title.CurrentPageTotal = len(issues)
 
 	if opts.Output == "json" {
-		issueListJSON, _ := json.Marshal(issues)
-		fmt.Fprintln(opts.IO.StdOut, string(issueListJSON))
-		return nil
+		return opts.IO.PrintJSON(issues)
 	}
 
 	if opts.OutputFormat == "ids" {

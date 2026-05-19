@@ -1,7 +1,6 @@
 package revoke
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -217,8 +216,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		encoder := json.NewEncoder(o.io.StdOut)
-		if err := encoder.Encode(outputToken); err != nil {
+		if err := o.io.PrintJSON(outputToken); err != nil {
 			return err
 		}
 	} else {

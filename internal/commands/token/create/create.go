@@ -1,7 +1,6 @@
 package create
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -274,9 +273,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		encoder := json.NewEncoder(o.io.StdOut)
-		encoder.SetIndent("  ", "  ")
-		if err := encoder.Encode(outputToken); err != nil {
+		if err := o.io.PrintJSON(outputToken); err != nil {
 			return err
 		}
 	} else {

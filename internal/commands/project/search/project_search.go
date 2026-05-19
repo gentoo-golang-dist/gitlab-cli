@@ -1,7 +1,6 @@
 package search
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -75,12 +74,7 @@ func (o *options) run() error {
 		return err
 	}
 	if o.outputFormat == "json" {
-		projectListJSON, err := json.Marshal(projects)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(o.io.StdOut, string(projectListJSON))
-		return nil
+		return o.io.PrintJSON(projects)
 	}
 	title := fmt.Sprintf("Showing results for \"%s\"\n", o.search)
 	if len(projects) == 0 {

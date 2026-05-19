@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -146,129 +145,13 @@ func Test_exportRun_project(t *testing.T) {
 			scope:          "*",
 			format:         "json",
 			expectedStderr: "Exporting variables from the owner/repo project:\n",
-			expectedStdout: heredoc.Doc(`
-            [
-              {
-                "key": "VAR1",
-                "value": "value1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev",
-                "description": ""
-              },
-              {
-                "key": "VAR2",
-                "value": "value2.1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "prod",
-                "description": ""
-              },
-              {
-                "key": "VAR2",
-                "value": "value2.2",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "*",
-                "description": ""
-              },
-              {
-                "key": "VAR3",
-                "value": "value3",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev/a",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev/b",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.2",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "feature-1",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.3",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "feature-2",
-                "description": ""
-              },
-              {
-                "key": "VAR5",
-                "value": "value5",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "feature-*",
-                "description": ""
-              }
-            ]
-            `),
+			expectedStdout: `[{"key":"VAR1","value":"value1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev","description":""},{"key":"VAR2","value":"value2.1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"prod","description":""},{"key":"VAR2","value":"value2.2","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"*","description":""},{"key":"VAR3","value":"value3","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev/a","description":""},{"key":"VAR4","value":"value4.1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev/b","description":""},{"key":"VAR4","value":"value4.2","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"feature-1","description":""},{"key":"VAR4","value":"value4.3","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"feature-2","description":""},{"key":"VAR5","value":"value5","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"feature-*","description":""}]` + "\n",
 		},
 		{
 			scope:          "dev/b",
 			format:         "json",
 			expectedStderr: "Exporting variables from the owner/repo project:\n",
-			expectedStdout: heredoc.Doc(`
-            [
-              {
-                "key": "VAR2",
-                "value": "value2.2",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "*",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev/b",
-                "description": ""
-              }
-            ]
-            `),
+			expectedStdout: `[{"key":"VAR2","value":"value2.2","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"*","description":""},{"key":"VAR4","value":"value4.1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev/b","description":""}]` + "\n",
 		},
 		{
 			scope:          "*",
@@ -422,129 +305,13 @@ func Test_exportRun_group(t *testing.T) {
 			scope:          "*",
 			format:         "json",
 			expectedStderr: "Exporting variables from the group group:\n",
-			expectedStdout: heredoc.Doc(`
-            [
-              {
-                "key": "VAR1",
-                "value": "\"value1\"",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev",
-                "description": ""
-              },
-              {
-                "key": "VAR2",
-                "value": "value2.1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "prod",
-                "description": ""
-              },
-              {
-                "key": "VAR2",
-                "value": "value2.2",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "*",
-                "description": ""
-              },
-              {
-                "key": "VAR3",
-                "value": "value3",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev/a",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev/b",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.2",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "feature-1",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.3",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "feature-2",
-                "description": ""
-              },
-              {
-                "key": "VAR5",
-                "value": "value5",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "feature-*",
-                "description": ""
-              }
-            ]
-            `),
+			expectedStdout: `[{"key":"VAR1","value":"\"value1\"","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev","description":""},{"key":"VAR2","value":"value2.1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"prod","description":""},{"key":"VAR2","value":"value2.2","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"*","description":""},{"key":"VAR3","value":"value3","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev/a","description":""},{"key":"VAR4","value":"value4.1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev/b","description":""},{"key":"VAR4","value":"value4.2","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"feature-1","description":""},{"key":"VAR4","value":"value4.3","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"feature-2","description":""},{"key":"VAR5","value":"value5","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"feature-*","description":""}]` + "\n",
 		},
 		{
 			scope:          "dev/b",
 			format:         "json",
 			expectedStderr: "Exporting variables from the group group:\n",
-			expectedStdout: heredoc.Doc(`
-            [
-              {
-                "key": "VAR2",
-                "value": "value2.2",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "*",
-                "description": ""
-              },
-              {
-                "key": "VAR4",
-                "value": "value4.1",
-                "variable_type": "",
-                "protected": false,
-                "masked": false,
-                "hidden": false,
-                "raw": false,
-                "environment_scope": "dev/b",
-                "description": ""
-              }
-            ]
-            `),
+			expectedStdout: `[{"key":"VAR2","value":"value2.2","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"*","description":""},{"key":"VAR4","value":"value4.1","variable_type":"","protected":false,"masked":false,"hidden":false,"raw":false,"environment_scope":"dev/b","description":""}]` + "\n",
 		},
 		{
 			scope:          "*",

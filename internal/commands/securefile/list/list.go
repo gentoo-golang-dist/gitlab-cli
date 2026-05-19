@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -67,9 +66,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Error listing secure files: %v", err)
 			}
 
-			fileListJSON, _ := json.Marshal(files)
-			fmt.Fprintln(f.IO().StdOut, string(fileListJSON))
-			return nil
+			return f.IO().PrintJSON(files)
 		},
 	}
 

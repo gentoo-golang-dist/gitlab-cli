@@ -62,7 +62,7 @@ func httpRequest(ctx context.Context, client *api.Client, method, p string, para
 				pp = groupGraphQLVariables(pp)
 			}
 
-			b, err := json.Marshal(pp)
+			b, err := json.Marshal(pp) //nolint:forbidigo // building HTTP request body, not stdout
 			if err != nil {
 				return nil, fmt.Errorf("error serializing parameters: %w", err)
 			}

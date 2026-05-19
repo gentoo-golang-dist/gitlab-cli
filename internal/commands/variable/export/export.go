@@ -1,7 +1,6 @@
 package export
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -31,15 +30,6 @@ type options struct {
 
 	page    int
 	perPage int
-}
-
-func marshalJson(variables any) ([]byte, error) {
-	res, err := json.MarshalIndent(variables, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
 }
 
 func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Command {
@@ -250,11 +240,7 @@ func printGroupVariables(variables []*gitlab.GroupVariable, opts *options, out i
 				filteredVariables = append(filteredVariables, variable)
 			}
 		}
-		res, err := marshalJson(filteredVariables)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(out, string(res))
+		return opts.io.PrintJSON(filteredVariables)
 	default:
 		return fmt.Errorf("unsupported output format: %s", opts.outputFormat)
 	}
@@ -310,11 +296,7 @@ func printProjectVariables(variables []*gitlab.ProjectVariable, opts *options, o
 				filteredVariables = append(filteredVariables, variable)
 			}
 		}
-		res, err := marshalJson(filteredVariables)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(out, string(res))
+		return opts.io.PrintJSON(filteredVariables)
 	default:
 		return fmt.Errorf("unsupported output format: %s", opts.outputFormat)
 	}

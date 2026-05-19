@@ -2,9 +2,7 @@ package list
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"slices"
 	"strings"
 
@@ -169,7 +167,7 @@ func (opts *options) run(ctx context.Context) error {
 
 	switch opts.outputFormat {
 	case "json":
-		return outputJSON(opts.io.StdOut, workItems, pageInfo, opts.perPage)
+		return outputJSON(opts.io, workItems, pageInfo, opts.perPage)
 	case "text":
 		// display a table
 		if len(workItems) == 0 {
@@ -226,7 +224,7 @@ func buildNextPageCommand(opts *options, cursor string) string {
 	return b.String()
 }
 
-func outputJSON(w io.Writer, workItems []workitemsapi.WorkItem, pageInfo *workitemsapi.PageInfo, perPage int64) error {
+func outputJSON(io *iostreams.IOStreams, workItems []workitemsapi.WorkItem, pageInfo *workitemsapi.PageInfo, perPage int64) error {
 	response := jsonListResponse{
 		Data: workItems,
 		Pagination: jsonPaginationInfo{
@@ -240,7 +238,5 @@ func outputJSON(w io.Writer, workItems []workitemsapi.WorkItem, pageInfo *workit
 		response.Pagination.NextCursor = pageInfo.EndCursor
 	}
 
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(response)
+	return io.PrintJSON(response)
 }

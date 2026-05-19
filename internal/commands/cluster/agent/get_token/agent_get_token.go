@@ -105,9 +105,7 @@ func (o *options) run(ctx context.Context) error {
 		},
 	}
 
-	e := json.NewEncoder(o.io.StdOut)
-	e.SetIndent("", "  ")
-	return e.Encode(execCredential)
+	return o.io.PrintJSON(execCredential)
 }
 
 func (o *options) cachedPAT(ctx context.Context) (*gitlab.PersonalAccessToken, error) {

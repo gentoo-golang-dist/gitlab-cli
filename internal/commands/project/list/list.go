@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -106,8 +105,9 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		projectListJSON, _ := json.Marshal(projects)
-		fmt.Fprintln(o.io.StdOut, string(projectListJSON))
+		if err := o.io.PrintJSON(projects); err != nil {
+			return err
+		}
 	} else {
 		// Title
 		title := fmt.Sprintf("Showing %d of %d projects (Page %d of %d).\n", len(projects), resp.TotalItems, resp.CurrentPage, resp.TotalPages)

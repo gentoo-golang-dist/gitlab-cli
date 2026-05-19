@@ -2,7 +2,6 @@ package note
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -110,9 +109,7 @@ func (o *listOptions) run(ctx context.Context) error {
 	filtered := mrutils.FilterDiscussions(discussions, filterOpts)
 
 	if o.outputFormat == "json" {
-		enc := json.NewEncoder(o.factory.IO().StdOut)
-		enc.SetIndent("", "  ")
-		return enc.Encode(filtered)
+		return o.factory.IO().PrintJSON(filtered)
 	}
 
 	out := o.factory.IO().StdOut

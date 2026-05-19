@@ -177,7 +177,7 @@ func (o *options) constructWatchRequest() ([]byte, error) {
 		q = o.defaultWatchQueries()
 	}
 
-	req, err := json.Marshal(&watchGraphWebSocketRequest{
+	req, err := json.Marshal(&watchGraphWebSocketRequest{ //nolint:forbidigo // websocket request body, not stdout
 		Queries:    q,
 		Namespaces: o.constructWatchNamespaces(),
 		Roots:      o.maybeConstructWatchRoots(),

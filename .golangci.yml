@@ -10,6 +10,7 @@ linters:
         - depguard
         - dupword
         - errcheck
+        - forbidigo
         - govet
         - ineffassign
         - makezero
@@ -34,7 +35,14 @@ linters:
         - path: _test\.go
           linters:
             - dupword
+            - forbidigo
     settings:
+      forbidigo:
+        forbid:
+          - pattern: ^json\.Marshal(Indent)?$
+            msg: "Use IOStreams.PrintJSON for stdout output. For non-stdout serialization (request bodies, disk, protocols), add //nolint:forbidigo with a reason."
+          - pattern: ^json\.NewEncoder$
+            msg: "Use IOStreams.PrintJSON for stdout output. For non-stdout serialization (request bodies, disk, protocols), add //nolint:forbidigo with a reason."
       govet:
         enable-all: true
         disable:
