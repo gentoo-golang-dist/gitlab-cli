@@ -17,7 +17,7 @@ Work with GitLab CI/CD pipelines and jobs.
 Manages CI/CD pipelines and jobs in your GitLab project.
 
 Use these commands to manage CI/CD pipelines and jobs. You can also
-lint and compile CI/CD configuration files.		
+lint and compile CI/CD configuration files.
 
 The `pipe` and `pipeline` aliases are deprecated. Use `ci` instead.
 

@@ -33,7 +33,7 @@ func NewCmdCI(f cmdutils.Factory) *cobra.Command {
 		Manages CI/CD pipelines and jobs in your GitLab project.
 
 		Use these commands to manage CI/CD pipelines and jobs. You can also
-		lint and compile CI/CD configuration files.		
+		lint and compile CI/CD configuration files.
 
 		The %[1]spipe%[1]s and %[1]spipeline%[1]s aliases are deprecated. Use %[1]sci%[1]s instead.
 		`, "`"),
