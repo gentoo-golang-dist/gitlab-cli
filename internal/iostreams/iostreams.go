@@ -109,7 +109,7 @@ func New(options ...IOStreamsOption) *IOStreams {
 	iostreams := &IOStreams{
 		// static configuration that we don't need to change in tests.
 		is256ColorEnabled: is256ColorSupported(),
-		displayHyperlinks: "never",
+		displayHyperlinks: "auto",
 	}
 
 	// Apply options

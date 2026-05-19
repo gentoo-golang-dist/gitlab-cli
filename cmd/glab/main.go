@@ -98,8 +98,11 @@ func main() {
 					return
 				}
 
-				if displayHyperlinks, _ := cfg.Get("", "display_hyperlinks"); displayHyperlinks == "true" {
-					i.SetDisplayHyperlinks("auto")
+				switch displayHyperlinks, _ := cfg.Get("", "display_hyperlinks"); displayHyperlinks {
+				case "false":
+					i.SetDisplayHyperlinks("never")
+				case "true":
+					i.SetDisplayHyperlinks("always")
 				}
 			},
 
