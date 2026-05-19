@@ -146,6 +146,13 @@ func loadSkill(dirName string) (Skill, error) {
 
 // collectFiles walks the embedded skill directory and returns every regular
 // file keyed by its path relative to the skill root.
+//
+// Paths are canonicalized with path.Clean and verified to be rooted under
+// skillRoot before the file is read. embed.FS doesn't expose symlinks or
+// allow ".." references at build time, so today this is defensive coding
+// rather than a real attack surface — but it documents the invariant and
+// guards against future refactors that swap embed.FS for a real
+// filesystem source.
 func collectFiles(skillRoot string) (map[string][]byte, error) {
 	files := map[string][]byte{}
 	err := fs.WalkDir(fsys, skillRoot, func(p string, d fs.DirEntry, err error) error {
@@ -155,11 +162,12 @@ func collectFiles(skillRoot string) (map[string][]byte, error) {
 		if d.IsDir() {
 			return nil
 		}
-		content, err := fs.ReadFile(fsys, p)
+		cleaned := path.Clean(p)
+		rel, err := relPath(skillRoot, cleaned)
 		if err != nil {
 			return err
 		}
-		rel, err := relPath(skillRoot, p)
+		content, err := fs.ReadFile(fsys, cleaned)
 		if err != nil {
 			return err
 		}
@@ -169,11 +177,14 @@ func collectFiles(skillRoot string) (map[string][]byte, error) {
 	return files, err
 }
 
+// relPath returns full's path relative to root, rejecting anything that
+// would resolve outside root (e.g. "..", absolute paths, or sibling
+// directories). full must already be cleaned via path.Clean.
 func relPath(root, full string) (string, error) {
+	if full == root {
+		return "", fmt.Errorf("unexpected: file path %q equals skill root", full)
+	}
 	if !strings.HasPrefix(full, root+"/") {
-		if full == root {
-			return "", fmt.Errorf("unexpected: file path %q equals skill root", full)
-		}
 		return "", fmt.Errorf("path %q is not under skill root %q", full, root)
 	}
 	return full[len(root)+1:], nil

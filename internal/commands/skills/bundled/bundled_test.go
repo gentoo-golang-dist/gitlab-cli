@@ -3,6 +3,7 @@
 package bundled
 
 import (
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,6 +42,54 @@ func TestGet_Unknown(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `unknown skill "does-not-exist"`)
 	assert.Contains(t, err.Error(), "glab skills list")
+}
+
+func TestRelPath(t *testing.T) {
+	t.Parallel()
+
+	t.Run("relative under root", func(t *testing.T) {
+		t.Parallel()
+		rel, err := relPath("assets/glab", "assets/glab/SKILL.md")
+		require.NoError(t, err)
+		assert.Equal(t, "SKILL.md", rel)
+	})
+
+	t.Run("nested under root", func(t *testing.T) {
+		t.Parallel()
+		rel, err := relPath("assets/glab", "assets/glab/scripts/run.sh")
+		require.NoError(t, err)
+		assert.Equal(t, "scripts/run.sh", rel)
+	})
+
+	t.Run("rejects parent traversal", func(t *testing.T) {
+		t.Parallel()
+		// path.Clean turns "assets/glab/../other" into "assets/other"
+		// which doesn't start with "assets/glab/".
+		_, err := relPath("assets/glab", path.Clean("assets/glab/../other/SKILL.md"))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not under skill root")
+	})
+
+	t.Run("rejects sibling directory", func(t *testing.T) {
+		t.Parallel()
+		_, err := relPath("assets/glab", "assets/glab-stack/SKILL.md")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not under skill root")
+	})
+
+	t.Run("rejects path equal to root", func(t *testing.T) {
+		t.Parallel()
+		_, err := relPath("assets/glab", "assets/glab")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "equals skill root")
+	})
+
+	t.Run("rejects absolute path", func(t *testing.T) {
+		t.Parallel()
+		_, err := relPath("assets/glab", "/etc/passwd")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not under skill root")
+	})
 }
 
 func TestParseFrontmatter(t *testing.T) {
