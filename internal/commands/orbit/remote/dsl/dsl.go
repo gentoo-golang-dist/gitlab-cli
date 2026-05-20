@@ -2,7 +2,7 @@ package dsl
 
 import (
 	"context"
-	"io"
+	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -61,11 +61,15 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
+	// Pass nil opts: response_format defaults to "raw" (JSON Schema)
+	// server-side. GetDsl returns the body verbatim as a string.
 	dsl, _, err := client.Lab().Orbit.GetDsl(nil, gitlab.WithContext(ctx))
 	if err != nil {
 		return orbiterr.Translate(err)
 	}
 
-	_, err = io.WriteString(o.io.StdOut, dsl)
+	// Trailing newline so the shell prompt doesn't glue to the last byte
+	// of the body when the server response itself doesn't end in one.
+	_, err = fmt.Fprintln(o.io.StdOut, dsl)
 	return err
 }

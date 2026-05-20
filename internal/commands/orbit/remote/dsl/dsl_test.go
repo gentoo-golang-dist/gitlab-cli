@@ -20,9 +20,9 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-func TestDsl_HappyPath(t *testing.T) {
+func TestDsl_HappyPath_JSON(t *testing.T) {
 	t.Parallel()
-	// GIVEN the Orbit service returns the DSL JSON Schema
+	// GIVEN the Orbit service returns the DSL JSON Schema (format=raw)
 	body := `{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"QueryDSL","type":"object"}`
 	testClient := gitlabtesting.NewTestClient(t)
 	testClient.MockOrbit.EXPECT().
@@ -39,9 +39,36 @@ func TestDsl_HappyPath(t *testing.T) {
 	// WHEN `glab orbit remote dsl` runs
 	out, err := exec("")
 
-	// THEN the DSL JSON Schema is written to stdout verbatim
+	// THEN the bytes are echoed verbatim with a trailing newline. Use a
+	// byte-exact assertion (not JSONEq) to lock in pass-through semantics
+	// — the command must not reformat or parse the response.
 	require.NoError(t, err)
-	assert.JSONEq(t, body, out.OutBuf.String())
+	assert.Equal(t, body+"\n", out.OutBuf.String())
+}
+
+func TestDsl_HappyPath_NonJSON(t *testing.T) {
+	t.Parallel()
+	// GIVEN the Orbit service returns a non-JSON body (e.g. TOON for
+	// format=llm). The command must forward bytes verbatim regardless.
+	body := "QueryDSL v2.1.0:\nquery_type: traversal | search | aggregation"
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockOrbit.EXPECT().
+		GetDsl(gomock.Any(), gomock.Any()).
+		Return(body, &gitlab.Response{Response: &http.Response{StatusCode: http.StatusOK}}, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithApiClient(cmdtest.NewTestApiClient(t, nil, "", "", api.WithGitLabClient(testClient.Client))),
+	)
+
+	// WHEN `glab orbit remote dsl` runs
+	out, err := exec("")
+
+	// THEN the TOON bytes are echoed verbatim, no JSON parsing attempted
+	require.NoError(t, err)
+	assert.Equal(t, body+"\n", out.OutBuf.String())
 }
 
 func TestDsl_RateLimited(t *testing.T) {
