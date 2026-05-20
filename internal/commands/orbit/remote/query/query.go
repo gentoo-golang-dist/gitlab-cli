@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -148,32 +147,18 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	// We deliberately bypass `client.Lab().Orbit.Query` and instead
-	// stream the raw response body to stdout. The typed SDK helper
+	// Use `OrbitService.QueryRaw` to stream the response body verbatim
+	// to stdout. We deliberately do not use `OrbitService.Query`: it
 	// decodes the response via `json.NewDecoder`, which is correct
 	// only for `response_format=raw` (JSON envelope) and fails with
 	// `invalid character '@' looking for beginning of value` for
 	// `response_format=llm`, where the server returns GOON/TOON text
 	// (Content-Type: text/plain) starting with `@header`.
 	//
-	// Passing `*bytes.Buffer` (an `io.Writer`) to `client.Do` makes
-	// the SDK copy the body verbatim instead of decoding it, so both
-	// formats round-trip unmodified.
-	httpReq, err := client.Lab().NewRequest(
-		http.MethodPost,
-		"orbit/query",
-		req,
-		[]gitlab.RequestOptionFunc{gitlab.WithContext(ctx)},
-	)
-	if err != nil {
-		// NewRequest failures are strictly local (bad URL, body-marshal
-		// failure) and carry no HTTP status — orbiterr.Translate is for
-		// server responses only, so plain fmt.Errorf is correct here.
-		return fmt.Errorf("building Orbit query request: %w", err)
-	}
-
+	// `QueryRaw` copies the body verbatim into the supplied
+	// `io.Writer`, so both formats round-trip unmodified.
 	var respBody bytes.Buffer
-	if _, err := client.Lab().Do(httpReq, &respBody); err != nil {
+	if _, err := client.Lab().Orbit.QueryRaw(req, &respBody, gitlab.WithContext(ctx)); err != nil {
 		return orbiterr.Translate(err)
 	}
 
