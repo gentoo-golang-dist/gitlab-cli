@@ -317,6 +317,12 @@ func (s *IOStreams) BackgroundColor() string {
 	return s.backgroundColor
 }
 
+// DisplayHyperlinks returns the current hyperlink display mode.
+// One of "always", "auto", or "never".
+func (s *IOStreams) DisplayHyperlinks() string {
+	return s.displayHyperlinks
+}
+
 func (s *IOStreams) SetDisplayHyperlinks(displayHyperlinks string) {
 	s.displayHyperlinks = displayHyperlinks
 }

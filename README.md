@@ -411,7 +411,7 @@ self-signed certificates, either:
 | Token name                                   | In `config.yml`      | Default value if [not set](#configuration) | Description |
 |----------------------------------------------|----------------------|--------------------------------------------|-------------|
 | `BROWSER`                                    | `browser`            | system default                             | The web browser to use for opening links. Can be set in the configuration with `glab config set browser mybrowser`. |
-| `FORCE_HYPERLINKS`                           | `display_hyperlinks` | `true`                                     | Set to `false` to disable hyperlinks. Set to `1` to force hyperlinks even when not outputting to a TTY. |
+| `FORCE_HYPERLINKS`                           | `display_hyperlinks` | `auto`                                     | Set to `true` (or any truthy value) to force hyperlinks even when not outputting to a TTY. A falsy value falls through to `display_hyperlinks`. |
 | `GITLAB_RELEASE_ASSETS_USE_PACKAGE_REGISTRY` | -                    | -                                          | When `true` or `1`, the `glab release create` command uploads release assets to the generic package registry of the project. Can be overridden with the `--use-package-registry` flag. |
 | `GLAB_CHECK_UPDATE`                          | -                    | -                                          | Set to `true` to force an update check. |
 | `GLAB_CONFIG_DIR`                            | -                    | `~/.config/glab-cli/`                      | Directory where the `glab` global configuration file is located. Can be set in the config with `glab config set remote_alias origin`. |
