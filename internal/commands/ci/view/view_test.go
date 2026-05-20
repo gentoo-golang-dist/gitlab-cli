@@ -1156,6 +1156,56 @@ func Test_handleNavigation(t *testing.T) {
 	}
 }
 
+func Test_navigatorResetOnPipelineTransition(t *testing.T) {
+	t.Parallel()
+
+	parentJobs := []*ViewJob{
+		{Name: "build", Stage: "build", Status: "success"},
+		{Name: "test1", Stage: "test", Status: "success"},
+		{Name: "test2", Stage: "test", Status: "success"},
+		{Name: "test3", Stage: "test", Status: "success"},
+		{Name: "lint", Stage: "lint", Status: "success"},
+		{Name: "deploy-staging", Stage: "deploy", Status: "success"},
+		{Name: "deploy-prod", Stage: "deploy", Status: "success"},
+		{Name: "trigger-downstream", Stage: "deploy", Status: "success"},
+	}
+
+	downstreamJobs := []*ViewJob{
+		{Name: "child-build", Stage: "build", Status: "running"},
+		{Name: "child-test", Stage: "test", Status: "pending"},
+	}
+
+	var navi navigator
+
+	// Navigate deep into the parent pipeline (idx=7, the last job)
+	for _, e := range []*tcell.EventKey{
+		tcell.NewEventKey(tcell.KeyRune, 'l', tcell.ModNone), // stage: test
+		tcell.NewEventKey(tcell.KeyRune, 'l', tcell.ModNone), // stage: lint
+		tcell.NewEventKey(tcell.KeyRune, 'l', tcell.ModNone), // stage: deploy
+		tcell.NewEventKey(tcell.KeyRune, 'j', tcell.ModNone), // deploy-prod
+		tcell.NewEventKey(tcell.KeyRune, 'j', tcell.ModNone), // trigger-downstream
+	} {
+		navi.Navigate(parentJobs, e)
+	}
+	assert.Equal(t, 7, navi.idx, "should be at last parent job")
+
+	// Simulate pipeline transition: reset navigator, switch to smaller job list
+	navi.Reset()
+	assert.Equal(t, 0, navi.idx, "idx should be 0 after Reset")
+	assert.Equal(t, 0, navi.depth, "depth should be 0 after Reset")
+
+	// Navigate in the downstream pipeline — must not panic
+	job := navi.Navigate(downstreamJobs, tcell.NewEventKey(tcell.KeyRune, 'l', tcell.ModNone))
+	assert.Equal(t, "child-test", job.Name)
+	assert.Equal(t, 1, navi.idx)
+
+	// Also test the defensive bounds check: if Reset is NOT called,
+	// Navigate should still not panic (it clamps idx)
+	navi.idx = 100 // simulate stale state
+	job = navi.Navigate(downstreamJobs, tcell.NewEventKey(tcell.KeyRune, 'j', tcell.ModNone))
+	assert.NotNil(t, job, "should not panic with stale idx")
+}
+
 func Test_bracketEscaper(t *testing.T) {
 	t.Parallel()
 
