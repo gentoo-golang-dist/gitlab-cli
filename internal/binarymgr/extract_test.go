@@ -4,6 +4,7 @@ package binarymgr
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"os"
@@ -133,4 +134,106 @@ func TestTarGzExtractor_skipsSymlinks(t *testing.T) {
 	data, err := os.ReadFile(got)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("real"), data)
+}
+
+type zipEntry struct {
+	name string
+	mode os.FileMode
+	body []byte
+}
+
+func writeZip(t *testing.T, entries []zipEntry) string {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, e := range entries {
+		hdr := &zip.FileHeader{Name: e.name, Method: zip.Deflate}
+		mode := e.mode
+		if mode == 0 {
+			mode = 0o644
+		}
+		hdr.SetMode(mode)
+		w, err := zw.CreateHeader(hdr)
+		require.NoError(t, err)
+		_, err = w.Write(e.body)
+		require.NoError(t, err)
+	}
+	require.NoError(t, zw.Close())
+
+	path := filepath.Join(t.TempDir(), "archive.zip")
+	require.NoError(t, os.WriteFile(path, buf.Bytes(), 0o644))
+	return path
+}
+
+func TestZipExtractor_extractsBinary(t *testing.T) {
+	t.Parallel()
+
+	src := writeZip(t, []zipEntry{
+		{name: "README", mode: 0o644, body: []byte("readme")},
+		{name: "orbit.exe", mode: 0o755, body: []byte("orbit-binary-bytes")},
+	})
+
+	dest := t.TempDir()
+	got, err := ZipExtractor("orbit.exe")(src, dest)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dest, "orbit.exe"), got)
+
+	data, err := os.ReadFile(got)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("orbit-binary-bytes"), data)
+
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(got)
+		require.NoError(t, err)
+		assert.NotZero(t, info.Mode().Perm()&0o111, "extracted file should be executable")
+	}
+}
+
+func TestZipExtractor_findsBinaryInSubdir(t *testing.T) {
+	t.Parallel()
+
+	src := writeZip(t, []zipEntry{
+		{name: "release/orbit.exe", mode: 0o755, body: []byte("nested")},
+	})
+
+	dest := t.TempDir()
+	got, err := ZipExtractor("orbit.exe")(src, dest)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(dest, "orbit.exe"), got)
+}
+
+func TestZipExtractor_missingBinary(t *testing.T) {
+	t.Parallel()
+
+	src := writeZip(t, []zipEntry{
+		{name: "README", mode: 0o644, body: []byte("readme")},
+	})
+
+	_, err := ZipExtractor("orbit.exe")(src, t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `does not contain "orbit.exe"`)
+}
+
+func TestZipExtractor_rejectsZipSlip(t *testing.T) {
+	t.Parallel()
+
+	src := writeZip(t, []zipEntry{
+		{name: "../escape/orbit.exe", mode: 0o755, body: []byte("evil")},
+	})
+
+	_, err := ZipExtractor("orbit.exe")(src, t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "escapes")
+}
+
+func TestZipExtractor_rejectsAbsolutePath(t *testing.T) {
+	t.Parallel()
+
+	src := writeZip(t, []zipEntry{
+		{name: "/etc/orbit.exe", mode: 0o755, body: []byte("evil")},
+	})
+
+	_, err := ZipExtractor("orbit.exe")(src, t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "escapes")
 }

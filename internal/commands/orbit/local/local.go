@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -24,17 +25,20 @@ func Spec() binarymgr.Spec {
 		PackageName:   "orbit-local",
 		ConfigPrefix:  "orbit_local",
 		EnvVarPrefix:  "GLAB_ORBIT_LOCAL",
-		SupportedOS:   []string{"darwin", "linux"},
+		SupportedOS:   []string{"darwin", "linux", "windows"},
 		NormalizeArch: orbitNormalizeArch,
 		AssetName:     orbitAssetName,
 		InstalledName: orbitInstalledName,
-		Extract:       binarymgr.TarGzExtractor("orbit"),
+		Extract:       orbitExtractor,
 	}
 }
 
+// Upstream publishes only x86_64 for Windows. ARM64 Windows transparently
+// runs x64 binaries under emulation, so we report x86_64 there too and let
+// the OS handle it.
 func orbitNormalizeArch(goos, goarch string) (string, error) {
 	if goos == "windows" {
-		return "", binarymgr.ErrUnsupportedPlatform
+		return "x86_64", nil
 	}
 	switch goarch {
 	case "amd64":
@@ -45,15 +49,28 @@ func orbitNormalizeArch(goos, goarch string) (string, error) {
 	return "", binarymgr.ErrUnsupportedPlatform
 }
 
-// Tarballs are published as orbit-local-<os>-<arch>.tar.gz under the
-// project's Generic Package Registry. The tarball contains a single
-// `orbit` executable that we extract during install.
+// Assets are published under the project's Generic Package Registry as
+// orbit-local-<os>-<arch>.tar.gz (Unix) or orbit-local-windows-<arch>.zip.
+// Each archive contains a single executable that we extract during install.
 func orbitAssetName(goos, arch string) string {
+	if goos == "windows" {
+		return "orbit-local-" + goos + "-" + arch + ".zip"
+	}
 	return "orbit-local-" + goos + "-" + arch + ".tar.gz"
 }
 
-func orbitInstalledName(string) string {
+func orbitInstalledName(goos string) string {
+	if goos == "windows" {
+		return "orbit.exe"
+	}
 	return "orbit"
+}
+
+func orbitExtractor(srcPath, destDir string) (string, error) {
+	if strings.HasSuffix(srcPath, ".zip") {
+		return binarymgr.ZipExtractor("orbit.exe")(srcPath, destDir)
+	}
+	return binarymgr.TarGzExtractor("orbit")(srcPath, destDir)
 }
 
 // NewCmd creates the `glab orbit local` command.
