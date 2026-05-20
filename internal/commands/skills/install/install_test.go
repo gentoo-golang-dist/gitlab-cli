@@ -145,6 +145,33 @@ func TestNewCmdInstall_UnknownSkill(t *testing.T) {
 	assert.Contains(t, err.Error(), "glab skills list")
 }
 
+func TestInstallOne_WritesAllFiles(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	o := &options{io: ios, targetDir: tmpDir}
+
+	s := bundled.Skill{
+		Name:        "demo",
+		Description: "demo skill",
+		Files: map[string][]byte{
+			bundled.FileName:               []byte("---\nname: demo\ndescription: x\n---\nbody\n"),
+			"scripts/extract.sh":           []byte("#!/bin/sh\necho hi\n"),
+			"references/REFERENCE.md":      []byte("# Reference\n"),
+			"assets/templates/default.tpl": []byte("template body\n"),
+		},
+	}
+
+	require.NoError(t, o.installOne(s))
+
+	for rel, want := range s.Files {
+		got, err := os.ReadFile(filepath.Join(tmpDir, "demo", filepath.FromSlash(rel)))
+		require.NoError(t, err, "expected %s to exist", rel)
+		assert.Equal(t, want, got, "contents differ for %s", rel)
+	}
+}
+
 func TestNewCmdInstall_TooManyArgs(t *testing.T) {
 	t.Parallel()
 

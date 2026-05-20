@@ -153,28 +153,31 @@ func (o *options) resolveSkills() ([]bundled.Skill, error) {
 }
 
 func (o *options) installOne(s bundled.Skill) error {
-	destPath := filepath.Join(o.targetDir, s.Name, bundled.FileName)
-	_, statErr := os.Stat(destPath)
+	skillDir := filepath.Join(o.targetDir, s.Name)
+	skillMDPath := filepath.Join(skillDir, bundled.FileName)
+	_, statErr := os.Stat(skillMDPath)
 	exists := statErr == nil
 
 	c := o.io.Color()
 	if exists && !o.force {
-		o.io.LogErrorf("%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), destPath)
+		o.io.LogErrorf("%s %s already exists. Use --force to overwrite.\n", c.WarnIcon(), skillMDPath)
 		return nil
 	}
 
-	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-		return fmt.Errorf("creating directory for %s: %w", destPath, err)
-	}
-
-	if err := os.WriteFile(destPath, s.Content, 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", destPath, err)
+	for rel, content := range s.Files {
+		destPath := filepath.Join(skillDir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+			return fmt.Errorf("creating directory for %s: %w", destPath, err)
+		}
+		if err := os.WriteFile(destPath, content, 0o644); err != nil {
+			return fmt.Errorf("writing %s: %w", destPath, err)
+		}
 	}
 
 	if exists {
-		o.io.LogInfof("%s Overwrote %s\n", c.GreenCheck(), destPath)
+		o.io.LogInfof("%s Overwrote %s\n", c.GreenCheck(), skillDir)
 	} else {
-		o.io.LogInfof("%s Installed %s\n", c.GreenCheck(), destPath)
+		o.io.LogInfof("%s Installed %s\n", c.GreenCheck(), skillDir)
 	}
 	return nil
 }
