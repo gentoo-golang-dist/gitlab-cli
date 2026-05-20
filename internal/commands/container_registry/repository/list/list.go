@@ -200,7 +200,8 @@ func newRepositoryJSONList(repositories []*gitlab.RegistryRepository, includeTag
 	for _, repository := range repositories {
 		var tagsCount *int64
 		if showTagsCount {
-			tagsCount = new(repository.TagsCount)
+			tagCount := repository.TagsCount
+			tagsCount = &tagCount
 		}
 		output = append(output, repositoryJSON{
 			ID:                     repository.ID,
