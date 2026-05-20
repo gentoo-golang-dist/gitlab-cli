@@ -12,6 +12,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -1154,6 +1155,79 @@ func Test_handleNavigation(t *testing.T) {
 			assert.Equal(t, test.expected, navi.idx)
 		})
 	}
+}
+
+// Test_navigatorSurvivesPipelineSwitch verifies that the navigator does not
+// panic with "index out of range" when applied to a smaller jobs slice than
+// the one its idx/depth were last sized against — the crash reported in #8313
+// when entering a child pipeline from a bridge job.
+func Test_navigatorSurvivesPipelineSwitch(t *testing.T) {
+	t.Parallel()
+
+	parentJobs := []*ViewJob{
+		{Name: "a1", Stage: "build", Status: "success"},
+		{Name: "a2", Stage: "build", Status: "success"},
+		{Name: "a3", Stage: "build", Status: "success"},
+		{Name: "b1", Stage: "test", Status: "success"},
+		{Name: "b2", Stage: "test", Status: "success"},
+		{Name: "c1", Stage: "deploy", Status: "success"},
+		{Name: "c2", Stage: "deploy", Status: "success"},
+	}
+	childJobs := []*ViewJob{
+		{Name: "x1", Stage: "build", Status: "success"},
+		{Name: "x2", Stage: "build", Status: "success"},
+	}
+
+	var navi navigator
+	// Park the cursor at the last job of the parent (idx 6).
+	navi.Navigate(parentJobs, tcell.NewEventKey(tcell.KeyRune, 'G', tcell.ModNone))
+	navi.Navigate(parentJobs, tcell.NewEventKey(tcell.KeyRune, 'l', tcell.ModNone))
+	navi.Navigate(parentJobs, tcell.NewEventKey(tcell.KeyRune, 'l', tcell.ModNone))
+	require.GreaterOrEqual(t, navi.idx, len(childJobs), "test setup: idx should exceed child size")
+
+	// Without a reset, the next Navigate against childJobs would panic at
+	// `jobs[n.idx].Stage`. The defensive clamp must keep us inside bounds.
+	require.NotPanics(t, func() {
+		got := navi.Navigate(childJobs, tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone))
+		assert.NotNil(t, got)
+	})
+	assert.Less(t, navi.idx, len(childJobs))
+}
+
+// Test_curPipeline_nilLastPipeline verifies that curPipeline returns an error
+// instead of panicking when the stack is empty and the commit has no
+// LastPipeline. Before the fix, this dereferenced a nil pointer.
+func Test_curPipeline_nilLastPipeline(t *testing.T) {
+	// Cannot run in parallel: mutates the package-level `pipelines` global.
+	pipelines = nil
+
+	t.Run("stack empty and LastPipeline nil returns error", func(t *testing.T) {
+		commit := &gitlab.Commit{ID: "deadbeef", LastPipeline: nil}
+		got, err := curPipeline(commit)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "deadbeef")
+		assert.Equal(t, gitlab.PipelineInfo{}, got)
+	})
+
+	t.Run("stack empty falls back to LastPipeline", func(t *testing.T) {
+		pipelines = nil
+		commit := &gitlab.Commit{
+			ID:           "deadbeef",
+			LastPipeline: &gitlab.PipelineInfo{ID: 42, ProjectID: 7},
+		}
+		got, err := curPipeline(commit)
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), got.ID)
+	})
+
+	t.Run("stack non-empty ignores LastPipeline", func(t *testing.T) {
+		pipelines = []gitlab.PipelineInfo{{ID: 99, ProjectID: 7}}
+		t.Cleanup(func() { pipelines = nil })
+		commit := &gitlab.Commit{ID: "deadbeef", LastPipeline: nil}
+		got, err := curPipeline(commit)
+		require.NoError(t, err)
+		assert.Equal(t, int64(99), got.ID)
+	})
 }
 
 func Test_bracketEscaper(t *testing.T) {
