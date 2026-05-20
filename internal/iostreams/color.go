@@ -1,11 +1,9 @@
 package iostreams
 
 import (
-	"fmt"
 	"image/color"
 	"io"
 	"os"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-colorable"
@@ -55,7 +53,7 @@ func (s *IOStreams) Color() *ColorPalette {
 		Yellow:  makeColorFunc(isColorfulOutput, nil, "yellow"), // not in theme, falls back to ANSI
 		Blue:    makeColorFunc(isColorfulOutput, glc.Blue, "blue"),
 		Green:   makeColorFunc(isColorfulOutput, glc.Green, "green"),
-		Gray:    makeColorFunc(isColorfulOutput, nil, "black+h"),
+		Gray:    makeColorFunc(isColorfulOutput, glc.Subtle, "black+h"),
 		Bold:    makeColorFunc(isColorfulOutput, nil, "default+b"),
 	}
 }
@@ -76,19 +74,11 @@ func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName strin
 		}
 	}
 
-	// 24-bit truecolor and we got a color from lipgloss'd theme
-	if brandColor != nil && isTrueColorSupported() {
-		r16, g16, b16, _ := brandColor.RGBA() // standard Go interface, 16-bit per channel
-		r, g, b := uint8(r16>>8), uint8(g16>>8), uint8(b16>>8)
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;2;%d;%d;%dm%s\x1b[m", r, g, b, t)
-		}
-	}
-
-	// 256 colors gray
-	if ansiName == "black+h" && is256ColorSupported() {
-		return func(t string) string {
-			return fmt.Sprintf("\x1b[38;5;242m%s\x1b[m", t)
+	// if we got a color from lipgloss'd theme, let it do color detection and everything
+	if brandColor != nil {
+		style := lipgloss.NewStyle().Foreground(brandColor)
+		return func(arg string) string {
+			return style.Render(arg)
 		}
 	}
 
@@ -105,6 +95,7 @@ func makeColorFunc(isColorfulOutput bool, brandColor color.Color, ansiName strin
 //
 // This allows users to disable color globally with NO_COLOR while still providing an escape hatch
 // via COLOR_ENABLED for specific use cases.
+// TODO: termenv and lipgloss (via https://github.com/charmbracelet/colorprofile) support NO_COLOR, use them
 func detectIsColorEnabled() bool {
 	// Check if NO_COLOR environment variable exists (any value disables color)
 	_, noColorVarExists := os.LookupEnv("NO_COLOR")
@@ -117,18 +108,4 @@ func detectIsColorEnabled() bool {
 
 	// If NO_COLOR doesn't exist, color is enabled by default
 	return true
-}
-
-func isTrueColorSupported() bool {
-	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
-
-	return strings.Contains(term, "24bit") || strings.Contains(term, "truecolor") ||
-		strings.Contains(colorterm, "24bit") || strings.Contains(colorterm, "truecolor")
-}
-
-func is256ColorSupported() bool {
-	term, colorterm := os.Getenv("TERM"), os.Getenv("COLORTERM")
-
-	return strings.Contains(term, "256") || strings.Contains(colorterm, "256") ||
-		isTrueColorSupported()
 }
