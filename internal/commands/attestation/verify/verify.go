@@ -62,7 +62,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 		- [Attestations API](https://docs.gitlab.com/api/attestations/)
 		- [SLSA provenance specification](https://docs.gitlab.com/ci/pipeline_security/slsa/provenance_v1/)
-		- [SLSA software attestations](https://slsa.dev/attestation-model)
+		- [SLSA software attestations](https://slsa.dev/spec/v1.2/attestation-model)
 		`) + text.ExperimentalString,
 		Args: cobra.ExactArgs(2),
 		Example: heredoc.Doc(`

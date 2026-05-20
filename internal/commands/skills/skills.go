@@ -18,7 +18,7 @@ func NewCmdSkills(f cmdutils.Factory) *cobra.Command {
 			Install the bundled glab agent skills so that AI agents can discover
 			and use glab effectively.
 
-			Skills follow the [Agent Skills specification](https://agentskills.io) and work with
+			Skills follow the [Agent Skills specification](https://agentskills.io/home) and work with
 			any compatible agent, including GitLab Duo Agent Platform, Claude Code, Codex,
 			and Gemini CLI.
 		`) + text.ExperimentalString,

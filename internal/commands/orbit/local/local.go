@@ -75,7 +75,7 @@ Configuration options:
 
 All other arguments and flags are passed through to the Orbit local CLI binary.
 
-For more information, see the [GitLab Knowledge Graph documentation](https://docs.gitlab.com/user/gitlab_knowledge_graph/).
+For more information, see the [Orbit documentation](https://docs.gitlab.com/orbit/).
 `, "`") + text.ExperimentalString,
 		Annotations: map[string]string{
 			"help:environment": heredoc.Docf(`
