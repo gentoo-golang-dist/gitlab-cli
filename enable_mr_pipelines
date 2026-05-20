@@ -1,0 +1,3 @@
+include:
+  - component: gitlab.com/components/secret-detection/secret-detection@<VERSION>
+  
