@@ -1194,6 +1194,42 @@ func Test_navigatorSurvivesPipelineSwitch(t *testing.T) {
 	assert.Less(t, navi.idx, len(childJobs))
 }
 
+// Test_curPipeline_nilLastPipeline verifies that curPipeline returns an error
+// instead of panicking when the stack is empty and the commit has no
+// LastPipeline. Before the fix, this dereferenced a nil pointer.
+func Test_curPipeline_nilLastPipeline(t *testing.T) {
+	// Cannot run in parallel: mutates the package-level `pipelines` global.
+	pipelines = nil
+
+	t.Run("stack empty and LastPipeline nil returns error", func(t *testing.T) {
+		commit := &gitlab.Commit{ID: "deadbeef", LastPipeline: nil}
+		got, err := curPipeline(commit)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "deadbeef")
+		assert.Equal(t, gitlab.PipelineInfo{}, got)
+	})
+
+	t.Run("stack empty falls back to LastPipeline", func(t *testing.T) {
+		pipelines = nil
+		commit := &gitlab.Commit{
+			ID:           "deadbeef",
+			LastPipeline: &gitlab.PipelineInfo{ID: 42, ProjectID: 7},
+		}
+		got, err := curPipeline(commit)
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), got.ID)
+	})
+
+	t.Run("stack non-empty ignores LastPipeline", func(t *testing.T) {
+		pipelines = []gitlab.PipelineInfo{{ID: 99, ProjectID: 7}}
+		t.Cleanup(func() { pipelines = nil })
+		commit := &gitlab.Commit{ID: "deadbeef", LastPipeline: nil}
+		got, err := curPipeline(commit)
+		require.NoError(t, err)
+		assert.Equal(t, int64(99), got.ID)
+	})
+}
+
 func Test_bracketEscaper(t *testing.T) {
 	t.Parallel()
 

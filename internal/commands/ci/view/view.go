@@ -578,11 +578,14 @@ func (b *bracketEscaper) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
-	if len(pipelines) == 0 {
-		return *commit.LastPipeline
+func curPipeline(commit *gitlab.Commit) (gitlab.PipelineInfo, error) {
+	if len(pipelines) > 0 {
+		return pipelines[len(pipelines)-1], nil
 	}
-	return pipelines[len(pipelines)-1]
+	if commit.LastPipeline == nil {
+		return gitlab.PipelineInfo{}, fmt.Errorf("commit %s has no associated pipeline", commit.ID)
+	}
+	return *commit.LastPipeline, nil
 }
 
 // navigator manages the internal state for processing tcell.EventKeys
@@ -914,8 +917,11 @@ func updateJobs(
 		}
 		var jobs []*gitlab.Job
 		var bridges []*gitlab.Bridge
-		var err error
-		pipeline := curPipeline(commit)
+		pipeline, err := curPipeline(commit)
+		if err != nil {
+			app.Stop()
+			log.Fatalf("%v", err)
+		}
 		jobs, bridges, err = api.PipelineJobsWithID(
 			apiClient,
 			pipeline.ProjectID,
