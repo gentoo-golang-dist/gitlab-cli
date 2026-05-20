@@ -14,6 +14,7 @@ import (
 	repoCmdMembers "gitlab.com/gitlab-org/cli/internal/commands/project/members"
 	repoCmdMirror "gitlab.com/gitlab-org/cli/internal/commands/project/mirror"
 	repoCmdPublish "gitlab.com/gitlab-org/cli/internal/commands/project/publish"
+	repoCmdRemote "gitlab.com/gitlab-org/cli/internal/commands/project/remote"
 	repoCmdSearch "gitlab.com/gitlab-org/cli/internal/commands/project/search"
 	repoCmdTransfer "gitlab.com/gitlab-org/cli/internal/commands/project/transfer"
 	repoCmdUpdate "gitlab.com/gitlab-org/cli/internal/commands/project/update"
@@ -42,6 +43,7 @@ func NewCmdRepo(f cmdutils.Factory) *cobra.Command {
 	repoCmd.AddCommand(repoCmdView.NewCmdView(f))
 	repoCmd.AddCommand(repoCmdMirror.NewCmdMirror(f))
 	repoCmd.AddCommand(repoCmdPublish.NewCmdPublish(f))
+	repoCmd.AddCommand(repoCmdRemote.NewCmdRemote(f))
 
 	return repoCmd
 }
