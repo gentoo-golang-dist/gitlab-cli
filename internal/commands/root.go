@@ -17,6 +17,7 @@ import (
 	clusterCmd "gitlab.com/gitlab-org/cli/internal/commands/cluster"
 	completionCmd "gitlab.com/gitlab-org/cli/internal/commands/completion"
 	configCmd "gitlab.com/gitlab-org/cli/internal/commands/config"
+	containerRegistryCmd "gitlab.com/gitlab-org/cli/internal/commands/container_registry"
 	deployKeyCmd "gitlab.com/gitlab-org/cli/internal/commands/deploy-key"
 	duoCmd "gitlab.com/gitlab-org/cli/internal/commands/duo"
 	gpgCmd "gitlab.com/gitlab-org/cli/internal/commands/gpg-key"
@@ -153,6 +154,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))
 	rootCmd.AddCommand(changelogCmd.NewCmdChangelog(f))
 	rootCmd.AddCommand(clusterCmd.NewCmdCluster(f))
+	rootCmd.AddCommand(containerRegistryCmd.NewCmd(f))
 	rootCmd.AddCommand(deployKeyCmd.NewCmdDeployKey(f))
 	rootCmd.AddCommand(duoCmd.NewCmd(f))
 	rootCmd.AddCommand(gpgCmd.NewCmdGPGKey(f))

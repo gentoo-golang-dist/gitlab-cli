@@ -82,6 +82,7 @@ Run `glab --help` to view a list of core commands in your terminal.
 - [`glab cluster`](docs/source/cluster): Manage GitLab agents for Kubernetes and their clusters.
 - [`glab completion`](docs/source/completion): Generate shell completion scripts.
 - [`glab config`](docs/source/config): Set and get CLI settings.
+- [`glab container-registry`](docs/source/container-registry): Work with GitLab container registries.
 - [`glab deploy-key`](docs/source/deploy-key): Manage deploy keys.
 - [`glab duo`](docs/source/duo): Generate terminal commands from natural language.
 - [`glab gpg-key`](docs/source/gpg-key): Manage GPG keys registered with your GitLab account.
