@@ -278,7 +278,7 @@ func (o *options) run(ctx context.Context) error {
 	defer recoverPanic(app)
 
 	var navi navigator
-	app.SetInputCapture(inputCapture(ctx, app, root, navi, inputCh, forceUpdateCh, o, client, projectID, commitSHA))
+	app.SetInputCapture(inputCapture(ctx, app, root, &navi, inputCh, forceUpdateCh, o, client, projectID, commitSHA))
 	go updateJobs(app, jobsCh, forceUpdateCh, client, commit)
 	go func() {
 		defer recoverPanic(app)
@@ -296,11 +296,14 @@ func (o *options) run(ctx context.Context) error {
 
 // handleBridgeJobSelection handles the user pressing Enter on a bridge job (downstream pipeline trigger).
 // It navigates to the downstream pipeline if it exists, or shows an informational modal if it doesn't.
-func handleBridgeJobSelection(app *tview.Application, root *tview.Pages, forceUpdateCh chan<- bool) {
+func handleBridgeJobSelection(app *tview.Application, root *tview.Pages, forceUpdateCh chan<- bool, navi *navigator) {
 	// If downstream pipeline exists, navigate to it
 	if curJob.OriginalBridge.DownstreamPipeline != nil {
 		pipelines = append(pipelines, *curJob.OriginalBridge.DownstreamPipeline)
 		curJob = nil
+		// Reset cursor: the child pipeline has a different jobs slice, so a stale
+		// idx/depth from the parent can index past the end and crash Navigate (#8313).
+		*navi = navigator{}
 		forceUpdateCh <- true
 		app.ForceDraw()
 		return
@@ -342,7 +345,7 @@ func inputCapture(
 	ctx context.Context,
 	app *tview.Application,
 	root *tview.Pages,
-	navi navigator,
+	navi *navigator,
 	inputCh chan<- struct{},
 	forceUpdateCh chan<- bool,
 	opts *options,
@@ -369,6 +372,8 @@ func inputCapture(
 			case len(pipelines) > 0:
 				pipelines = pipelines[:len(pipelines)-1]
 				curJob = nil
+				// Reset cursor: see comment in handleBridgeJobSelection (#8313).
+				*navi = navigator{}
 				forceUpdateCh <- true
 				app.ForceDraw()
 			default:
@@ -467,7 +472,7 @@ func inputCapture(
 					app.ForceDraw()
 				} else {
 					// Downstream pipeline trigger selected
-					handleBridgeJobSelection(app, root, forceUpdateCh)
+					handleBridgeJobSelection(app, root, forceUpdateCh, navi)
 				}
 				return nil
 			}
@@ -588,6 +593,12 @@ type navigator struct {
 // Navigate uses the ci stages as boundaries and returns the currently focused
 // job index after processing a *tcell.EventKey
 func (n *navigator) Navigate(jobs []*ViewJob, event *tcell.EventKey) *ViewJob {
+	// Defensive clamp: callers reset navi when switching pipelines, but a stale
+	// idx left over from a larger jobs slice would otherwise panic here (#8313).
+	if n.idx >= len(jobs) {
+		n.idx = 0
+		n.depth = 0
+	}
 	stage := jobs[n.idx].Stage
 	prev, next := adjacentStages(jobs, stage)
 	switch event.Key() {
