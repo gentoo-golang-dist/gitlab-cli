@@ -15,6 +15,7 @@ View a container registry tag.
 ## Synopsis
 
 View details for a single container registry tag.
+
 ```plaintext
 glab container-registry tag view <repository-id> <tag-name> [flags]
 ```

@@ -15,6 +15,7 @@ View a container registry repository.
 ## Synopsis
 
 View details for a single container registry repository.
+
 ```plaintext
 glab container-registry repository view <repository-id> [flags]
 ```

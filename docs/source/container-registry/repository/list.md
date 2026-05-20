@@ -15,6 +15,7 @@ List container registry repositories.
 ## Synopsis
 
 List container registry repositories for a project or group.
+
 ```plaintext
 glab container-registry repository list [flags]
 ```

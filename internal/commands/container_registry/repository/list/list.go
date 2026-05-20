@@ -63,9 +63,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   "List container registry repositories.",
-		Long:    "List container registry repositories for a project or group.",
+		Use:   "list [flags]",
+		Short: "List container registry repositories.",
+		Long: heredoc.Doc(`
+			List container registry repositories for a project or group.
+		`),
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		Example: heredoc.Doc(`

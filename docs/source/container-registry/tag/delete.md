@@ -15,6 +15,7 @@ Delete a container registry tag.
 ## Synopsis
 
 Delete a tag from a container registry repository.
+
 ```plaintext
 glab container-registry tag delete <repository-id> <tag-name> [flags]
 ```

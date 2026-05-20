@@ -34,9 +34,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "delete <repository-id> <tag-name> [flags]",
-		Short:   "Delete a container registry tag.",
-		Long:    "Delete a tag from a container registry repository.",
+		Use:   "delete <repository-id> <tag-name> [flags]",
+		Short: "Delete a container registry tag.",
+		Long: heredoc.Doc(`
+			Delete a tag from a container registry repository.
+		`),
 		Aliases: []string{"del", "rm"},
 		Args:    cobra.ExactArgs(2),
 		Example: heredoc.Doc(`

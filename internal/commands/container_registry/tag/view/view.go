@@ -16,10 +16,9 @@ import (
 )
 
 type options struct {
-	repositoryID     int64
-	includeTags      bool
-	includeTagsCount bool
-	outputFormat     string
+	repositoryID int64
+	tagName      string
+	outputFormat string
 
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
@@ -34,17 +33,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:     "view <repository-id> [flags]",
-		Short:   "View a container registry repository.",
-		Long:    "View details for a single container registry repository.",
+		Use:   "view <repository-id> <tag-name> [flags]",
+		Short: "View a container registry tag.",
+		Long: heredoc.Doc(`
+			View details for a single container registry tag.
+		`),
 		Aliases: []string{"get"},
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
-			# View a container registry repository
-			glab container-registry repository view 123
-
-			# Include tag details
-			glab container-registry repository view 123 --include-tags`),
+			# View a container registry tag
+			glab container-registry tag view 123 latest`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -57,8 +55,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.includeTags, "include-tags", false, "Include tags in the response.")
-	cmd.Flags().BoolVar(&opts.includeTagsCount, "include-tags-count", true, "Include the number of tags in the response.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
@@ -70,6 +66,7 @@ func (o *options) complete(args []string) error {
 		return &cmdutils.FlagError{Err: err}
 	}
 	o.repositoryID = repositoryID
+	o.tagName = args[1]
 
 	return nil
 }
@@ -85,23 +82,19 @@ func (o *options) run() error {
 		return err
 	}
 
-	opts := &gitlab.GetSingleRegistryRepositoryOptions{}
-	if o.includeTags {
-		opts.Tags = new(true)
-	}
-	if o.includeTagsCount {
-		opts.TagsCount = new(true)
-	}
-
-	repository, _, err := client.ContainerRegistry.GetSingleRegistryRepository(o.repositoryID, opts)
+	tag, _, err := client.ContainerRegistry.GetRegistryRepositoryTagDetail(
+		repo.FullName(),
+		o.repositoryID,
+		o.tagName,
+	)
 	if err != nil {
-		return cmdutils.WrapError(err, fmt.Sprintf("failed to fetch container registry repository %d on %s.", o.repositoryID, repo.FullName()))
+		return cmdutils.WrapError(err, fmt.Sprintf("failed to fetch container registry tag %q.", o.tagName))
 	}
 
 	if o.outputFormat == "json" {
-		return o.io.PrintJSON(repository)
+		return o.io.PrintJSON(tag)
 	}
 
-	fmt.Fprintln(o.io.StdOut, registryutils.DisplayRepository(o.io, repository))
+	fmt.Fprintln(o.io.StdOut, registryutils.DisplayTag(o.io, tag))
 	return nil
 }

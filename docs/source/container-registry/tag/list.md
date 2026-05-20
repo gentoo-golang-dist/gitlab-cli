@@ -15,6 +15,7 @@ List container registry repository tags.
 ## Synopsis
 
 List tags for a container registry repository.
+
 ```plaintext
 glab container-registry tag list <repository-id> [flags]
 ```
