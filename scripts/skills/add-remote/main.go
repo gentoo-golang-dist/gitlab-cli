@@ -17,7 +17,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/pflag"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -48,18 +48,21 @@ type registryFile struct {
 }
 
 func main() {
-	replace := flag.Bool("replace", false, "Overwrite an existing entry with the same name.")
-	flag.Usage = func() {
+	// pflag (not stdlib `flag`) so that flags may appear after the
+	// positional URL argument — `<url> --replace` and `--replace <url>`
+	// both work.
+	replace := pflag.Bool("replace", false, "Overwrite an existing entry with the same name.")
+	pflag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: go run ./scripts/skills/add-remote <gitlab-url> [--replace]\n")
-		flag.PrintDefaults()
+		pflag.PrintDefaults()
 	}
-	flag.Parse()
-	if flag.NArg() != 1 {
-		flag.Usage()
+	pflag.Parse()
+	if pflag.NArg() != 1 {
+		pflag.Usage()
 		os.Exit(2)
 	}
 
-	if err := run(flag.Arg(0), *replace); err != nil {
+	if err := run(pflag.Arg(0), *replace); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
