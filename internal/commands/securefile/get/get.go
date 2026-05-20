@@ -52,5 +52,6 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutils.AddJQFlag(securefileGetCmd, f.IO())
 	return securefileGetCmd
 }

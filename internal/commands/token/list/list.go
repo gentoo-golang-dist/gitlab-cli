@@ -81,10 +81,9 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableRepoOverride(cmd, f)
 	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "List group access tokens. Ignored if a user or repository argument is set.")
 	cmd.Flags().StringVarP(&opts.user, "user", "U", "", "List personal access tokens. Use @me for the current user.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. text provides a readable table, json outputs the tokens with metadata.")
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat, "Format output as: text, json. text provides a readable table, json outputs the tokens with metadata.")
 	cmd.Flags().BoolVarP(&opts.listActive, "active", "a", false, "List only the active tokens.")
 	cmd.MarkFlagsMutuallyExclusive("group", "user")
-
 	return cmd
 }
 

@@ -186,6 +186,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 	_ = issueListCmd.Flags().MarkHidden("mine")
 	_ = issueListCmd.Flags().MarkDeprecated("mine", "use --assignee=@me")
 
+	cmdutils.AddJQFlag(issueListCmd, f.IO())
 	return issueListCmd
 }
 

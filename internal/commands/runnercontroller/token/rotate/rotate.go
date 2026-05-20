@@ -67,7 +67,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	fl := cmd.Flags()
 	fl.BoolVarP(&opts.force, "force", "f", false, "Skip confirmation prompt.")

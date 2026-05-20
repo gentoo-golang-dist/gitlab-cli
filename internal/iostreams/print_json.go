@@ -13,12 +13,17 @@ import (
 // Nested slices within the data structure are left as-is to preserve the
 // semantic difference between absent fields (null) and empty arrays ([]) in
 // the original API response.
+//
+// When IOStreams.JQ is active (a --jq expression was supplied), the value is
+// passed through the filter before being written.
 func (s *IOStreams) PrintJSON(v any) error {
-	// Only normalize if v is a top-level nil slice
 	rv := reflect.ValueOf(v)
 	if rv.Kind() == reflect.Slice && rv.IsNil() {
-		// Create an empty slice of the same type
 		v = reflect.MakeSlice(rv.Type(), 0, 0).Interface()
+	}
+
+	if s.JQ != nil && s.JQ.IsActive() {
+		return s.JQ.Apply(s.StdOut, v)
 	}
 
 	encoder := json.NewEncoder(s.StdOut) //nolint:forbidigo // this is the PrintJSON helper itself

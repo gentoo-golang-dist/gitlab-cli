@@ -73,5 +73,6 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	securefileListCmd.Flags().IntP("page", "p", 1, "Page number.")
 	securefileListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
 
+	cmdutils.AddJQFlag(securefileListCmd, f.IO())
 	return securefileListCmd
 }

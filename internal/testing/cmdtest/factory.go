@@ -83,12 +83,18 @@ func NewTestFactory(ios *iostreams.IOStreams, opts ...FactoryOption) *Factory {
 		opt(f)
 	}
 
-	// Create multi writers to assert outputs
-	if f.IOStub != nil {
-		f.IOStub.In = newTeeReadCloser(f.IOStub.In, &f.stdin)
-		f.IOStub.StdOut = io.MultiWriter(&f.stdout, f.IOStub.StdOut)
-		f.IOStub.StdErr = io.MultiWriter(&f.stderr, f.IOStub.StdErr)
+	// Fall back to a fully-initialized stub IOStreams when callers (or test
+	// helpers like the ones that exercise only the command tree) didn't
+	// provide one. This means production code never has to defend against
+	// a nil Factory.IO() return value.
+	if f.IOStub == nil {
+		f.IOStub, _, _, _ = TestIOStreams()
 	}
+
+	// Create multi writers to assert outputs
+	f.IOStub.In = newTeeReadCloser(f.IOStub.In, &f.stdin)
+	f.IOStub.StdOut = io.MultiWriter(&f.stdout, f.IOStub.StdOut)
+	f.IOStub.StdErr = io.MultiWriter(&f.stderr, f.IOStub.StdErr)
 
 	// run setup functions (may have been registered by FactoryOption functions)
 	for _, sf := range f.execSetup {

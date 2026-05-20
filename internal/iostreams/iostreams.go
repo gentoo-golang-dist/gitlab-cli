@@ -51,6 +51,11 @@ type IOStreams struct {
 	isColorEnabled bool
 
 	programOptions []tea.ProgramOption
+
+	// JQ is the filter applied to JSON output by PrintJSON. It is always
+	// non-nil so callers can pass &s.JQ to cobra's Flags().Var without nil
+	// checks; IsActive reports whether a --jq expression has been supplied.
+	JQ *JQFilter
 }
 
 var controlCharRegEx = regexp.MustCompile(`(\x1b\[)((?:(\d*)(;*))*)([A-Z,a-l,n-z])`)
@@ -111,6 +116,7 @@ func New(options ...IOStreamsOption) *IOStreams {
 		// static configuration that we don't need to change in tests.
 		is256ColorEnabled: is256ColorSupported(),
 		displayHyperlinks: "auto",
+		JQ:                &JQFilter{},
 	}
 
 	// Apply options

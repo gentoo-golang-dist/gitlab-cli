@@ -168,6 +168,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	fl.Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
 	fl.StringP("status", "s", "", "Show only jobs in the given state. Passed through to the API's scope parameter.")
 
+	cmdutils.AddJQFlag(pipelineGetCmd, f.IO())
 	return pipelineGetCmd
 }
 

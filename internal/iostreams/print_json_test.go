@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newIOWithJQ returns an IOStreams suitable for tests, with a fresh JQFilter
+// already attached so callers can drive it via io.JQ.Set without nil checks.
+func newIOWithJQ(buf *bytes.Buffer) *IOStreams {
+	return &IOStreams{StdOut: buf, JQ: &JQFilter{}}
+}
+
 func TestPrintJSON_TopLevelNilSliceBecomesEmptyArray(t *testing.T) {
 	// Test that top-level nil slices (like from gitlab.ScanAndCollect) are
 	// normalized to [] instead of null
@@ -18,7 +24,7 @@ func TestPrintJSON_TopLevelNilSliceBecomesEmptyArray(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	io := &IOStreams{StdOut: buf}
+	io := newIOWithJQ(buf)
 
 	// Simulate what gitlab.ScanAndCollect returns for empty results
 	var tokens []Token // nil slice
@@ -38,7 +44,7 @@ func TestPrintJSON_TopLevelSliceWithData(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	io := &IOStreams{StdOut: buf}
+	io := newIOWithJQ(buf)
 
 	tokens := []Token{
 		{ID: 1, Name: "token1"},
@@ -70,7 +76,7 @@ func TestPrintJSON_NestedNilSlicesPreserved(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	io := &IOStreams{StdOut: buf}
+	io := newIOWithJQ(buf)
 
 	tokens := []Token{
 		{ID: 1, Scopes: nil}, // This nil should remain null in the JSON output
@@ -91,4 +97,90 @@ func TestPrintJSON_NestedNilSlicesPreserved(t *testing.T) {
 	scopes, exists := result[0]["scopes"]
 	assert.True(t, exists, "expected scopes field to exist")
 	assert.Nil(t, scopes, "expected scopes to be null")
+}
+
+func TestPrintJSON_PassthroughWhenJQNil(t *testing.T) {
+	// IOStreams instances constructed without a JQFilter should still work;
+	// PrintJSON should bypass the filter and emit raw JSON.
+	buf := &bytes.Buffer{}
+	io := &IOStreams{StdOut: buf} // no JQ
+
+	require.NoError(t, io.PrintJSON(map[string]int{"a": 1}))
+	assert.Equal(t, "{\"a\":1}\n", buf.String())
+}
+
+func TestPrintJSON_JQFilterSelectsField(t *testing.T) {
+	buf := &bytes.Buffer{}
+	io := newIOWithJQ(buf)
+	require.NoError(t, io.JQ.Set(".name"))
+
+	require.NoError(t, io.PrintJSON(map[string]string{"name": "alpha"}))
+
+	// jq -r style: bare string output.
+	assert.Equal(t, "alpha\n", buf.String())
+}
+
+func TestPrintJSON_JQFilterEmitsObject(t *testing.T) {
+	buf := &bytes.Buffer{}
+	io := newIOWithJQ(buf)
+	require.NoError(t, io.JQ.Set(".user"))
+
+	require.NoError(t, io.PrintJSON(map[string]any{
+		"user": map[string]any{"id": 1, "name": "alpha"},
+	}))
+
+	// Non-string results stay JSON-encoded (compact).
+	var result map[string]any
+	err := json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &result)
+	require.NoError(t, err)
+	assert.Equal(t, "alpha", result["name"])
+	assert.EqualValues(t, 1, result["id"])
+}
+
+func TestPrintJSON_JQFilterIteratesArray(t *testing.T) {
+	buf := &bytes.Buffer{}
+	io := newIOWithJQ(buf)
+	require.NoError(t, io.JQ.Set(".[].name"))
+
+	input := []map[string]string{
+		{"name": "alpha"},
+		{"name": "beta"},
+	}
+	require.NoError(t, io.PrintJSON(input))
+
+	assert.Equal(t, "alpha\nbeta\n", buf.String())
+}
+
+func TestPrintJSON_JQFilterMissingFieldEmitsNull(t *testing.T) {
+	// Edge case: jq selecting a missing field emits "null", matching jq semantics.
+	buf := &bytes.Buffer{}
+	io := newIOWithJQ(buf)
+	require.NoError(t, io.JQ.Set(".nonexistent"))
+
+	require.NoError(t, io.PrintJSON(map[string]string{"name": "alpha"}))
+
+	assert.Equal(t, "null\n", buf.String())
+}
+
+func TestPrintJSON_JQFilterEmptyProducesNoOutput(t *testing.T) {
+	// Edge case: `empty` consumes the input and yields no results.
+	buf := &bytes.Buffer{}
+	io := newIOWithJQ(buf)
+	require.NoError(t, io.JQ.Set("empty"))
+
+	require.NoError(t, io.PrintJSON(map[string]string{"name": "alpha"}))
+
+	assert.Equal(t, "", buf.String())
+}
+
+func TestPrintJSON_JQFilterRuntimeErrorIsWrapped(t *testing.T) {
+	// Edge case: a runtime error from gojq (e.g. tonumber on a non-numeric
+	// string) is surfaced as a wrapped error with the --jq prefix.
+	buf := &bytes.Buffer{}
+	io := newIOWithJQ(buf)
+	require.NoError(t, io.JQ.Set(".foo | tonumber"))
+
+	err := io.PrintJSON(map[string]string{"foo": "bar"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--jq error")
 }

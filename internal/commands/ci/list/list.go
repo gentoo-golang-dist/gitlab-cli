@@ -148,5 +148,6 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	pipelineListCmd.Flags().StringP("updated-before", "b", "", "Return only pipelines updated before the specified date. Expected in ISO 8601 format (2019-03-15T08:00:00Z).")
 	pipelineListCmd.Flags().StringP("updated-after", "a", "", "Return only pipelines updated after the specified date. Expected in ISO 8601 format (2019-03-15T08:00:00Z).")
 
+	cmdutils.AddJQFlag(pipelineListCmd, f.IO())
 	return pipelineListCmd
 }

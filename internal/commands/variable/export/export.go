@@ -87,6 +87,7 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 	fl.StringVar(&opts.outputFormat, "format", "json", "Format of output: json, export, env.")
 	_ = fl.MarkDeprecated("format", "use --output instead.")
 
+	cmdutils.AddJQFlag(cmd, f.IO())
 	return cmd
 }
 

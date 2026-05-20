@@ -72,7 +72,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		"state", "Resolution state: all, resolved, unresolved.",
 	)
 	mrNoteListCmd.Flags().StringVar(&opts.filePath, "file", "", "Show only diff notes on this file path.")
-	cmdutils.EnableJSONOutput(mrNoteListCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(mrNoteListCmd, f.IO(), &opts.outputFormat)
 
 	return mrNoteListCmd
 }
