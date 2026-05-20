@@ -3,6 +3,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -124,6 +125,104 @@ func TestMain_isUpdateCheckEnabled(t *testing.T) {
 			result := isUpdateCheckEnabled(factory)
 
 			assert.Equal(t, tt.expectedResult, result, tt.description)
+		})
+	}
+}
+
+func TestMain_configureHyperlinks(t *testing.T) {
+	tests := []struct {
+		name        string
+		envValue    string
+		envName     string
+		config      config.Config
+		expected    string
+		description string
+	}{
+		{
+			name:        "config unset, no env",
+			config:      config.NewFromString(""),
+			expected:    "never",
+			description: "configureHyperlinks should not override the IOStreams default when config and env are unset",
+		},
+		{
+			name:        "config=true, no env",
+			config:      config.NewFromString("display_hyperlinks: true"),
+			expected:    "auto",
+			description: "display_hyperlinks=true should map to auto (TTY-only)",
+		},
+		{
+			name:        "config=false, no env",
+			config:      config.NewFromString("display_hyperlinks: false"),
+			expected:    "never",
+			description: "display_hyperlinks=false should map to never",
+		},
+		{
+			name:        "FORCE_HYPERLINKS=1, config unset",
+			envName:     "FORCE_HYPERLINKS",
+			envValue:    "1",
+			config:      config.NewFromString(""),
+			expected:    "always",
+			description: "FORCE_HYPERLINKS=1 should force always when config is unset",
+		},
+		{
+			name:        "FORCE_HYPERLINKS=1, config=false",
+			envName:     "FORCE_HYPERLINKS",
+			envValue:    "1",
+			config:      config.NewFromString("display_hyperlinks: false"),
+			expected:    "always",
+			description: "FORCE_HYPERLINKS=1 should override display_hyperlinks=false",
+		},
+		{
+			name:        "FORCE_HYPERLINKS=0, config unset",
+			envName:     "FORCE_HYPERLINKS",
+			envValue:    "0",
+			config:      config.NewFromString(""),
+			expected:    "never",
+			description: "a falsy FORCE_HYPERLINKS should fall through to the config check, leaving the IOStreams default in place",
+		},
+		{
+			name:        "FORCE_HYPERLINKS=0, config=false",
+			envName:     "FORCE_HYPERLINKS",
+			envValue:    "0",
+			config:      config.NewFromString("display_hyperlinks: false"),
+			expected:    "never",
+			description: "a falsy FORCE_HYPERLINKS should fall through and let display_hyperlinks=false win",
+		},
+		{
+			name:        "GLAB_FORCE_HYPERLINKS=1, config=false",
+			envName:     "GLAB_FORCE_HYPERLINKS",
+			envValue:    "1",
+			config:      config.NewFromString("display_hyperlinks: false"),
+			expected:    "always",
+			description: "GLAB_FORCE_HYPERLINKS=1 should override display_hyperlinks=false",
+		},
+		{
+			name:        "GLAB_FORCE_HYPERLINKS=0, config=false",
+			envName:     "GLAB_FORCE_HYPERLINKS",
+			envValue:    "0",
+			config:      config.NewFromString("display_hyperlinks: false"),
+			expected:    "never",
+			description: "a falsy GLAB_FORCE_HYPERLINKS should fall through and let display_hyperlinks=false win",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Clear both env vars first so each subtest is hermetic regardless
+			// of the surrounding shell environment.
+			t.Setenv("FORCE_HYPERLINKS", "")
+			t.Setenv("GLAB_FORCE_HYPERLINKS", "")
+			os.Unsetenv("FORCE_HYPERLINKS")
+			os.Unsetenv("GLAB_FORCE_HYPERLINKS")
+
+			if tt.envName != "" {
+				t.Setenv(tt.envName, tt.envValue)
+			}
+
+			ios, _, _, _ := cmdtest.TestIOStreams()
+			configureHyperlinks(ios, tt.config)
+
+			assert.Equal(t, tt.expected, ios.DisplayHyperlinks(), tt.description)
 		})
 	}
 }

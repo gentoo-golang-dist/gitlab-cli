@@ -82,25 +82,7 @@ func main() {
 
 			// configure hyperlink display
 			func(i *iostreams.IOStreams) {
-				if enabled, found := utils.IsEnvVarEnabled("FORCE_HYPERLINKS"); found {
-					if enabled {
-						i.SetDisplayHyperlinks("always")
-					}
-
-					return
-				}
-
-				if enabled, found := utils.IsEnvVarEnabled("GLAB_FORCE_HYPERLINKS"); found {
-					if enabled {
-						i.SetDisplayHyperlinks("always")
-					}
-
-					return
-				}
-
-				if displayHyperlinks, _ := cfg.Get("", "display_hyperlinks"); displayHyperlinks == "true" {
-					i.SetDisplayHyperlinks("auto")
-				}
+				configureHyperlinks(i, cfg)
 			},
 
 			// configure prompt
@@ -255,5 +237,31 @@ func preprocessCommandLinks(cmd *cobra.Command, io *iostreams.IOStreams) {
 	}
 	for _, sub := range cmd.Commands() {
 		preprocessCommandLinks(sub, io)
+	}
+}
+
+// configureHyperlinks sets the IOStreams hyperlink mode based on
+// FORCE_HYPERLINKS, GLAB_FORCE_HYPERLINKS, and the `display_hyperlinks`
+// config value, in that order of precedence.
+//
+// A falsy env var value (`0`, `false`) falls through to the config check
+// so that a user with `FORCE_HYPERLINKS=0` in their shell baseline can
+// still opt out through `display_hyperlinks: false`.
+func configureHyperlinks(i *iostreams.IOStreams, cfg config.Config) {
+	if enabled, found := utils.IsEnvVarEnabled("FORCE_HYPERLINKS"); found && enabled {
+		i.SetDisplayHyperlinks("always")
+		return
+	}
+
+	if enabled, found := utils.IsEnvVarEnabled("GLAB_FORCE_HYPERLINKS"); found && enabled {
+		i.SetDisplayHyperlinks("always")
+		return
+	}
+
+	switch displayHyperlinks, _ := cfg.Get("", "display_hyperlinks"); displayHyperlinks {
+	case "false":
+		i.SetDisplayHyperlinks("never")
+	case "true":
+		i.SetDisplayHyperlinks("auto")
 	}
 }

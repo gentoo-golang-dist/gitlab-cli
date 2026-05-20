@@ -60,6 +60,7 @@ func TestIOStreams(options ...iostreams.IOStreamsOption) (*iostreams.IOStreams, 
 		iostreams.WithStdin(io.NopCloser(in), false),
 		iostreams.WithStdout(out, false),
 		iostreams.WithStderr(errOut, false),
+		iostreams.WithDisplayHyperLinks("never"),
 	}
 	opts = append(opts, options...)
 

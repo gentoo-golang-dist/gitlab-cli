@@ -109,7 +109,7 @@ func New(options ...IOStreamsOption) *IOStreams {
 	iostreams := &IOStreams{
 		// static configuration that we don't need to change in tests.
 		is256ColorEnabled: is256ColorSupported(),
-		displayHyperlinks: "never",
+		displayHyperlinks: "auto",
 	}
 
 	// Apply options
@@ -315,6 +315,12 @@ func (s *IOStreams) BackgroundColor() string {
 		return "none"
 	}
 	return s.backgroundColor
+}
+
+// DisplayHyperlinks returns the current hyperlink display mode.
+// One of "always", "auto", or "never".
+func (s *IOStreams) DisplayHyperlinks() string {
+	return s.displayHyperlinks
 }
 
 func (s *IOStreams) SetDisplayHyperlinks(displayHyperlinks string) {

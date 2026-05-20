@@ -69,13 +69,13 @@ func rootConfig() *yaml.Node {
 						Value: "",
 					},
 					{
-						HeadComment: "# Whether or not to display hyperlink escape characters when listing items like issues or merge requests. Set to TRUE to display hyperlinks in TTYs only. Force hyperlinks by setting FORCE_HYPERLINKS=1 as an environment variable.",
+						HeadComment: "# Whether or not to display hyperlinks in terminal output. Defaults to true (enabled for TTYs). Set to false to disable. Force hyperlinks in non-TTY environments by setting FORCE_HYPERLINKS=1.",
 						Kind:        yaml.ScalarNode,
 						Value:       "display_hyperlinks",
 					},
 					{
 						Kind:  yaml.ScalarNode,
-						Value: "false",
+						Value: "true",
 					},
 					{
 						HeadComment: "# Default GitLab hostname to use.",
