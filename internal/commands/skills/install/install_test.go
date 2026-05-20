@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gitlab.com/gitlab-org/cli/internal/commands/skills/bundled"
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/skill"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -25,11 +25,11 @@ func TestNewCmdInstall_PathFlag(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
-	assert.FileExists(t, filepath.Join(tmpDir, "glab", bundled.FileName))
+	assert.FileExists(t, filepath.Join(tmpDir, "glab", skill.FileName))
 	// Default install should only ship the core `glab` skill; other
 	// bundled skills are opt-in by name to avoid context-window
 	// pollution. Guard against regressing back to "install all".
-	assert.NoFileExists(t, filepath.Join(tmpDir, "glab-stack", bundled.FileName),
+	assert.NoFileExists(t, filepath.Join(tmpDir, "glab-stack", skill.FileName),
 		"default install must not include glab-stack")
 }
 
@@ -42,7 +42,7 @@ func TestNewCmdInstall_GlobalFlag(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
-	assert.FileExists(t, filepath.Join(home, skillsRelDir, "glab", bundled.FileName))
+	assert.FileExists(t, filepath.Join(home, skillsRelDir, "glab", skill.FileName))
 }
 
 func TestNewCmdInstall_DefaultScopeOutsideRepo(t *testing.T) {
@@ -62,7 +62,7 @@ func TestNewCmdInstall_DefaultScopeInsideRepo(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
-	assert.FileExists(t, filepath.Join(repoDir, skillsRelDir, "glab", bundled.FileName))
+	assert.FileExists(t, filepath.Join(repoDir, skillsRelDir, "glab", skill.FileName))
 }
 
 func TestNewCmdInstall_GlobalAndPathMutuallyExclusive(t *testing.T) {
@@ -125,7 +125,7 @@ func TestNewCmdInstall_NamedSkill(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Installed")
 
-	dest := filepath.Join(tmpDir, "glab", bundled.FileName)
+	dest := filepath.Join(tmpDir, "glab", skill.FileName)
 	assert.FileExists(t, dest)
 
 	content, err := os.ReadFile(dest)
@@ -152,11 +152,11 @@ func TestInstallOne_WritesAllFiles(t *testing.T) {
 	ios, _, _, _ := cmdtest.TestIOStreams()
 	o := &options{io: ios, targetDir: tmpDir}
 
-	s := bundled.Skill{
+	s := skill.Skill{
 		Name:        "demo",
 		Description: "demo skill",
 		Files: map[string][]byte{
-			bundled.FileName:               []byte("---\nname: demo\ndescription: x\n---\nbody\n"),
+			skill.FileName:                 []byte("---\nname: demo\ndescription: x\n---\nbody\n"),
 			"scripts/extract.sh":           []byte("#!/bin/sh\necho hi\n"),
 			"references/REFERENCE.md":      []byte("# Reference\n"),
 			"assets/templates/default.tpl": []byte("template body\n"),
@@ -170,6 +170,29 @@ func TestInstallOne_WritesAllFiles(t *testing.T) {
 		require.NoError(t, err, "expected %s to exist", rel)
 		assert.Equal(t, want, got, "contents differ for %s", rel)
 	}
+}
+
+func TestNewCmdInstall_NoNameSkipsRemoteSkills(t *testing.T) {
+	t.Parallel()
+
+	// "glab skills install" (no name) must only install bundled skills.
+	// Remote skills are opt-in by name; `registry.All()` returns them with
+	// Files == nil, and before this guarded path the installer would print
+	// a false "Installed" success without writing anything to disk.
+	tmpDir := t.TempDir()
+	exec := cmdtest.SetupCmdForTest(t, NewCmdInstall, false)
+	out, err := exec("--path " + tmpDir)
+
+	require.NoError(t, err)
+
+	// The `orbit` skill is a remote-only skill in the curated registry. It
+	// should not appear in install output and its directory must not exist.
+	combined := out.String() + out.Stderr()
+	assert.NotContains(t, combined, "Installed "+filepath.Join(tmpDir, "orbit"))
+	assert.NoDirExists(t, filepath.Join(tmpDir, "orbit"))
+
+	// And the bundled skills still install.
+	assert.FileExists(t, filepath.Join(tmpDir, "glab", skill.FileName))
 }
 
 func TestNewCmdInstall_TooManyArgs(t *testing.T) {

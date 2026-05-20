@@ -1,6 +1,7 @@
-// Package bundled owns the agent skills shipped with glab. It exposes a small
-// registry so the install and list subcommands can share a single source of
-// truth, and parses YAML frontmatter from each SKILL.md to derive metadata.
+// Package bundled is the source for agent skills that ship inside the
+// glab binary via go:embed. The skill type itself lives in the sibling
+// `skill` package; this package only knows how to discover and load
+// from the embedded FS.
 //
 // The on-disk layout under assets/ follows the Agent Skills specification
 // (https://agentskills.io/specification): each top-level directory is a skill
@@ -11,6 +12,7 @@ package bundled
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -19,33 +21,19 @@ import (
 	"sync"
 
 	"go.yaml.in/yaml/v3"
+
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/skill"
 )
 
-const (
-	// FileName is the canonical filename for a skill, per the Agent Skills
-	// specification (https://agentskills.io).
-	FileName = "SKILL.md"
+// ErrNotFound is returned by Get when no bundled skill has the
+// requested name. Callers can errors.Is against it to distinguish
+// "this source doesn't have it" from a registry-load failure.
+var ErrNotFound = errors.New("not in bundled skills")
 
-	assetsDir = "assets"
-)
+const assetsDir = "assets"
 
 //go:embed all:assets
 var fsys embed.FS
-
-// Skill is a single bundled agent skill resolved from the embedded FS.
-// Files maps each path inside the skill directory (relative to the skill
-// root, e.g. "SKILL.md" or "scripts/extract.py") to its contents.
-type Skill struct {
-	Name        string
-	Description string
-	Files       map[string][]byte
-}
-
-// SkillFile returns the contents of the canonical SKILL.md for this skill.
-// It is shorthand for s.Files[FileName].
-func (s Skill) SkillFile() []byte {
-	return s.Files[FileName]
-}
 
 type frontmatter struct {
 	Name        string `yaml:"name"`
@@ -54,33 +42,33 @@ type frontmatter struct {
 
 var (
 	loadOnce sync.Once
-	loaded   []Skill
+	loaded   []skill.Skill
 	loadErr  error
 )
 
-// All returns every bundled skill, sorted by name.
-func All() ([]Skill, error) {
+// All returns every bundled skill, sorted by name. Files are populated.
+func All() ([]skill.Skill, error) {
 	loadOnce.Do(load)
 	if loadErr != nil {
 		return nil, loadErr
 	}
-	out := make([]Skill, len(loaded))
+	out := make([]skill.Skill, len(loaded))
 	copy(out, loaded)
 	return out, nil
 }
 
 // Get returns the bundled skill with the given name.
-func Get(name string) (Skill, error) {
+func Get(name string) (skill.Skill, error) {
 	skills, err := All()
 	if err != nil {
-		return Skill{}, err
+		return skill.Skill{}, err
 	}
 	for _, s := range skills {
 		if s.Name == name {
 			return s, nil
 		}
 	}
-	return Skill{}, fmt.Errorf("unknown skill %q. Run 'glab skills list' to see available skills", name)
+	return skill.Skill{}, fmt.Errorf("%w: %q", ErrNotFound, name)
 }
 
 func load() {
@@ -90,7 +78,7 @@ func load() {
 		return
 	}
 
-	skills := make([]Skill, 0, len(entries))
+	skills := make([]skill.Skill, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -107,39 +95,40 @@ func load() {
 	loaded = skills
 }
 
-func loadSkill(dirName string) (Skill, error) {
+func loadSkill(dirName string) (skill.Skill, error) {
 	skillRoot := path.Join(assetsDir, dirName)
 	files, err := collectFiles(skillRoot)
 	if err != nil {
-		return Skill{}, fmt.Errorf("reading skill %q: %w", dirName, err)
+		return skill.Skill{}, fmt.Errorf("reading skill %q: %w", dirName, err)
 	}
 
-	skillMD, ok := files[FileName]
+	skillMD, ok := files[skill.FileName]
 	if !ok {
-		return Skill{}, fmt.Errorf("skill %q is missing required %s", dirName, FileName)
+		return skill.Skill{}, fmt.Errorf("skill %q is missing required %s", dirName, skill.FileName)
 	}
 
 	fm, err := parseFrontmatter(skillMD)
 	if err != nil {
-		return Skill{}, fmt.Errorf("parsing frontmatter in %s/%s: %w", dirName, FileName, err)
+		return skill.Skill{}, fmt.Errorf("parsing frontmatter in %s/%s: %w", dirName, skill.FileName, err)
 	}
 	// Minimum checks needed for load to function — name keys the registry
 	// and must match the directory; description is rendered by `skills list`.
 	// Full Agent Skills spec compliance (regex, length caps, etc.) is left to
 	// hand-review and upstream tooling.
 	if fm.Name == "" {
-		return Skill{}, fmt.Errorf("%s/%s: frontmatter is missing 'name'", dirName, FileName)
+		return skill.Skill{}, fmt.Errorf("%s/%s: frontmatter is missing 'name'", dirName, skill.FileName)
 	}
 	if fm.Name != dirName {
-		return Skill{}, fmt.Errorf("%s/%s: frontmatter name %q does not match directory %q", dirName, FileName, fm.Name, dirName)
+		return skill.Skill{}, fmt.Errorf("%s/%s: frontmatter name %q does not match directory %q", dirName, skill.FileName, fm.Name, dirName)
 	}
 	if fm.Description == "" {
-		return Skill{}, fmt.Errorf("%s/%s: frontmatter is missing 'description'", dirName, FileName)
+		return skill.Skill{}, fmt.Errorf("%s/%s: frontmatter is missing 'description'", dirName, skill.FileName)
 	}
 
-	return Skill{
+	return skill.Skill{
 		Name:        fm.Name,
 		Description: fm.Description,
+		Source:      skill.SourceBundled,
 		Files:       files,
 	}, nil
 }

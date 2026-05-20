@@ -1,0 +1,19 @@
+# Curated registry of remote agent skills hosted on gitlab.com.
+#
+# Each entry points at a directory in a public gitlab.com project that
+# contains a spec-compliant SKILL.md plus any supporting files. glab
+# fetches the entire directory tree at install time.
+#
+# To add an entry, prefer the generator:
+#
+#   go run ./scripts/skills/add-remote <full-url-to-skill-directory>
+#
+# Manual additions need the same fields the generator produces; the
+# entry name must match the SKILL.md frontmatter `name`.
+version: 1
+skills:
+  - name: orbit
+    description: Query the GitLab Knowledge Graph (Orbit) via `glab orbit remote` CLI subcommands or run a local copy with `glab orbit local`. Use for code-structure questions (who calls this function, where is this symbol defined), cross-project dependency and blast-radius analysis, merge-request and contributor queries, and any question answerable by traversing GitLab's unified entity graph (projects, users, MRs, issues, pipelines, files, definitions, vulnerabilities).
+    project: gitlab-org/orbit/knowledge-graph
+    ref: latest
+    path: skills/orbit

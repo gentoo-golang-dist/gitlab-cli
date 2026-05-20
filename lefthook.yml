@@ -51,20 +51,21 @@ pre-commit:
         git add {staged_files}
       stage_fixed: true
 
-    # Fail fast if bundled agent skills can't be loaded — covers a missing
-    # SKILL.md, unparseable frontmatter, an empty `name` or `description`, or
-    # a mismatch between frontmatter name and directory. Full Agent Skills
-    # spec compliance (https://agentskills.io/specification) is hand-reviewed
-    # in MRs, not enforced here.
+    # Fail fast if any skill source can't be loaded — covers a missing
+    # SKILL.md, unparseable frontmatter, an empty `name` or `description`,
+    # a directory mismatch in bundled assets, or a malformed remote
+    # registry entry. Full Agent Skills spec compliance
+    # (https://agentskills.io/specification) is hand-reviewed in MRs,
+    # not enforced here.
     validate-skills:
       tags: backend skills
-      glob: "internal/commands/skills/bundled/**"
+      glob: "internal/commands/skills/**"
       run: |
         if ! command -v go > /dev/null 2>&1; then
           echo "⚠️  go not found. Skipping skills validation..."
           exit 0
         fi
-        go test ./internal/commands/skills/bundled/...
+        go test ./internal/commands/skills/...
 
     # Check if documentation needs regeneration
     check-docs:
