@@ -346,10 +346,10 @@ func Test_cmdCreate_reply(t *testing.T) {
 	})
 }
 
-func Test_cmdCreate_noThread(t *testing.T) {
+func Test_cmdCreate_resolvable(t *testing.T) {
 	t.Parallel()
 
-	t.Run("--no-thread posts a plain note via the Notes API", func(t *testing.T) {
+	t.Run("--resolvable=false posts a plain note via the Notes API", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := setupMR(t)
@@ -363,13 +363,13 @@ func Test_cmdCreate_noThread(t *testing.T) {
 
 		exec := setupCreateExec(t, testClient)
 
-		output, err := exec(`1 --no-thread -m "Build status: green"`)
+		output, err := exec(`1 --resolvable=false -m "Build status: green"`)
 		require.NoError(t, err)
 		assert.Empty(t, output.Stderr())
 		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_501\n", output.String())
 	})
 
-	t.Run("--no-thread --unique skips duplicate then posts a note", func(t *testing.T) {
+	t.Run("--resolvable=false --unique skips duplicate then posts a note", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := setupMR(t)
@@ -389,31 +389,31 @@ func Test_cmdCreate_noThread(t *testing.T) {
 
 		exec := setupCreateExec(t, testClient)
 
-		output, err := exec(`1 --no-thread --unique -m "brand new note"`)
+		output, err := exec(`1 --resolvable=false --unique -m "brand new note"`)
 		require.NoError(t, err)
 		assert.Contains(t, output.String(), "#note_502")
 	})
 
-	t.Run("--no-thread and --reply are mutually exclusive", func(t *testing.T) {
+	t.Run("--resolvable and --reply are mutually exclusive", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := gitlabtesting.NewTestClient(t)
 
 		exec := setupCreateExec(t, testClient)
 
-		_, err := exec(`1 --no-thread --reply abc12345 -m "hi"`)
+		_, err := exec(`1 --resolvable=false --reply abc12345 -m "hi"`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "none of the others can be")
 	})
 
-	t.Run("--no-thread and --file are mutually exclusive", func(t *testing.T) {
+	t.Run("--resolvable and --file are mutually exclusive", func(t *testing.T) {
 		t.Parallel()
 
 		testClient := gitlabtesting.NewTestClient(t)
 
 		exec := setupCreateExec(t, testClient)
 
-		_, err := exec(`1 --no-thread --file main.go -m "hi"`)
+		_, err := exec(`1 --resolvable=false --file main.go -m "hi"`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "none of the others can be")
 	})

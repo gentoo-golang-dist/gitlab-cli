@@ -24,13 +24,13 @@ type createOptions struct {
 	gitlabClient func() (*gitlab.Client, error)
 
 	// Flags.
-	message  string
-	unique   bool
-	reply    string
-	filePath string
-	line     string
-	oldLine  int
-	noThread bool
+	message    string
+	unique     bool
+	reply      string
+	filePath   string
+	line       string
+	oldLine    int
+	resolvable bool
 
 	// Populated in complete.
 	client   *gitlab.Client
@@ -54,10 +54,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			Add a comment to a merge request. The command creates the comment as a new
 			discussion thread by default.
 
-			Use %[1]s--no-thread%[1]s to post a non-resolvable note via the Notes API
-			instead. Non-resolvable notes don't block merging when the project requires
-			"all threads resolved before merging". Useful for automation and status
-			updates that should not require a human to resolve them.
+			Use %[1]s--resolvable=false%[1]s to post a non-resolvable note via the Notes
+			API instead. Non-resolvable notes don't block merging when the project
+			requires "all threads resolved before merging". Useful for automation and
+			status updates that should not require a human to resolve them.
 
 			Use %[1]s--reply%[1]s to add a note to an existing discussion thread instead of
 			starting a new one. The value can be a full discussion ID or a unique
@@ -74,8 +74,8 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			cannot be used together.
 			- %[1]s--file%[1]s, %[1]s--reply%[1]s, and %[1]s--unique%[1]s are mutually
 			exclusive.
-			- %[1]s--no-thread%[1]s cannot be combined with %[1]s--reply%[1]s or
-			%[1]s--file%[1]s (and therefore not with %[1]s--line%[1]s or
+			- %[1]s--resolvable=false%[1]s cannot be combined with %[1]s--reply%[1]s
+			or %[1]s--file%[1]s (and therefore not with %[1]s--line%[1]s or
 			%[1]s--old-line%[1]s either), since those operate on discussion threads.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
@@ -95,7 +95,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			glab mr note create 123 -m "LGTM" --unique
 
 			# Post a non-resolvable note (won't block merge), e.g. for bot/CI status
-			glab mr note create 123 -m "Build status: green" --no-thread
+			glab mr note create 123 -m "Build status: green" --resolvable=false
 
 			# Reply to an existing discussion thread
 			glab mr note create 123 --reply abc12345 -m "I agree!"
@@ -134,14 +134,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	fl.StringVar(&opts.filePath, "file", "", "File path for a diff comment, like <path/to/file>. Targets the latest merge request diff version.")
 	fl.StringVar(&opts.line, "line", "", "Line in the new version. A single line number, like 42, or a range, like 10:15.")
 	fl.IntVar(&opts.oldLine, "old-line", 0, "Line in the old version, for commenting on a removed line.")
-	fl.BoolVar(&opts.noThread, "no-thread", false, "Post a non-resolvable note via the Notes API instead of creating a discussion thread. (default false)")
+	fl.BoolVar(&opts.resolvable, "resolvable", true, "Create the note as a resolvable discussion thread. Set to false to post a non-resolvable note via the Notes API.")
 
 	cmd.MarkFlagsMutuallyExclusive("reply", "unique")
 	cmd.MarkFlagsMutuallyExclusive("reply", "file")
 	cmd.MarkFlagsMutuallyExclusive("unique", "file")
 	cmd.MarkFlagsMutuallyExclusive("line", "old-line")
-	cmd.MarkFlagsMutuallyExclusive("no-thread", "reply")
-	cmd.MarkFlagsMutuallyExclusive("no-thread", "file")
+	cmd.MarkFlagsMutuallyExclusive("resolvable", "reply")
+	cmd.MarkFlagsMutuallyExclusive("resolvable", "file")
 
 	return cmd
 }
@@ -223,7 +223,7 @@ func (o *createOptions) run(ctx context.Context) error {
 		}
 	}
 
-	if o.noThread {
+	if !o.resolvable {
 		return o.runCreateNote(ctx)
 	}
 	return o.runCreate(ctx)
