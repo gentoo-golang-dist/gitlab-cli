@@ -48,6 +48,7 @@ glab mr create -t "Security patch" --template security_fix.md --yes
       --auto-merge             Set the merge request to merge when all merge checks pass.
       --copy-issue-labels      Copy labels from issue to the merge request. Used with --related-issue.
       --create-source-branch   Create a source branch if it does not exist.
+      --depends-on strings     Mark the new merge request as depending on (blocked by) the given merge requests. Each value is an IID in the current project (e.g. 123) or a merge request URL. Repeat the flag or pass a comma-separated list to add several. Requires a GitLab Premium or Ultimate subscription.
   -d, --description string     Supply a description for the merge request. Set to "-" to open an editor.
       --draft                  Mark merge request as a draft.
   -f, --fill push              Do not prompt for title or description, and just use commit info. Sets push to `true`, and pushes the branch.

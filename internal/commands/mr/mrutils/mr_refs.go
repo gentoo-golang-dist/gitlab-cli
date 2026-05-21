@@ -5,6 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+
+	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 )
@@ -41,6 +44,37 @@ func ParseMRRef(ref, defaultHostname string) (MRRef, error) {
 		return MRRef{}, fmt.Errorf("invalid merge request reference %q: expected an IID (e.g. 123) or a merge request URL", ref)
 	}
 	return MRRef{IID: iid}, nil
+}
+
+// ResolveMRRef looks up a parsed reference and returns the project path the
+// MR lives in plus its global numeric ID (which is what the merge request
+// dependency / blocks endpoints expect for the blocking MR). When the ref
+// has no embedded Repo it's resolved against baseRepo using defaultClient;
+// otherwise a per-host client is fetched via apiClientFn.
+func ResolveMRRef(
+	ref MRRef,
+	apiClientFn func(repoHost string) (*api.Client, error),
+	defaultClient *gitlab.Client,
+	baseRepo glrepo.Interface,
+) (string, int64, error) {
+	client := defaultClient
+	repo := baseRepo
+	if ref.Repo != nil {
+		repo = ref.Repo
+		if repo.RepoHost() != baseRepo.RepoHost() {
+			ac, err := apiClientFn(repo.RepoHost())
+			if err != nil {
+				return "", 0, fmt.Errorf("failed to connect to GitLab instance %s: %w", repo.RepoHost(), err)
+			}
+			client = ac.Lab()
+		}
+	}
+
+	mr, err := api.GetMR(client, repo.FullName(), int64(ref.IID), &gitlab.GetMergeRequestsOptions{})
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to look up merge request !%d in %s: %w", ref.IID, repo.FullName(), err)
+	}
+	return repo.FullName(), mr.ID, nil
 }
 
 // ParseMRRefs parses a list of merge request references, returning the first
