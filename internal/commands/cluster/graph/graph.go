@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -22,12 +23,8 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
 
-var (
-	//go:embed long.md
-	longHelp string
-	//go:embed example.md
-	exampleHelp string
-)
+//go:embed long.md
+var longHelp string
 
 type options struct {
 	io                    *iostreams.IOStreams
@@ -62,11 +59,34 @@ func NewCmdGraph(f cmdutils.Factory) *cobra.Command {
 		listenAddr: "localhost:0",
 	}
 	graphCmd := &cobra.Command{
-		Use:     "graph [flags]",
-		Short:   `Queries the Kubernetes object graph, using the GitLab Agent for Kubernetes. (EXPERIMENTAL)`,
-		Long:    longHelp + text.ExperimentalString,
-		Example: strings.Trim(exampleHelp, "\n\r"),
-		Args:    cobra.NoArgs,
+		Use:   "graph [flags]",
+		Short: `Query the Kubernetes object graph using the GitLab Agent for Kubernetes. (EXPERIMENTAL)`,
+		Long:  longHelp + text.ExperimentalString,
+		Example: heredoc.Doc(`
+			# Run the default query for agent 123
+			glab cluster graph -R user/project -a 123
+
+			# Show common resources from the core and RBAC groups
+			glab cluster graph -R user/project -a 123 --core --rbac
+
+			# Show certain resources
+			glab cluster graph -R user/project -a 123 --resource=pods --resource=configmaps
+
+			# Same as above, but more compact
+			glab cluster graph -R user/project -a 123 -r={pods,configmaps}
+
+			# Select a certain namespace
+			glab cluster graph -R user/project -a 123 -n={my-ns,my-stuff}
+
+			# Select namespaces with a certain label
+			glab cluster graph -R user/project -a 123 --ns-label-selector environment=production
+
+			# Pass a custom watch request from a file
+			glab cluster graph -R user/project -a 123 --stdin < query.json
+
+			# Show objects reachable from pod roots
+			glab cluster graph -R user/project -a 123 --root-expression "resource == \"pods\""`),
+		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -75,7 +95,7 @@ func NewCmdGraph(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 	fl := graphCmd.Flags()
-	fl.Int64VarP(&opts.agentID, "agent", "a", opts.agentID, "The numerical Agent ID to connect to.")
+	fl.Int64VarP(&opts.agentID, "agent", "a", opts.agentID, "The numeric agent ID to connect to.")
 	fl.StringVar(&opts.listenNet, "listen-net", opts.listenNet, "Network on which to listen for connections.")
 	fl.StringVar(&opts.listenAddr, "listen-addr", opts.listenAddr, "Address to listen on.")
 	fl.BoolVarP(&opts.logWatchRequest, "log-watch-request", "", opts.logWatchRequest, "Log watch request to stdout. Helpful for debugging.")
@@ -85,14 +105,14 @@ func NewCmdGraph(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.nsSelector, "ns-field-selector", "", opts.nsSelector, "Field selector to select namespaces.")
 	fl.StringVarP(&opts.nsCEL, "ns-expression", "", opts.nsCEL, "CEL expression to select namespaces. Evaluated before a namespace is watched and on any updates for the namespace object.")
 
-	fl.StringArrayVarP(&opts.rootsCEL, "root-expression", "", opts.rootsCEL, "CEL expression to select root objects. GitLab and agent 18.3+ required.")
-	fl.BoolVarP(&opts.ignoreArcDirection, "ignore-arc-direction", "", opts.ignoreArcDirection, "Ignore arc direction when evaluating roots connectivity. GitLab and agent 18.3+ required.")
+	fl.StringArrayVarP(&opts.rootsCEL, "root-expression", "", opts.rootsCEL, "CEL expression to select root objects. Requires GitLab and agent version 18.3 or later.")
+	fl.BoolVarP(&opts.ignoreArcDirection, "ignore-arc-direction", "", opts.ignoreArcDirection, "Ignore arc direction when evaluating root connectivity. Requires GitLab and agent version 18.3 or later.")
 
-	fl.StringArrayVarP(&opts.resources, "resource", "r", opts.resources, "A list of resources to watch. You can see the list of resources your cluster supports by running 'kubectl api-resources'.")
+	fl.StringArrayVarP(&opts.resources, "resource", "r", opts.resources, "Resources to watch. You can see the list of resources your cluster supports by running 'kubectl api-resources'.")
 	fl.BoolVar(&opts.groupCore, "core", opts.groupCore, "Watch pods, secrets, configmaps, and serviceaccounts in the core/v1 group.")
 	fl.BoolVar(&opts.groupBatch, "batch", opts.groupBatch, "Watch jobs and cronjobs in the batch/v1 group.")
-	fl.BoolVar(&opts.groupApps, "apps", opts.groupApps, "Watch deployments, replicasets, daemonsets, and statefulsets in apps/v1 group.")
-	fl.BoolVar(&opts.groupRBAC, "rbac", opts.groupRBAC, "Watch roles, and rolebindings in the rbac.authorization.k8s.io/v1 group.")
+	fl.BoolVar(&opts.groupApps, "apps", opts.groupApps, "Watch deployments, replicasets, daemonsets, and statefulsets in the apps/v1 group.")
+	fl.BoolVar(&opts.groupRBAC, "rbac", opts.groupRBAC, "Watch roles and rolebindings in the rbac.authorization.k8s.io/v1 group.")
 	fl.BoolVar(&opts.groupClusterRBAC, "cluster-rbac", opts.groupClusterRBAC, "Watch clusterroles and clusterrolebindings in the rbac.authorization.k8s.io/v1 group.")
 	fl.BoolVar(&opts.groupCRD, "crd", opts.groupCRD, "Watch customresourcedefinitions in the apiextensions.k8s.io/v1 group.")
 	fl.BoolVar(&opts.readQueryFromStdIn, "stdin", opts.readQueryFromStdIn, "Read watch request from standard input.")

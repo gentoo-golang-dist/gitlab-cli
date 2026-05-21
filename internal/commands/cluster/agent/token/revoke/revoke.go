@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -33,8 +34,15 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "revoke <agent-id> <token-id>",
-		Short: `Revoke a token of an agent.`,
-		Args:  cobra.ExactArgs(2),
+		Short: `Revoke an agent token.`,
+		Long: heredoc.Doc(`
+			Revokes the specified token for a GitLab Agent for Kubernetes.
+			Requires the numeric agent ID and token ID.
+		`),
+		Example: heredoc.Doc(`
+			# Revoke token 456 for agent 123
+			glab cluster agent token revoke 123 456`),
+		Args: cobra.ExactArgs(2),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

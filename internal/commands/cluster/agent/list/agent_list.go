@@ -1,6 +1,7 @@
 package list
 
 import (
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -32,9 +33,17 @@ func NewCmdAgentList(f cmdutils.Factory) *cobra.Command {
 	agentListCmd := &cobra.Command{
 		Use:     "list [flags]",
 		Short:   `List GitLab Agents for Kubernetes in a project.`,
-		Long:    ``,
 		Aliases: []string{"ls"},
-		Args:    cobra.MaximumNArgs(3),
+		Long: heredoc.Docf(`
+			Defaults to the current project. Use %[1]s--output json%[1]s for JSON output.
+		`, "`"),
+		Example: heredoc.Doc(`
+			# List agents in the current project
+			glab cluster agent list
+
+			# List agents in JSON format
+			glab cluster agent list --output json`),
+		Args: cobra.MaximumNArgs(3),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

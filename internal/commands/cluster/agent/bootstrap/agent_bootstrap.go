@@ -108,7 +108,7 @@ func EnsureRequirements() error {
 func NewCmdAgentBootstrap(f cmdutils.Factory, ensureRequirements func() error, af APIFactory, kwf KubectlWrapperFactory, fwf FluxWrapperFactory, cf CmdFactory) *cobra.Command {
 	var opts options
 	agentBootstrapCmd := &cobra.Command{
-		Use:   "bootstrap agent-name [flags]",
+		Use:   "bootstrap <agent-name> [flags]",
 		Short: `Bootstrap a GitLab Agent for Kubernetes in a project.`,
 		Long: heredoc.Docf(`Bootstrap a GitLab Agent for Kubernetes (agentk) in a project.
 
@@ -272,7 +272,7 @@ This command consists of multiple idempotent steps:
 	}
 	fl := agentBootstrapCmd.Flags()
 	fl.StringVarP(&opts.manifestPath, "manifest-path", "p", "", "Location of directory in Git repository for storing the GitLab Agent for Kubernetes Helm resources.")
-	fl.StringVarP(&opts.manifestBranch, "manifest-branch", "b", "", "Branch to commit the Flux Manifests to. (default to the project default branch)")
+	fl.StringVarP(&opts.manifestBranch, "manifest-branch", "b", "", "Branch to commit the Flux Manifests to. Defaults to the project default branch.")
 
 	fl.BoolVar(&opts.noReconcile, "no-reconcile", false, "Do not trigger Flux reconciliation for GitLab Agent for Kubernetes Flux resource.")
 
@@ -305,9 +305,9 @@ This command consists of multiple idempotent steps:
 	fl.StringVar(&opts.fluxEnvironmentNamespace, "flux-environment-namespace", "<flux-source-namespace>", "Kubernetes namespace of the environment for FluxCD.")
 	fl.StringVar(&opts.fluxEnvironmentFluxResourcePath, "flux-environment-flux-resource-path", "kustomize.toolkit.fluxcd.io/v1/namespaces/flux-system/kustomizations/flux-system", "Flux resource path of the environment for FluxCD.")
 
-	fl.BoolVar(&opts.useAPICommitAuthor, "use-api-commit-author", false, "When creating Git commits use the user from the authenticated API request. Conflicts with the --commit-author-name and --commit-author-email flags.")
-	fl.StringVar(&opts.commitAuthor.name, "commit-author-name", defaultCommitAuthorName, "The Git commit author name to use. Conflicts with the --use-api-commit-author flag.")
-	fl.StringVar(&opts.commitAuthor.email, "commit-author-email", defaultCommitAuthorEmail, "The Git commit author email to use. Conflicts with the --use-api-commit-author flag.")
+	fl.BoolVar(&opts.useAPICommitAuthor, "use-api-commit-author", false, "When creating Git commits use the user from the authenticated API request. Conflicts with '--commit-author-name' and '--commit-author-email'.")
+	fl.StringVar(&opts.commitAuthor.name, "commit-author-name", defaultCommitAuthorName, "The Git commit author name to use. Conflicts with '--use-api-commit-author'.")
+	fl.StringVar(&opts.commitAuthor.email, "commit-author-email", defaultCommitAuthorEmail, "The Git commit author email to use. Conflicts with '--use-api-commit-author'.")
 	agentBootstrapCmd.MarkFlagsMutuallyExclusive("use-api-commit-author", "commit-author-name")
 	agentBootstrapCmd.MarkFlagsMutuallyExclusive("use-api-commit-author", "commit-author-email")
 

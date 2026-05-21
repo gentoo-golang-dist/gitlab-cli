@@ -2,7 +2,6 @@ package clear
 
 import (
 	"context"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -12,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
 
@@ -38,9 +38,6 @@ type options struct {
 
 type cachedToken = agentutils.CachedToken
 
-//go:embed long.md
-var longHelp string
-
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := options{
 		io:           f.IO(),
@@ -50,7 +47,19 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clear [flags]",
 		Short: "Clear cached GitLab Agent tokens.",
-		Long:  longHelp,
+		Long: heredoc.Docf(`
+			By default, clears tokens from both keyring and filesystem cache
+			and revokes them on the GitLab server. Use %[1]s--revoke=false%[1]s to skip revocation.
+		`, "`"),
+		Example: heredoc.Doc(`
+			# Clear all cached agent tokens
+			glab cluster agent token-cache clear
+
+			# Clear tokens without revoking them on GitLab
+			glab cluster agent token-cache clear --revoke=false
+
+			# Clear tokens for a specific agent
+			glab cluster agent token-cache clear --agent 123`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

@@ -17,5 +17,5 @@ func TestNewCmdAgent(t *testing.T) {
 
 	assert.Nil(t, cmd.Execute())
 
-	assert.Contains(t, stdout.String(), "Manage GitLab Agents for Kubernetes")
+	assert.Contains(t, stdout.String(), "Register new agents, configure existing ones")
 }

@@ -62,9 +62,22 @@ func NewCmdAgentUpdateKubeconfig(f cmdutils.Factory) *cobra.Command {
 
 	agentUpdateKubeconfigCmd := &cobra.Command{
 		Use:   "update-kubeconfig [flags]",
-		Short: `Update selected kubeconfig.`,
-		Long: heredoc.Docf(`Update selected %[1]skubeconfig%[1]s for use with a GitLab agent for Kubernetes.
+		Short: `Update your kubeconfig for use with a GitLab Agent for Kubernetes.`,
+		Long: heredoc.Docf(`
+			Configures %[1]skubectl%[1]s to authenticate through the GitLab Agent for Kubernetes
+			using an exec credential plugin.
+
+			- Use %[1]s--agent%[1]s to specify the agent by its numeric ID.
+			- Use %[1]s--use-context%[1]s to set the agent as the default %[1]skubectl%[1]s context.
+			- Use %[1]s--token-expiry-duration%[1]s to control how long the generated token is valid.
+			- Use %[1]s--cache-mode%[1]s to control how generated tokens are cached.
 		`, "`"),
+		Example: heredoc.Doc(`
+			# Update kubeconfig for agent 123
+			glab cluster agent update-kubeconfig --agent 123
+
+			# Update kubeconfig and set as the default context
+			glab cluster agent update-kubeconfig --agent 123 --use-context`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,15 +53,18 @@ func NewCmdAgentGetToken(f cmdutils.Factory) *cobra.Command {
 		io:           f.IO(),
 		gitlabClient: f.GitLabClient,
 	}
-	desc := "Create and return a k8s_proxy-scoped personal access token to authenticate with a GitLab Agents for Kubernetes."
 	agentGetTokenCmd := &cobra.Command{
 		Use:   "get-token [flags]",
-		Short: desc,
-		Long: fmt.Sprintf(`%s
+		Short: `Create a personal access token for a GitLab Agent for Kubernetes.`,
+		Long: heredoc.Docf(`
+			The token has the %[1]sk8s_proxy%[1]s scope and is valid until the end of the current day.
 
-This command creates a personal access token that is valid until the end of the current day.
-You might receive an email from your GitLab instance that a new personal access token has been created.
-`, desc),
+			You might receive an email from your GitLab instance that a new personal
+			access token has been created.
+		`, "`"),
+		Example: heredoc.Doc(`
+			# Get a token for agent 123
+			glab cluster agent get-token --agent 123`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},

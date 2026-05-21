@@ -1,7 +1,6 @@
 package list
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -31,9 +31,6 @@ type options struct {
 
 type cachedToken = agentutils.CachedToken
 
-//go:embed long.md
-var longHelp string
-
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := options{
 		io: f.IO(),
@@ -42,7 +39,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [flags]",
 		Short: "List cached GitLab Agent tokens.",
-		Long:  longHelp,
+		Long: heredoc.Docf(`
+			By default, shows tokens from both keyring and filesystem cache.
+			Use %[1]s--keyring=false%[1]s or %[1]s--filesystem=false%[1]s to filter by cache type.
+		`, "`"),
+		Example: heredoc.Doc(`
+			# List all cached agent tokens
+			glab cluster agent token-cache list
+
+			# List tokens from filesystem cache only
+			glab cluster agent token-cache list --keyring=false`),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
 		},
