@@ -1415,7 +1415,7 @@ func TestCIView(t *testing.T) {
 		},
 		{
 			name: "view ci pipeline on web for a given pipeline id",
-			cli:  "--web --pipelineid 5",
+			cli:  "--web --pipeline-id 5",
 			setupMock: func(tc *gitlabtesting.TestClient) {
 				tc.MockPipelines.EXPECT().
 					GetPipeline("OWNER/REPO", int64(5), gomock.Any()).
