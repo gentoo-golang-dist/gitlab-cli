@@ -53,9 +53,49 @@ func TestDetectCodingAgent(t *testing.T) {
 			expected: "cursor",
 		},
 		{
+			name:     "Duo Agent Platform",
+			envVars:  map[string]string{"AGENT_PLATFORM_GITLAB_VERSION": "18.0.0"},
+			expected: "duo-agent-platform",
+		},
+		{
 			name:     "Gemini CLI",
 			envVars:  map[string]string{"GEMINI_CLI": "1"},
 			expected: "gemini",
+		},
+		{
+			name:     "Roo Code",
+			envVars:  map[string]string{"ROO_CLI_RUNTIME": "1"},
+			expected: "roo-code",
+		},
+		{
+			name:     "ROO_CLI_RUNTIME wrong value ignored",
+			envVars:  map[string]string{"ROO_CLI_RUNTIME": "true"},
+			expected: "",
+		},
+		{
+			name:     "TERM_PROGRAM=cursor falls back to cursor-terminal",
+			envVars:  map[string]string{"TERM_PROGRAM": "cursor"},
+			expected: "cursor-terminal",
+		},
+		{
+			name:     "TERM_PROGRAM=Windsurf is case-insensitive",
+			envVars:  map[string]string{"TERM_PROGRAM": "Windsurf"},
+			expected: "windsurf-terminal",
+		},
+		{
+			name:     "TERM_PROGRAM=zed falls back to zed-terminal",
+			envVars:  map[string]string{"TERM_PROGRAM": "zed"},
+			expected: "zed-terminal",
+		},
+		{
+			name:     "TERM_PROGRAM=ghostty is ignored",
+			envVars:  map[string]string{"TERM_PROGRAM": "ghostty"},
+			expected: "",
+		},
+		{
+			name:     "CURSOR_AGENT wins over TERM_PROGRAM=cursor",
+			envVars:  map[string]string{"CURSOR_AGENT": "1", "TERM_PROGRAM": "cursor"},
+			expected: "cursor",
 		},
 		{
 			name:     "AI_AGENT with spaces is ignored",
@@ -82,6 +122,7 @@ func TestDetectCodingAgent(t *testing.T) {
 	allAgentVars := []string{
 		"AI_AGENT", "CLAUDECODE", "CODEX_THREAD_ID",
 		"OPENCODE", "CURSOR_AGENT", "GEMINI_CLI",
+		"AGENT_PLATFORM_GITLAB_VERSION", "ROO_CLI_RUNTIME", "TERM_PROGRAM",
 	}
 
 	for _, tt := range tests {
