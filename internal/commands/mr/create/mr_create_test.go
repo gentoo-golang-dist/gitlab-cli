@@ -1330,6 +1330,119 @@ func TestNewCmdCreate_WithAutoMergeFailure(t *testing.T) {
 	assert.Contains(t, output.String(), "https://gitlab.com/OWNER/REPO/-/merge_requests/12")
 }
 
+func TestNewCmdCreate_DependsOn(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+
+	testClient := gitlabtesting.NewTestClient(t)
+
+	testClient.MockProjects.EXPECT().
+		GetProject("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.Project{
+			ID:                   1,
+			DefaultBranch:        "master",
+			WebURL:               "http://gitlab.com/OWNER/REPO",
+			Name:                 "OWNER",
+			Path:                 "REPO",
+			MergeRequestsEnabled: true,
+			PathWithNamespace:    "OWNER/REPO",
+		}, nil, nil)
+
+	testClient.MockProjects.EXPECT().
+		ListProjectTargetBranchRules("OWNER/REPO", gomock.Any()).
+		Return([]gitlab.TargetBranchRule{}, nil, nil)
+
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequest("OWNER/REPO", gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID: 100, IID: 12, ProjectID: 1,
+				Title: "child MR", State: "opened",
+				TargetBranch: "master", SourceBranch: "feat-new-mr",
+				WebURL: "https://gitlab.com/OWNER/REPO/-/merge_requests/12",
+			},
+		}, nil, nil)
+
+	// Resolve --depends-on 7 -> global ID 707
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(7), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{ID: 707, IID: 7, ProjectID: 1},
+		}, nil, nil)
+
+	// And add it as a blocker of the newly created MR (IID 12).
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequestDependency("OWNER/REPO", int64(12), gomock.Any()).
+		DoAndReturn(func(pid any, iid int64, opts gitlab.CreateMergeRequestDependencyOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.MergeRequestDependency, *gitlab.Response, error) {
+			require.NotNil(t, opts.BlockingMergeRequestID)
+			assert.Equal(t, int64(707), *opts.BlockingMergeRequestID)
+			return &gitlab.MergeRequestDependency{ID: 1}, nil, nil
+		})
+
+	cs, csTeardown := test.InitCmdStubber()
+	defer csTeardown()
+	cs.Stub("HEAD branch: master\n")
+	cs.Stub(heredoc.Doc(`
+		deadbeef HEAD
+		deadb00f refs/remotes/upstream/feat-new-mr
+		deadbeef refs/remotes/origin/feat-new-mr
+	`))
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{Name: "upstream", Resolved: "head", PushURL: pu},
+						Repo:   glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+					{
+						Remote: &git.Remote{Name: "origin", Resolved: "base", PushURL: pu},
+						Repo:   glrepo.New("monalisa", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) { return "feat-new-mr", nil }
+		},
+	)
+
+	output, err := exec("-t childMR -d childBody --depends-on 7")
+	require.NoError(t, err)
+	assert.Contains(t, output.Stderr(), "added dependency 7")
+}
+
+func TestNewCmdCreate_DependsOnInvalidRefFailsFast(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+
+	testClient := gitlabtesting.NewTestClient(t)
+	// No API calls should be made: validation must reject the bad ref before
+	// any HTTP round-trip. The gomock controller will fail the test if any
+	// unexpected call is issued.
+
+	pu, _ := url.Parse("https://gitlab.com/OWNER/REPO.git")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCreate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+		func(f *cmdtest.Factory) {
+			f.RemotesStub = func() (glrepo.Remotes, error) {
+				return glrepo.Remotes{
+					{
+						Remote: &git.Remote{Name: "origin", Resolved: "base", PushURL: pu},
+						Repo:   glrepo.New("OWNER", "REPO", glinstance.DefaultHostname),
+					},
+				}, nil
+			}
+			f.BranchStub = func() (string, error) { return "feat-new-mr", nil }
+		},
+	)
+
+	_, err := exec("-t t -d d --depends-on not-a-ref")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--depends-on")
+}
+
 func TestNewCmdCreate_TargetBranchRule(t *testing.T) {
 	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
 	t.Setenv("NO_COLOR", "true")

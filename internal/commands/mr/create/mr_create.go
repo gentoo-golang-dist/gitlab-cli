@@ -46,6 +46,11 @@ type options struct {
 	RelatedIssue    string `json:"related_issue,omitempty"`
 	CopyIssueLabels bool   `json:"copy_issue_labels,omitempty"`
 
+	// DependsOn carries the raw --depends-on flag values. Each entry is a
+	// merge request reference: either a bare IID in the current project
+	// (e.g. "123") or a full merge request URL.
+	DependsOn []string `json:"depends_on,omitempty"`
+
 	CreateSourceBranch bool  `json:"create_source_branch,omitempty"`
 	RemoveSourceBranch *bool `json:"remove_source_branch,omitempty"`
 	AllowCollaboration *bool `json:"allow_collaboration,omitempty"`
@@ -170,6 +175,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	mrCreateCmd.Flags().BoolVarP(&opts.web, "web", "w", false, "Continue merge request creation in a browser.")
 	mrCreateCmd.Flags().BoolVarP(&opts.CopyIssueLabels, "copy-issue-labels", "", false, "Copy labels from issue to the merge request. Used with --related-issue.")
 	mrCreateCmd.Flags().StringVarP(&opts.RelatedIssue, "related-issue", "i", "", "Create a merge request for an issue. If --title is not provided, uses the issue title.")
+	mrCreateCmd.Flags().StringSliceVarP(&opts.DependsOn, "depends-on", "", []string{}, "Mark the new merge request as depending on (blocked by) the given merge requests. Each value is an IID in the current project (e.g. 123) or a merge request URL. Repeat the flag or pass a comma-separated list to add several. Requires a GitLab Premium or Ultimate subscription.")
 	mrCreateCmd.Flags().BoolVar(&opts.recover, "recover", false, "Save the options to a file if the merge request creation fails. If the file exists, the options are loaded from the recovery file. (EXPERIMENTAL)")
 	mrCreateCmd.Flags().BoolVar(&opts.signoff, "signoff", false, "Append a DCO signoff to the merge request description.")
 
@@ -237,6 +243,10 @@ func (o *options) validate(cmd *cobra.Command) error {
 
 	if o.CopyIssueLabels && o.RelatedIssue == "" {
 		return &cmdutils.FlagError{Err: errors.New("--copy-issue-labels can only be used with --related-issue.")}
+	}
+
+	if _, err := mrutils.ParseMRRefs(o.DependsOn, o.defaultHostname); err != nil {
+		return &cmdutils.FlagError{Err: fmt.Errorf("--depends-on: %w", err)}
 	}
 
 	return nil
@@ -736,6 +746,11 @@ func (o *options) run(ctx context.Context) error {
 			return err
 		}
 
+		// Dependencies are added after the MR exists because the API exposes
+		// them as a separate sub-resource (POST /merge_requests/:iid/blocks),
+		// not as a field on the create payload.
+		o.addDependencies(client, headRepo, mr)
+
 		// Enable auto-merge if requested
 		if o.AutoMerge {
 			mergeOpts := &gitlab.AcceptMergeRequestOptions{
@@ -759,6 +774,43 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	return errors.New("expected to cancel, preview in browser, or submit.")
+}
+
+// addDependencies adds each --depends-on ref as a blocking MR on the freshly
+// created merge request. Failures are reported but never abort the command:
+// the MR is already created and can't be cleanly rolled back, so we let the
+// user retry the failed deps with `glab mr update --add-depends-on`.
+func (o *options) addDependencies(client *gitlab.Client, headRepo glrepo.Interface, mr *gitlab.MergeRequest) {
+	if len(o.DependsOn) == 0 {
+		return
+	}
+
+	c := o.io.Color()
+	// Already validated in validate(), so this can't fail.
+	refs, _ := mrutils.ParseMRRefs(o.DependsOn, o.defaultHostname)
+
+	var failures []string
+	for i, ref := range refs {
+		_, blockingID, err := mrutils.ResolveMRRef(ref, o.apiClient, client, headRepo)
+		if err == nil {
+			_, _, err = client.MergeRequests.CreateMergeRequestDependency(headRepo.FullName(), mr.IID, gitlab.CreateMergeRequestDependencyOptions{
+				BlockingMergeRequestID: new(blockingID),
+			})
+		}
+		if err != nil {
+			fmt.Fprintf(o.io.StdErr, "%s failed to add dependency %s: %v\n", c.FailedIcon(), o.DependsOn[i], err)
+			failures = append(failures, o.DependsOn[i])
+			continue
+		}
+		fmt.Fprintf(o.io.StdErr, "%s added dependency %s\n", c.GreenCheck(), o.DependsOn[i])
+	}
+
+	if len(failures) > 0 {
+		fmt.Fprintf(o.io.StdErr,
+			"\nThe merge request was created, but %d of %d dependencies could not be added.\nRetry with: glab mr update %d --add-depends-on %s\n",
+			len(failures), len(refs), mr.IID, strings.Join(failures, ","),
+		)
+	}
 }
 
 func mrBodyAndTitle(opts *options) error {
