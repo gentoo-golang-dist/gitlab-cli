@@ -27,7 +27,7 @@ type PipelineMergedResponse struct {
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	pipelineGetCmd := &cobra.Command{
 		Use:     "get [flags]",
-		Short:   `Get JSON of a running CI/CD pipeline on the current or other specified branch.`,
+		Short:   `Get the details of a CI/CD pipeline.`,
 		Aliases: []string{"stats"},
 		Long: heredoc.Docf(`
 			Defaults to the current branch. Use %[1]s--pipeline-id%[1]s to specify a pipeline
@@ -40,10 +40,15 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 			Use %[1]s--status%[1]s to filter jobs by state (passed through to the API's
 			%[1]sscope%[1]s parameter).
+
+			Use %[1]s--output json%[1]s to get the pipeline details as JSON.
 		`, "`"),
 		Example: heredoc.Doc(`
+			# Get the pipeline for the current branch
 			glab ci get
-			glab ci -R some/project -p 12345
+
+			# Get a specific pipeline by ID in another project
+			glab ci get -R some/project -p 12345
 
 			# Show only failed jobs for the head pipeline of MR !42
 			glab ci get --merge-request=42 --status=failed --with-job-details`),
@@ -150,8 +155,8 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	}
 
 	fl := pipelineGetCmd.Flags()
-	fl.StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
-	fl.IntP("pipeline-id", "p", 0, "Provide pipeline ID.")
+	fl.StringP("branch", "b", "", "Get the pipeline for a branch. Defaults to the current branch.")
+	fl.IntP("pipeline-id", "p", 0, "Get the pipeline with the given <id>.")
 	fl.Int("merge-request", 0, "Show the pipeline for the given merge request <iid>.")
 	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "pipeline-id")
 	pipelineGetCmd.MarkFlagsMutuallyExclusive("merge-request", "branch")
@@ -159,9 +164,9 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	fl.StringP("output-format", "o", "text", "Use output.")
 	_ = fl.MarkHidden("output-format")
 	_ = fl.MarkDeprecated("output-format", "Deprecated. Use 'output' instead.")
-	fl.BoolP("with-job-details", "d", false, "Show extended job information. (default false)")
-	fl.Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role. (default false)")
-	fl.StringP("status", "s", "", "Show only jobs in the given <state>. Passed through to the API's scope parameter.")
+	fl.BoolP("with-job-details", "d", false, "Show extended job information.")
+	fl.Bool("with-variables", false, "Show variables in pipeline. Requires the Maintainer role.")
+	fl.StringP("status", "s", "", "Show only jobs in the given state. Passed through to the API's scope parameter.")
 
 	return pipelineGetCmd
 }

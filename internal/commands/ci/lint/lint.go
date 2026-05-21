@@ -38,7 +38,7 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 	}
 	pipelineCILintCmd := &cobra.Command{
 		Use:   "lint",
-		Short: "Checks if your `.gitlab-ci.yml` file is valid.",
+		Short: "Check if your `.gitlab-ci.yml` file is valid.",
 		Long: heredoc.Docf(`
 			Defaults to the %[1]s.gitlab-ci.yml%[1]s file in the current directory.
 			You can also pass a URL to validate a remote file. Use %[1]s--dry-run%[1]s
@@ -49,6 +49,8 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			# Uses .gitlab-ci.yml in the current directory
 			glab ci lint
+
+			# Lint a specific file
 			glab ci lint .gitlab-ci.yml
 			glab ci lint path/to/.gitlab-ci.yml`),
 		Annotations: map[string]string{
@@ -61,8 +63,8 @@ func NewCmdLint(f cmdutils.Factory) *cobra.Command {
 	}
 
 	pipelineCILintCmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Run pipeline creation simulation.")
-	pipelineCILintCmd.Flags().BoolVarP(&opts.includeJobs, "include-jobs", "", false, "Response includes the list of jobs that would exist in a static check or pipeline simulation.")
-	pipelineCILintCmd.Flags().StringVar(&opts.ref, "ref", "", "When 'dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.")
+	pipelineCILintCmd.Flags().BoolVarP(&opts.includeJobs, "include-jobs", "", false, "Include the list of jobs that would exist in a static check or pipeline simulation.")
+	pipelineCILintCmd.Flags().StringVar(&opts.ref, "ref", "", "When '--dry-run' is true, sets the branch or tag context for validating the CI/CD YAML configuration.")
 
 	return pipelineCILintCmd
 }

@@ -15,7 +15,7 @@ import (
 
 func NewCmdTrigger(f cmdutils.Factory) *cobra.Command {
 	pipelineTriggerCmd := &cobra.Command{
-		Use:     "trigger <job-id>",
+		Use:     "trigger [<job-id | job-name>]",
 		Short:   `Trigger a manual CI/CD job.`,
 		Aliases: []string{},
 		Long: heredoc.Doc(`
@@ -26,10 +26,10 @@ func NewCmdTrigger(f cmdutils.Factory) *cobra.Command {
 			# Interactively select a job to trigger
 			glab ci trigger
 
-			# Trigger manual job with id 224356863
+			# Trigger a manual job by ID
 			glab ci trigger 224356863
 
-			# Trigger manual job with name lint
+			# Trigger a manual job by name
 			glab ci trigger lint`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -88,7 +88,7 @@ func NewCmdTrigger(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	pipelineTriggerCmd.Flags().StringP("branch", "b", "", "The branch to search for the job. (default current branch)")
+	pipelineTriggerCmd.Flags().StringP("branch", "b", "", "The branch to search for the job. Defaults to the current branch.")
 	pipelineTriggerCmd.Flags().IntP("pipeline-id", "p", 0, "The pipeline ID to search for the job.")
 	return pipelineTriggerCmd
 }

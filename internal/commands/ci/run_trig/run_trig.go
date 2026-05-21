@@ -36,7 +36,13 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 	pipelineRunCmd := &cobra.Command{
 		Use:     "run-trig [flags]",
 		Short:   `Run a CI/CD pipeline trigger.`,
-		Aliases: []string{"run-trig"},
+		Aliases: []string{},
+		Long: heredoc.Docf(`
+			Use %[1]s--token%[1]s to provide a pipeline trigger token. If omitted, the
+			%[1]sCI_JOB_TOKEN%[1]s environment variable must be set.
+
+			Use %[1]s--branch%[1]s to specify a branch or reference. Defaults to the current branch.
+		`, "`") + "\n" + cmdutils.PipelineInputsDescription,
 		Example: heredoc.Doc(`
 			glab ci run-trig -t xxxx
 			glab ci run-trig -t xxxx -b main
@@ -49,7 +55,6 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 			# Specify CI inputs
 			glab ci run-trig -t xxxx -b main --input key1:val1 --input key2:val2
 			glab ci run-trig -t xxxx -b main --input "replicas:int(3)" --input "debug:bool(false)" --input "regions:array(us-east,eu-west)"`),
-		Long: cmdutils.PipelineInputsDescription,
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -129,7 +134,7 @@ func NewCmdRunTrig(f cmdutils.Factory) *cobra.Command {
 			return nil
 		},
 	}
-	pipelineRunCmd.Flags().StringP("token", "t", "", "Pipeline trigger token. Can be omitted only if the `CI_JOB_TOKEN` environment variable is set.")
+	pipelineRunCmd.Flags().StringP("token", "t", "", "Pipeline trigger token. Can be omitted only if the 'CI_JOB_TOKEN' environment variable is set.")
 	pipelineRunCmd.Flags().StringP("branch", "b", "", "Create pipeline on branch or reference <string>.")
 	pipelineRunCmd.Flags().StringSliceVarP(&envVariables, "variables", "", []string{}, "Pass variables to pipeline in the format <key>:<value>. Multiple variables can be comma-separated or specified by repeating the flag.")
 	cmdutils.AddPipelineInputsFlag(pipelineRunCmd)

@@ -39,22 +39,25 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd := &cobra.Command{
 		Use:     "status [flags]",
-		Short:   `View a running CI/CD pipeline on current or other branch specified.`,
+		Short:   `View CI/CD pipeline status.`,
 		Aliases: []string{"stats"},
 		Long: heredoc.Docf(`
+			Defaults to the current branch.
+
 			Use %[1]s--live%[1]s for real-time updates. Use %[1]s--compact%[1]s for a condensed view.
 		`, "`"),
 		Example: heredoc.Doc(`
-		       glab ci status --live
+			# View the pipeline status in real time
+			glab ci status --live
 
-		       # A more compact view
-		       glab ci status --compact
+			# A more compact view
+			glab ci status --compact
 
-		       # Get the pipeline for the main branch
-		       glab ci status --branch=main
+			# Get the pipeline for the main branch
+			glab ci status --branch=main
 
-		       # Get the pipeline for the current branch
-		       glab ci status`),
+			# Get the pipeline for the current branch
+			glab ci status`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -263,7 +266,7 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
 	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
-	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
+	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. Defaults to the current branch.")
 	cmdutils.EnableJSONOutput(pipelineStatusCmd, &opts.outputFormat, "Format output as: text, json. Note: JSON output is not compatible with --live or --compact flags.")
 
 	return pipelineStatusCmd
