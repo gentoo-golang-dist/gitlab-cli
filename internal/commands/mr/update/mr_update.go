@@ -17,6 +17,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
+	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 )
@@ -95,6 +96,21 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			if cmd.Flags().Changed("lock-discussion") && cmd.Flags().Changed("unlock-discussion") {
 				return &cmdutils.FlagError{
 					Err: errors.New("--lock-discussion and --unlock-discussion can't be used together."),
+				}
+			}
+
+			dependsOnReplace, _ := cmd.Flags().GetStringSlice("depends-on")
+			dependsOnAdd, _ := cmd.Flags().GetStringSlice("add-depends-on")
+			dependsOnRemove, _ := cmd.Flags().GetStringSlice("remove-depends-on")
+			if cmd.Flags().Changed("depends-on") && (cmd.Flags().Changed("add-depends-on") || cmd.Flags().Changed("remove-depends-on")) {
+				return &cmdutils.FlagError{
+					Err: errors.New("--depends-on (replace) can't be combined with --add-depends-on or --remove-depends-on."),
+				}
+			}
+			// Pre-parse all refs so a typo fails before any API call.
+			for _, set := range [][]string{dependsOnReplace, dependsOnAdd, dependsOnRemove} {
+				if _, err := mrutils.ParseMRRefs(set, f.DefaultHostname()); err != nil {
+					return &cmdutils.FlagError{Err: fmt.Errorf("depends-on ref: %w", err)}
 				}
 			}
 
@@ -338,6 +354,12 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
+			if cmd.Flags().Changed("depends-on") || cmd.Flags().Changed("add-depends-on") || cmd.Flags().Changed("remove-depends-on") {
+				actions = append(actions,
+					applyDependencyChanges(f, client, repo, mr.IID, cmd.Flags().Changed("depends-on"), dependsOnReplace, dependsOnAdd, dependsOnRemove)...,
+				)
+			}
+
 			for _, s := range actions {
 				fmt.Fprintln(f.IO().StdOut, c.GreenCheck(), s)
 			}
@@ -367,6 +389,10 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	mrUpdateCmd.Flags().StringP("milestone", "m", "", "Title of the milestone to assign. Set to \"\" or 0 to unassign.")
 	mrUpdateCmd.Flags().String("target-branch", "", "Set target branch.")
 
+	mrUpdateCmd.Flags().StringSlice("depends-on", []string{}, "Replace the set of merge requests this MR depends on (is blocked by). Each value is an IID (e.g. 123) or a merge request URL. Use an empty value or omit to leave deps untouched; use --add-depends-on / --remove-depends-on for incremental changes. Requires GitLab Premium or Ultimate.")
+	mrUpdateCmd.Flags().StringSlice("add-depends-on", []string{}, "Add merge requests this MR depends on. Same value format as --depends-on. Repeatable / comma-separated.")
+	mrUpdateCmd.Flags().StringSlice("remove-depends-on", []string{}, "Remove merge requests this MR depends on. Same value format as --depends-on. Repeatable / comma-separated.")
+
 	// Add new autofill flags
 	mrUpdateCmd.Flags().BoolP("fill", "f", false, "Do not prompt for title or body, and just use commit info.")
 	mrUpdateCmd.Flags().Bool("fill-commit-body", false, "Fill body with each commit body when multiple commits. Can only be used with --fill.")
@@ -394,6 +420,130 @@ func writeUpdatePreview(w io.Writer, title, description string) {
 		}
 	}
 	fmt.Fprintf(w, "\n")
+}
+
+// depTarget pairs a user-facing IID (for log messages) with the global
+// blocking-MR ID the /blocks endpoint actually wants. resolveErr is non-nil
+// when we couldn't look the ref up; we still keep it in the slice so the
+// apply loop can emit a per-ref error message rather than dropping it.
+type depTarget struct {
+	iid        int   // for display
+	blockingID int64 // for the API call
+	resolveErr error
+}
+
+// applyDependencyChanges adds and removes blocking merge requests for the
+// given MR. It returns one human-readable action per attempted change
+// (success or failure) so the caller can fold them into the existing
+// "- Updating !N" + checklist output. Failures never abort the command:
+// the rest of the update is already applied and the user can re-run with
+// the failing subset.
+func applyDependencyChanges(
+	f cmdutils.Factory,
+	client *gitlab.Client,
+	repo glrepo.Interface,
+	mrIID int64,
+	replaceMode bool,
+	replace, add, remove []string,
+) []string {
+	defaultHost := f.DefaultHostname()
+
+	resolve := func(ref mrutils.MRRef) depTarget {
+		_, id, err := mrutils.ResolveMRRef(ref, f.ApiClient, client, repo)
+		return depTarget{iid: ref.IID, blockingID: id, resolveErr: err}
+	}
+
+	var toAdd, toRemove []depTarget
+
+	if replaceMode {
+		// --depends-on can be passed empty to clear all deps; the caller has
+		// already enforced mutual exclusion with --add/--remove-depends-on.
+		desired, err := mrutils.ParseMRRefs(replace, defaultHost)
+		if err != nil {
+			return []string{fmt.Sprintf("failed to parse --depends-on: %v", err)}
+		}
+		current, _, err := client.MergeRequests.GetMergeRequestDependencies(repo.FullName(), mrIID)
+		if err != nil {
+			return []string{fmt.Sprintf("failed to fetch current dependencies: %v", err)}
+		}
+
+		// Resolve desired refs once and keep the results; the diff below works
+		// on global IDs, then the apply loop reuses these same targets so we
+		// don't issue a second GetMergeRequest per ref.
+		desiredTargets := make([]depTarget, 0, len(desired))
+		desiredByID := make(map[int64]struct{}, len(desired))
+		for _, ref := range desired {
+			t := resolve(ref)
+			desiredTargets = append(desiredTargets, t)
+			if t.resolveErr == nil {
+				desiredByID[t.blockingID] = struct{}{}
+			}
+		}
+		currentByID := make(map[int64]struct{}, len(current))
+		for _, dep := range current {
+			currentByID[dep.BlockingMergeRequest.ID] = struct{}{}
+		}
+		for _, t := range desiredTargets {
+			if t.resolveErr != nil {
+				toAdd = append(toAdd, t) // surface the resolve error in the apply loop
+				continue
+			}
+			if _, ok := currentByID[t.blockingID]; !ok {
+				toAdd = append(toAdd, t)
+			}
+		}
+		for _, dep := range current {
+			if _, ok := desiredByID[dep.BlockingMergeRequest.ID]; !ok {
+				// Already-resolved removal: no extra round-trip needed.
+				toRemove = append(toRemove, depTarget{
+					iid:        int(dep.BlockingMergeRequest.Iid),
+					blockingID: dep.BlockingMergeRequest.ID,
+				})
+			}
+		}
+	} else {
+		addRefs, err := mrutils.ParseMRRefs(add, defaultHost)
+		if err != nil {
+			return []string{fmt.Sprintf("failed to parse --add-depends-on: %v", err)}
+		}
+		removeRefs, err := mrutils.ParseMRRefs(remove, defaultHost)
+		if err != nil {
+			return []string{fmt.Sprintf("failed to parse --remove-depends-on: %v", err)}
+		}
+		for _, ref := range addRefs {
+			toAdd = append(toAdd, resolve(ref))
+		}
+		for _, ref := range removeRefs {
+			toRemove = append(toRemove, resolve(ref))
+		}
+	}
+
+	var out []string
+	for _, t := range toAdd {
+		err := t.resolveErr
+		if err == nil {
+			_, _, err = client.MergeRequests.CreateMergeRequestDependency(repo.FullName(), mrIID, gitlab.CreateMergeRequestDependencyOptions{
+				BlockingMergeRequestID: new(t.blockingID),
+			})
+		}
+		if err != nil {
+			out = append(out, fmt.Sprintf("failed to add dependency !%d: %v", t.iid, err))
+			continue
+		}
+		out = append(out, fmt.Sprintf("added dependency !%d", t.iid))
+	}
+	for _, t := range toRemove {
+		err := t.resolveErr
+		if err == nil {
+			_, err = client.MergeRequests.DeleteMergeRequestDependency(repo.FullName(), mrIID, t.blockingID)
+		}
+		if err != nil {
+			out = append(out, fmt.Sprintf("failed to remove dependency !%d: %v", t.iid, err))
+			continue
+		}
+		out = append(out, fmt.Sprintf("removed dependency !%d", t.iid))
+	}
+	return out
 }
 
 func confirmUpdateSurvey(ctx context.Context, f cmdutils.Factory) (cmdutils.Action, error) {
