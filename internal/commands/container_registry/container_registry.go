@@ -16,7 +16,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			List and manage GitLab container registry repositories and tags.
 		`),
-		Aliases: []string{"registry"},
 		Example: heredoc.Doc(`
 			# List container registry repositories for the current project
 			glab container-registry repository list
