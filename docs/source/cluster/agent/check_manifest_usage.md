@@ -32,7 +32,7 @@ glab cluster agent check_manifest_usage [flags]
 
 ```console
 # Check a group for agents using deprecated GitOps manifest settings
-glab cluster agent check-manifest-usage --group my-group
+glab cluster agent check_manifest_usage --group my-group
 
 # Recursively check a group and all its subgroups
 glab cluster agent check_manifest_usage --group my-group --recursive

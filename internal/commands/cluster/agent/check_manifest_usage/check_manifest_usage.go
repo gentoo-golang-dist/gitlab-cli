@@ -50,7 +50,7 @@ func NewCmdCheckManifestUsage(f cmdutils.Factory) *cobra.Command {
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Check a group for agents using deprecated GitOps manifest settings
-			glab cluster agent check-manifest-usage --group my-group
+			glab cluster agent check_manifest_usage --group my-group
 
 			# Recursively check a group and all its subgroups
 			glab cluster agent check_manifest_usage --group my-group --recursive`),
