@@ -13,8 +13,10 @@ import (
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -255,6 +257,159 @@ func TestUpdateMergeRequest(t *testing.T) {
 	}
 
 	api.UpdateMR = oldUpdateMr
+}
+
+// restoreAPIGlobals re-points the api.* package-level function vars at their
+// real implementations. The legacy table-style TestUpdateMergeRequest above
+// installs stubs into api.GetMR / api.UpdateMR / api.ListMRs and only
+// restores api.UpdateMR, leaving the others clobbered for subsequent tests
+// in the same package run. Until that test is migrated, the gomock-based
+// tests below restore the globals themselves so their MockMergeRequests
+// expectations actually see the calls.
+func restoreAPIGlobals(t *testing.T) {
+	t.Helper()
+	prevGetMR, prevUpdateMR, prevListMRs := api.GetMR, api.UpdateMR, api.ListMRs
+	api.GetMR = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.GetMergeRequestsOptions) (*gitlab.MergeRequest, error) {
+		mr, _, err := client.MergeRequests.GetMergeRequest(projectID, mrID, opts)
+		return mr, err
+	}
+	api.UpdateMR = func(client *gitlab.Client, projectID any, mrID int64, opts *gitlab.UpdateMergeRequestOptions) (*gitlab.MergeRequest, error) {
+		mr, _, err := client.MergeRequests.UpdateMergeRequest(projectID, mrID, opts)
+		return mr, err
+	}
+	t.Cleanup(func() {
+		api.GetMR, api.UpdateMR, api.ListMRs = prevGetMR, prevUpdateMR, prevListMRs
+	})
+}
+
+func TestUpdate_AddDependsOn(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	restoreAPIGlobals(t)
+
+	testClient := gitlabtesting.NewTestClient(t)
+
+	// MRFromArgs path: arg "5" -> GetMR(5)
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(5), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID: 500, IID: 5, ProjectID: 1,
+				Title: "child", State: "opened",
+				TargetBranch: "main", SourceBranch: "feat",
+				WebURL: "https://gitlab.com/OWNER/REPO/-/merge_requests/5",
+			},
+		}, nil, nil)
+
+	// UpdateMergeRequest is called even with no other field changes (title is
+	// always sent), so accept any opts.
+	testClient.MockMergeRequests.EXPECT().
+		UpdateMergeRequest("OWNER/REPO", int64(5), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID: 500, IID: 5, ProjectID: 1,
+				Title: "child", State: "opened",
+				TargetBranch: "main", SourceBranch: "feat",
+				WebURL: "https://gitlab.com/OWNER/REPO/-/merge_requests/5",
+			},
+		}, nil, nil)
+
+	// Resolve the --add-depends-on 3 ref to global ID 303.
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(3), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{ID: 303, IID: 3, ProjectID: 1},
+		}, nil, nil)
+
+	// Then post the dependency.
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequestDependency("OWNER/REPO", int64(5), gomock.Any()).
+		DoAndReturn(func(pid any, iid int64, opts gitlab.CreateMergeRequestDependencyOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.MergeRequestDependency, *gitlab.Response, error) {
+			require.NotNil(t, opts.BlockingMergeRequestID)
+			assert.Equal(t, int64(303), *opts.BlockingMergeRequestID)
+			return &gitlab.MergeRequestDependency{ID: 1}, nil, nil
+		})
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdUpdate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	output, err := exec("5 --add-depends-on 3")
+	require.NoError(t, err)
+	assert.Contains(t, output.String(), "added dependency !3")
+}
+
+func TestUpdate_DependsOnReplaceMode(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	restoreAPIGlobals(t)
+
+	testClient := gitlabtesting.NewTestClient(t)
+
+	// Fetch the MR being updated.
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(5), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID: 500, IID: 5, ProjectID: 1,
+				Title: "child", State: "opened",
+				TargetBranch: "main", SourceBranch: "feat",
+				WebURL: "https://gitlab.com/OWNER/REPO/-/merge_requests/5",
+			},
+		}, nil, nil)
+
+	testClient.MockMergeRequests.EXPECT().
+		UpdateMergeRequest("OWNER/REPO", int64(5), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID: 500, IID: 5, ProjectID: 1,
+				Title: "child", State: "opened",
+				WebURL: "https://gitlab.com/OWNER/REPO/-/merge_requests/5",
+			},
+		}, nil, nil)
+
+	// Desired: depends on !4 (global ID 404). Current: depends on !2 (ID 202).
+	// Expect: add 404, remove 202.
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(4), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{ID: 404, IID: 4, ProjectID: 1},
+		}, nil, nil)
+
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequestDependencies("OWNER/REPO", int64(5)).
+		Return([]gitlab.MergeRequestDependency{
+			{ID: 1, BlockingMergeRequest: gitlab.BlockingMergeRequest{ID: 202, Iid: 2, ProjectID: 1}},
+		}, nil, nil)
+
+	testClient.MockMergeRequests.EXPECT().
+		CreateMergeRequestDependency("OWNER/REPO", int64(5), gomock.Any()).
+		DoAndReturn(func(pid any, iid int64, opts gitlab.CreateMergeRequestDependencyOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.MergeRequestDependency, *gitlab.Response, error) {
+			assert.Equal(t, int64(404), *opts.BlockingMergeRequestID)
+			return &gitlab.MergeRequestDependency{ID: 2}, nil, nil
+		})
+
+	testClient.MockMergeRequests.EXPECT().
+		DeleteMergeRequestDependency("OWNER/REPO", int64(5), int64(202)).
+		Return(nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdUpdate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	output, err := exec("5 --depends-on 4")
+	require.NoError(t, err)
+	assert.Contains(t, output.String(), "added dependency !4")
+	assert.Contains(t, output.String(), "removed dependency !2")
+}
+
+func TestUpdate_DependsOnMutuallyExclusive(t *testing.T) {
+	t.Setenv("NO_COLOR", "true")
+	testClient := gitlabtesting.NewTestClient(t)
+	exec := cmdtest.SetupCmdForTest(t, NewCmdUpdate, true,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+	_, err := exec("5 --depends-on 3 --add-depends-on 4")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "can't be combined")
 }
 
 func TestWriteUpdatePreview(t *testing.T) {
