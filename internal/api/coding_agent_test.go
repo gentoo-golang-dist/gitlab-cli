@@ -53,11 +53,6 @@ func TestDetectCodingAgent(t *testing.T) {
 			expected: "cursor",
 		},
 		{
-			name:     "Duo Agent Platform",
-			envVars:  map[string]string{"AGENT_PLATFORM_GITLAB_VERSION": "18.0.0"},
-			expected: "duo-agent-platform",
-		},
-		{
 			name:     "Gemini CLI",
 			envVars:  map[string]string{"GEMINI_CLI": "1"},
 			expected: "gemini",
@@ -122,7 +117,7 @@ func TestDetectCodingAgent(t *testing.T) {
 	allAgentVars := []string{
 		"AI_AGENT", "CLAUDECODE", "CODEX_THREAD_ID",
 		"OPENCODE", "CURSOR_AGENT", "GEMINI_CLI",
-		"AGENT_PLATFORM_GITLAB_VERSION", "ROO_CLI_RUNTIME", "TERM_PROGRAM",
+		"ROO_CLI_RUNTIME", "TERM_PROGRAM",
 	}
 
 	for _, tt := range tests {

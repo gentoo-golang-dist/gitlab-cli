@@ -24,10 +24,6 @@ func DetectCodingAgent() string {
 	if os.Getenv("CURSOR_AGENT") == "1" {
 		return "cursor"
 	}
-	// AGENT_PLATFORM_GITLAB_VERSION is set in the Duo Agent Platform execution environment.
-	if os.Getenv("AGENT_PLATFORM_GITLAB_VERSION") != "" {
-		return "duo-agent-platform"
-	}
 	if os.Getenv("GEMINI_CLI") == "1" {
 		return "gemini"
 	}
