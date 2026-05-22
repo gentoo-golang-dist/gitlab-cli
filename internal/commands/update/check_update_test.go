@@ -43,32 +43,61 @@ func mockClientCreator(t *testing.T, testClient *gitlabtesting.TestClient) {
 	})
 }
 
+// stubInstallMethod swaps the package-level install-method detector so tests
+// don't depend on the filesystem path of the running test binary.
+func stubInstallMethod(t *testing.T, method InstallMethod) {
+	t.Helper()
+	old := installMethodDetector
+	installMethodDetector = func() InstallMethod { return method }
+	t.Cleanup(func() { installMethodDetector = old })
+}
+
 func TestNewCheckUpdateCmd(t *testing.T) {
 	// NOTE: we need to force disable colors, otherwise we'd need ANSI sequences in our test output assertions.
 	t.Setenv("NO_COLOR", "true")
 
-	type args struct {
-		version string
-	}
 	tests := []struct {
-		name   string
-		args   args
-		stdOut string
-		stdErr string
+		name          string
+		version       string
+		codingAgent   string
+		installMethod InstallMethod
+		stdErr        string
 	}{
 		{
-			name: "same version",
-			args: args{
-				version: "v1.11.1",
-			},
-			stdErr: "You are already using the latest version of glab!\n",
+			name:    "same version",
+			version: "v1.11.1",
+			stdErr:  "You are already using the latest version of glab!\n",
 		},
 		{
-			name: "older version",
-			args: args{
-				version: "v1.11.0",
-			},
-			stdErr: "A new version of glab has been released: v1.11.0 -> v1.11.1\nhttps://gitlab.com/gitlab-org/cli/-/releases/v1.11.1\n",
+			name:          "older version, human, homebrew",
+			version:       "v1.11.0",
+			installMethod: InstallMethod{Name: installMethodHomebrew, UpgradeCommand: homebrewUpgradeCommand},
+			stdErr: "A new version of glab is available\n" +
+				"  v1.11.0 → v1.11.1\n" +
+				"  Run: brew upgrade glab\n" +
+				"  Release notes: https://gitlab.com/gitlab-org/cli/-/releases/v1.11.1\n",
+		},
+		{
+			name:          "older version, human, unknown install method",
+			version:       "v1.11.0",
+			installMethod: InstallMethod{Name: installMethodUnknown},
+			stdErr: "A new version of glab is available\n" +
+				"  v1.11.0 → v1.11.1\n" +
+				"  Release notes: https://gitlab.com/gitlab-org/cli/-/releases/v1.11.1\n",
+		},
+		{
+			name:          "older version, agent, homebrew",
+			version:       "v1.11.0",
+			codingAgent:   "claude-code",
+			installMethod: InstallMethod{Name: installMethodHomebrew, UpgradeCommand: homebrewUpgradeCommand},
+			stdErr:        "[glab] Update available: v1.11.0 → v1.11.1 (installed via homebrew). Suggested upgrade command: `brew upgrade glab`. Release notes: https://gitlab.com/gitlab-org/cli/-/releases/v1.11.1\n",
+		},
+		{
+			name:          "older version, agent, unknown install method",
+			version:       "v1.11.0",
+			codingAgent:   "claude-code",
+			installMethod: InstallMethod{Name: installMethodUnknown},
+			stdErr:        "[glab] Update available: v1.11.0 → v1.11.1. Release notes: https://gitlab.com/gitlab-org/cli/-/releases/v1.11.1\n",
 		},
 	}
 	for _, tc := range tests {
@@ -92,11 +121,12 @@ func TestNewCheckUpdateCmd(t *testing.T) {
 				})
 
 			mockClientCreator(t, testClient)
+			stubInstallMethod(t, tc.installMethod)
 
 			defer config.StubWriteConfig(io.Discard, io.Discard)()
 
 			exec := cmdtest.SetupCmdForTest(t, NewCheckUpdateCmd, true,
-				cmdtest.WithBuildInfo(api.BuildInfo{Version: tc.args.version}),
+				cmdtest.WithBuildInfo(api.BuildInfo{Version: tc.version, CodingAgent: tc.codingAgent}),
 			)
 			output, err := exec("")
 
