@@ -56,7 +56,7 @@ func detectInstallMethodFromPath(exePath, gopath, home string) InstallMethod {
 		"/home/linuxbrew/.linuxbrew/",
 	}
 	for _, prefix := range homebrewPrefixes {
-		if strings.Contains(p, prefix) {
+		if strings.HasPrefix(p, prefix) {
 			return InstallMethod{Name: installMethodHomebrew, UpgradeCommand: homebrewUpgradeCommand}
 		}
 	}

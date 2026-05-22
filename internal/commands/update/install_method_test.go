@@ -9,6 +9,8 @@ import (
 )
 
 func TestDetectInstallMethodFromPath(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		exePath string
@@ -60,6 +62,12 @@ func TestDetectInstallMethodFromPath(t *testing.T) {
 			want:    InstallMethod{Name: installMethodUnknown},
 		},
 		{
+			name:    "user-local path containing homebrew substring is not homebrew",
+			exePath: "/home/user/opt/homebrew/bin/glab",
+			home:    "/home/user",
+			want:    InstallMethod{Name: installMethodUnknown},
+		},
+		{
 			name:    "empty home does not match go-install",
 			exePath: "/some/go/bin/glab",
 			home:    "",
@@ -69,6 +77,7 @@ func TestDetectInstallMethodFromPath(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, tc.want, detectInstallMethodFromPath(tc.exePath, tc.gopath, tc.home))
 		})
 	}
