@@ -23,6 +23,9 @@ func DetectCodingAgent() string {
 	if os.Getenv("CURSOR_AGENT") == "1" {
 		return "cursor"
 	}
+	if os.Getenv("GEMINI_CLI") == "1" {
+		return "gemini"
+	}
 	if os.Getenv("OPENCODE") == "1" {
 		return "opencode"
 	}
