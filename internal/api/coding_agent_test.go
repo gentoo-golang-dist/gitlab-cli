@@ -53,6 +53,11 @@ func TestDetectCodingAgent(t *testing.T) {
 			expected: "cursor",
 		},
 		{
+			name:     "Gemini CLI",
+			envVars:  map[string]string{"GEMINI_CLI": "1"},
+			expected: "gemini",
+		},
+		{
 			name:     "AI_AGENT with spaces is ignored",
 			envVars:  map[string]string{"AI_AGENT": "has spaces", "CLAUDECODE": "1"},
 			expected: "claude-code",
