@@ -93,12 +93,21 @@ func TestAcceptableZipFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, files, numTestFiles)
 
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
 	for _, file := range files {
 		path := filepath.Join(targetDir, file)
 		content, err := os.ReadFile(path)
 		require.NoError(t, err)
 		require.Equal(t, file, string(content))
-		require.Contains(t, stdout, path)
+
+		// friendlyPath returns a relative path when possible; fall back to absolute.
+		expectedPath := path
+		if rel, err := filepath.Rel(cwd, path); err == nil {
+			expectedPath = rel
+		}
+		require.Contains(t, stdout, expectedPath)
 	}
 }
 
