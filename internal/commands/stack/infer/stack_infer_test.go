@@ -302,6 +302,92 @@ func TestCreateBranches(t *testing.T) {
 
 		_ = dir
 	})
+
+	t.Run("rolls back modified existing ref on cherry-pick conflict", func(t *testing.T) {
+		dir := git.InitGitRepoWithCommit(t)
+		defer config.StubWriteConfig(io.Discard, io.Discard)()
+
+		stackTitle := "test-stack"
+		err := git.SetLocalConfig("glab.currentstack", stackTitle)
+		require.NoError(t, err)
+
+		_, err = git.AddStackRefDir(stackTitle)
+		require.NoError(t, err)
+
+		err = git.AddStackBaseBranch(stackTitle, "main")
+		require.NoError(t, err)
+
+		// Create an existing stack layer (simulates a previous "infer" or "save")
+		existingRef := git.StackRef{
+			SHA:         "existing01",
+			Branch:      "test-test-stack-existing01",
+			Description: "Existing layer",
+		}
+		err = git.AddStackRefFile(stackTitle, existingRef)
+		require.NoError(t, err)
+
+		ctrl := gomock.NewController(t)
+		mockGR := git_testing.NewMockGitRunner(ctrl)
+
+		mockGR.EXPECT().
+			Git("symbolic-ref", "--quiet", "--short", "HEAD").
+			Return("feature-branch", nil)
+
+		// First commit succeeds
+		mockGR.EXPECT().
+			Git("log", "-1", "--format=%s", "goodcommit").
+			Return("Good commit", nil)
+		mockGR.EXPECT().
+			Git("checkout", "-b", gomock.Any(), "test-test-stack-existing01").
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "goodcommit").
+			Return("", nil)
+
+		// Second commit conflicts
+		mockGR.EXPECT().
+			Git("log", "-1", "--format=%s", "badcommit").
+			Return("Bad commit", nil)
+		mockGR.EXPECT().
+			Git("checkout", "-b", gomock.Any(), gomock.Any()).
+			Return("", nil)
+		mockGR.EXPECT().
+			Git("cherry-pick", "badcommit").
+			Return("", fmt.Errorf("conflict"))
+
+		mockGR.EXPECT().
+			Git("cherry-pick", "--abort").
+			Return("", nil)
+
+		// Rollback: restore branch, delete created branches
+		mockGR.EXPECT().
+			Git("checkout", "feature-branch").
+			Return("", nil).Times(2)
+		mockGR.EXPECT().
+			Git("branch", "-D", gomock.Any()).
+			Return("", nil).Times(2)
+
+		factory := createFactoryWithConfig("test")
+
+		existingStack, err := git.GatherStackRefs(stackTitle)
+		require.NoError(t, err)
+		require.Len(t, existingStack.Refs, 1)
+
+		err = createBranches(factory, mockGR, []string{"goodcommit", "badcommit"}, stackTitle, existingStack)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "conflict cherry-picking commit 2/2")
+
+		// Verify the existing ref's Next pointer was reverted (no dangling pointer)
+		stack, err := git.GatherStackRefs(stackTitle)
+		require.NoError(t, err)
+		assert.Len(t, stack.Refs, 1, "only the original ref should remain")
+
+		restoredRef := stack.First()
+		assert.Equal(t, "Existing layer", restoredRef.Description)
+		assert.Equal(t, "", restoredRef.Next, "existing ref's Next should be reverted to empty")
+
+		_ = dir
+	})
 }
 
 func TestParseBaseBranch(t *testing.T) {
