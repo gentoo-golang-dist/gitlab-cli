@@ -97,6 +97,19 @@ func TestCIJobCancelError(t *testing.T) {
 	assert.Empty(t, out.ErrBuf.String())
 }
 
+func TestCIJobCancelForceAndDryRunMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdCancel, false)
+
+	out, err := exec("11111111 --force --dry-run")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "if any flags in the group [dry-run force] are set none of the others can be")
+
+	assert.Empty(t, out.OutBuf.String())
+	assert.Empty(t, out.ErrBuf.String())
+}
+
 func TestCIJobCancelWithForce(t *testing.T) {
 	t.Parallel()
 
