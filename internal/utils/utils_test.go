@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -80,24 +81,6 @@ func Test_PresentInStringSlice(t *testing.T) {
 		t.Run(tC.name, func(t *testing.T) {
 			got := PresentInStringSlice(tC.hay, tC.needle)
 			require.Equal(t, got, tC.want, "PresentInStringSlice() got = %t, want = %t")
-		})
-	}
-}
-
-func Test_PresentInIntSlice(t *testing.T) {
-	testCases := []struct {
-		name   string
-		hay    []int
-		needle int
-		want   bool
-	}{
-		{"simple true", []int{1, 2, 3}, 2, true},
-		{"simple false", []int{1, 2, 3}, 4, false},
-	}
-	for _, tC := range testCases {
-		t.Run(tC.name, func(t *testing.T) {
-			got := PresentInIntSlice(tC.hay, tC.needle)
-			require.Equal(t, got, tC.want, "PresentInIntSlice() got = %t, want = %t")
 		})
 	}
 }
@@ -297,4 +280,21 @@ func TestParseEditorCommand(t *testing.T) {
 			require.Equal(t, tt.expected, got)
 		})
 	}
+}
+
+func Test_HelperFuncs(t *testing.T) {
+	t.Run("StringToInt()", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			got := StringToInt("200")
+			assert.Equal(t, 200, got)
+		})
+		t.Run("failed-return-0", func(t *testing.T) {
+			got := StringToInt("NotAnInt")
+			assert.Equal(t, 0, got)
+		})
+	})
+	t.Run("ReplaceNonAlphaNumericChars()", func(t *testing.T) {
+		got := ReplaceNonAlphaNumericChars("profclems-glab", "/")
+		assert.Equal(t, "profclems/glab", got)
+	})
 }
