@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 )
 
@@ -25,7 +26,7 @@ func parseReorderFile(input string) ([]string, error) {
 
 		branchLine := strings.Split(line, " ")
 
-		if (len(branchLine) == 1) || hasComment(branchLine) {
+		if (len(branchLine) == 1) || stackutils.HasComment(branchLine) {
 			branches = append(branches, strings.TrimSpace(branchLine[0]))
 		} else {
 			return []string{}, fmt.Errorf("improperly formatted reorder file: unexpected content after branch name on line %q", line)
@@ -75,8 +76,4 @@ func promptForOrder(ctx context.Context, f cmdutils.Factory, getText cmdutils.Ge
 	}
 
 	return branches, nil
-}
-
-func hasComment(words []string) bool {
-	return len(words) > 0 && strings.HasPrefix(words[1], "#")
 }
