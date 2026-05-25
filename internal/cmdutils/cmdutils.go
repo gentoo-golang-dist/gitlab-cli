@@ -570,13 +570,9 @@ func (ua *UserAssignments) UsersFromAddRemove(
 		if err != nil {
 			return nil, nil, err
 		}
-		// Work-around GitLab (the company's own instance, not all instances have this) bug
-		// which causes a 500 Internal Error if duplicate `IDs` are used. Filter out any
-		// IDs that is already present
+
 		for i := range users {
-			if !utils.PresentInInt64Slice(assignedIDs, users[i].ID) {
-				assignedIDs = append(assignedIDs, users[i].ID)
-			}
+			assignedIDs = append(assignedIDs, users[i].ID)
 		}
 
 		// Reset the usernames array because it might have been used by `unassignedUsers`
