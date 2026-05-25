@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -162,12 +163,6 @@ func PresentInStringSlice(hay []string, needle string) bool {
 	return slices.Contains(hay, needle)
 }
 
-// PresentInIntSlice take a Hay (Slice of Ints) and a Needle (int)
-// and returns true based on whether or not the Needle is present in the hay.
-func PresentInIntSlice(hay []int, needle int) bool {
-	return slices.Contains(hay, needle)
-}
-
 // PresentInInt64Slice take a Hay (Slice of Int64s) and a Needle (int64)
 // and returns true based on whether or not the Needle is present in the hay.
 func PresentInInt64Slice(hay []int64, needle int64) bool {
@@ -271,4 +266,20 @@ func ParseEditorCommand(editorCmd string) []string {
 	}
 
 	return parts
+}
+
+// ReplaceNonAlphaNumericChars replaces non alpha-numeric values with provided char/string
+func ReplaceNonAlphaNumericChars(words, replaceWith string) string {
+	reg := regexp.MustCompile("[^A-Za-z0-9]+")
+	newStr := reg.ReplaceAllString(strings.Trim(words, " "), replaceWith)
+	return newStr
+}
+
+// StringToInt converts a string to an integer, returning 0 if conversion fails
+func StringToInt(str string) int {
+	strInt, err := strconv.Atoi(str)
+	if err != nil {
+		return 0
+	}
+	return strInt
 }

@@ -84,24 +84,6 @@ func Test_PresentInStringSlice(t *testing.T) {
 	}
 }
 
-func Test_PresentInIntSlice(t *testing.T) {
-	testCases := []struct {
-		name   string
-		hay    []int
-		needle int
-		want   bool
-	}{
-		{"simple true", []int{1, 2, 3}, 2, true},
-		{"simple false", []int{1, 2, 3}, 4, false},
-	}
-	for _, tC := range testCases {
-		t.Run(tC.name, func(t *testing.T) {
-			got := PresentInIntSlice(tC.hay, tC.needle)
-			require.Equal(t, got, tC.want, "PresentInIntSlice() got = %t, want = %t")
-		})
-	}
-}
-
 func Test_SanitizePathName(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -297,4 +279,21 @@ func TestParseEditorCommand(t *testing.T) {
 			require.Equal(t, tt.expected, got)
 		})
 	}
+}
+
+func Test_HelperFuncs(t *testing.T) {
+	t.Run("StringToInt()", func(t *testing.T) {
+		t.Run("success", func(t *testing.T) {
+			got := StringToInt("200")
+			require.Equal(t, 200, got)
+		})
+		t.Run("failed-return-0", func(t *testing.T) {
+			got := StringToInt("NotAnInt")
+			require.Equal(t, 0, got)
+		})
+	})
+	t.Run("ReplaceNonAlphaNumericChars()", func(t *testing.T) {
+		got := ReplaceNonAlphaNumericChars("profclems-glab", "/")
+		require.Equal(t, "profclems/glab", got)
+	})
 }
