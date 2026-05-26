@@ -109,7 +109,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 
 			paginate, _ := cmd.Flags().GetBool(FlagPaginate)
 
-			pipelineIDs, totalAvailable, err := listPipelineIDs(client, repo.FullName(), paginate, optsFromFlags(cmd.Flags()))
+			pipelineIDs, totalAvailable, truncated, err := listPipelineIDs(client, repo.FullName(), paginate, optsFromFlags(cmd.Flags()))
 			if err != nil {
 				return err
 			}
@@ -118,14 +118,21 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			if totalAvailable > int64(len(pipelineIDs)) {
+			if truncated {
 				verb := "Deleted"
 				if dryRunMode {
 					verb = "Matched"
 				}
-				fmt.Fprintf(f.IO().StdErr,
-					"%s %d of %d matching pipelines. Pass --paginate to act on all matches, or --per-page to fetch more per request.\n",
-					verb, len(pipelineIDs), totalAvailable)
+				// GitLab omits X-Total for result sets larger than 10,000, so totalAvailable may be 0 even when truncated.
+				if totalAvailable > int64(len(pipelineIDs)) {
+					fmt.Fprintf(f.IO().StdErr,
+						"%s %d of %d matching pipelines. Pass --paginate to act on all matches, or --per-page to fetch more per request.\n",
+						verb, len(pipelineIDs), totalAvailable)
+				} else {
+					fmt.Fprintf(f.IO().StdErr,
+						"%s %d matching pipelines; more matches exist. Pass --paginate to act on all matches, or --per-page to fetch more per request.\n",
+						verb, len(pipelineIDs))
+				}
 			}
 
 			return nil
@@ -210,16 +217,17 @@ func runDeletion(pipelineIDs []int, dryRunMode bool, w io.Writer, c *iostreams.C
 	return nil
 }
 
-func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, opts *gitlab.ListProjectPipelinesOptions) ([]int, int64, error) {
+func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, opts *gitlab.ListProjectPipelinesOptions) ([]int, int64, bool, error) {
 	var pipelineIDs []int
 	var totalAvailable int64
+	var truncated bool
 
 	hasRemaining := true
 	first := true
 	for hasRemaining {
 		pipes, resp, err := apiClient.Pipelines.ListProjectPipelines(repoName, opts)
 		if err != nil {
-			return pipelineIDs, totalAvailable, err
+			return pipelineIDs, totalAvailable, truncated, err
 		}
 
 		if first && resp != nil {
@@ -233,7 +241,11 @@ func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, o
 
 		opts.Page = resp.NextPage
 		hasRemaining = paginate && resp.CurrentPage != resp.TotalPages
+		// If we're exiting the loop with more pages still available, results are truncated.
+		if !hasRemaining && resp.NextPage > 0 {
+			truncated = true
+		}
 	}
 
-	return pipelineIDs, totalAvailable, nil
+	return pipelineIDs, totalAvailable, truncated, nil
 }

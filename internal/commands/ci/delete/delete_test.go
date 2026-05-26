@@ -203,6 +203,30 @@ func TestCIDeleteByStatusDryRunWarnsWhenResultsTruncated(t *testing.T) {
 	assert.Contains(t, out.ErrBuf.String(), "Matched 2 of 67 matching pipelines")
 }
 
+func TestCIDeleteByStatusWarnsWhenTruncatedWithoutTotal(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+	gomock.InOrder(
+		tc.MockPipelines.EXPECT().
+			ListProjectPipelines("OWNER/REPO", &gitlab.ListProjectPipelinesOptions{Status: new(gitlab.Success)}).
+			Return([]*gitlab.PipelineInfo{
+				{ID: 11111111},
+				{ID: 22222222},
+			}, &gitlab.Response{NextPage: 2, CurrentPage: 1}, nil),
+		tc.MockPipelines.EXPECT().DeletePipeline("OWNER/REPO", int64(11111111)).Return(nil, nil),
+		tc.MockPipelines.EXPECT().DeletePipeline("OWNER/REPO", int64(22222222)).Return(nil, nil),
+	)
+	exec := cmdtest.SetupCmdForTest(t, NewCmdDelete, false, cmdtest.WithGitLabClient(tc.Client))
+
+	out, err := exec("--status=success")
+	require.NoError(t, err)
+
+	stderr := out.ErrBuf.String()
+	assert.Contains(t, stderr, "Deleted 2 matching pipelines; more matches exist")
+	assert.Contains(t, stderr, "--paginate")
+}
+
 func TestCIDeleteBySource(t *testing.T) {
 	t.Parallel()
 
