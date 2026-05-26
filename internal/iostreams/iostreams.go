@@ -175,11 +175,9 @@ func (s *IOStreams) StartPager() error {
 
 	pagerEnv = append(pagerEnv, "LESSSECURE=1")
 
-	// Only request `-r` (display all raw control chars) when we will actually
-	// emit OSC 8 hyperlinks through the pager. In `auto` mode, shouldDisplayHyperlinks()
-	// suppresses hyperlinks once the pager is active, so `-R` (raw color escapes only)
-	// is sufficient and avoids leaving the terminal with `-icanon -echo` after quitting
-	// less. See gitlab-org/cli#8320.
+	// Only use `-r` (all raw control chars) when hyperlinks are forced on;
+	// otherwise `-R` (color escapes only) avoids letting unexpected sequences
+	// through to less.
 	if s.displayHyperlinks == "always" {
 		pagerEnv = append(pagerEnv, "LESS=FrX")
 	} else if _, ok := os.LookupEnv("LESS"); !ok {
