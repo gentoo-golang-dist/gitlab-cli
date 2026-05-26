@@ -20,6 +20,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/orbit/internal/orbiterr"
 	"gitlab.com/gitlab-org/cli/internal/commands/skills/skill"
+	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -61,7 +62,8 @@ func TestSetup_Structure(t *testing.T) {
 	for _, name := range []string{"yes", "global", "path", "upgrade", "skip-skill", "skip-local", "hostname"} {
 		assert.NotNilf(t, cmd.Flags().Lookup(name), "--%s should be registered", name)
 	}
-	assert.Equal(t, "true", cmd.Annotations["mcp:safe"])
+	assert.Falsef(t, mcpannotations.HasAnnotation(cmd.Annotations),
+		"orbit setup must not be exposed as an MCP tool; got annotations: %v", cmd.Annotations)
 }
 
 // TestSetup_StatusOnly_HappyPath verifies that reachability succeeds and
