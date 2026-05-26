@@ -163,12 +163,6 @@ func PresentInStringSlice(hay []string, needle string) bool {
 	return slices.Contains(hay, needle)
 }
 
-// PresentInInt64Slice take a Hay (Slice of Int64s) and a Needle (int64)
-// and returns true based on whether or not the Needle is present in the hay.
-func PresentInInt64Slice(hay []int64, needle int64) bool {
-	return slices.Contains(hay, needle)
-}
-
 // CommonElementsInStringSlice takes 2 Slices of Strings and returns a Third Slice
 // that is the common elements between the first 2 Slices.
 func CommonElementsInStringSlice(s1 []string, s2 []string) []string {
