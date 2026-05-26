@@ -188,6 +188,18 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 					if latest, lookupErr := ciutils.GetPipelineWithFallback(ctx, client, repoName, branch, opts.io); lookupErr == nil && latest != nil && latest.ID != runningPipeline.ID {
 						runningPipeline = latest
 						inProgress = isLivePollableStatus(latest.Status)
+						// Skip the redundant refresh below by waiting for the next
+						// tick and restarting the loop, which will re-render jobs
+						// for the new pipeline and then fall into the normal
+						// live-update path.
+						if inProgress {
+							select {
+							case <-ctx.Done():
+								break loop
+							case <-ticker.C:
+							}
+							continue
+						}
 					}
 				}
 

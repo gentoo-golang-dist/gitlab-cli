@@ -287,6 +287,8 @@ func Test_isLivePollableStatus(t *testing.T) {
 }
 
 func TestCiStatusCommand_Live_CanceledSuperseded(t *testing.T) {
+	t.Parallel()
+
 	// When --live encounters a canceled pipeline AND a newer pipeline exists
 	// for the branch (e.g. rebase auto-canceled the previous run), switch to
 	// the new pipeline instead of exiting.
@@ -329,6 +331,8 @@ func TestCiStatusCommand_Live_CanceledSuperseded(t *testing.T) {
 }
 
 func TestCiStatusCommand_Live_CanceledNoNewerPipeline(t *testing.T) {
+	t.Parallel()
+
 	// When --live encounters a canceled pipeline and no newer pipeline exists
 	// for the branch, exit cleanly instead of looping forever.
 	tc := gitlabtesting.NewTestClient(t)
