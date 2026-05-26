@@ -18,14 +18,14 @@ GitLab operations. Run `glab <command> --help` for detailed flag information.
 # Issues
 glab issue view <iid>
 glab issue list --label "bug,priority::1"
-glab issue create --title "title" --description "$(cat body.md)"
+glab issue create --title "title" --description "$(cat /tmp/desc.md)"
 glab issue note <iid> -m "comment text"
 
 # Merge requests
-glab mr create --push --title "fix: title" --description "$(cat body.md)"
+glab mr create --push --title "fix: title" --description "$(cat /tmp/desc.md)"
 glab mr view <iid>
 glab mr list --assignee <user>
-glab mr update <iid> --description "$(cat body.md)"
+glab mr update <iid> --description "$(cat /tmp/desc.md)"
 
 # CI/CD
 glab ci status
@@ -77,7 +77,7 @@ no shell-quoting pitfalls, no escape bugs from backticks, `$`, or backslashes.
 
 ```shell
 # From a file
-glab mr note create <iid> < body.md
+glab mr note create <iid> < /tmp/body.md
 
 # From a variable, safely
 printf '%s' "$BODY" | glab mr note create <iid>
@@ -105,8 +105,8 @@ EOF
 For descriptions on `glab issue create` / `glab mr create` / `glab mr update`,
 the same trade-off applies: a quoted heredoc into `--description` works for
 bodies up to roughly the shell's argv limit (~128 KiB on Linux); for larger
-or reusable bodies, write to a file and use `--description "$(cat file.md)"`,
-or post via `glab api` with `-F description=@file.md`.
+or reusable bodies, write to a file and use `--description "$(cat /tmp/desc.md)"`,
+or post via `glab api` with `-F description=@/tmp/desc.md`.
 
 ### Threaded replies on merge requests
 
@@ -171,12 +171,12 @@ glab api projects/:id/issues/:iid/notes -f body="comment text"
 # -F / --field — reads @file as a string; bare values like 'true', '42',
 # 'null' are coerced to typed JSON. Use -f if you need a literal string
 # that happens to look like a number or boolean.
-glab api projects/:id/issues/:iid/notes -F body=@comment.md
+glab api projects/:id/issues/:iid/notes -F body=@/tmp/comment.md
 
 # --input — raw request body from a file (or '-' for stdin). Does NOT set
 # Content-Type. Without the header, JSON endpoints return HTTP 415.
 glab api projects/:id/issues/:iid/notes \
-  --input body.json \
+  --input /tmp/body.json \
   -H "Content-Type: application/json"
 
 # --form — multipart/form-data, required for file uploads such as wiki
