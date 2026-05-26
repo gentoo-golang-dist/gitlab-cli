@@ -17,5 +17,5 @@ func TestNewCmdCluster(t *testing.T) {
 
 	assert.Nil(t, cmd.Execute())
 
-	assert.Contains(t, stdout.String(), "Manage GitLab Agents for Kubernetes and their clusters")
+	assert.Contains(t, stdout.String(), "Agents connect your cluster to GitLab")
 }

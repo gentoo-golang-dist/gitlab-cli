@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -17,7 +18,10 @@ func NewCmdAgent(f cmdutils.Factory) *cobra.Command {
 	agentCmd := &cobra.Command{
 		Use:   "agent <command> [flags]",
 		Short: `Manage GitLab Agents for Kubernetes.`,
-		Long:  ``,
+		Long: heredoc.Doc(`
+			Register new agents, configure existing ones, manage their tokens and kubeconfig
+			entries, and check configuration files for deprecated settings.
+		`),
 	}
 
 	cmdutils.EnableRepoOverride(agentCmd, f)

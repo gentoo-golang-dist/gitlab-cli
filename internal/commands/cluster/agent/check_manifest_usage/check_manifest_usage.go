@@ -3,6 +3,7 @@ package check_manifest_usage
 import (
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v3"
 
@@ -40,10 +41,19 @@ func NewCmdCheckManifestUsage(f cmdutils.Factory) *cobra.Command {
 	}
 	checkManifestUsageCmd := &cobra.Command{
 		Use:   "check_manifest_usage [flags]",
-		Short: `Check agent configuration files for built-in GitOps manifests usage. (EXPERIMENTAL)`,
-		Long: `Checks the descendants of a group for registered agents with configuration files that rely on the deprecated GitOps manifests settings.
-The output can be piped to a tab-separated value (TSV) file.
-` + text.ExperimentalString,
+		Short: `Find agents using deprecated GitOps manifest settings. (EXPERIMENTAL)`,
+		Long: heredoc.Docf(`
+			Searches a group and its descendant projects for registered agents whose
+			configuration files include the deprecated %[1]sgitops.manifest_projects%[1]s setting.
+
+			The output is tab-separated and can be redirected to a TSV file.
+		`, "`") + text.ExperimentalString,
+		Example: heredoc.Doc(`
+			# Check a group for agents using deprecated GitOps manifest settings
+			glab cluster agent check_manifest_usage --group my-group
+
+			# Recursively check a group and all its subgroups
+			glab cluster agent check_manifest_usage --group my-group --recursive`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -56,8 +66,8 @@ The output can be piped to a tab-separated value (TSV) file.
 	cobra.CheckErr(checkManifestUsageCmd.MarkFlagRequired("group"))
 	checkManifestUsageCmd.Flags().IntVarP(&opts.projectPage, "page", "p", 1, "Page number for projects.")
 	checkManifestUsageCmd.Flags().IntVarP(&opts.projectPerPage, "per-page", "P", 30, "Number of projects to list per page.")
-	checkManifestUsageCmd.Flags().IntVarP(&opts.agentPage, "agent-page", "a", 1, "Page number for projects.")
-	checkManifestUsageCmd.Flags().IntVarP(&opts.agentPerPage, "agent-per-page", "A", 30, "Number of projects to list per page.")
+	checkManifestUsageCmd.Flags().IntVarP(&opts.agentPage, "agent-page", "a", 1, "Page number for agents.")
+	checkManifestUsageCmd.Flags().IntVarP(&opts.agentPerPage, "agent-per-page", "A", 30, "Number of agents to list per page.")
 	checkManifestUsageCmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "Recursively check subgroups.")
 
 	return checkManifestUsageCmd

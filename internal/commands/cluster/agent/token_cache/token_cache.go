@@ -13,29 +13,25 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "token-cache <command> [flags]",
 		Short: `Manage cached GitLab Agent tokens.`,
-		Long: heredoc.Doc(`Manage cached GitLab Agent tokens created by 'glab cluster agent get-token'.
+		Long: heredoc.Docf(`
+			Tokens created by %[1]sglab cluster agent get-token%[1]s are cached locally
+			in the system keyring and filesystem to avoid creating new tokens
+			for each kubectl operation.
 
-		This command group allows you to list and clear tokens that are cached locally
-		in the keyring and filesystem cache.
+			The GitLab CLI caches agent tokens in two locations:
 
-		## Cache Storage
+			- Keyring: Uses the system keyring (Windows Credential Manager, macOS Keychain, Linux Secret Service).
+			- Filesystem: Stores tokens in the user's cache directory as encrypted files.
 
-		The GitLab CLI caches agent tokens in two locations:
+			The cache improves performance by avoiding the need to create new tokens for each kubectl operation when using %[1]sglab cluster agent update-kubeconfig%[1]s.
 
-		1. Keyring - Uses the system keyring (Windows Credential Manager, macOS Keychain, Linux Secret Service)
-		2. Filesystem - Stores tokens in the user's cache directory as encrypted files
+			Cached tokens are stored using a key format that includes:
 
-		The cache improves performance by avoiding the need to create new tokens for each kubectl operation when using 'glab cluster agent update-kubeconfig'.
+			- Base64-encoded GitLab instance URL
+			- Agent ID
 
-		## Cache Key Format
-
-		Cached tokens are stored using a key format that includes:
-
-		- Base64-encoded GitLab instance URL
-		- Agent ID
-
-		This ensures tokens are properly isolated by GitLab instance and agent.
-		`),
+			This ensures tokens are properly isolated by GitLab instance and agent.
+		`, "`"),
 	}
 
 	cmd.AddCommand(tokenCacheListCmd.NewCmd(f))

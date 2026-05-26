@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
@@ -35,8 +36,17 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list <agent-id> [flags]",
-		Short: `List tokens for an agent.`,
-		Args:  cobra.ExactArgs(1),
+		Short: `List tokens for a GitLab Agent for Kubernetes.`,
+		Long: heredoc.Doc(`
+			Lists all tokens for the specified agent. Requires the numeric agent ID.
+		`),
+		Example: heredoc.Doc(`
+			# List tokens for agent 123
+			glab cluster agent token list 123
+
+			# List tokens in JSON format
+			glab cluster agent token list 123 --output json`),
+		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
