@@ -175,7 +175,10 @@ func (s *IOStreams) StartPager() error {
 
 	pagerEnv = append(pagerEnv, "LESSSECURE=1")
 
-	if s.shouldDisplayHyperlinks() {
+	// Only use `-r` (all raw control chars) when hyperlinks are forced on;
+	// otherwise `-R` (color escapes only) avoids letting unexpected sequences
+	// through to less.
+	if s.displayHyperlinks == "always" {
 		pagerEnv = append(pagerEnv, "LESS=FrX")
 	} else if _, ok := os.LookupEnv("LESS"); !ok {
 		pagerEnv = append(pagerEnv, "LESS=FRX")
