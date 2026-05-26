@@ -31,6 +31,9 @@ stats
 ```console
 glab ci status --live
 
+# Wait to return until the pipeline is finished, and provide output without a prompt.
+glab ci status --wait
+
 # A more compact view
 glab ci status --compact
 
@@ -47,7 +50,8 @@ glab ci status
   -b, --branch string   Check pipeline status for a branch. (default current branch)
   -c, --compact         Show status in compact format.
   -l, --live            Show status in real time until the pipeline ends.
-  -F, --output string   Format output as: text, json. Note: JSON output is not compatible with --live or --compact flags. (default "text")
+  -F, --output string   Format output as: text, json. Note: JSON output is not compatible with --live, --wait, or --compact flags. (default "text")
+  -w, --wait            Wait to return until the pipeline is finished, and provide output without a prompt.
 ```
 
 ## Options inherited from parent commands
