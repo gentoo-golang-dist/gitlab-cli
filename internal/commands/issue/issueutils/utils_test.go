@@ -17,6 +17,7 @@ import (
 )
 
 func Test_issueMetadataFromURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		str  string
@@ -60,6 +61,36 @@ func Test_issueMetadataFromURL(t *testing.T) {
 			path: "https://gitlab.com/namespace/project/subproject/repo/",
 		},
 		{
+			name: "valid work item URL",
+			str:  "https://gitlab.com/namespace/repo/-/work_items/1",
+			want: 1,
+			path: "https://gitlab.com/namespace/repo/",
+		},
+		{
+			name: "valid work item URL with hyphenated namespace",
+			str:  "https://gitlab.com/gitlab-org/gitlab/-/work_items/337780",
+			want: 337780,
+			path: "https://gitlab.com/gitlab-org/gitlab/",
+		},
+		{
+			name: "valid work item URL without dash",
+			str:  "https://gitlab.com/namespace/project/subproject/repo/work_items/1",
+			want: 1,
+			path: "https://gitlab.com/namespace/project/subproject/repo/",
+		},
+		{
+			name: "valid work item URL with trailing slash",
+			str:  "https://gitlab.com/namespace/repo/-/work_items/1/",
+			want: 1,
+			path: "https://gitlab.com/namespace/repo/",
+		},
+		{
+			name: "valid work item URL with query string",
+			str:  "https://gitlab.com/namespace/repo/-/work_items/1?foo=bar",
+			want: 1,
+			path: "https://gitlab.com/namespace/repo/",
+		},
+		{
 			name: "invalid URL with no issue number",
 			str:  "https://gitlab.com/namespace/project/subproject/repo/issues",
 			want: 0,
@@ -98,6 +129,7 @@ func Test_issueMetadataFromURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			id, repo := issueMetadataFromURL(tt.str, glinstance.DefaultHostname)
 			require.Equal(t, tt.want, id)
 

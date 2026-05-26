@@ -142,16 +142,23 @@ func IssueFromArg(apiClientFunc func(repoHost string) (*api.Client, error), clie
 
 // issueURLPathRE is a regex which matches the following patterns:
 //
-//		OWNER/REPO/issues/id
-//		OWNER/REPO/-/issues/id
-//		OWNER/REPO/-/issues/incident/id
-//		GROUP/NAMESPACE/REPO/issues/id
-//		GROUP/NAMESPACE/REPO/-/issues/id
-//		GROUP/NAMESPACE/REPO/-/issues/incident/id
+//	OWNER/REPO/issues/id
+//	OWNER/REPO/-/issues/id
+//	OWNER/REPO/-/issues/incident/id
+//	OWNER/REPO/-/work_items/id
+//	GROUP/NAMESPACE/REPO/issues/id
+//	GROUP/NAMESPACE/REPO/-/issues/id
+//	GROUP/NAMESPACE/REPO/-/issues/incident/id
+//	GROUP/NAMESPACE/REPO/-/work_items/id
 //	including nested subgroups:
 //		GROUP/SUBGROUP/../../REPO/-/issues/id
 //		GROUP/SUBGROUP/../../REPO/-/issues/incident/id
-var issueURLPathRE = regexp.MustCompile(`^(/(?:[^-][^/]+/){2,})+(?:-/)?issues/(?:incident/)?(\d+)$`)
+//		GROUP/SUBGROUP/../../REPO/-/work_items/id
+//
+// The pattern tolerates trailing path segments (e.g., /issues/1/foo) to align
+// with mergeRequestURLPathRE behavior. Note that url.Parse strips query strings
+// and fragments into separate fields before regex matching.
+var issueURLPathRE = regexp.MustCompile(`^(/(?:[^-][^/]+/){2,})+(?:-/)?(?:issues/(?:incident/)?|work_items/)(\d+)(?:/.*)?$`)
 
 func issueMetadataFromURL(s, defaultHostname string) (int64, glrepo.Interface) {
 	u, err := url.Parse(s)
