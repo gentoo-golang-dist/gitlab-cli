@@ -287,7 +287,9 @@ func Test_isLivePollableStatus(t *testing.T) {
 }
 
 func TestCiStatusCommand_Live_CanceledSuperseded(t *testing.T) {
-	t.Parallel()
+	// Intentionally not t.Parallel(): the live path enters uilive.New(), which
+	// writes to package-level globals in github.com/gosuri/uilive that the race
+	// detector flags when multiple tests run concurrently.
 
 	// When --live encounters a canceled pipeline AND a newer pipeline exists
 	// for the branch (e.g. rebase auto-canceled the previous run), switch to
@@ -331,7 +333,8 @@ func TestCiStatusCommand_Live_CanceledSuperseded(t *testing.T) {
 }
 
 func TestCiStatusCommand_Live_CanceledNoNewerPipeline(t *testing.T) {
-	t.Parallel()
+	// Intentionally not t.Parallel(): see comment in
+	// TestCiStatusCommand_Live_CanceledSuperseded.
 
 	// When --live encounters a canceled pipeline and no newer pipeline exists
 	// for the branch, exit cleanly instead of looping forever.
