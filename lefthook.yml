@@ -142,11 +142,9 @@ pre-push:
       tags: backend docs
       run: |
         # Skip if no command files changed vs origin/main
-        if git rev-parse origin/main > /dev/null 2>&1; then
-          if git diff --quiet origin/main -- internal/commands/ cmd/gen-docs/; then
-            echo "✔ No command changes detected. Skipping doc generation check."
-            exit 0
-          fi
+        if git diff --quiet origin/main -- internal/commands/ cmd/gen-docs/; then
+          echo "✔ No command changes detected. Skipping doc generation check."
+          exit 0
         fi
 
         make gen-docs > /dev/null 2>&1
