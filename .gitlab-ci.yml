@@ -103,9 +103,10 @@ include:
       when: always
 
 check_docs_update:
-  extends: .documentation
+  extends:
+    - .documentation
+    - .go-cache
   script:
-    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME && git checkout $CI_MERGE_REQUEST_TARGET_BRANCH_NAME && git checkout $CI_COMMIT_SHA
     - make gen-docs
     - |-
       git status
