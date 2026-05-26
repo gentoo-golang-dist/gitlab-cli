@@ -109,12 +109,26 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 
 			paginate, _ := cmd.Flags().GetBool(FlagPaginate)
 
-			pipelineIDs, err = listPipelineIDs(client, repo.FullName(), paginate, optsFromFlags(cmd.Flags()))
+			pipelineIDs, totalAvailable, err := listPipelineIDs(client, repo.FullName(), paginate, optsFromFlags(cmd.Flags()))
 			if err != nil {
 				return err
 			}
 
-			return runDeletion(pipelineIDs, dryRunMode, f.IO().StdOut, c, client, repo)
+			if err := runDeletion(pipelineIDs, dryRunMode, f.IO().StdOut, c, client, repo); err != nil {
+				return err
+			}
+
+			if totalAvailable > int64(len(pipelineIDs)) {
+				verb := "Deleted"
+				if dryRunMode {
+					verb = "Matched"
+				}
+				fmt.Fprintf(f.IO().StdErr,
+					"%s %d of %d matching pipelines. Pass --paginate to act on all matches, or --per-page to fetch more per request.\n",
+					verb, len(pipelineIDs), totalAvailable)
+			}
+
+			return nil
 		},
 	}
 
@@ -196,14 +210,21 @@ func runDeletion(pipelineIDs []int, dryRunMode bool, w io.Writer, c *iostreams.C
 	return nil
 }
 
-func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, opts *gitlab.ListProjectPipelinesOptions) ([]int, error) {
+func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, opts *gitlab.ListProjectPipelinesOptions) ([]int, int64, error) {
 	var pipelineIDs []int
+	var totalAvailable int64
 
 	hasRemaining := true
+	first := true
 	for hasRemaining {
 		pipes, resp, err := apiClient.Pipelines.ListProjectPipelines(repoName, opts)
 		if err != nil {
-			return pipelineIDs, err
+			return pipelineIDs, totalAvailable, err
+		}
+
+		if first && resp != nil {
+			totalAvailable = resp.TotalItems
+			first = false
 		}
 
 		for _, item := range pipes {
@@ -214,5 +235,5 @@ func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, o
 		hasRemaining = paginate && resp.CurrentPage != resp.TotalPages
 	}
 
-	return pipelineIDs, nil
+	return pipelineIDs, totalAvailable, nil
 }
