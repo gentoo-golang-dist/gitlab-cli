@@ -199,8 +199,15 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 
 	pipelineRunCmd := &cobra.Command{
 		Use:     "run [flags]",
-		Short:   `Create or run a new CI/CD pipeline.`,
+		Short:   `Create a new CI/CD pipeline.`,
 		Aliases: []string{"create"},
+		Long: heredoc.Docf(`
+			Use %[1]s--branch%[1]s to specify a branch or reference. Defaults to the current branch.
+
+			The variable flags (%[1]s--variables%[1]s, %[1]s--variables-env%[1]s,
+			%[1]s--variables-file%[1]s, %[1]s--variables-from%[1]s) cannot be used with
+			%[1]s--mr%[1]s. If both are used, the command fails.
+		`, "`") + "\n" + cmdutils.PipelineInputsDescription,
 		Example: heredoc.Doc(`
 			glab ci run
 			glab ci run --variables \"key1:value,with,comma\"
@@ -232,13 +239,6 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 			#   }
 			# ]
 			glab ci run -b main --variables-from variables.json`),
-
-		Long: "The `--branch` " + `option is available for all pipeline types.
-
-The options for variables are incompatible with merge request pipelines.
-If used with merge request pipelines, the command fails with a message like ` + "`ERROR: if any flags in the group [output output-format] are set none of the others can be`" + `
-
-` + cmdutils.PipelineInputsDescription,
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -296,10 +296,10 @@ If used with merge request pipelines, the command fails with a message like ` + 
 			return nil
 		},
 	}
-	pipelineRunCmd.Flags().StringP("branch", "b", "", "Create pipeline on branch/ref <string>.")
-	pipelineRunCmd.Flags().StringSliceP("variables", "", []string{}, "Pass variables to pipeline in format <key>:<value>. Cannot be used for MR pipelines.")
-	pipelineRunCmd.Flags().StringSliceP("variables-env", "", []string{}, "Pass variables to pipeline in format <key>:<value>. Cannot be used for MR pipelines.")
-	pipelineRunCmd.Flags().StringSliceP("variables-file", "", []string{}, "Pass file contents as a file variable to pipeline in format <key>:<filename>. Cannot be used for MR pipelines.")
+	pipelineRunCmd.Flags().StringP("branch", "b", "", "Create pipeline on branch or reference <string>.")
+	pipelineRunCmd.Flags().StringSliceP("variables", "", []string{}, "Pass variables to the pipeline in the format <key>:<value>. Cannot be used for MR pipelines.")
+	pipelineRunCmd.Flags().StringSliceP("variables-env", "", []string{}, "Pass variables to the pipeline in the format <key>:<value>. Cannot be used for MR pipelines.")
+	pipelineRunCmd.Flags().StringSliceP("variables-file", "", []string{}, "Pass file contents as a file variable to the pipeline in the format <key>:<filename>. Cannot be used for MR pipelines.")
 	pipelineRunCmd.Flags().StringP("variables-from", "f", "", "JSON file with variables for pipeline execution. Expects array of hashes, each with at least 'key' and 'value'. Cannot be used for MR pipelines.")
 	pipelineRunCmd.Flags().BoolVarP(&openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses default browser, or browser specified in BROWSER environment variable.")
 	pipelineRunCmd.Flags().BoolVar(&mr, "mr", false, "Run merge request pipeline instead of branch pipeline.")

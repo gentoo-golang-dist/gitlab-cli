@@ -19,7 +19,7 @@ import (
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	pipelineListCmd := &cobra.Command{
 		Use:   "list [flags]",
-		Short: `Get the list of CI/CD pipelines.`,
+		Short: `List CI/CD pipelines.`,
 		Long: heredoc.Docf(`
 			Defaults to the current project. Use %[1]s--status%[1]s to filter pipelines by status.
 		`, "`"),
@@ -132,17 +132,17 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			return nil
 		},
 	}
-	pipelineListCmd.Flags().StringP("status", "s", "", "Get pipeline with this status. Options: running, pending, success, failed, canceled, skipped, created, manual, waiting_for_resource, preparing, scheduled.")
+	pipelineListCmd.Flags().StringP("status", "s", "", "Filter pipelines by status. Options: running, pending, success, failed, canceled, skipped, created, manual, waiting_for_resource, preparing, scheduled.")
 	pipelineListCmd.Flags().StringP("order", "o", "id", "Order pipelines by this field. Options: id, status, ref, updated_at, user_id.")
 	pipelineListCmd.Flags().String("orderBy", "id", "Deprecated: use --order instead.")
 	_ = pipelineListCmd.Flags().MarkDeprecated("orderBy", "use --order instead")
-	pipelineListCmd.Flags().StringP("sort", "", "desc", "Sort direction for --order field: asc or desc.")
+	pipelineListCmd.Flags().StringP("sort", "", "desc", "Sort direction for '--order': asc or desc.")
 	pipelineListCmd.Flags().IntP("page", "p", 1, "Page number.")
 	pipelineListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
 	pipelineListCmd.Flags().StringP("output", "F", "text", "Format output. Options: text, json.")
-	pipelineListCmd.Flags().StringP("ref", "r", "", "Return only pipelines for given ref.")
-	pipelineListCmd.Flags().String("scope", "", "Return only pipelines with the given scope: {running|pending|finished|branches|tags}")
-	pipelineListCmd.Flags().String("source", "", "Return only pipelines triggered via the given source. See https://docs.gitlab.com/ci/jobs/job_rules/#ci_pipeline_source-predefined-variable for full list. Commonly used options: {merge_request_event|parent_pipeline|pipeline|push|trigger}")
+	pipelineListCmd.Flags().StringP("ref", "r", "", "Return only pipelines for the given ref.")
+	pipelineListCmd.Flags().String("scope", "", "Return only pipelines with the given scope. Options: running, pending, finished, branches, tags.")
+	pipelineListCmd.Flags().String("source", "", "Return only pipelines triggered by the given source. For the full list, see https://docs.gitlab.com/ci/jobs/job_rules/#ci_pipeline_source-predefined-variable. Commonly used options: merge_request_event, parent_pipeline, pipeline, push, trigger.")
 	pipelineListCmd.Flags().String("sha", "", "Return only pipelines with the given SHA.")
 	pipelineListCmd.Flags().BoolP("yaml-errors", "y", false, "Return only pipelines with invalid configurations.")
 	pipelineListCmd.Flags().StringP("name", "n", "", "Return only pipelines with the given name.")

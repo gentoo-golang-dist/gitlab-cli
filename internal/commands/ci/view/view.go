@@ -108,8 +108,8 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		config:       f.Config,
 	}
 	pipelineCIView := &cobra.Command{
-		Use:   "view [branch/tag]",
-		Short: "View, run, trace, log, and cancel CI/CD job's current pipeline.",
+		Use:   "view [<branch | tag>]",
+		Short: "View, run, retry, and cancel CI/CD pipeline jobs.",
 		Long: heredoc.Docf(`Supports viewing, running, tracing, and canceling jobs.
 
 		Use arrow keys to navigate jobs and logs.
@@ -122,7 +122,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		- %[1]sCtrl+D%[1]s to cancel a job. If the selected job isn't running or pending,
 		  quits the CI/CD view.
 		- %[1]sCtrl+Q%[1]s to quit the CI/CD view.
-		- %[1]sCtrl+Space%[1]s to suspend application and view the logs. Similar to %[1]sglab pipeline ci trace%[1]s.
+		- %[1]sCtrl+Space%[1]s to suspend application and view the logs. Similar to %[1]sglab ci trace%[1]s.
 		- Supports %[1]svi%[1]s style bindings and arrow keys for navigating jobs and logs.
 	`, "`"),
 		Annotations: map[string]string{
@@ -130,17 +130,17 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Interactive: "true",
 		},
 		Example: heredoc.Doc(`
-			# Uses current branch
-			glab pipeline ci view
+			# Use the current branch
+			glab ci view
 
-			# Get latest pipeline on main branch
-			glab pipeline ci view main
+			# View the latest pipeline on main
+			glab ci view main
 
-			# Just like the second example
-			glab pipeline ci view -b main
+			# View the latest pipeline on main using a flag
+			glab ci view -b main
 
-			# Get latest pipeline on main branch of myusername/glab repo
-			glab pipeline ci view -b main -R myusername/glab`),
+			# View the latest pipeline on main for another project
+			glab ci view -b main -R myusername/myproject`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(args); err != nil {
@@ -153,7 +153,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 
 	pipelineCIView.Flags().
 		StringVarP(&opts.refName, "branch", "b", "", "Check pipeline status for a branch or tag. Defaults to the current branch.")
-	pipelineCIView.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses default browser, or browser specified in BROWSER variable.")
+	pipelineCIView.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses the default browser, or the browser specified in the BROWSER environment variable.")
 	pipelineCIView.Flags().Int64VarP(&opts.pipelineID, "pipelineid", "p", 0, "Check pipeline status for a specific pipeline ID.")
 	pipelineCIView.MarkFlagsMutuallyExclusive("branch", "pipelineid")
 
