@@ -14,13 +14,13 @@ Create a comment or discussion on a merge request. (EXPERIMENTAL)
 
 ## Synopsis
 
-Add a comment to a merge request. The command creates the comment as a new
-discussion thread by default.
+Add a comment to a merge request. By default, the command creates the comment
+as a new discussion thread.
 
-Use `--resolvable=false` to post a non-resolvable note via the Notes
-API instead. Non-resolvable notes don't block merging when the project
-requires "all threads resolved before merging". Useful for automation and
-status updates that should not require a human to resolve them.
+Use `--resolvable=false` to create a non-resolvable note instead.
+Non-resolvable notes do not block merging when the project requires
+**All threads must be resolved**. Use this option for automation or status
+updates that do not need a human to resolve them.
 
 Use `--reply` to add a note to an existing discussion thread instead of
 starting a new one. The value can be a full discussion ID or a unique
@@ -37,9 +37,9 @@ The flag rules are:
 cannot be used together.
 - `--file`, `--reply`, and `--unique` are mutually
 exclusive.
-- `--resolvable=false` cannot be combined with `--reply`
-or `--file` (and therefore not with `--line` or
-`--old-line` either), since those operate on discussion threads.
+- `--resolvable=false`, `--reply`, and `--file`
+are mutually exclusive. This restriction also applies to `--line`
+and `--old-line`, which require a `--file` value.
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
@@ -68,7 +68,7 @@ echo "LGTM" | glab mr note create 123
 # Skip if already posted
 glab mr note create 123 -m "LGTM" --unique
 
-# Post a non-resolvable note (won't block merge), e.g. for bot/CI status
+# Create a non-resolvable note, for example for bot or CI status updates
 glab mr note create 123 -m "Build status: green" --resolvable=false
 
 # Reply to an existing discussion thread
@@ -96,7 +96,7 @@ glab mr note create 123 --file main.go -m "General comment on this file"
   -m, --message string   Comment or note message.
       --old-line int     Line in the old version, for commenting on a removed line.
       --reply string     Reply to an existing discussion. Accepts a full discussion ID or a prefix of 8 or more characters.
-      --resolvable       Create the note as a resolvable discussion thread. Set to false to post a non-resolvable note via the Notes API. (default true)
+      --resolvable       Create the note as a resolvable discussion thread. Set to false to create a non-resolvable note. (default true)
       --unique           Don't create a note if a note with the same body already exists. Reads all merge request comments first.
 ```
 
