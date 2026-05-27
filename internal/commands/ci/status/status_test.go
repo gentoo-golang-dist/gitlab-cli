@@ -252,6 +252,128 @@ func TestCiStatusCommand_WithPromptsEnabled_FinishedPipeline(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_isLivePollableStatus(t *testing.T) {
+	t.Parallel()
+
+	// Source of truth: gitlab.BuildStateValue constants in client-go (types.go).
+	// "manual" is excluded because polling won't progress it; "canceled" is excluded
+	// because canceled pipelines don't transition back to running on their own —
+	// the canceled-supersede check in the live loop handles the rebase case.
+	tests := []struct {
+		status string
+		want   bool
+	}{
+		{"created", true},
+		{"waiting_for_resource", true},
+		{"preparing", true},
+		{"pending", true},
+		{"running", true},
+		{"scheduled", true},
+		{"success", false},
+		{"failed", false},
+		{"canceled", false},
+		{"skipped", false},
+		{"manual", false},
+		{"", false},
+		{"unknown_future_status", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.status, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, isLivePollableStatus(tt.status))
+		})
+	}
+}
+
+func TestCiStatusCommand_Live_CanceledSuperseded(t *testing.T) {
+	// Intentionally not t.Parallel(): the live path enters uilive.New(), which
+	// writes to package-level globals in github.com/gosuri/uilive that the race
+	// detector flags when multiple tests run concurrently.
+
+	// When --live encounters a canceled pipeline AND a newer pipeline exists
+	// for the branch (e.g. rebase auto-canceled the previous run), switch to
+	// the new pipeline instead of exiting.
+	tc := gitlabtesting.NewTestClient(t)
+
+	gomock.InOrder(
+		// Initial fetch: returns canceled pipeline ID=1.
+		tc.MockPipelines.EXPECT().
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
+			Return(&gitlab.Pipeline{ID: 1, Status: "canceled"}, nil, nil),
+		tc.MockJobs.EXPECT().
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Job{{ID: 1, Name: "test"}}, nil, nil),
+
+		// Loop iteration 1: list jobs for the canceled pipeline.
+		tc.MockJobs.EXPECT().
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Job{
+				{ID: 1, Name: "test", Stage: "test", Status: "canceled"},
+			}, &gitlab.Response{NextPage: 0}, nil),
+
+		// Canceled-supersede check: a newer pipeline now exists for the branch.
+		tc.MockPipelines.EXPECT().
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
+			Return(&gitlab.Pipeline{ID: 2, Status: "success"}, nil, nil),
+		tc.MockJobs.EXPECT().
+			ListPipelineJobs("OWNER/REPO", int64(2), gomock.Any()).
+			Return([]*gitlab.Job{{ID: 2, Name: "test"}}, nil, nil),
+	)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdStatus, false,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBranch("main"),
+	)
+
+	_, err := exec("--live")
+	require.NoError(t, err)
+	// gomock.InOrder above asserts that the canceled-supersede check re-queried
+	// for the latest pipeline after seeing the canceled status.
+}
+
+func TestCiStatusCommand_Live_CanceledNoNewerPipeline(t *testing.T) {
+	// Intentionally not t.Parallel(): see comment in
+	// TestCiStatusCommand_Live_CanceledSuperseded.
+
+	// When --live encounters a canceled pipeline and no newer pipeline exists
+	// for the branch, exit cleanly instead of looping forever.
+	tc := gitlabtesting.NewTestClient(t)
+
+	gomock.InOrder(
+		// Initial fetch: returns canceled pipeline ID=1.
+		tc.MockPipelines.EXPECT().
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
+			Return(&gitlab.Pipeline{ID: 1, Status: "canceled"}, nil, nil),
+		tc.MockJobs.EXPECT().
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Job{{ID: 1, Name: "test"}}, nil, nil),
+
+		// Loop iteration 1: list jobs.
+		tc.MockJobs.EXPECT().
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Job{
+				{ID: 1, Name: "test", Stage: "test", Status: "canceled"},
+			}, &gitlab.Response{NextPage: 0}, nil),
+
+		// Canceled-supersede check: same ID returned, so we exit.
+		tc.MockPipelines.EXPECT().
+			GetLatestPipeline("OWNER/REPO", &gitlab.GetLatestPipelineOptions{Ref: new("main")}, gomock.Any()).
+			Return(&gitlab.Pipeline{ID: 1, Status: "canceled"}, nil, nil),
+		tc.MockJobs.EXPECT().
+			ListPipelineJobs("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Job{{ID: 1, Name: "test"}}, nil, nil),
+	)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdStatus, false,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithBranch("main"),
+	)
+
+	_, err := exec("--live")
+	require.NoError(t, err)
+}
+
 func TestCiStatus_JSON(t *testing.T) {
 	t.Parallel()
 
