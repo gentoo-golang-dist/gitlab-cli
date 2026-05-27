@@ -121,7 +121,7 @@ func Test_deleteMergeRequest(t *testing.T) {
 			assertFunc: func(t *testing.T, out, outErr string, err error) {
 				t.Helper()
 
-				assert.Equal(t, `no open merge request available for "master"`, err.Error())
+				assert.Equal(t, `no merge request available for "master"`, err.Error())
 			},
 		},
 	}
