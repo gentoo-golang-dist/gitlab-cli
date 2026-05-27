@@ -59,8 +59,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&opts.includeTags, "include-tags", false, "Include tags in the response.")
-	cmd.Flags().BoolVar(&opts.includeTagsCount, "include-tags-count", true, "Include the number of tags in the response.")
+	fl := cmd.Flags()
+	fl.BoolVar(&opts.includeTags, "include-tags", false, "Include tags in the response.")
+	fl.BoolVar(&opts.includeTagsCount, "include-tags-count", true, "Include the number of tags in the response.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd

@@ -83,26 +83,38 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := opts.validate(); err != nil {
+				return err
+			}
+
 			return opts.run()
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "List container registry repositories for a group.")
-	cmd.Flags().BoolVar(&opts.includeTags, "include-tags", false, "Include tags in the response. Project repositories only.")
-	cmd.Flags().BoolVar(&opts.includeTagDetails, "include-tag-details", false, "Fetch digest, size, and creation time for included tags. Project repositories only. Implies --include-tags.")
-	cmd.Flags().BoolVar(&opts.includeTagsCount, "include-tags-count", true, "Include the number of tags in the response. Project repositories only.")
-	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
+	fl := cmd.Flags()
+	fl.StringVarP(&opts.group, "group", "g", "", "List container registry repositories for a group.")
+	fl.BoolVar(&opts.includeTags, "include-tags", false, "Include tags in the response. Project repositories only.")
+	fl.BoolVar(&opts.includeTagDetails, "include-tag-details", false, "Fetch digest, size, and creation time for included tags. Project JSON output only. Implies --include-tags.")
+	fl.BoolVar(&opts.includeTagsCount, "include-tags-count", true, "Include the number of tags in the response. Project repositories only.")
+	fl.IntVarP(&opts.page, "page", "p", 1, "Page number.")
+	fl.IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
 }
 
-func (o *options) run() error {
+func (o *options) validate() error {
 	if o.group != "" && o.includeTagDetails {
 		return &cmdutils.FlagError{Err: fmt.Errorf("--include-tag-details is only available for project repositories")}
 	}
+	if o.includeTagDetails && o.outputFormat != "json" {
+		return &cmdutils.FlagError{Err: fmt.Errorf("--include-tag-details requires --output json")}
+	}
 
+	return nil
+}
+
+func (o *options) run() error {
 	client, err := o.gitlabClient()
 	if err != nil {
 		return err

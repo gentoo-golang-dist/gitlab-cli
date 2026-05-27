@@ -138,12 +138,10 @@ func TestDisplayRepository(t *testing.T) {
 func TestDisplayTags(t *testing.T) {
 	t.Parallel()
 
-	io, _, _, _ := cmdtest.TestIOStreams()
-
 	t.Run("empty slice", func(t *testing.T) {
 		t.Parallel()
 
-		got := DisplayTags(io, []*gitlab.RegistryRepositoryTag{})
+		got := DisplayTags([]*gitlab.RegistryRepositoryTag{})
 
 		assert.Contains(t, got, "Name")
 		assert.Contains(t, got, "Location")
@@ -152,7 +150,7 @@ func TestDisplayTags(t *testing.T) {
 	t.Run("nil fields", func(t *testing.T) {
 		t.Parallel()
 
-		got := DisplayTags(io, []*gitlab.RegistryRepositoryTag{
+		got := DisplayTags([]*gitlab.RegistryRepositoryTag{
 			{
 				Name:      "latest",
 				Path:      "group/project/app:latest",

@@ -70,7 +70,7 @@ func DisplayRepository(io *iostreams.IOStreams, repository *gitlab.RegistryRepos
 	return fmt.Sprintf("%s\n%s", c.Bold(repository.Path), table.Render())
 }
 
-func DisplayTags(io *iostreams.IOStreams, tags []*gitlab.RegistryRepositoryTag) string {
+func DisplayTags(tags []*gitlab.RegistryRepositoryTag) string {
 	table := tableprinter.NewTablePrinter()
 	table.AddRow("Name", "Path", "Location")
 

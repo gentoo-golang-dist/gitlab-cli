@@ -43,7 +43,7 @@ glab container-registry repository list --group gitlab-org
 
 ```plaintext
   -g, --group string          List container registry repositories for a group.
-      --include-tag-details   Fetch digest, size, and creation time for included tags. Project repositories only. Implies --include-tags.
+      --include-tag-details   Fetch digest, size, and creation time for included tags. Project JSON output only. Implies --include-tags.
       --include-tags          Include tags in the response. Project repositories only.
       --include-tags-count    Include the number of tags in the response. Project repositories only. (default true)
   -F, --output string         Format output as: text, json. (default "text")

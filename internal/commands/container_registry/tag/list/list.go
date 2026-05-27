@@ -129,7 +129,7 @@ func (o *options) run() error {
 		if o.details {
 			fmt.Fprintf(o.io.StdOut, "%s\n", registryutils.DisplayTagsWithDetails(o.io, tags))
 		} else {
-			fmt.Fprintf(o.io.StdOut, "%s\n", registryutils.DisplayTags(o.io, tags))
+			fmt.Fprintf(o.io.StdOut, "%s\n", registryutils.DisplayTags(tags))
 		}
 	}
 

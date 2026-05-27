@@ -257,6 +257,16 @@ func Test_RepositoryList_TagDetailsRejectsGroup(t *testing.T) {
 	assert.Equal(t, "--include-tag-details is only available for project repositories", err.Error())
 }
 
+func Test_RepositoryList_TagDetailsRequiresJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false)
+
+	_, err := exec("--include-tag-details")
+	require.Error(t, err)
+	assert.Equal(t, "--include-tag-details requires --output json", err.Error())
+}
+
 func Test_RepositoryList_EmptyResults(t *testing.T) {
 	t.Parallel()
 
