@@ -45,8 +45,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 			l := &gitlab.ListProjectPipelinesOptions{
 				ListOptions: gitlab.ListOptions{
-					Page:    1,
-					PerPage: 30,
+					Page: 1,
 				},
 			}
 
@@ -136,7 +135,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	_ = pipelineListCmd.Flags().MarkDeprecated("orderBy", "use --order instead")
 	pipelineListCmd.Flags().StringP("sort", "", "desc", "Sort direction for '--order': asc or desc.")
 	pipelineListCmd.Flags().IntP("page", "p", 1, "Page number.")
-	pipelineListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
+	pipelineListCmd.Flags().IntP("per-page", "P", 0, "Number of items to list per page. Defaults to the GitLab API default (20).")
 	pipelineListCmd.Flags().StringP("output", "F", "text", "Format output. Options: text, json.")
 	pipelineListCmd.Flags().StringP("ref", "r", "", "Return only pipelines for the given ref.")
 	pipelineListCmd.Flags().String("scope", "", "Return only pipelines with the given scope. Options: running, pending, finished, branches, tags.")
