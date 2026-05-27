@@ -16,6 +16,12 @@ Work with GitLab container registries.
 
 List and manage GitLab container registry repositories and tags.
 
+## Aliases
+
+```plaintext
+cr
+```
+
 ## Examples
 
 ```console

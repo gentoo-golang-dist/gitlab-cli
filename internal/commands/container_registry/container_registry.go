@@ -11,8 +11,9 @@ import (
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "container-registry <command> [flags]",
-		Short: "Work with GitLab container registries.",
+		Use:     "container-registry <command> [flags]",
+		Short:   "Work with GitLab container registries.",
+		Aliases: []string{"cr"},
 		Long: heredoc.Doc(`
 			List and manage GitLab container registry repositories and tags.
 		`),
