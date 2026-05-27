@@ -240,8 +240,9 @@ func listPipelineIDs(apiClient *gitlab.Client, repoName string, paginate bool, o
 		}
 
 		opts.Page = resp.NextPage
-		hasRemaining = paginate && resp.CurrentPage != resp.TotalPages
-		// If we're exiting the loop with more pages still available, results are truncated.
+		// NextPage is reliable even when X-Total-Pages is absent (large result sets);
+		// CurrentPage != TotalPages would loop forever in that case.
+		hasRemaining = paginate && resp.NextPage > 0
 		if !hasRemaining && resp.NextPage > 0 {
 			truncated = true
 		}
