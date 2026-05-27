@@ -59,7 +59,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	fl := cmd.Flags()
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")

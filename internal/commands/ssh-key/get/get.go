@@ -61,7 +61,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	return cmd
 }

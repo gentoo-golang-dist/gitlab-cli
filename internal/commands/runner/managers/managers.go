@@ -57,7 +57,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			return opts.run(cmd.Context())
 		},
 	}
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 	cmdutils.EnableRepoOverride(cmd, f)
 	return cmd
 }

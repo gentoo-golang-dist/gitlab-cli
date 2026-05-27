@@ -53,7 +53,7 @@ func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
 	projectSearchCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	projectSearchCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
 	projectSearchCmd.Flags().StringVarP(&opts.search, "search", "s", "", "A string contained in the project name.")
-	cmdutils.EnableJSONOutput(projectSearchCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(projectSearchCmd, opts.io, &opts.outputFormat)
 	cobra.CheckErr(projectSearchCmd.MarkFlagRequired("search"))
 
 	return projectSearchCmd

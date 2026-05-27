@@ -82,6 +82,7 @@ func NewCmdAgentGetToken(f cmdutils.Factory) *cobra.Command {
 	agentutils.AddTokenCacheModeFlag(fl, &opts.cacheMode)
 	cobra.CheckErr(agentGetTokenCmd.MarkFlagRequired("agent"))
 
+	cmdutils.AddJQFlag(agentGetTokenCmd, f.IO())
 	return agentGetTokenCmd
 }
 

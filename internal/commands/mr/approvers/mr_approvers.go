@@ -71,7 +71,7 @@ func NewCmdApprovers(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutils.EnableJSONOutput(mrApproversCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(mrApproversCmd, opts.io, &opts.outputFormat)
 
 	return mrApproversCmd
 }

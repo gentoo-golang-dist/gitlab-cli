@@ -101,7 +101,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.directoryPath, "directory-path", "d", "", "Restrict search to files under this path (e.g. app/services/).")
 	fl.IntVar(&opts.knn, "knn", 0, "Nearest neighbours to retrieve (1–100). Defaults to 64 server-side.")
 	fl.IntVarP(&opts.limit, "limit", "l", 0, "Maximum number of results (1–100). Defaults to 20 server-side.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	cobra.CheckErr(cmd.MarkFlagRequired("query"))
 

@@ -105,7 +105,7 @@ for group-level work items or -R to specify a different project.
 
 	// Enable -R flag for repo override
 	cmdutils.EnableRepoOverride(cmd, f)
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	// Flags
 	cmd.Flags().StringP("group", "g", "", "List work items for a group or subgroup.")

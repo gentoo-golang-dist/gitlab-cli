@@ -53,7 +53,7 @@ func NewCmdAgentList(f cmdutils.Factory) *cobra.Command {
 	}
 	agentListCmd.Flags().UintVarP(&opts.page, "page", "p", 1, "Page number.")
 	agentListCmd.Flags().UintVarP(&opts.perPage, "per-page", "P", uint(api.DefaultListLimit), "Number of items to list per page.")
-	cmdutils.EnableJSONOutput(agentListCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(agentListCmd, opts.io, &opts.outputFormat)
 
 	return agentListCmd
 }

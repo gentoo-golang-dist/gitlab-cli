@@ -95,6 +95,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("namespace-id", "project-id", "full-path")
 	cmd.MarkFlagsOneRequired("namespace-id", "project-id", "full-path")
 
+	cmdutils.AddJQFlag(cmd, f.IO())
 	return cmd
 }
 
