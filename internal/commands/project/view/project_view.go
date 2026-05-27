@@ -2,7 +2,6 @@ package view
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -172,7 +171,7 @@ func (o *options) run() error {
 			o.browser,
 		)
 	} else if o.outputFormat == "json" {
-		printProjectContentJSON(o, project)
+		return printProjectContentJSON(o, project)
 	} else {
 		readmeFile, err := getReadmeFile(o, project)
 		if err != nil {
@@ -283,7 +282,6 @@ func printProjectContentRaw(opts *options, project *gitlab.Project, readme *gitl
 	}
 }
 
-func printProjectContentJSON(opts *options, project *gitlab.Project) {
-	projectJSON, _ := json.Marshal(project)
-	fmt.Fprintln(opts.io.StdOut, string(projectJSON))
+func printProjectContentJSON(opts *options, project *gitlab.Project) error {
+	return opts.io.PrintJSON(project)
 }

@@ -63,9 +63,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	writeResponse := func(resp responseType) error {
 		io := f.IO()
-		enc := json.NewEncoder(io.StdOut)
+		enc := json.NewEncoder(io.StdOut) //nolint:forbidigo // git credential helper protocol writes JSON to both stdout and stderr; PrintJSON only handles stdout
 		if err := enc.Encode(resp); err != nil {
-			errEnc := json.NewEncoder(io.StdErr)
+			errEnc := json.NewEncoder(io.StdErr) //nolint:forbidigo // git credential helper protocol error response on stderr
 			if err := errEnc.Encode(errorResponse{Message: err.Error()}); err != nil {
 				return err
 			}

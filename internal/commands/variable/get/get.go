@@ -1,7 +1,6 @@
 package get
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -102,8 +101,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varJSON, _ := json.Marshal(variable)
-			fmt.Println(string(varJSON))
+			if err := o.io.PrintJSON(variable); err != nil {
+				return err
+			}
 		}
 		variableValue = variable.Value
 	} else {
@@ -119,8 +119,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varJSON, _ := json.Marshal(variable)
-			fmt.Fprintln(o.io.StdOut, string(varJSON))
+			if err := o.io.PrintJSON(variable); err != nil {
+				return err
+			}
 		}
 		variableValue = variable.Value
 	}

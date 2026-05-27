@@ -231,7 +231,7 @@ func TestWorkItemsList(t *testing.T) {
 						return &gitlab.Response{}, nil
 					})
 			},
-			wantOutput: `"iid": "1"`,
+			wantOutput: `"iid":"1"`,
 		},
 		{
 			name: "handles pagination with cursor",

@@ -187,7 +187,7 @@ func (c *cache) createAndCacheToken() (*gitlab.PersonalAccessToken, error) {
 		return nil, err
 	}
 
-	data, err := json.Marshal(token)
+	data, err := json.Marshal(token) //nolint:forbidigo // cached token is stored in keyring, not stdout
 	if err != nil {
 		return nil, err
 	}

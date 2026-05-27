@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -126,8 +125,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			labelListJSON, _ := json.Marshal(labels)
-			fmt.Fprintln(o.io.StdOut, string(labelListJSON))
+			if err := o.io.PrintJSON(labels); err != nil {
+				return err
+			}
 		} else {
 			fmt.Fprintf(o.io.StdOut, "Showing label %d of %d for group %s.\n\n", len(labels), len(labels), o.group)
 			for _, label := range labels {
@@ -146,8 +146,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			labelListJSON, _ := json.Marshal(labels)
-			fmt.Fprintln(o.io.StdOut, string(labelListJSON))
+			if err := o.io.PrintJSON(labels); err != nil {
+				return err
+			}
 		} else {
 			fmt.Fprintf(o.io.StdOut, "Showing label %d of %d on %s.\n\n", len(labels), len(labels), repo.FullName())
 			for _, label := range labels {

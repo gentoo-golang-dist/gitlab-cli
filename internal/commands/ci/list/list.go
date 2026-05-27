@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -124,8 +123,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 			title.CurrentPageTotal = len(pipes)
 
 			if jsonOut {
-				pipeListJSON, _ := json.Marshal(pipes)
-				fmt.Fprintln(f.IO().StdOut, string(pipeListJSON))
+				return f.IO().PrintJSON(pipes)
 			} else {
 				fmt.Fprintf(f.IO().StdOut, "%s\n%s\n", title.Describe(), ciutils.DisplayMultiplePipelines(f.IO(), pipes, repo.FullName()))
 			}

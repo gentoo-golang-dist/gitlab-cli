@@ -475,7 +475,7 @@ func streamNDJSON(body io.Reader, out io.Writer) error {
 		tokenStr = string(rune(v))
 	default:
 		// For primitive values (string, number, bool, null), marshal back to JSON
-		b, _ := json.Marshal(v)
+		b, _ := json.Marshal(v) //nolint:forbidigo // re-encoding a parsed JSON token value into a string, not writing to stdout
 		tokenStr = string(b)
 	}
 

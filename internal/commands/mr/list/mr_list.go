@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -358,8 +357,7 @@ func (o *options) run() error {
 	title.CurrentPageTotal = len(mergeRequests)
 
 	if jsonOutput {
-		mrListJSON, _ := json.Marshal(mergeRequests)
-		fmt.Fprintln(o.io.StdOut, string(mrListJSON))
+		return o.io.PrintJSON(mergeRequests)
 	} else {
 		if err = o.io.StartPager(); err != nil {
 			return err

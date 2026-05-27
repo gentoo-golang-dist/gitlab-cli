@@ -2,7 +2,6 @@ package view
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -155,7 +154,7 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, args []string) er
 
 	switch {
 	case o.outputFormat == "json":
-		printJSONMR(o, mr, discussions)
+		return printJSONMR(o, mr, discussions)
 	case o.io.IsOutputTTY():
 		printTTYMRPreview(o, mr, mrApprovals, discussions)
 	default:
@@ -326,13 +325,9 @@ func rawMRPreview(opts *options, mr *gitlab.MergeRequest, discussions []*gitlab.
 	return out.String()
 }
 
-func printJSONMR(opts *options, mr *gitlab.MergeRequest, discussions []*gitlab.Discussion) {
+func printJSONMR(opts *options, mr *gitlab.MergeRequest, discussions []*gitlab.Discussion) error {
 	if opts.showComments {
-		extendedMR := MRWithDiscussions{mr, discussions}
-		mrJSON, _ := json.Marshal(extendedMR)
-		fmt.Fprintln(opts.io.StdOut, string(mrJSON))
-	} else {
-		mrJSON, _ := json.Marshal(mr)
-		fmt.Fprintln(opts.io.StdOut, string(mrJSON))
+		return opts.io.PrintJSON(MRWithDiscussions{mr, discussions})
 	}
+	return opts.io.PrintJSON(mr)
 }

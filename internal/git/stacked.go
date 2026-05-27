@@ -123,7 +123,7 @@ func AddStackRefFile(title string, stackRef StackRef) error {
 		return fmt.Errorf("error determining Git root: %v", err)
 	}
 
-	initialJsonData, err := json.Marshal(stackRef)
+	initialJsonData, err := json.Marshal(stackRef) //nolint:forbidigo // stack reference is written to disk, not stdout
 	if err != nil {
 		return fmt.Errorf("error marshaling data: %v", err)
 	}
@@ -169,7 +169,7 @@ func UpdateStackRefFile(title string, s StackRef) error {
 
 	fullPath := filepath.Join(refDir, s.SHA+".json")
 
-	initialJsonData, err := json.Marshal(s)
+	initialJsonData, err := json.Marshal(s) //nolint:forbidigo // stack ref file is written to disk, not stdout
 	if err != nil {
 		return fmt.Errorf("error marshaling data: %v", err)
 	}

@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -117,8 +116,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			iterationListJSON, _ := json.Marshal(iterations)
-			fmt.Fprintln(o.io.StdOut, string(iterationListJSON))
+			if err := o.io.PrintJSON(iterations); err != nil {
+				return err
+			}
 		} else {
 			fmt.Fprintf(o.io.StdOut, "Showing iteration %d of %d for group %s.\n\n", len(iterations), len(iterations), o.group)
 			for _, iteration := range iterations {
@@ -136,8 +136,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			iterationListJSON, _ := json.Marshal(iterations)
-			fmt.Fprintln(o.io.StdOut, string(iterationListJSON))
+			if err := o.io.PrintJSON(iterations); err != nil {
+				return err
+			}
 		} else {
 			fmt.Fprintf(o.io.StdOut, "Showing iteration %d of %d on %s.\n\n", len(iterations), len(iterations), repo.FullName())
 			for _, iteration := range iterations {

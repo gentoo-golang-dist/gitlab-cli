@@ -21,6 +21,6 @@ func (s *IOStreams) PrintJSON(v any) error {
 		v = reflect.MakeSlice(rv.Type(), 0, 0).Interface()
 	}
 
-	encoder := json.NewEncoder(s.StdOut)
+	encoder := json.NewEncoder(s.StdOut) //nolint:forbidigo // this is the PrintJSON helper itself
 	return encoder.Encode(v)
 }

@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -120,9 +119,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varListJSON, _ := json.Marshal(variables)
-			fmt.Fprintln(o.io.StdOut, string(varListJSON))
-
+			if err := o.io.PrintJSON(variables); err != nil {
+				return err
+			}
 		} else {
 			table.AddRow("KEY", "PROTECTED", "MASKED", "HIDDEN", "EXPANDED", "SCOPE", "DESCRIPTION")
 			for _, variable := range variables {
@@ -144,9 +143,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varListJSON, _ := json.Marshal(variables)
-			fmt.Fprintln(o.io.StdOut, string(varListJSON))
-
+			if err := o.io.PrintJSON(variables); err != nil {
+				return err
+			}
 		} else {
 			table.AddRow("KEY", "PROTECTED", "MASKED", "EXPANDED", "SCOPE", "DESCRIPTION")
 			for _, variable := range variables {
@@ -172,8 +171,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varListJSON, _ := json.Marshal(variables)
-			fmt.Fprintln(o.io.StdOut, string(varListJSON))
+			if err := o.io.PrintJSON(variables); err != nil {
+				return err
+			}
 		} else {
 			table.AddRow("KEY", "PROTECTED", "MASKED", "HIDDEN", "EXPANDED", "SCOPE", "DESCRIPTION")
 			for _, variable := range variables {
