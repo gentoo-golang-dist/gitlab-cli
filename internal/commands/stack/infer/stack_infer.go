@@ -172,6 +172,7 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 
 	var createdBranches []string
 	var createdRefs []git.StackRef
+	modifiedRefs := make(map[string]git.StackRef) // original state of existing refs we modified
 
 	rollback := func() {
 		restoreOriginalBranch()
@@ -180,6 +181,9 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 		}
 		for _, ref := range createdRefs {
 			_ = git.DeleteStackRefFile(title, ref)
+		}
+		for _, originalRef := range modifiedRefs {
+			_ = git.UpdateStackRefFile(title, originalRef)
 		}
 	}
 
@@ -222,6 +226,9 @@ func createBranches(f cmdutils.Factory, gr git.GitRunner, commits []string, titl
 
 		if prevSHA != "" {
 			prevRef := stack.Refs[prevSHA]
+			if _, tracked := modifiedRefs[prevSHA]; !tracked {
+				modifiedRefs[prevSHA] = prevRef // save original state before mutation
+			}
 			prevRef.Next = stackSHA
 			err = git.UpdateStackRefFile(title, prevRef)
 			if err != nil {
