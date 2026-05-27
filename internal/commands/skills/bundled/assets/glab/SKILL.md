@@ -26,12 +26,14 @@ glab mr create --push --title "fix: title" --description "$(cat /tmp/desc.md)"
 glab mr view <iid>
 glab mr list --assignee <user>
 glab mr update <iid> --description "$(cat /tmp/desc.md)"
+glab mr note create <iid> -m "comment text"
 
 # CI/CD
-glab ci status
-glab ci list
-glab ci trace <job-id>
-glab ci retry <pipeline-id>
+glab ci status                                   # current branch
+glab ci status --output json                     # programmatic
+glab ci list                                     # recent pipelines
+glab ci get --merge-request <iid> --status=failed --with-job-details
+glab ci retry <job-id>                           # non-interactive with ID
 
 # Machine-readable output
 glab mr list --output json | jq '.[].title'
@@ -45,35 +47,41 @@ with `group/project#123`.
 
 ## Non-interactive use (agents)
 
-Never rely on commands that open `$EDITOR` — they block waiting for a TTY.
-The interactive paths in `glab` are:
+Never rely on commands that open `$EDITOR` or stream output — they block
+waiting for a TTY. The interactive paths in `glab` are:
 
 - `glab issue note <iid>` / `glab incident note <iid>` without `-m`
-- `glab mr note <iid>` / `glab mr note create <iid>` without `-m` **on a TTY**
-  (on a pipe, these read stdin instead — see below)
+- `glab mr note create <iid>` without `-m` **on a TTY** (on a pipe, it
+  reads stdin instead — see below)
 - `--description "-"` on `glab issue create`, `glab mr create`, `glab mr update`
+- `glab ci trace` (streams a job log in real time) — use `glab ci get` instead
+- `glab ci view` (terminal UI) — use `glab ci status` or `glab ci get` instead
 
 Always pass `-m`, pipe to stdin where supported, or pass an explicit
 `--description` value.
 
 ## Comments and discussions
 
+`glab mr note` is the legacy entrypoint and its `--message` / `--unique` /
+`--resolve` / `--unresolve` flags are deprecated in favor of the `mr note`
+subcommands (`create`, `resolve`, `reopen`). Always use the subcommand form.
+
 ### Short, inline bodies — pass `-m`
 
 ```shell
-glab issue note    <iid> -m "comment text"
-glab mr note       <iid> -m "comment text"
-glab incident note <iid> -m "comment text"
+glab issue note        <iid> -m "comment text"
+glab mr note create    <iid> -m "comment text"
+glab incident note     <iid> -m "comment text"
 
 # Cross-project
-glab mr note <iid> -m "..." --repo group/project
+glab mr note create <iid> -m "..." --repo group/project
 ```
 
 ### Long or Markdown bodies — pipe to stdin (preferred for MR notes)
 
-`glab mr note` and `glab mr note create` read the body from stdin when their
-input is a pipe. This avoids shell-quoting pitfalls (backticks, `$`,
-backslashes) and is the safest pattern for non-interactive use.
+`glab mr note create` reads the body from stdin when its input is a pipe.
+This avoids shell-quoting pitfalls (backticks, `$`, backslashes) and is the
+safest pattern for non-interactive use.
 
 ```shell
 # From a file
@@ -118,8 +126,17 @@ glab mr note create  <iid> --file main.go --line 42 -m "Needs refactoring"
 glab mr note create  <iid> --file main.go --line 10:15 -m "Extract this block"
 glab mr note create  <iid> --file main.go --old-line 7 -m "Why was this removed?"
 glab mr note create  <iid> --file main.go -m "General comment on this file"
-glab mr note create  <iid> -m "LGTM" --unique   # idempotent: skip if same body exists
+glab mr note create  <iid> -m "LGTM" --unique    # idempotent: skip if same body exists
+```
+
+`glab mr note resolve` / `reopen` take the MR identifier followed by the
+discussion identifier. The identifier can be a discussion ID (full 40-char
+hex or 8+ char prefix) or a note ID (integer; the parent discussion is
+looked up automatically):
+
+```shell
 glab mr note resolve <iid> <discussion-id>
+glab mr note resolve <iid> <note-id>           # integer note ID also works
 glab mr note reopen  <iid> <discussion-id>
 ```
 
@@ -136,6 +153,30 @@ glab api projects/:id/issues/<iid>/discussions \
 glab api projects/:id/issues/<iid>/discussions/<discussion-id>/notes \
   -f body="reply text"
 ```
+
+## CI/CD pipeline inspection
+
+For agent use, prefer the non-streaming commands:
+
+```shell
+# Current branch status (one-shot, exits immediately)
+glab ci status
+glab ci status --output json                     # programmatic
+
+# Inspect a specific pipeline
+glab ci get --pipeline-id <id> --output json
+glab ci get --merge-request <iid> --with-job-details
+glab ci get --merge-request <iid> --status=failed --with-job-details
+
+# Retry a failed job by ID (non-interactive when ID is provided)
+glab ci retry <job-id>
+
+# Read a finished job's log without streaming
+glab api projects/:id/jobs/<job-id>/trace
+```
+
+Avoid `glab ci trace` (streams output — doesn't exit until the job
+finishes) and `glab ci view` (interactive terminal UI).
 
 ## API calls
 
@@ -174,8 +215,12 @@ glab api projects/:id/issues/:iid/notes \
 
 - **`-m` is required on `note` commands** — without it, `glab issue note` and
   `glab incident note` open `$EDITOR` (which hangs in non-interactive
-  environments). `glab mr note` and `glab mr note create` fall back to
-  reading stdin on a pipe, but still open `$EDITOR` on a TTY.
+  environments). `glab mr note create` falls back to reading stdin on a pipe,
+  but still opens `$EDITOR` on a TTY.
+- **Use `glab mr note create`, not `glab mr note -m`** — the `--message`,
+  `--unique`, `--resolve`, and `--unresolve` flags on the root `glab mr note`
+  command are deprecated. Use the `create`, `resolve`, and `reopen`
+  subcommands instead.
 - **Editor-opening flags are unsafe in agent environments** — avoid
   `--description "-"` on `issue create` / `mr create` / `mr update` and
   avoid omitting `-m` on `note` commands. Pass an explicit value or pipe
@@ -187,6 +232,11 @@ glab api projects/:id/issues/:iid/notes \
   --input file.json` sends raw bytes without setting Content-Type, causing
   HTTP 415. Add `-H "Content-Type: application/json"` or use `-f` / `-F`
   instead.
+- **`glab ci retry` takes a job ID, not a pipeline ID** — to retry an
+  entire pipeline, use `glab api projects/:id/pipelines/<id>/retry -X POST`.
+- **`glab ci trace` streams** — it blocks until the job finishes. For
+  agents, use `glab ci get` for pipeline state or
+  `glab api projects/:id/jobs/<job-id>/trace` to fetch a finished log.
 - **Always `--push` on `glab mr create`** — without it the remote branch
   may not exist and MR creation fails.
 - **No `--state` on `mr list`** — use `--all`, `--merged`, or `--closed`.
