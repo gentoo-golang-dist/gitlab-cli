@@ -58,7 +58,8 @@ Integration tests are tagged `//go:build integration`, use the file suffix
 are not run by `make test`. To run them, use `make integration-test-race`,
 which adds `-tags=integration`. They call a real GitLab instance. Locally
 they are skipped unless both `GITLAB_TEST_HOST` and `GITLAB_TOKEN_TEST` are
-set (see `test/helpers.go:123`). The token must have the `api` scope. The
+set (see `GetHostOrSkip` in `test/helpers.go`). The token must have the
+`api` scope. The
 `glab duo` tests require a GitLab Duo-enabled user.
 
 ## Documentation is generated
@@ -77,9 +78,9 @@ set (see `test/helpers.go:123`). The token must have the `api` scope. The
 `.golangci.yml` enforces the following rules:
 
 - Do not send raw JSON to stdout. Use `iostreams.IOStreams.PrintJSON()`
-  instead of `json.Marshal` for stdout output. For non-stdout
-  serialization, add `//nolint:forbidigo` with a reason. See the
-  `forbidigo` configuration.
+  instead of `json.Marshal` or `json.NewEncoder` for stdout output. For
+  non-stdout serialization, add `//nolint:forbidigo` with a reason. See
+  the `forbidigo` configuration.
 - Imports of `internal/cmdutils` are forbidden outside
   `internal/commands/**`.
 - Pre-push runs `golangci-lint run --new-from-rev=origin/main`, which only
