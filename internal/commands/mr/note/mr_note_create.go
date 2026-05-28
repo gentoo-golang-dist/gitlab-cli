@@ -74,9 +74,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			cannot be used together.
 			- %[1]s--file%[1]s, %[1]s--reply%[1]s, and %[1]s--unique%[1]s are mutually
 			exclusive.
-			- %[1]s--resolvable=false%[1]s, %[1]s--reply%[1]s, and %[1]s--file%[1]s
-			are mutually exclusive. This restriction also applies to %[1]s--line%[1]s
-			and %[1]s--old-line%[1]s, which require a %[1]s--file%[1]s value.
+			- %[1]s--resolvable=false%[1]s cannot be combined with %[1]s--reply%[1]s
+			or %[1]s--file%[1]s (and by extension %[1]s--line%[1]s or
+			%[1]s--old-line%[1]s).
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
@@ -117,6 +117,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := opts.validateFlags(); err != nil {
+				return err
+			}
 			if err := opts.complete(cmd, args); err != nil {
 				return err
 			}
@@ -140,8 +143,6 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	cmd.MarkFlagsMutuallyExclusive("reply", "file")
 	cmd.MarkFlagsMutuallyExclusive("unique", "file")
 	cmd.MarkFlagsMutuallyExclusive("line", "old-line")
-	cmd.MarkFlagsMutuallyExclusive("resolvable", "reply")
-	cmd.MarkFlagsMutuallyExclusive("resolvable", "file")
 
 	return cmd
 }
@@ -193,6 +194,18 @@ func (o *createOptions) complete(cmd *cobra.Command, args []string) error {
 		o.position = position
 	}
 
+	return nil
+}
+
+func (o *createOptions) validateFlags() error {
+	if !o.resolvable {
+		if o.reply != "" {
+			return fmt.Errorf("--resolvable=false cannot be used with --reply")
+		}
+		if o.filePath != "" {
+			return fmt.Errorf("--resolvable=false cannot be used with --file, --line, or --old-line")
+		}
+	}
 	return nil
 }
 

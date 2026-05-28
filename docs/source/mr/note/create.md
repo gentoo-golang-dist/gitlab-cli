@@ -37,9 +37,9 @@ The flag rules are:
 cannot be used together.
 - `--file`, `--reply`, and `--unique` are mutually
 exclusive.
-- `--resolvable=false`, `--reply`, and `--file`
-are mutually exclusive. This restriction also applies to `--line`
-and `--old-line`, which require a `--file` value.
+- `--resolvable=false` cannot be combined with `--reply`
+or `--file` (and by extension `--line` or
+`--old-line`).
 
 This feature is an experiment and is not ready for production use.
 It might be unstable or removed at any time.
