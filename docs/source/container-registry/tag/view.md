@@ -23,7 +23,7 @@ glab container-registry tag view <repository-id> <tag-name> [flags]
 ## Aliases
 
 ```plaintext
-get
+show
 ```
 
 ## Examples

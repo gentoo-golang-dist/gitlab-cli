@@ -39,7 +39,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			View details for a single container registry repository.
 		`),
-		Aliases: []string{"get"},
+		Aliases: []string{"show"},
 		Args:    cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
 			# View a container registry repository
