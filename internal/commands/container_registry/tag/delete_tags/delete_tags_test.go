@@ -58,6 +58,26 @@ func Test_DeleteTags_RequiresNameRegexDelete(t *testing.T) {
 	assert.Equal(t, "--name-regex-delete is required", err.Error())
 }
 
+func Test_DeleteTags_RejectsInvalidNameRegexDelete(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false)
+
+	_, err := exec("101 --name-regex-delete '[' --yes")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--name-regex-delete is not a valid regular expression")
+}
+
+func Test_DeleteTags_RejectsInvalidNameRegexKeep(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false)
+
+	_, err := exec("101 --name-regex-delete '.*' --name-regex-keep '[' --yes")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--name-regex-keep is not a valid regular expression")
+}
+
 func Test_DeleteTags_RequiresConfirmationWithFilters(t *testing.T) {
 	t.Parallel()
 

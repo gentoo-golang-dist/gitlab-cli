@@ -3,6 +3,7 @@ package delete_tags
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -90,6 +91,14 @@ func (o *options) complete(args []string) error {
 func (o *options) validate() error {
 	if o.nameRegexDelete == "" {
 		return &cmdutils.FlagError{Err: fmt.Errorf("--name-regex-delete is required")}
+	}
+	if _, err := regexp.Compile(o.nameRegexDelete); err != nil {
+		return &cmdutils.FlagError{Err: fmt.Errorf("--name-regex-delete is not a valid regular expression: %w", err)}
+	}
+	if o.nameRegexKeep != "" {
+		if _, err := regexp.Compile(o.nameRegexKeep); err != nil {
+			return &cmdutils.FlagError{Err: fmt.Errorf("--name-regex-keep is not a valid regular expression: %w", err)}
+		}
 	}
 	if o.keepN < 0 {
 		return &cmdutils.FlagError{Err: fmt.Errorf("--keep-n must be zero or a positive integer")}
