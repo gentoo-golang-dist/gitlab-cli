@@ -1,165 +1,117 @@
-# glab CLI - Agent Instructions
+# glab CLI agent instructions
 
-## Quick Start
+Go-based GitLab CLI. Entrypoint: `cmd/glab/main.go`. Commands live under
+`internal/commands/<noun>/<verb>/` (noun-first grammar, for example,
+`glab mr create`).
 
-**Build:** `make build` (or `go build -o bin/glab ./cmd/glab`)  
-**Test:** `make test` (or `go test ./...`)  
-**Lint:** `make lint` (or `golangci-lint run`)  
-**Fix lint:** `make fix` (auto-fixes gofmt, goimports, golangci-lint)
+## Project structure
 
-## Project Structure
+- `cmd/glab/` - CLI entrypoint; sets up Cobra root command and theme.
+- `cmd/gen-docs/` - Doc generator invoked by `make gen-docs`.
+- `internal/commands/` - Command implementations, one package per command.
+- `internal/cmdutils/` - Shared command-building helpers. Only
+  `internal/commands/**` can import this, enforced by `depguard` in
+  `.golangci.yml`.
+- `internal/api/`, `internal/auth/`, `internal/config/`, `internal/git/`,
+  `internal/glrepo/`, `internal/iostreams/` - Shared infrastructure.
+- `docs/source/` - Generated from Go source. Never edit directly.
 
-- **`cmd/glab/main.go`** - CLI entrypoint; sets up Cobra root command and theme
-- **`internal/commands/`** - Command implementations organized by feature (mr, issue, ci, etc.)
-- **`internal/cmdutils/`** - Shared utilities for command building (only imported by `internal/commands/`)
-- **`internal/api/`** - GitLab API client wrappers
-- **`internal/config/`** - Configuration file handling (XDG Base Directory spec)
-- **`internal/auth/`** - Authentication (OAuth, tokens, CI job tokens)
-- **`internal/git/`** - Git operations
-- **`internal/glrepo/`** - Repository metadata (project path, host detection)
-- **`internal/iostreams/`** - Output formatting (JSON, tables, markdown)
-- **`docs/source/`** - **Auto-generated from Go source** — do not edit directly
+## Verify changes before you push
 
-## Critical Workflows
+Lefthook runs automatically on `git push`. Install it once with
+`lefthook install`. Install all tools with `make bootstrap`, which uses
+`mise` and `.tool-versions`.
 
-### Documentation
-
-**All CLI docs are auto-generated from Go source.** Never edit `docs/source/` directly.
-
-- Update `cobra.Command` fields: `Short`, `Long`, `Example`, flag descriptions
-- Regenerate: `make gen-docs`
-- Pre-commit hook validates docs are in sync; blocks commit if out of date
-- Style guide: [GitLab CLI documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/)
-
-### Testing
-
-**Unit tests:** `make test` or `go test ./...`  
-**Single package:** `go test ./internal/commands/mr/note/...`  
-**Single test:** `go test ./internal/commands/mr/note/... -run TestCreate`  
-**Changed packages only:** `make test-changed` (tests changed packages + reverse deps vs `origin/main`)  
-**Race detection:** `make test-race` (enabled in CI)
-
-**Integration tests** (real API calls to gitlab.com):
-- Require `GITLAB_TEST_HOST` and `GITLAB_TOKEN_TEST` environment variables
-- Skipped locally if env vars not set; fail in CI if not set
-- Use `_integration_test.go` suffix and `_Integration` test suffix
-- Token must have `api` scope; user must have GitLab Duo seat for `glab duo` tests
-
-### Code Generation
-
-- **Config stubs:** `make gen-config` (from `internal/config/config.yaml.lock`)
-- **Docs:** `make gen-docs` (from Cobra command definitions)
-- **Go generate:** `make generate` (runs all `//go:generate` directives)
-- Pre-push hook validates generated code is in sync
-
-### Linting & Formatting
-
-**Linter config:** `.golangci.yml` (strict rules; see `forbidigo` for JSON marshaling restrictions)
-
-Key rules:
-- Use `IOStreams.PrintJSON()` for stdout JSON output (not `json.Marshal`)
-- No `internal/cmdutils` imports outside `internal/commands/`
-- No test utilities in production code
-
-**Auto-fix:** `make fix` (gofmt, goimports, golangci-lint --fix)
-
-### Git Hooks (Lefthook)
-
-Install once: `make bootstrap` then `lefthook install`
-
-**Pre-commit:**
-- Go formatting & linting (auto-fix)
-- Shell script linting
-- Markdown auto-fix
-- Skills validation
-- Docs regeneration check (blocks if out of sync)
-
-**Commit-msg:** Validates conventional commits format
-
-**Pre-push:**
-- Build check
-- Lint (only changes vs `origin/main`)
-- Unit tests on changed packages
-- Generated code sync check
-- Markdown & prose linting
-- Link checking
-
-Skip hooks: `LEFTHOOK=0 git commit/push`
-
-## Command Structure Conventions
-
-Commands follow noun-first, verb-second pattern: `glab <noun> <verb>` (e.g., `glab mr create`)
-
-Standard verbs:
-- `create` - singular object
-- `list` - multiple objects
-- `get` - single object by ID
-- `update` - modify object
-- `delete` - remove object(s)
-
-Command options struct pattern:
-```go
-type options struct {
-    // private fields
-}
-
-func newOptions() *options { ... }
-func (o *options) validate() error { ... }
-func (o *options) run(ctx context.Context) error { ... }
+```shell
+lefthook run pre-push  # build, lint against origin/main, test-changed, generated-doc/code check, markdown/vale/lychee
+make check             # test + lint
 ```
 
-## Configuration & Environment
+To skip hooks, use `LEFTHOOK=0 git push` or
+`LEFTHOOK_EXCLUDE=pre-push git push`.
 
-**Config locations** (XDG Base Directory spec):
-- `~/.config/glab-cli/config.yml` (legacy, checked first)
-- `$XDG_CONFIG_HOME/glab-cli/config.yml` (platform-specific)
-- `$XDG_CONFIG_DIRS/glab-cli/config.yml` (system-wide)
-- `.git/glab-cli/config.yml` (per-repo)
+## Common commands
 
-**Key env vars:**
-- `GITLAB_TOKEN` - API token (overrides config)
-- `GITLAB_HOST` - Default GitLab instance (outside git repos)
-- `GLAB_CONFIG_DIR` - Override config directory
-- `DEBUG=true` - Verbose logging (Git commands, expanded aliases, DNS details)
-- `GLAB_ENABLE_CI_AUTOLOGIN=true` - Auto-login in CI jobs
-
-## Commit Message Format
-
-Conventional commits required (enforced by pre-commit hook):
-
-```
-<type>(<scope>): <description>
-
-<body>
-
-<footer>
+```shell
+make build                                    # compile to ./bin/glab
+make lint                                     # golangci-lint (full)
+make fix                                      # golangci-lint --fix + gofmt + goimports
+make test                                     # all unit tests (gotestsum, writes coverage.txt/xml)
+make test-changed                             # tests changed packages + reverse deps against origin/main
+make test-race                                # unit tests with -race
+go test ./internal/commands/mr/note/...       # single package
+go test ./internal/commands/mr/note/... -run TestCreate
+make gen-docs                                 # regenerate docs/source/** from cobra definitions
+make generate                                 # go generate ./... (includes config stubs)
+make gen-config                               # config stubs from internal/config/config.yaml.lock
 ```
 
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+`make test` forcibly clears `VISUAL`, `EDITOR`, `PAGER`, and `GITLAB_TOKEN`,
+and sets `CI_PROJECT_PATH` from the origin remote. Some tests depend on
+this. If you run `go test` directly and see environment-dependent failures,
+replicate that setup.
 
-Example: `feat(mr): add approval count to list output`
+## Integration tests
 
-## Release & Versioning
+Integration tests are tagged `//go:build integration`, use the file suffix
+`_integration_test.go`, and use the test name suffix `_Integration`. They
+are not run by `make test`. To run them, use `make integration-test-race`,
+which adds `-tags=integration`. They call a real GitLab instance. Locally
+they are skipped unless both `GITLAB_TEST_HOST` and `GITLAB_TOKEN_TEST` are
+set (see `test/helpers.go:123`). The token must have the `api` scope. The
+`glab duo` tests require a GitLab Duo-enabled user.
 
-- Follows SemVer
-- **MAJOR:** Breaking changes (delete command, required flag, behavior change)
-- **MINOR:** New command or optional flag
-- **PATCH:** Bug fix
+## Documentation is generated
 
-Release process: Tag commit, CI builds and publishes via goreleaser
+- Never edit files under `docs/source/`. They are regenerated from each
+  `cobra.Command`'s `Short`, `Long`, `Example`, and flag description fields
+  by `cmd/gen-docs/docs.go` through `make gen-docs`.
+- The pre-commit hook regenerates docs when `internal/commands/**` changes,
+  and fails if the result differs from what is committed. After you change
+  a command, run `make gen-docs` and stage `docs/`.
+- The pre-push hook also runs `make generate` and fails on drift.
+- Follow the [GitLab CLI (glab) documentation style guide](https://docs.gitlab.com/development/documentation/cli_styleguide/).
 
-## Verify Before Pushing
+## Lint rules to watch for
 
-```bash
-lefthook run pre-push  # all checks
-make check             # tests + linting
-```
+`.golangci.yml` enforces the following rules:
 
-## Common Gotchas
+- Do not send raw JSON to stdout. Use `iostreams.IOStreams.PrintJSON()`
+  instead of `json.Marshal` for stdout output. For non-stdout
+  serialization, add `//nolint:forbidigo` with a reason. See the
+  `forbidigo` configuration.
+- Imports of `internal/cmdutils` are forbidden outside
+  `internal/commands/**`.
+- Pre-push runs `golangci-lint run --new-from-rev=origin/main`, which only
+  flags new issues compared to `main`.
 
-1. **Docs out of sync:** Pre-commit hook blocks; run `make gen-docs` and stage changes
-2. **JSON output:** Use `IOStreams.PrintJSON()`, not `json.Marshal`
-3. **Config file permissions:** `internal/config/config.yaml.lock` needs `chmod 600`
-4. **Integration tests:** Require env vars; skipped locally if not set
-5. **Reverse dependencies:** `make test-changed` tests affected packages, not just changed ones
-6. **Skills validation:** `internal/commands/skills/` has special pre-commit validation
+## Command conventions
+
+- Noun-first verbs with shared semantics: `create`, `list`, `get`,
+  `update`, and `delete`. See the `Grammar` section in `CONTRIBUTING.md`
+  before you introduce a new verb.
+- The per-command options struct is unexported and named `options`, not
+  `xxxOptions`. The constructor, if present, is `newOptions`. Implement
+  only the needed subset of `complete`, `validate`, and `run`. Copy the
+  pattern from a neighboring command.
+- Commit messages use Conventional Commits, enforced by the `commit-msg`
+  hook through `scripts/commit-lint`. Requires Node.js.
+
+## Skills
+
+`internal/commands/skills/` has a dedicated pre-commit validator
+(`go test ./internal/commands/skills/...`) that catches a missing
+`SKILL.md`, bad front matter, an empty `name` or `description`,
+asset-directory mismatches, and malformed registry entries. Run it after
+you change anything under that tree.
+
+## Environment variables
+
+- `GITLAB_TOKEN` - API token. Overrides configuration.
+- `GITLAB_HOST`, `GITLAB_URI`, `GL_HOST` - Default GitLab instance,
+  outside Git repositories.
+- `GLAB_CONFIG_DIR` - Overrides the configuration directory. Highest priority.
+- `GLAB_ENABLE_CI_AUTOLOGIN=true` - Together with `GITLAB_CI=true`,
+  enables `CI_JOB_TOKEN` auto-login.
+- `DEBUG=true` - Verbose logging for Git commands, expanded aliases, and
+  DNS.
