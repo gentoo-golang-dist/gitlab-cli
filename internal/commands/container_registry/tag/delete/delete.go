@@ -97,21 +97,7 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	tag, _, err := client.ContainerRegistry.GetRegistryRepositoryTagDetail(
-		repo.FullName(),
-		o.repositoryID,
-		o.tagName,
-	)
-	if err != nil {
-		return cmdutils.WrapError(err, fmt.Sprintf("failed to fetch container registry tag %q.", o.tagName))
-	}
-	var tagPath string
-	if tag != nil {
-		tagPath = tag.Path
-	}
-	if tagPath == "" {
-		tagPath = fmt.Sprintf("%s:%s", repo.FullName(), o.tagName)
-	}
+	tagPath := fmt.Sprintf("%s:%s", repo.FullName(), o.tagName)
 
 	if !o.forceDelete && o.io.PromptEnabled() {
 		fmt.Fprintf(o.io.StdErr, "This action will permanently delete container registry tag %q.\n\n", tagPath)
