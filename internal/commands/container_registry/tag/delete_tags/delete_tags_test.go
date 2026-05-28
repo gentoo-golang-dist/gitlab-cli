@@ -58,6 +58,23 @@ func Test_DeleteTags_RequiresNameRegexDelete(t *testing.T) {
 	assert.Equal(t, "--name-regex-delete is required", err.Error())
 }
 
+func Test_DeleteTags_RequiresConfirmationWithFilters(t *testing.T) {
+	t.Parallel()
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, true)
+
+	out, err := exec("101 --name-regex-delete '^release-.*' --name-regex-keep '^latest$' --keep-n 5 --older-than 30d")
+	require.Error(t, err)
+	assert.Equal(t, "user cancelled", err.Error())
+	assert.Contains(t, out.String(), "Are you ABSOLUTELY SURE you wish to schedule matching container registry tags for deletion from repository 101?")
+	assert.Contains(t, out.Stderr(), "This action schedules container registry tags for deletion from repository 101 on OWNER/REPO.")
+	assert.Contains(t, out.Stderr(), "name regex delete: ^release-.*")
+	assert.Contains(t, out.Stderr(), "name regex keep: ^latest$")
+	assert.Contains(t, out.Stderr(), "keep latest: 5")
+	assert.Contains(t, out.Stderr(), "older than: 30d")
+	assert.Contains(t, out.Stderr(), "The matching tags may remain visible until the background deletion job has completed.")
+}
+
 func Test_DeleteTags_RejectsNegativeKeepN(t *testing.T) {
 	t.Parallel()
 

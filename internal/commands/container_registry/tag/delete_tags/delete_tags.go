@@ -113,8 +113,19 @@ func (o *options) run(ctx context.Context) error {
 	}
 
 	if !o.forceDelete && o.io.PromptEnabled() {
-		fmt.Fprintf(o.io.StdErr, "This action will permanently delete container registry tags from repository %d on %s.\n\n", o.repositoryID, repo.FullName())
-		err = o.io.Confirm(ctx, &o.forceDelete, fmt.Sprintf("Are you ABSOLUTELY SURE you wish to delete container registry tags from repository %d?", o.repositoryID))
+		fmt.Fprintf(o.io.StdErr, heredoc.Doc(`
+			This action schedules container registry tags for deletion from repository %d on %s.
+
+			Filters:
+			  name regex delete: %s
+			  name regex keep: %s
+			  keep latest: %d
+			  older than: %s
+
+			The matching tags may remain visible until the background deletion job has completed.
+
+		`), o.repositoryID, repo.FullName(), o.nameRegexDelete, emptyValue(o.nameRegexKeep), o.keepN, emptyValue(o.olderThan))
+		err = o.io.Confirm(ctx, &o.forceDelete, fmt.Sprintf("Are you ABSOLUTELY SURE you wish to schedule matching container registry tags for deletion from repository %d?", o.repositoryID))
 		if err != nil {
 			return cmdutils.WrapError(err, "could not prompt")
 		}
@@ -151,4 +162,12 @@ func (o *options) run(ctx context.Context) error {
 
 	o.io.LogInfof(c.Bold("%s Container registry tags scheduled for deletion. They may remain visible until GitLab finishes the background deletion job.\n"), c.RedCheck())
 	return nil
+}
+
+func emptyValue(value string) string {
+	if value == "" {
+		return "<unset>"
+	}
+
+	return value
 }
