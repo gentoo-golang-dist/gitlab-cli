@@ -69,6 +69,24 @@ func rootConfig() *yaml.Node {
 						Value: "",
 					},
 					{
+						HeadComment: "# Show a one-time post-upgrade banner pointing at 'glab whatsnew' when a new version is detected.",
+						Kind:        yaml.ScalarNode,
+						Value:       "show_whats_new",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "true",
+					},
+					{
+						HeadComment: "# Last glab version a post-upgrade banner was shown for (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "last_seen_version",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
 						HeadComment: "# Whether or not to display hyperlinks in terminal output. Defaults to true (enabled for TTYs). Set to false to disable. Force hyperlinks in non-TTY environments by setting FORCE_HYPERLINKS=1.",
 						Kind:        yaml.ScalarNode,
 						Value:       "display_hyperlinks",

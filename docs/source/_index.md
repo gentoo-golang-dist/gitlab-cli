@@ -115,6 +115,7 @@ in the main README.
 - [`glab user`](user/_index.md)
 - [`glab variable`](variable/_index.md)
 - [`glab version`](version/_index.md)
+- [`glab whatsnew`](whatsnew/_index.md)
 - [`glab work-items`](work-items/_index.md)
 
 ## Report issues

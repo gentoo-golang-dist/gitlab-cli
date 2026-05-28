@@ -141,6 +141,11 @@ func defaultFor(key string) string {
 		return defaultAPIProtocol
 	case "glamour_style":
 		return defaultGlamourStyle
+	case "last_seen_version":
+		// Seeded so the post-upgrade banner can surface immediately when
+		// existing users upgrade to the release that ships `glab whatsnew`.
+		// Bump only when intentionally re-announcing the feature.
+		return "v1.100.0"
 	default:
 		return ""
 	}
