@@ -7,16 +7,16 @@ import (
 )
 
 type RepositoryJSON struct {
-	ID                     int64                           `json:"id"`
-	Name                   string                          `json:"name"`
-	Path                   string                          `json:"path"`
-	ProjectID              int64                           `json:"project_id"`
-	Location               string                          `json:"location"`
-	CreatedAt              *time.Time                      `json:"created_at"`
-	CleanupPolicyStartedAt *time.Time                      `json:"cleanup_policy_started_at"`
-	Status                 *gitlab.ContainerRegistryStatus `json:"status"`
-	TagsCount              *int64                          `json:"tags_count,omitempty"`
-	Tags                   []TagJSON                       `json:"tags,omitempty"`
+	ID                     int64      `json:"id"`
+	Name                   string     `json:"name"`
+	Path                   string     `json:"path"`
+	ProjectID              int64      `json:"project_id"`
+	Location               string     `json:"location"`
+	CreatedAt              *time.Time `json:"created_at"`
+	CleanupPolicyStartedAt *time.Time `json:"cleanup_policy_started_at"`
+	Status                 *string    `json:"status"`
+	TagsCount              *int64     `json:"tags_count,omitempty"`
+	Tags                   []TagJSON  `json:"tags,omitempty"`
 }
 
 type TagJSON struct {
@@ -54,7 +54,7 @@ func NewRepositoryJSON(repository *gitlab.RegistryRepository, includeTagDetails 
 		Location:               repository.Location,
 		CreatedAt:              repository.CreatedAt,
 		CleanupPolicyStartedAt: repository.CleanupPolicyStartedAt,
-		Status:                 repository.Status,
+		Status:                 statusStringPointer(repository.Status),
 		TagsCount:              tagsCount,
 		Tags:                   NewTagJSONList(repository.Tags, includeTagDetails),
 	}
@@ -88,4 +88,13 @@ func NewTagJSON(tag *gitlab.RegistryRepositoryTag, includeDetails bool) TagJSON 
 	}
 
 	return tagOutput
+}
+
+func statusStringPointer(status *gitlab.ContainerRegistryStatus) *string {
+	if status == nil {
+		return nil
+	}
+
+	statusValue := string(*status)
+	return &statusValue
 }
