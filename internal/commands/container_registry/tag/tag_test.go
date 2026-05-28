@@ -25,8 +25,5 @@ func TestNewCmd(t *testing.T) {
 	assert.Equal(t, "view <repository-id> <tag-name> [flags]", viewCmd.Use)
 	deleteCmd, _, err := cmd.Find([]string{"delete"})
 	assert.NoError(t, err)
-	assert.Equal(t, "delete <repository-id> <tag-name> [flags]", deleteCmd.Use)
-	deleteTagsCmd, _, err := cmd.Find([]string{"delete-tags"})
-	assert.NoError(t, err)
-	assert.Equal(t, "delete-tags <repository-id> [flags]", deleteTagsCmd.Use)
+	assert.Equal(t, "delete <repository-id> [<tag-name>] [flags]", deleteCmd.Use)
 }

@@ -32,6 +32,5 @@ tags
 ## Subcommands
 
 - [`delete`](delete.md)
-- [`delete-tags`](delete-tags.md)
 - [`list`](list.md)
 - [`view`](view.md)
