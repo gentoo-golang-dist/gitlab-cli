@@ -20,7 +20,6 @@ import (
 // blank config seeded with last_seen_version, and a non-TTY stderr buffer.
 func newBannerFactory(t *testing.T, currentVersion, lastSeen, showWhatsNew string, codingAgent string) (cmdutils.Factory, *bytes.Buffer) {
 	t.Helper()
-	t.Setenv("NO_COLOR", "true")
 
 	cfg := config.NewBlankConfig()
 	if lastSeen != "" {
@@ -39,13 +38,18 @@ func newBannerFactory(t *testing.T, currentVersion, lastSeen, showWhatsNew strin
 }
 
 func TestMaybeShowPostUpgradeBanner(t *testing.T) {
+	t.Parallel()
+	// StubWriteConfig is installed ONCE here, before any subtest fires its
+	// t.Parallel(). All subtests share this stub read-only — installing
+	// inside each subtest would race on the package-level WriteConfigFile.
+	t.Cleanup(config.StubWriteConfig(io.Discard, io.Discard))
+
 	tests := []struct {
 		name           string
 		currentVersion string
 		lastSeen       string
 		showWhatsNew   string
 		codingAgent    string
-		envOverride    string
 		wantBanner     bool
 		wantLastSeen   string
 	}{
@@ -94,14 +98,6 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 			wantLastSeen:   "1.84.0",
 		},
 		{
-			name:           "env override suppresses banner",
-			currentVersion: "1.85.0",
-			lastSeen:       "1.84.0",
-			envOverride:    "false",
-			wantBanner:     false,
-			wantLastSeen:   "1.84.0",
-		},
-		{
 			name:           "coding agent is silent",
 			currentVersion: "1.85.0",
 			lastSeen:       "1.84.0",
@@ -127,10 +123,7 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			defer config.StubWriteConfig(io.Discard, io.Discard)()
-			if tc.envOverride != "" {
-				t.Setenv("GLAB_SHOW_WHATS_NEW", tc.envOverride)
-			}
+			t.Parallel()
 
 			f, stderr := newBannerFactory(t, tc.currentVersion, tc.lastSeen, tc.showWhatsNew, tc.codingAgent)
 			MaybeShowPostUpgradeBanner(f)
@@ -147,4 +140,19 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 			assert.Equal(t, tc.wantLastSeen, got)
 		})
 	}
+}
+
+// TestMaybeShowPostUpgradeBanner_envOverride covers the GLAB_SHOW_WHATS_NEW
+// case in isolation. t.Setenv is incompatible with t.Parallel, so this
+// stays sequential rather than dragging the whole table back to serial.
+func TestMaybeShowPostUpgradeBanner_envOverride(t *testing.T) {
+	t.Cleanup(config.StubWriteConfig(io.Discard, io.Discard))
+	t.Setenv("GLAB_SHOW_WHATS_NEW", "false")
+
+	f, stderr := newBannerFactory(t, "1.85.0", "1.84.0", "", "")
+	MaybeShowPostUpgradeBanner(f)
+
+	assert.Empty(t, stderr.String())
+	got, _ := f.Config().Get("", LastSeenVersionKey)
+	assert.Equal(t, "1.84.0", got)
 }

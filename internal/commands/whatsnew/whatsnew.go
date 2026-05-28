@@ -41,7 +41,7 @@ type options struct {
 	buildInfo api.BuildInfo
 }
 
-func NewCmdWhatsnew(f cmdutils.Factory) *cobra.Command {
+func NewCmd(f cmdutils.Factory) *cobra.Command {
 	opts := &options{
 		io:        f.IO(),
 		cfg:       f.Config,
@@ -52,8 +52,6 @@ func NewCmdWhatsnew(f cmdutils.Factory) *cobra.Command {
 		Use:   "whatsnew [version]",
 		Short: "Show release notes for new versions of glab.",
 		Long: heredoc.Doc(`
-			Show release notes for new versions of glab.
-
 			With no arguments, shows release notes for every glab release
 			published since the last time you ran 'whatsnew' or saw the
 			post-upgrade banner — capped at the most recent 10 releases.
@@ -89,7 +87,7 @@ func NewCmdWhatsnew(f cmdutils.Factory) *cobra.Command {
 
 	fl := cmd.Flags()
 	fl.StringVar(&opts.sinceVersion, "since", "", "Show release notes for every release newer than this version.")
-	fl.BoolVar(&opts.showLatest, "latest", false, "Show release notes for the latest published release only.")
+	fl.BoolVar(&opts.showLatest, "latest", false, "Show release notes for the latest published release only. (default false)")
 	cmd.MarkFlagsMutuallyExclusive("since", "latest")
 
 	return cmd

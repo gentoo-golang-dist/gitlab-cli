@@ -14,8 +14,6 @@ Show release notes for new versions of glab.
 
 ## Synopsis
 
-Show release notes for new versions of glab.
-
 With no arguments, shows release notes for every glab release
 published since the last time you ran 'whatsnew' or saw the
 post-upgrade banner — capped at the most recent 10 releases.
@@ -47,7 +45,7 @@ glab whatsnew --since v1.80.0
 ## Options
 
 ```plaintext
-      --latest         Show release notes for the latest published release only.
+      --latest         Show release notes for the latest published release only. (default false)
       --since string   Show release notes for every release newer than this version.
 ```
 

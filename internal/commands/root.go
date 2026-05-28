@@ -149,7 +149,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(completionCmd.NewCmdCompletion(f.IO()))
 	rootCmd.AddCommand(versionCmd.NewCmdVersion(f))
 	rootCmd.AddCommand(updateCmd.NewCheckUpdateCmd(f))
-	rootCmd.AddCommand(whatsnewCmd.NewCmdWhatsnew(f))
+	rootCmd.AddCommand(whatsnewCmd.NewCmd(f))
 	rootCmd.AddCommand(authCmd.NewCmdAuth(f))
 
 	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))

@@ -31,7 +31,10 @@ func stripANSI(s string) string {
 }
 
 // stubClientCreator swaps the package-level client factory for one that
-// returns an API client backed by the supplied mock GitLab client.
+// returns an API client backed by the supplied mock GitLab client. Tests
+// that use it can't call t.Parallel() — each test installs a different
+// mock and concurrent installs would race. This matches the same pattern
+// used in internal/commands/update/check_update_test.go.
 func stubClientCreator(t *testing.T, testClient *gitlabtesting.TestClient) {
 	t.Helper()
 	old := clientCreator
@@ -60,7 +63,7 @@ func TestWhatsnew_specificVersion(t *testing.T) {
 		Return(release("v1.85.0", "## Highlights\n\n- thing one"), nil, nil)
 	stubClientCreator(t, tc)
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 	)
 	out, err := exec("v1.85.0")
@@ -80,7 +83,7 @@ func TestWhatsnew_versionArgWithoutVPrefix(t *testing.T) {
 		Return(release("v1.85.0", "notes"), nil, nil)
 	stubClientCreator(t, tc)
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 	)
 	_, err := exec("1.85.0")
@@ -100,7 +103,7 @@ func TestWhatsnew_latestFlag(t *testing.T) {
 		})
 	stubClientCreator(t, tc)
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.80.0"}),
 	)
 	out, err := exec("--latest")
@@ -125,7 +128,7 @@ func TestWhatsnew_sinceFlagFiltersReleases(t *testing.T) {
 		}, nil, nil)
 	stubClientCreator(t, tc)
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 	)
 	out, err := exec("--since v1.83.0")
@@ -153,7 +156,7 @@ func TestWhatsnew_defaultInvocationUsesLastSeenAndAdvancesMarker(t *testing.T) {
 	cfg := config.NewBlankConfig()
 	require.NoError(t, cfg.Set("", update.LastSeenVersionKey, "v1.84.0"))
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 		cmdtest.WithConfig(cfg),
 	)
@@ -180,7 +183,7 @@ func TestWhatsnew_explicitInvocationDoesNotAdvanceMarker(t *testing.T) {
 	cfg := config.NewBlankConfig()
 	require.NoError(t, cfg.Set("", update.LastSeenVersionKey, "v1.80.0"))
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 		cmdtest.WithConfig(cfg),
 	)
@@ -204,7 +207,7 @@ func TestWhatsnew_noNewReleases(t *testing.T) {
 	cfg := config.NewBlankConfig()
 	require.NoError(t, cfg.Set("", update.LastSeenVersionKey, "v1.85.0"))
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 		cmdtest.WithConfig(cfg),
 	)
@@ -223,7 +226,7 @@ func TestWhatsnew_emptyReleaseDescription(t *testing.T) {
 		Return(release("v1.85.0", ""), nil, nil)
 	stubClientCreator(t, tc)
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 		cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 	)
 	out, err := exec("v1.85.0")
@@ -232,8 +235,7 @@ func TestWhatsnew_emptyReleaseDescription(t *testing.T) {
 }
 
 func TestWhatsnew_flagConflicts(t *testing.T) {
-	t.Setenv("NO_COLOR", "true")
-	defer config.StubWriteConfig(io.Discard, io.Discard)()
+	t.Parallel()
 
 	tests := []struct {
 		name string
@@ -245,7 +247,8 @@ func TestWhatsnew_flagConflicts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exec := cmdtest.SetupCmdForTest(t, NewCmdWhatsnew, false,
+			t.Parallel()
+			exec := cmdtest.SetupCmdForTest(t, NewCmd, false,
 				cmdtest.WithBuildInfo(api.BuildInfo{Version: "1.85.0"}),
 			)
 			_, err := exec(tt.args)
