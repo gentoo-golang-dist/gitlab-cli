@@ -23,16 +23,17 @@ import (
 )
 
 type SyncScenario struct {
-	refs        map[string]TestRef
-	title       string
-	baseBranch  string
-	pushNeeded  bool
-	noVerify    bool
-	updateBase  bool
-	rebaseError bool
-	assignees   []string
-	labels      []string
-	reviewers   []string
+	refs           map[string]TestRef
+	title          string
+	baseBranch     string
+	pushNeeded     bool
+	noVerify       bool
+	updateBase     bool
+	rebaseError    bool
+	skipMRCreation bool
+	assignees      []string
+	labels         []string
+	reviewers      []string
 }
 
 type TestRef struct {
@@ -109,6 +110,12 @@ func TestNewCmdSyncStack_Flags(t *testing.T) {
 	require.NotNil(t, updateBaseFlag)
 	assert.Equal(t, "false", updateBaseFlag.DefValue)
 	assert.Contains(t, updateBaseFlag.Usage, "base branch")
+
+	// Test --skip-mr-creation flag exists
+	skipMRCreationFlag := cmd.Flag("skip-mr-creation")
+	require.NotNil(t, skipMRCreationFlag)
+	assert.Equal(t, "false", skipMRCreationFlag.DefValue)
+	assert.Contains(t, skipMRCreationFlag.Usage, "merge requests")
 
 	// Test --assignee flag exists
 	assigneeFlag := cmd.Flag("assignee")
@@ -860,6 +867,88 @@ func Test_stackSync(t *testing.T) {
 					})
 			},
 		},
+
+		{
+			name: "skip-mr-creation skips MR creation for branches without MRs",
+			args: args{
+				stack: SyncScenario{
+					title:          "skip mr stack",
+					skipMRCreation: true,
+					refs: map[string]TestRef{
+						"1": {
+							ref:   git.StackRef{SHA: "1", Prev: "", Next: "2", Branch: "Branch1", MR: "", Description: "first branch"},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: "", Description: "second branch"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+			},
+		},
+
+		{
+			name: "skip-mr-creation still checks existing MRs",
+			args: args{
+				stack: SyncScenario{
+					title:          "skip mr with existing",
+					skipMRCreation: true,
+					refs: map[string]TestRef{
+						"1": {
+							ref: git.StackRef{
+								SHA: "1", Prev: "", Next: "2", Branch: "Branch1",
+								MR:          "http://gitlab.com/stack_guy/stackproject/-/merge_requests/1",
+								Description: "has MR",
+							},
+							state: NothingToCommit,
+						},
+						"2": {
+							ref:   git.StackRef{SHA: "2", Prev: "1", Next: "", Branch: "Branch2", MR: "", Description: "no MR"},
+							state: NothingToCommit,
+						},
+					},
+				},
+			},
+			setupMocks: func(t *testing.T, testClient *gitlabtesting.TestClient) {
+				t.Helper()
+				testClient.MockUsers.EXPECT().
+					CurrentUser(gomock.Any()).
+					Return(&gitlab.User{Username: "stack_guy"}, nil, nil)
+
+				testClient.MockMergeRequests.EXPECT().
+					ListProjectMergeRequests("stack_guy/stackproject", gomock.Any()).
+					DoAndReturn(func(pid any, opts *gitlab.ListProjectMergeRequestsOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.BasicMergeRequest, *gitlab.Response, error) {
+						assert.Equal(t, "Branch1", *opts.SourceBranch)
+						return []*gitlab.BasicMergeRequest{
+							{
+								ID:           25,
+								IID:          25,
+								ProjectID:    3,
+								SourceBranch: "Branch1",
+								State:        "opened",
+							},
+						}, nil, nil
+					})
+
+				testClient.MockMergeRequests.EXPECT().
+					GetMergeRequest("stack_guy/stackproject", int64(25), gomock.Any()).
+					Return(&gitlab.MergeRequest{
+						BasicMergeRequest: gitlab.BasicMergeRequest{
+							ID:        25,
+							IID:       25,
+							ProjectID: 3,
+							State:     "opened",
+						},
+					}, nil, nil)
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -877,6 +966,7 @@ func Test_stackSync(t *testing.T) {
 			// Set options from test case
 			opts.noVerify = tc.args.stack.noVerify
 			opts.updateBase = tc.args.stack.updateBase
+			opts.skipMRCreation = tc.args.stack.skipMRCreation
 			opts.assignees = tc.args.stack.assignees
 			opts.labels = tc.args.stack.labels
 			opts.reviewers = tc.args.stack.reviewers
@@ -927,7 +1017,7 @@ func Test_stackSync(t *testing.T) {
 					case NothingToCommit:
 					}
 
-					if ref.MR == "" {
+					if ref.MR == "" && !tc.args.stack.skipMRCreation {
 						if ref.IsFirst() == true {
 							if tc.args.stack.baseBranch != "" {
 								err := git.AddStackBaseBranch(tc.args.stack.title, tc.args.stack.baseBranch)

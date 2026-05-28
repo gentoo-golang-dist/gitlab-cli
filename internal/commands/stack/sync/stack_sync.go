@@ -25,21 +25,22 @@ import (
 )
 
 type options struct {
-	io          *iostreams.IOStreams
-	stack       git.Stack
-	target      glrepo.Interface
-	source      glrepo.Interface
-	labClient   *gitlab.Client
-	baseRepo    func() (glrepo.Interface, error)
-	remotes     func() (glrepo.Remotes, error)
-	user        gitlab.User
-	noVerify    bool
-	updateBase  bool
-	assignees   []string
-	assigneeIDs *[]int64
-	labels      []string
-	reviewers   []string
-	reviewerIDs *[]int64
+	io             *iostreams.IOStreams
+	stack          git.Stack
+	target         glrepo.Interface
+	source         glrepo.Interface
+	labClient      *gitlab.Client
+	baseRepo       func() (glrepo.Interface, error)
+	remotes        func() (glrepo.Remotes, error)
+	user           gitlab.User
+	noVerify       bool
+	updateBase     bool
+	skipMRCreation bool
+	assignees      []string
+	assigneeIDs    *[]int64
+	labels         []string
+	reviewers      []string
+	reviewerIDs    *[]int64
 }
 
 // max string size for MR title is ~255, but we'll add a "..."
@@ -71,12 +72,15 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
    latest version of the base branch.
 1. Pushes any amended changes to their merge requests.
 1. Rebases any changes that happened previously in the stack.
+1. Creates merge requests for branches that don't have one yet,
+   unless --skip-mr-creation is set.
 1. Removes any branches that were already merged, or with a closed merge request.
 ` + text.ExperimentalString),
 		Example: heredoc.Doc(`
 			glab stack sync
 			glab stack sync --no-verify
 			glab stack sync --update-base
+			glab stack sync --skip-mr-creation
 			glab stack sync --assignee user1,user2
 			glab stack sync --label bug,priority::high
 			glab stack sync --reviewer user1 --reviewer user2`),
@@ -96,6 +100,7 @@ func NewCmdSyncStack(f cmdutils.Factory, gr git.GitRunner) *cobra.Command {
 	fl := stackSaveCmd.Flags()
 	fl.BoolVar(&opts.noVerify, "no-verify", false, "Bypass the pre-push hook. (See githooks(5) for more information.)")
 	fl.BoolVar(&opts.updateBase, "update-base", false, "Rebase the stack onto the latest version of the base branch.")
+	fl.BoolVar(&opts.skipMRCreation, "skip-mr-creation", false, "Skip creating merge requests for branches that don't have one yet.")
 	fl.StringSliceVarP(&opts.assignees, "assignee", "a", []string{}, "Assign merge request to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	fl.StringSliceVarP(&opts.labels, "label", "l", []string{}, "Add label by `name`. Multiple labels can be comma-separated or specified by repeating the flag.")
 	fl.StringSliceVar(&opts.reviewers, "reviewer", []string{}, "Request review from users by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
@@ -200,9 +205,13 @@ func (o *options) run(ctx context.Context, f cmdutils.Factory, gr git.GitRunner)
 		}
 
 		if ref.MR == "" {
-			err := populateMR(o.io, &ref, o, client, gr)
-			if err != nil {
-				return err
+			if o.skipMRCreation {
+				fmt.Println(progressString(o.io, ref.Branch+" has no merge request. Skipping MR creation."))
+			} else {
+				err := populateMR(o.io, &ref, o, client, gr)
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			// we found an MR. let's get the status:
