@@ -249,6 +249,43 @@ func DeleteLocalBranch(branch string, gr GitRunner) error {
 	return nil
 }
 
+// ListLocalBranches returns the names of every local branch in the repository.
+func ListLocalBranches(gr GitRunner) ([]string, error) {
+	out, err := gr.Git("for-each-ref", "--format=%(refname:short)", "refs/heads/")
+	if err != nil {
+		return nil, fmt.Errorf("could not list local branches: %w", err)
+	}
+
+	var branches []string
+	for line := range strings.SplitSeq(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			branches = append(branches, line)
+		}
+	}
+	return branches, nil
+}
+
+// ListMergedBranches returns the names of local branches reachable from target
+// (i.e. what `git branch --merged target` would print). This only catches
+// fast-forward merges — squash and rebase merges look like distinct commits to
+// git, so they are not reported as merged.
+func ListMergedBranches(target string, gr GitRunner) ([]string, error) {
+	out, err := gr.Git("branch", "--merged", target, "--format=%(refname:short)")
+	if err != nil {
+		return nil, fmt.Errorf("could not list merged branches: %w", err)
+	}
+
+	var branches []string
+	for line := range strings.SplitSeq(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			branches = append(branches, line)
+		}
+	}
+	return branches, nil
+}
+
 func CheckoutBranch(branch string, gr GitRunner) error {
 	_, err := gr.Git("checkout", branch)
 	if err != nil {
