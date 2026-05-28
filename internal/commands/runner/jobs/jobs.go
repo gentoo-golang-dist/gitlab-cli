@@ -73,7 +73,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVar(&opts.orderBy, "order-by", "id", "Order jobs by: id.")
 	fl.StringVar(&opts.sort, "sort", "desc", "Sort order: asc or desc.")
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
-	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page.")
+	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page. Maximum: 100.")
 
 	cmdutils.EnableRepoOverride(cmd, f)
 	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)

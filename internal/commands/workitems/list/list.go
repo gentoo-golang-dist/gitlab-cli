@@ -113,7 +113,7 @@ for group-level work items or -R to specify a different project.
 
 	cmd.Flags().StringVar(&opts.state, "state", "opened", "Filter by state: opened, closed, all.")
 	cmd.Flags().StringVar(&opts.after, "after", "", "Fetch items after this cursor (for pagination)")
-	cmd.Flags().Int64VarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page (max 100)")
+	cmd.Flags().Int64VarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page. Maximum: 100.")
 
 	return cmd
 }

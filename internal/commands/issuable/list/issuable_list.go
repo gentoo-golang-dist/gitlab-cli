@@ -166,7 +166,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 	issueListCmd.Flags().StringVarP(&opts.OutputFormat, "output-format", "F", "details", "Options: 'details', 'ids', 'urls'.")
 	issueListCmd.Flags().StringVarP(&opts.Output, "output", "O", "text", "Options: 'text' or 'json'.")
 	issueListCmd.Flags().Int64VarP(&opts.Page, "page", "p", 1, "Page number.")
-	issueListCmd.Flags().Int64VarP(&opts.PerPage, "per-page", "P", 30, "Number of items to list per page.")
+	issueListCmd.Flags().Int64VarP(&opts.PerPage, "per-page", "P", 30, "Number of items to list per page. Maximum: 100.")
 	issueListCmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repo argument is set.")
 	issueListCmd.Flags().IntVarP(&opts.Epic, "epic", "e", 0, "List issues belonging to a given epic (requires --group, no pagination support).")
 	issueListCmd.MarkFlagsMutuallyExclusive("output", "output-format")

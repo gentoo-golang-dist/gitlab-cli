@@ -39,7 +39,7 @@ glab repo contributors -R gitlab-com/www-gitlab-com
   -o, --order string    Return contributors ordered by name, email, or commits (orders by commit date) fields. (default "commits")
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number. (default 1)
-  -P, --per-page int    Number of items to list per page. (default 30)
+  -P, --per-page int    Number of items to list per page. Maximum: 100. (default 30)
   -R, --repo string     Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
   -s, --sort string     Sort direction for --order field: asc or desc.
 ```

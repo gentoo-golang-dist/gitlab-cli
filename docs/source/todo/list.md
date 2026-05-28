@@ -40,7 +40,7 @@ glab todo list --output=json
       --jq string       Filter JSON output with a jq expression.
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number. (default 1)
-  -P, --per-page int    Number of items to list per page. (default 30)
+  -P, --per-page int    Number of items to list per page. Maximum: 100. (default 30)
   -s, --state string    Filter by state: pending, done, all. (default "pending")
   -t, --type string     Filter by target type: Issue, MergeRequest.
 ```

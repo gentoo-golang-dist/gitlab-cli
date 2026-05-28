@@ -70,7 +70,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.includeAncestors, "include-ancestors", false, "Include milestones from all parent groups.")
 
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
+	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page. Maximum: 100.")
 	cmd.Flags().BoolVar(&opts.showIDs, "show-id", false, "Show IDs in table output.")
 	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 

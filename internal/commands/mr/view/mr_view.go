@@ -68,7 +68,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableJSONOutput(mrViewCmd, opts.io, &opts.outputFormat)
 	mrViewCmd.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open merge request in a browser. Uses default browser or browser specified in BROWSER variable.")
 	mrViewCmd.Flags().IntVarP(&opts.commentPageNujmber, "page", "p", 0, "Page number.")
-	mrViewCmd.Flags().IntVarP(&opts.commentLimit, "per-page", "P", 20, "Number of items to list per page.")
+	mrViewCmd.Flags().IntVarP(&opts.commentLimit, "per-page", "P", 20, "Number of items to list per page. Maximum: 100.")
 
 	return mrViewCmd
 }

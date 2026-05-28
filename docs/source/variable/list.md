@@ -45,7 +45,7 @@ glab variable list --group gitlab-org --per-page 100
       --jq string       Filter JSON output with a jq expression.
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number. (default 1)
-  -P, --per-page int    Number of items to list per page. (default 20)
+  -P, --per-page int    Number of items to list per page. Maximum: 100. (default 20)
   -R, --repo string     Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
 ```
 

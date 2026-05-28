@@ -79,7 +79,7 @@ func NewCmdExport(f cmdutils.Factory, runE func(opts *options) error) *cobra.Com
 
 	fl := cmd.Flags()
 	fl.IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	fl.IntVarP(&opts.perPage, "per-page", "P", 100, "Number of items to list per page.")
+	fl.IntVarP(&opts.perPage, "per-page", "P", 100, "Number of items to list per page. Maximum: 100.")
 	fl.StringVarP(&opts.outputFormat, "output", "F", "json", "Format output as: json, export, env.")
 	fl.StringVarP(&opts.scope, "scope", "s", "*", "The environment_scope of the variables. Values: '*' (default), or specific environments.")
 

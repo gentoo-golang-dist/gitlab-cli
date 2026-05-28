@@ -50,7 +50,7 @@ glab ci delete --older-than 24h --status=failed
       --older-than duration   Filter pipelines older than the given duration. Valid units: h, m, s, ms, us, ns.
       --page int              Page number.
       --paginate              Make additional HTTP requests to fetch all pages of pipelines. Respects '--per-page'.
-      --per-page int          Number of items to list per page.
+      --per-page int          Number of items to list per page. Maximum: 100.
       --source string         Filter pipelines by source: api, chat, external, external_pull_request_event, merge_request_event, ondemand_dast_scan, ondemand_dast_validation, parent_pipeline, pipeline, push, schedule, security_orchestration_policy, trigger, web, webide.
   -s, --status string         Delete pipelines by status: running, pending, success, failed, canceled, skipped, created, manual.
 ```

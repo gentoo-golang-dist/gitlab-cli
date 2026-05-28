@@ -137,7 +137,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	mrListCmd.Flags().BoolVarP(&opts.notDraft, "not-draft", "", false, "Filter by non-draft merge requests.")
 	cmdutils.EnableJSONOutput(mrListCmd, opts.io, &opts.outputFormat)
 	mrListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	mrListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
+	mrListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page. Maximum: 100.")
 	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users. Multiple users can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringSliceVarP(&opts.reviewer, "reviewer", "r", []string{}, "Get only merge requests with users as reviewer. Multiple users can be comma-separated or specified by repeating the flag.")
 	mrListCmd.Flags().StringVarP(&opts.sort, "sort", "S", "", "Sort direction for --order field: asc or desc.")
