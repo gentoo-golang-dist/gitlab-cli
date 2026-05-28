@@ -19,6 +19,7 @@ import (
 
 const (
 	FlagDryRun = "dry-run"
+	FlagForce  = "force"
 )
 
 func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
@@ -32,6 +33,8 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 
 		To preview which jobs would be canceled without making changes, use
 		%[1]s--dry-run%[1]s.
+
+		Use %[1]s--force%[1]s to cancel jobs that are in a protected environment.
 		`, "`"),
 		Example: heredoc.Doc(`
 			# Cancel a single job
@@ -45,6 +48,9 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 
 			# Preview which jobs would be canceled
 			glab ci cancel job 1504182795,1504182796 --dry-run
+
+			# Force-cancel a job in a protected environment
+			glab ci cancel job 1504182795 --force
 		`),
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
@@ -69,6 +75,7 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 			dryRunMode, _ := cmd.Flags().GetBool(FlagDryRun)
+			forceMode, _ := cmd.Flags().GetBool(FlagForce)
 
 			var jobIDs []int
 
@@ -76,21 +83,24 @@ func NewCmdCancel(f cmdutils.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runCancelation(jobIDs, dryRunMode, f.IO().StdOut, c, client, repo)
+			return runCancelation(jobIDs, dryRunMode, forceMode, f.IO().StdOut, c, client, repo)
 		},
 	}
 
 	SetupCommandFlags(jobCancelCmd.Flags())
+	jobCancelCmd.MarkFlagsMutuallyExclusive(FlagDryRun, FlagForce)
 	return jobCancelCmd
 }
 
 func SetupCommandFlags(flags *pflag.FlagSet) {
 	flags.BoolP(FlagDryRun, "", false, "Show which jobs would be canceled, without canceling them.")
+	flags.BoolP(FlagForce, "f", false, "Force-cancel the job, even if it runs in a protected environment. (default false)")
 }
 
 func runCancelation(
 	jobIDs []int,
 	dryRunMode bool,
+	forceMode bool,
 	w io.Writer,
 	c *iostreams.ColorPalette,
 	apiClient *gitlab.Client,
@@ -104,7 +114,14 @@ func runCancelation(
 			if err != nil {
 				return err
 			}
-			_, _, err = apiClient.Jobs.CancelJob(pid.ID, int64(id))
+			if forceMode {
+				//nolint:staticcheck // CancelJobWithOptions is the only way to pass force in SDK v2; options merge into CancelJob in v4.
+				_, _, err = apiClient.Jobs.CancelJobWithOptions(pid.ID, int64(id), &gitlab.CancelJobOptions{
+					Force: new(true),
+				})
+			} else {
+				_, _, err = apiClient.Jobs.CancelJob(pid.ID, int64(id))
+			}
 			if err != nil {
 				return err
 			}
