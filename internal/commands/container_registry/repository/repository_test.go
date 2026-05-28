@@ -16,7 +16,7 @@ func TestNewCmd(t *testing.T) {
 	cmd := NewCmd(cmdtest.NewTestFactory(nil))
 
 	assert.Equal(t, "repository <command> [flags]", cmd.Use)
-	assert.Contains(t, cmd.Aliases, "repositories")
+	assert.Empty(t, cmd.Aliases)
 	listCmd, _, err := cmd.Find([]string{"list"})
 	assert.NoError(t, err)
 	assert.Equal(t, "list [flags]", listCmd.Use)

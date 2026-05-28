@@ -16,13 +16,6 @@ Manage container registry repositories.
 
 List, view, and delete GitLab container registry repositories.
 
-## Aliases
-
-```plaintext
-repositories
-repo
-```
-
 ## Options inherited from parent commands
 
 ```plaintext

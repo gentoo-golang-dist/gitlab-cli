@@ -17,7 +17,6 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			List, view, and delete GitLab container registry repositories.
 		`),
-		Aliases: []string{"repositories", "repo"},
 	}
 
 	cmd.AddCommand(list.NewCmd(f))
