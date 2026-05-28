@@ -54,6 +54,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			To bulk delete tags, omit <tag-name> and provide at least one bulk
 			deletion flag: --name-regex-delete, --name-regex-keep, --keep-n, or
 			--older-than.
+
+			The repository ID must belong to the selected project. Use -R/--repo
+			to specify the owning project when running this command outside that
+			project's git checkout.
 		`),
 		Aliases: []string{"del"},
 		Args:    cobra.RangeArgs(1, 2),
@@ -68,7 +72,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			glab container-registry tag delete 123 --name-regex-delete '^release-.*' --yes
 
 			# Schedule old tags for deletion, but keep the 10 most recent matching tags
-			glab container-registry tag delete 123 --name-regex-delete '.*' --keep-n 10 --older-than 30d --yes`),
+			glab container-registry tag delete 123 --name-regex-delete '.*' --keep-n 10 --older-than 30d --yes
+
+			# Delete a container registry tag in another project
+			glab container-registry tag delete 123 latest -R gitlab-org/cli`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
@@ -182,7 +189,7 @@ func (o *options) runSingleDelete(ctx context.Context, client *gitlab.Client, re
 
 	_, err := client.ContainerRegistry.DeleteRegistryRepositoryTag(repo.FullName(), o.repositoryID, o.tagName)
 	if err != nil {
-		return cmdutils.WrapError(err, "failed to delete container registry tag.")
+		return cmdutils.WrapError(err, registryutils.ProjectScopedTagError("failed to delete container registry", o.tagName, o.repositoryID, repo.FullName())+".")
 	}
 
 	o.io.LogInfof(c.Bold("%s Container registry tag %q deleted.\n"), c.RedCheck(), o.tagName)
@@ -236,7 +243,7 @@ func (o *options) runBulkDelete(ctx context.Context, client *gitlab.Client, repo
 
 	_, err := client.ContainerRegistry.DeleteRegistryRepositoryTags(repo.FullName(), o.repositoryID, deleteOpts)
 	if err != nil {
-		return cmdutils.WrapError(err, "failed to delete container registry tags.")
+		return cmdutils.WrapError(err, registryutils.ProjectScopedRepositoryError("failed to delete container registry tags from", o.repositoryID, repo.FullName())+".")
 	}
 
 	o.io.LogInfof(c.Bold("%s Container registry tags scheduled for deletion. They may remain visible until GitLab finishes the background deletion job.\n"), c.RedCheck())

@@ -95,5 +95,5 @@ func Test_TagView_APIError(t *testing.T) {
 
 	var exitErr *cmdutils.ExitError
 	require.ErrorAs(t, err, &exitErr)
-	assert.Equal(t, `failed to fetch container registry tag "latest".`, exitErr.Details)
+	assert.Equal(t, `failed to fetch container registry tag details for tag "latest" from repository 101 on OWNER/REPO; ensure the container registry repository belongs to OWNER/REPO, or specify the owning project with -R <project>.`, exitErr.Details)
 }

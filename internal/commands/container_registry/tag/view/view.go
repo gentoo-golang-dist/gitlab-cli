@@ -37,12 +37,19 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "View a container registry tag.",
 		Long: heredoc.Doc(`
 			View details for a single container registry tag.
+
+			The repository ID must belong to the selected project. Use -R/--repo
+			to specify the owning project when running this command outside that
+			project's git checkout.
 		`),
 		Aliases: []string{"show"},
 		Args:    cobra.ExactArgs(2),
 		Example: heredoc.Doc(`
 			# View a container registry tag
-			glab container-registry tag view 123 latest`),
+			glab container-registry tag view 123 latest
+
+			# View a container registry tag in another project
+			glab container-registry tag view 123 latest -R gitlab-org/cli`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},
@@ -88,7 +95,7 @@ func (o *options) run() error {
 		o.tagName,
 	)
 	if err != nil {
-		return cmdutils.WrapError(err, fmt.Sprintf("failed to fetch container registry tag %q.", o.tagName))
+		return cmdutils.WrapError(err, registryutils.ProjectScopedTagError("failed to fetch container registry tag details for", o.tagName, o.repositoryID, repo.FullName())+".")
 	}
 
 	if o.outputFormat == "json" {

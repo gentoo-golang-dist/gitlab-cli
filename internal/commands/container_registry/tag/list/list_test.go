@@ -13,6 +13,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
@@ -104,6 +105,10 @@ func Test_TagList_WithDetailsAPIError(t *testing.T) {
 	_, err := exec("101 --details")
 	require.Error(t, err)
 	assert.Equal(t, "api failed", err.Error())
+
+	var exitErr *cmdutils.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, `failed to fetch container registry tag details for tag "latest" from repository 101 on OWNER/REPO; ensure the container registry repository belongs to OWNER/REPO, or specify the owning project with -R <project>.`, exitErr.Details)
 }
 
 func Test_TagList_JSON(t *testing.T) {
@@ -199,4 +204,8 @@ func Test_TagList_APIError(t *testing.T) {
 	_, err := exec("101")
 	require.Error(t, err)
 	assert.Equal(t, "api failed", err.Error())
+
+	var exitErr *cmdutils.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, "failed to fetch container registry tags from repository 101 on OWNER/REPO; ensure the container registry repository belongs to OWNER/REPO, or specify the owning project with -R <project>.", exitErr.Details)
 }

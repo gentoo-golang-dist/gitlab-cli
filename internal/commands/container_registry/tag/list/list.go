@@ -41,6 +41,10 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "List container registry repository tags.",
 		Long: heredoc.Doc(`
 			List tags for a container registry repository.
+
+			The repository ID must belong to the selected project. Use -R/--repo
+			to specify the owning project when running this command outside that
+			project's git checkout.
 		`),
 		Aliases: []string{"ls"},
 		Args:    cobra.ExactArgs(1),
@@ -102,7 +106,7 @@ func (o *options) run(ctx context.Context) error {
 		},
 	)
 	if err != nil {
-		return err
+		return cmdutils.WrapError(err, registryutils.ProjectScopedRepositoryError("failed to fetch container registry tags from", o.repositoryID, repo.FullName())+".")
 	}
 
 	if o.details {
@@ -149,7 +153,7 @@ func (o *options) fetchTagDetails(ctx context.Context, client *gitlab.Client, re
 			tag.Name,
 		)
 		if err != nil {
-			return nil, cmdutils.WrapError(err, fmt.Sprintf("failed to fetch container registry tag %q.", tag.Name))
+			return nil, cmdutils.WrapError(err, registryutils.ProjectScopedTagError("failed to fetch container registry tag details for", tag.Name, o.repositoryID, repoName)+".")
 		}
 		detailedTags = append(detailedTags, detailedTag)
 	}

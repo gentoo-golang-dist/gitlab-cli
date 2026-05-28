@@ -16,6 +16,10 @@ View a container registry tag.
 
 View details for a single container registry tag.
 
+The repository ID must belong to the selected project. Use -R/--repo
+to specify the owning project when running this command outside that
+project's git checkout.
+
 ```plaintext
 glab container-registry tag view <repository-id> <tag-name> [flags]
 ```
@@ -31,6 +35,9 @@ show
 ```console
 # View a container registry tag
 glab container-registry tag view 123 latest
+
+# View a container registry tag in another project
+glab container-registry tag view 123 latest -R gitlab-org/cli
 ```
 
 ## Options

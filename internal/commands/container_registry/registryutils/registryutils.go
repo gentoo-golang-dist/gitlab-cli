@@ -118,6 +118,14 @@ func DisplayTag(io *iostreams.IOStreams, tag *gitlab.RegistryRepositoryTag) stri
 	return fmt.Sprintf("%s\n%s", c.Bold(tag.Name), table.Render())
 }
 
+func ProjectScopedRepositoryError(action string, repositoryID int64, repoName string) string {
+	return fmt.Sprintf("%s repository %d on %s; ensure the container registry repository belongs to %s, or specify the owning project with -R <project>", action, repositoryID, repoName, repoName)
+}
+
+func ProjectScopedTagError(action string, tagName string, repositoryID int64, repoName string) string {
+	return fmt.Sprintf("%s tag %q from repository %d on %s; ensure the container registry repository belongs to %s, or specify the owning project with -R <project>", action, tagName, repositoryID, repoName, repoName)
+}
+
 func statusString(status *gitlab.ContainerRegistryStatus) string {
 	if status == nil {
 		return ""

@@ -72,7 +72,7 @@ func Test_TagDelete_APIError(t *testing.T) {
 
 	var exitErr *cmdutils.ExitError
 	require.ErrorAs(t, err, &exitErr)
-	assert.Equal(t, "failed to delete container registry tag.", exitErr.Details)
+	assert.Equal(t, `failed to delete container registry tag "latest" from repository 101 on OWNER/REPO; ensure the container registry repository belongs to OWNER/REPO, or specify the owning project with -R <project>.`, exitErr.Details)
 }
 
 func Test_TagDelete_Bulk(t *testing.T) {
@@ -243,5 +243,5 @@ func Test_TagDelete_BulkAPIError(t *testing.T) {
 
 	var exitErr *cmdutils.ExitError
 	require.ErrorAs(t, err, &exitErr)
-	assert.Equal(t, "failed to delete container registry tags.", exitErr.Details)
+	assert.Equal(t, "failed to delete container registry tags from repository 101 on OWNER/REPO; ensure the container registry repository belongs to OWNER/REPO, or specify the owning project with -R <project>.", exitErr.Details)
 }

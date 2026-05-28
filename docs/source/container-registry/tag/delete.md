@@ -25,6 +25,10 @@ To bulk delete tags, omit <tag-name> and provide at least one bulk
 deletion flag: --name-regex-delete, --name-regex-keep, --keep-n, or
 --older-than.
 
+The repository ID must belong to the selected project. Use -R/--repo
+to specify the owning project when running this command outside that
+project's git checkout.
+
 ```plaintext
 glab container-registry tag delete <repository-id> [<tag-name>] [flags]
 ```
@@ -49,6 +53,9 @@ glab container-registry tag delete 123 --name-regex-delete '^release-.*' --yes
 
 # Schedule old tags for deletion, but keep the 10 most recent matching tags
 glab container-registry tag delete 123 --name-regex-delete '.*' --keep-n 10 --older-than 30d --yes
+
+# Delete a container registry tag in another project
+glab container-registry tag delete 123 latest -R gitlab-org/cli
 ```
 
 ## Options
