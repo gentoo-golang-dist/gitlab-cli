@@ -96,6 +96,15 @@ func rootConfig() *yaml.Node {
 						Value: "",
 					},
 					{
+						HeadComment: "# Show a notice when an installed agent skill (bundled or remote) has updates available.",
+						Kind:        yaml.ScalarNode,
+						Value:       "notify_skill_updates",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "true",
+					},
+					{
 						HeadComment: "# Whether or not to display hyperlinks in terminal output. Defaults to true (enabled for TTYs). Set to false to disable. Force hyperlinks in non-TTY environments by setting FORCE_HYPERLINKS=1.",
 						Kind:        yaml.ScalarNode,
 						Value:       "display_hyperlinks",

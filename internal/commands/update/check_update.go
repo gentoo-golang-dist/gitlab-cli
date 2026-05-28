@@ -122,14 +122,15 @@ func checkUpdate(f cmdutils.Factory, silentSuccess bool, forceCheck bool) error 
 
 	if isOlderVersion(latestRelease.Name, version) {
 		writeUpdateAvailable(f.IO(), version, latestRelease.TagName, releaseURL, installMethodDetector(), buildInfo.CodingAgent)
-	} else {
-		if silentSuccess {
-			return nil
-		}
+	} else if !silentSuccess {
 		c := f.IO().Color()
 		fmt.Fprintf(f.IO().StdErr, "%v",
 			c.Green("You are already using the latest version of glab!\n"))
 	}
+
+	// Piggybacks on the 24h throttle so we don't issue one gitlab.com
+	// request per installed remote skill on every command.
+	writeSkillUpdateLine(f.IO(), remoteSkillUpdates(f.Config()), false)
 	return nil
 }
 

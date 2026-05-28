@@ -36,6 +36,7 @@ func newBannerTest(t *testing.T, currentVersion, lastSeen, showWhatsNew, codingA
 
 func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 	t.Parallel()
+	stubNoInstalledSkills(t)
 
 	tests := []struct {
 		name           string
@@ -136,6 +137,7 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 // envOverride covers GLAB_SHOW_WHATS_NEW separately because t.Setenv is
 // incompatible with t.Parallel.
 func TestMaybeShowPostUpgradeBanner_envOverride(t *testing.T) {
+	stubNoInstalledSkills(t)
 	t.Setenv("GLAB_SHOW_WHATS_NEW", "false")
 
 	ios, cfg, buildInfo, stderr := newBannerTest(t, "1.85.0", "1.84.0", "", "")
