@@ -26,8 +26,10 @@ branch are never deleted.
 This command only affects your local Git repository. Remote branches
 on GitLab are not touched.
 
-Use --merged to skip the GitLab API check and prune branches based on
-`git branch --merged` instead. This is faster but only detects
+Use --merged to skip the per-branch merge request lookup and instead
+rely on `git branch --merged` to decide which branches to delete.
+The default branch and protected branches are still fetched from
+GitLab in this mode. Falling back to Git is faster, but only detects
 fast-forward merges — squash and rebase merges look like distinct
 commits to Git and will not be reported as merged.
 

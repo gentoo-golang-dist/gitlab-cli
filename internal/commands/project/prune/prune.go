@@ -12,7 +12,6 @@ import (
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
@@ -65,8 +64,10 @@ func NewCmdPrune(f cmdutils.Factory) *cobra.Command {
 			This command only affects your local Git repository. Remote branches
 			on GitLab are not touched.
 
-			Use --merged to skip the GitLab API check and prune branches based on
-			%[1]sgit branch --merged%[1]s instead. This is faster but only detects
+			Use --merged to skip the per-branch merge request lookup and instead
+			rely on %[1]sgit branch --merged%[1]s to decide which branches to delete.
+			The default branch and protected branches are still fetched from
+			GitLab in this mode. Falling back to Git is faster, but only detects
 			fast-forward merges — squash and rebase merges look like distinct
 			commits to Git and will not be reported as merged.
 		`, "`"),
@@ -91,6 +92,9 @@ func NewCmdPrune(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if err := opts.validate(); err != nil {
+				return err
+			}
 			return opts.run(cmd.Context())
 		},
 	}
@@ -105,11 +109,14 @@ func NewCmdPrune(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *options) run(ctx context.Context) error {
+func (o *options) validate() error {
 	if !o.yes && !o.io.PromptEnabled() && !o.dryRun {
 		return &cmdutils.FlagError{Err: errors.New("--yes or -y is required when not running interactively.")}
 	}
+	return nil
+}
 
+func (o *options) run(ctx context.Context) error {
 	repo, err := o.baseRepo()
 	if err != nil {
 		return err
@@ -125,7 +132,7 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	project, err := api.GetProject(apiClient, repo.FullName())
+	project, _, err := apiClient.Projects.GetProject(repo.FullName(), nil)
 	if err != nil {
 		return fmt.Errorf("could not fetch project from GitLab: %w", err)
 	}
@@ -223,24 +230,9 @@ func collectMergedViaAPI(io *iostreams.IOStreams, client *gitlab.Client, project
 
 	var candidates []candidate
 	for _, b := range branches {
-		mrs, err := api.ListMRs(client, projectID, &gitlab.ListProjectMergeRequestsOptions{
-			SourceBranch: new(b),
-		})
+		merged, hasOpen, err := scanBranchMRs(client, projectID, b)
 		if err != nil {
 			return nil, fmt.Errorf("listing merge requests for branch %q: %w", b, err)
-		}
-
-		var merged *gitlab.BasicMergeRequest
-		hasOpen := false
-		for _, mr := range mrs {
-			switch mr.State {
-			case "merged":
-				if merged == nil {
-					merged = mr
-				}
-			case "opened", "locked":
-				hasOpen = true
-			}
 		}
 		if merged != nil && !hasOpen {
 			candidates = append(candidates, candidate{
@@ -251,6 +243,42 @@ func collectMergedViaAPI(io *iostreams.IOStreams, client *gitlab.Client, project
 		}
 	}
 	return candidates, nil
+}
+
+// scanBranchMRs walks every page of merge requests with the given source
+// branch and reports the first merged MR found, along with whether any
+// open/locked MRs exist. Pagination matters here — a reused branch with
+// many MRs could otherwise hide an open one on a later page and be
+// incorrectly marked safe to delete.
+func scanBranchMRs(client *gitlab.Client, projectID, branch string) (*gitlab.BasicMergeRequest, bool, error) {
+	opts := &gitlab.ListProjectMergeRequestsOptions{
+		ListOptions:  gitlab.ListOptions{PerPage: 100},
+		SourceBranch: new(branch),
+	}
+
+	var merged *gitlab.BasicMergeRequest
+	hasOpen := false
+	for {
+		mrs, resp, err := client.MergeRequests.ListProjectMergeRequests(projectID, opts)
+		if err != nil {
+			return nil, false, err
+		}
+		for _, mr := range mrs {
+			switch mr.State {
+			case "merged":
+				if merged == nil {
+					merged = mr
+				}
+			case "opened", "locked":
+				hasOpen = true
+			}
+		}
+		if resp == nil || resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	return merged, hasOpen, nil
 }
 
 func collectMergedLocally(gr git.GitRunner, target string, branches []string) ([]candidate, error) {

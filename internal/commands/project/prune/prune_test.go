@@ -14,37 +14,11 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
-	"gitlab.com/gitlab-org/cli/internal/api"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
 const fullName = "OWNER/REPO"
-
-type stubMRs struct {
-	bySource map[string][]*gitlab.BasicMergeRequest
-}
-
-func (s *stubMRs) handler(_ *gitlab.Client, _ any, opts *gitlab.ListProjectMergeRequestsOptions, _ ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
-	if opts == nil || opts.SourceBranch == nil {
-		return nil, nil
-	}
-	return s.bySource[*opts.SourceBranch], nil
-}
-
-func swapListMRs(t *testing.T, fn func(*gitlab.Client, any, *gitlab.ListProjectMergeRequestsOptions, ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error)) {
-	t.Helper()
-	orig := api.ListMRs
-	api.ListMRs = fn
-	t.Cleanup(func() { api.ListMRs = orig })
-}
-
-func swapGetProject(t *testing.T, fn func(*gitlab.Client, any) (*gitlab.Project, error)) {
-	t.Helper()
-	orig := api.GetProject
-	api.GetProject = fn
-	t.Cleanup(func() { api.GetProject = orig })
-}
 
 func expectListLocalBranches(mockGit *git_testing.MockGitRunner, branches ...string) {
 	var out strings.Builder
@@ -56,32 +30,54 @@ func expectListLocalBranches(mockGit *git_testing.MockGitRunner, branches ...str
 		Return(out.String(), nil)
 }
 
-func expectNoProtectedBranches(t *testing.T, tc *gitlabtesting.TestClient) {
-	t.Helper()
+func expectProject(tc *gitlabtesting.TestClient) {
+	tc.MockProjects.EXPECT().
+		GetProject(fullName, gomock.Any()).
+		Return(&gitlab.Project{DefaultBranch: "main"}, &gitlab.Response{}, nil)
+}
+
+func expectNoProtectedBranches(tc *gitlabtesting.TestClient) {
 	tc.MockProtectedBranches.EXPECT().
 		ListProtectedBranches(fullName, gomock.Any()).
 		Return(nil, &gitlab.Response{}, nil)
 }
 
-func expectProject(t *testing.T) {
-	t.Helper()
-	swapGetProject(t, func(_ *gitlab.Client, _ any) (*gitlab.Project, error) {
-		return &gitlab.Project{DefaultBranch: "main"}, nil
-	})
+// expectMRsForBranch sets up the per-branch MR lookup. mrs is the slice
+// returned on the first (and only) page. The expectation matches by
+// SourceBranch only, so the call order across branches doesn't have to
+// align with the order expectations are registered.
+func expectMRsForBranch(tc *gitlabtesting.TestClient, branch string, mrs []*gitlab.BasicMergeRequest) {
+	tc.MockMergeRequests.EXPECT().
+		ListProjectMergeRequests(fullName, gomock.Matcher(sourceBranchMatcher(branch))).
+		Return(mrs, &gitlab.Response{}, nil)
+}
+
+// sourceBranchMatcher matches a *gitlab.ListProjectMergeRequestsOptions
+// whose SourceBranch points at the expected branch name. Lets per-branch
+// expectations be dispatched by SourceBranch rather than call order.
+type sourceBranchMatcher string
+
+func (s sourceBranchMatcher) Matches(x any) bool {
+	opts, ok := x.(*gitlab.ListProjectMergeRequestsOptions)
+	if !ok || opts == nil || opts.SourceBranch == nil {
+		return false
+	}
+	return *opts.SourceBranch == string(s)
+}
+
+func (s sourceBranchMatcher) String() string {
+	return "SourceBranch == " + string(s)
 }
 
 func TestPrune_DeletesBranchesWithMergedMR(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+	t.Parallel()
 
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"feature/merged": {{IID: 42, State: "merged", TargetBranch: "main"}},
-			"feature/open":   {{IID: 43, State: "opened", TargetBranch: "main"}},
-			"feature/empty":  nil,
-		},
-	}).handler)
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	expectMRsForBranch(tc, "feature/merged", []*gitlab.BasicMergeRequest{{IID: 42, State: "merged", TargetBranch: "main"}})
+	expectMRsForBranch(tc, "feature/open", []*gitlab.BasicMergeRequest{{IID: 43, State: "opened", TargetBranch: "main"}})
+	expectMRsForBranch(tc, "feature/empty", nil)
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -107,18 +103,15 @@ func TestPrune_DeletesBranchesWithMergedMR(t *testing.T) {
 }
 
 func TestPrune_SkipsBranchWithMergedAndOpenMR(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+	t.Parallel()
 
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"feature/reused": {
-				{IID: 50, State: "merged", TargetBranch: "main"},
-				{IID: 51, State: "opened", TargetBranch: "main"},
-			},
-		},
-	}).handler)
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	expectMRsForBranch(tc, "feature/reused", []*gitlab.BasicMergeRequest{
+		{IID: 50, State: "merged", TargetBranch: "main"},
+		{IID: 51, State: "opened", TargetBranch: "main"},
+	})
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -138,16 +131,55 @@ func TestPrune_SkipsBranchWithMergedAndOpenMR(t *testing.T) {
 	assert.NotContains(t, stdout, "feature/reused")
 }
 
-func TestPrune_DryRunDoesNotDelete(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+// TestPrune_OpenMROnLaterPageIsRespected verifies the per-branch MR scan
+// follows pagination — an open MR on page 2 must still cause the branch
+// to be skipped. Regression test for the unpaginated initial implementation.
+func TestPrune_OpenMROnLaterPageIsRespected(t *testing.T) {
+	t.Parallel()
 
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"feature/merged": {{IID: 1, State: "merged", TargetBranch: "main"}},
-		},
-	}).handler)
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+
+	// First page: merged MR + a NextPage hint.
+	tc.MockMergeRequests.EXPECT().
+		ListProjectMergeRequests(fullName, gomock.Any()).
+		Return(
+			[]*gitlab.BasicMergeRequest{{IID: 100, State: "merged", TargetBranch: "main"}},
+			&gitlab.Response{NextPage: 2},
+			nil,
+		)
+	// Second page: an open MR, which must veto the deletion.
+	tc.MockMergeRequests.EXPECT().
+		ListProjectMergeRequests(fullName, gomock.Any()).
+		Return(
+			[]*gitlab.BasicMergeRequest{{IID: 101, State: "opened", TargetBranch: "main"}},
+			&gitlab.Response{},
+			nil,
+		)
+
+	ctrl := gomock.NewController(t)
+	mockGit := git_testing.NewMockGitRunner(ctrl)
+	expectListLocalBranches(mockGit, "feature/paginated")
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmdPrune, false,
+		cmdtest.WithGitLabClient(tc.Client),
+		cmdtest.WithGitRunner(mockGit),
+		cmdtest.WithBranch("other"),
+	)
+
+	out, err := exec("--yes")
+	require.NoError(t, err)
+	assert.Contains(t, out.OutBuf.String(), "No local branches found")
+}
+
+func TestPrune_DryRunDoesNotDelete(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	expectMRsForBranch(tc, "feature/merged", []*gitlab.BasicMergeRequest{{IID: 1, State: "merged", TargetBranch: "main"}})
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -166,22 +198,18 @@ func TestPrune_DryRunDoesNotDelete(t *testing.T) {
 }
 
 func TestPrune_ExcludesProtectedBranches(t *testing.T) {
+	t.Parallel()
+
 	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
+	expectProject(tc)
 	tc.MockProtectedBranches.EXPECT().
 		ListProtectedBranches(fullName, gomock.Any()).
 		Return([]*gitlab.ProtectedBranch{
 			{Name: "release/*"},
 			{Name: "staging"},
 		}, &gitlab.Response{}, nil)
-
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"release/1.0": {{IID: 10, State: "merged", TargetBranch: "main"}},
-			"staging":     {{IID: 11, State: "merged", TargetBranch: "main"}},
-			"plain":       {{IID: 12, State: "merged", TargetBranch: "main"}},
-		},
-	}).handler)
+	// Only "plain" reaches the MR lookup; the protected entries are filtered out first.
+	expectMRsForBranch(tc, "plain", []*gitlab.BasicMergeRequest{{IID: 12, State: "merged", TargetBranch: "main"}})
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -204,18 +232,12 @@ func TestPrune_ExcludesProtectedBranches(t *testing.T) {
 }
 
 func TestPrune_ExcludesUserPatterns(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+	t.Parallel()
 
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"wip-foo":         {{IID: 1, State: "merged", TargetBranch: "main"}},
-			"wip-bar":         {{IID: 2, State: "merged", TargetBranch: "main"}},
-			"feature/keep-me": {{IID: 3, State: "merged", TargetBranch: "main"}},
-			"demo-branch":     {{IID: 4, State: "merged", TargetBranch: "main"}},
-		},
-	}).handler)
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	expectMRsForBranch(tc, "feature/keep-me", []*gitlab.BasicMergeRequest{{IID: 3, State: "merged", TargetBranch: "main"}})
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -238,15 +260,12 @@ func TestPrune_ExcludesUserPatterns(t *testing.T) {
 }
 
 func TestPrune_SkipsCurrentBranch(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+	t.Parallel()
 
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"current-branch": {{IID: 1, State: "merged", TargetBranch: "main"}},
-		},
-	}).handler)
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	// "current-branch" is filtered out before any MR lookup happens.
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -264,15 +283,12 @@ func TestPrune_SkipsCurrentBranch(t *testing.T) {
 }
 
 func TestPrune_IncludeCurrentBranch(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+	t.Parallel()
 
-	swapListMRs(t, (&stubMRs{
-		bySource: map[string][]*gitlab.BasicMergeRequest{
-			"current-branch": {{IID: 7, State: "merged", TargetBranch: "main"}},
-		},
-	}).handler)
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	expectMRsForBranch(tc, "current-branch", []*gitlab.BasicMergeRequest{{IID: 7, State: "merged", TargetBranch: "main"}})
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
@@ -291,6 +307,8 @@ func TestPrune_IncludeCurrentBranch(t *testing.T) {
 }
 
 func TestPrune_NonInteractiveRequiresYes(t *testing.T) {
+	t.Parallel()
+
 	tc := gitlabtesting.NewTestClient(t)
 	exec := cmdtest.SetupCmdForTest(t, NewCmdPrune, false,
 		cmdtest.WithGitLabClient(tc.Client),
@@ -303,8 +321,10 @@ func TestPrune_NonInteractiveRequiresYes(t *testing.T) {
 }
 
 func TestPrune_ProtectedBranchesAPIFailureIsHardError(t *testing.T) {
+	t.Parallel()
+
 	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
+	expectProject(tc)
 	tc.MockProtectedBranches.EXPECT().
 		ListProtectedBranches(fullName, gomock.Any()).
 		Return(nil, nil, errors.New("forbidden"))
@@ -320,16 +340,13 @@ func TestPrune_ProtectedBranchesAPIFailureIsHardError(t *testing.T) {
 }
 
 func TestPrune_MergedFlagUsesGit(t *testing.T) {
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(t)
-	expectNoProtectedBranches(t, tc)
+	t.Parallel()
 
-	// api.ListMRs must not be called in --merged mode; assert by returning an error
-	// if it is.
-	swapListMRs(t, func(*gitlab.Client, any, *gitlab.ListProjectMergeRequestsOptions, ...api.CliListMROption) ([]*gitlab.BasicMergeRequest, error) {
-		t.Fatalf("api.ListMRs should not be called in --merged mode")
-		return nil, nil
-	})
+	tc := gitlabtesting.NewTestClient(t)
+	expectProject(tc)
+	expectNoProtectedBranches(tc)
+	// No MR-lookup mock is set up — if --merged accidentally invokes the
+	// per-branch API path, gomock will fail the test for an unexpected call.
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
