@@ -2,7 +2,6 @@ package list
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -29,30 +28,6 @@ type options struct {
 	io           *iostreams.IOStreams
 	gitlabClient func() (*gitlab.Client, error)
 	baseRepo     func() (glrepo.Interface, error)
-}
-
-type repositoryJSON struct {
-	ID                     int64                           `json:"id"`
-	Name                   string                          `json:"name"`
-	Path                   string                          `json:"path"`
-	ProjectID              int64                           `json:"project_id"`
-	Location               string                          `json:"location"`
-	CreatedAt              *time.Time                      `json:"created_at"`
-	CleanupPolicyStartedAt *time.Time                      `json:"cleanup_policy_started_at"`
-	Status                 *gitlab.ContainerRegistryStatus `json:"status"`
-	TagsCount              *int64                          `json:"tags_count,omitempty"`
-	Tags                   []tagJSON                       `json:"tags,omitempty"`
-}
-
-type tagJSON struct {
-	Name          string     `json:"name"`
-	Path          string     `json:"path"`
-	Location      string     `json:"location"`
-	Revision      string     `json:"revision,omitempty"`
-	ShortRevision string     `json:"short_revision,omitempty"`
-	Digest        string     `json:"digest,omitempty"`
-	CreatedAt     *time.Time `json:"created_at,omitempty"`
-	TotalSize     *int64     `json:"total_size,omitempty"`
 }
 
 func NewCmd(f cmdutils.Factory) *cobra.Command {
@@ -168,7 +143,7 @@ func (o *options) run() error {
 			}
 		}
 
-		return o.io.PrintJSON(newRepositoryJSONList(repositories, o.includeTagDetails, showTagsCount))
+		return o.io.PrintJSON(registryutils.NewRepositoryJSONList(repositories, o.includeTagDetails, showTagsCount))
 	}
 
 	title := utils.NewListTitle("container registry repository")
@@ -206,54 +181,4 @@ func (o *options) fetchRepositoryTagDetails(client *gitlab.Client, repoName stri
 	}
 
 	return nil
-}
-
-func newRepositoryJSONList(repositories []*gitlab.RegistryRepository, includeTagDetails bool, showTagsCount bool) []repositoryJSON {
-	output := make([]repositoryJSON, 0, len(repositories))
-	for _, repository := range repositories {
-		var tagsCount *int64
-		if showTagsCount {
-			tagCount := repository.TagsCount
-			tagsCount = &tagCount
-		}
-		output = append(output, repositoryJSON{
-			ID:                     repository.ID,
-			Name:                   repository.Name,
-			Path:                   repository.Path,
-			ProjectID:              repository.ProjectID,
-			Location:               repository.Location,
-			CreatedAt:              repository.CreatedAt,
-			CleanupPolicyStartedAt: repository.CleanupPolicyStartedAt,
-			Status:                 repository.Status,
-			TagsCount:              tagsCount,
-			Tags:                   newTagJSONList(repository.Tags, includeTagDetails),
-		})
-	}
-
-	return output
-}
-
-func newTagJSONList(tags []*gitlab.RegistryRepositoryTag, includeDetails bool) []tagJSON {
-	if len(tags) == 0 {
-		return nil
-	}
-
-	output := make([]tagJSON, 0, len(tags))
-	for _, tag := range tags {
-		tagOutput := tagJSON{
-			Name:     tag.Name,
-			Path:     tag.Path,
-			Location: tag.Location,
-		}
-		if includeDetails {
-			tagOutput.Revision = tag.Revision
-			tagOutput.ShortRevision = tag.ShortRevision
-			tagOutput.Digest = tag.Digest
-			tagOutput.CreatedAt = tag.CreatedAt
-			tagOutput.TotalSize = new(tag.TotalSize)
-		}
-		output = append(output, tagOutput)
-	}
-
-	return output
 }

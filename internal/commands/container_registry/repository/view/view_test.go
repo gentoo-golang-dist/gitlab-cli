@@ -51,6 +51,44 @@ func Test_RepositoryView(t *testing.T) {
 	assert.Empty(t, out.Stderr())
 }
 
+func Test_RepositoryView_JSONUsesListSchema(t *testing.T) {
+	t.Parallel()
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockContainerRegistry.EXPECT().
+		GetSingleRegistryRepository(int64(101), gomock.Any()).
+		Return(&gitlab.RegistryRepository{
+			ID:        101,
+			Name:      "app",
+			Path:      "OWNER/REPO/app",
+			ProjectID: 7,
+			Location:  "registry.gitlab.com/owner/repo/app",
+			TagsCount: 3,
+			Tags: []*gitlab.RegistryRepositoryTag{
+				{
+					Name:     "latest",
+					Path:     "OWNER/REPO/app:latest",
+					Location: "registry.gitlab.com/owner/repo/app:latest",
+				},
+			},
+		}, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("101 --include-tags --output json")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), `"tags_count":3`)
+	assert.Contains(t, out.String(), `"tags":[{"name":"latest"`)
+	assert.NotContains(t, out.String(), `"revision":""`)
+	assert.NotContains(t, out.String(), `"total_size":0`)
+	assert.Empty(t, out.Stderr())
+}
+
 func Test_RepositoryView_InvalidID(t *testing.T) {
 	t.Parallel()
 

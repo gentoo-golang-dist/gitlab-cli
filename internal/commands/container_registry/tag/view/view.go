@@ -92,7 +92,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		return o.io.PrintJSON(tag)
+		return o.io.PrintJSON(registryutils.NewTagJSON(tag, true))
 	}
 
 	fmt.Fprintln(o.io.StdOut, registryutils.DisplayTag(o.io, tag))

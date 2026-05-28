@@ -102,7 +102,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		return o.io.PrintJSON(repository)
+		return o.io.PrintJSON(registryutils.NewRepositoryJSON(repository, false, o.includeTagsCount))
 	}
 
 	fmt.Fprintln(o.io.StdOut, registryutils.DisplayRepository(o.io, repository))

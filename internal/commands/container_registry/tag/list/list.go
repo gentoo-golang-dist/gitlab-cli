@@ -112,7 +112,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		return o.io.PrintJSON(tags)
+		return o.io.PrintJSON(registryutils.NewTagJSONList(tags, o.details))
 	}
 
 	title := utils.NewListTitle("container registry tag")

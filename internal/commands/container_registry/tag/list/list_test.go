@@ -124,6 +124,38 @@ func Test_TagList_JSON(t *testing.T) {
 	out, err := exec("101 --output json")
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), `"name":"latest"`)
+	assert.NotContains(t, out.String(), `"revision":""`)
+	assert.NotContains(t, out.String(), `"total_size":0`)
+	assert.Empty(t, out.Stderr())
+}
+
+func Test_TagList_JSONWithDetails(t *testing.T) {
+	t.Parallel()
+
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockContainerRegistry.EXPECT().
+		ListRegistryRepositoryTags("OWNER/REPO", int64(101), gomock.Any()).
+		Return([]*gitlab.RegistryRepositoryTag{{Name: "latest"}}, nil, nil)
+	testClient.MockContainerRegistry.EXPECT().
+		GetRegistryRepositoryTagDetail("OWNER/REPO", int64(101), "latest").
+		Return(&gitlab.RegistryRepositoryTag{
+			Name:      "latest",
+			Path:      "OWNER/REPO/app:latest",
+			Digest:    "sha256:abc",
+			TotalSize: 1024,
+		}, nil, nil)
+
+	exec := cmdtest.SetupCmdForTest(
+		t,
+		NewCmd,
+		false,
+		cmdtest.WithGitLabClient(testClient.Client),
+	)
+
+	out, err := exec("101 --details --output json")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), `"digest":"sha256:abc"`)
+	assert.Contains(t, out.String(), `"total_size":1024`)
 	assert.Empty(t, out.Stderr())
 }
 
