@@ -35,7 +35,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "delete <repository-id> [flags]",
 		Short:   "Delete a container registry repository.",
-		Aliases: []string{"del", "rm"},
+		Aliases: []string{"del"},
 		Args:    cobra.ExactArgs(1),
 		Long: heredoc.Doc(`
 			Delete a container registry repository.

@@ -27,7 +27,6 @@ glab container-registry repository delete <repository-id> [flags]
 
 ```plaintext
 del
-rm
 ```
 
 ## Examples
