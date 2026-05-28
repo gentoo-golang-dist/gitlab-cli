@@ -30,7 +30,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 	cmdutils.EnableRepoOverride(cmd, f)
 
-	cmd.AddCommand(repository.NewCmd(f))
+	repositoryCmd := repository.NewCmd(f)
+	cmd.AddCommand(repositoryCmd)
+	if repositoryListCmd, _, err := repositoryCmd.Find([]string{"list"}); err == nil {
+		repositoryListCmd.MarkFlagsMutuallyExclusive("group", "repo")
+	}
 	cmd.AddCommand(tag.NewCmd(f))
 
 	return cmd

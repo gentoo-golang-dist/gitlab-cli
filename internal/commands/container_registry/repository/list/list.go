@@ -1,6 +1,7 @@
 package list
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -62,19 +63,18 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			return opts.run()
+			return opts.run(cmd.Context())
 		},
 	}
 
 	fl := cmd.Flags()
 	fl.StringVarP(&opts.group, "group", "g", "", "List container registry repositories for a group.")
 	fl.BoolVar(&opts.includeTags, "include-tags", false, "Include tags in the response. Project repositories only.")
-	fl.BoolVar(&opts.includeTagDetails, "include-tag-details", false, "Fetch digest, size, and creation time for included tags. Project JSON output only. Implies --include-tags.")
+	fl.BoolVar(&opts.includeTagDetails, "include-tag-details", false, "Fetch digest, size, and creation time for included tags. Makes one API call per tag. Project JSON output only. Implies --include-tags.")
 	fl.BoolVar(&opts.includeTagsCount, "include-tags-count", true, "Include the number of tags in the response. Project repositories only.")
 	fl.IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	fl.IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
-	cmd.MarkFlagsMutuallyExclusive("group", "repo")
 
 	return cmd
 }
@@ -90,7 +90,7 @@ func (o *options) validate() error {
 	return nil
 }
 
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	client, err := o.gitlabClient()
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func (o *options) run() error {
 	if o.outputFormat == "json" {
 		showTagsCount := o.group == "" && o.includeTagsCount
 		if o.includeTagDetails {
-			if err := o.fetchRepositoryTagDetails(client, repoName, repositories); err != nil {
+			if err := o.fetchRepositoryTagDetails(ctx, client, repoName, repositories); err != nil {
 				return err
 			}
 		}
@@ -163,10 +163,13 @@ func (o *options) run() error {
 	return nil
 }
 
-func (o *options) fetchRepositoryTagDetails(client *gitlab.Client, repoName string, repositories []*gitlab.RegistryRepository) error {
+func (o *options) fetchRepositoryTagDetails(ctx context.Context, client *gitlab.Client, repoName string, repositories []*gitlab.RegistryRepository) error {
 	for _, repository := range repositories {
 		detailedTags := make([]*gitlab.RegistryRepositoryTag, 0, len(repository.Tags))
 		for _, tag := range repository.Tags {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			detailedTag, _, err := client.ContainerRegistry.GetRegistryRepositoryTagDetail(
 				repoName,
 				repository.ID,

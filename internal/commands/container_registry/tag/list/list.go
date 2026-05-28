@@ -1,6 +1,7 @@
 package list
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -57,13 +58,13 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			return opts.run()
+			return opts.run(cmd.Context())
 		},
 	}
 
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	cmd.Flags().BoolVar(&opts.details, "details", false, "Fetch digest, size, and creation time for each tag.")
+	cmd.Flags().BoolVar(&opts.details, "details", false, "Fetch digest, size, and creation time for each tag. Makes one API call per tag.")
 	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
 
 	return cmd
@@ -79,7 +80,7 @@ func (o *options) complete(args []string) error {
 	return nil
 }
 
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	client, err := o.gitlabClient()
 	if err != nil {
 		return err
@@ -105,7 +106,7 @@ func (o *options) run() error {
 	}
 
 	if o.details {
-		tags, err = o.fetchTagDetails(client, repo.FullName(), tags)
+		tags, err = o.fetchTagDetails(ctx, client, repo.FullName(), tags)
 		if err != nil {
 			return err
 		}
@@ -136,9 +137,12 @@ func (o *options) run() error {
 	return nil
 }
 
-func (o *options) fetchTagDetails(client *gitlab.Client, repoName string, tags []*gitlab.RegistryRepositoryTag) ([]*gitlab.RegistryRepositoryTag, error) {
+func (o *options) fetchTagDetails(ctx context.Context, client *gitlab.Client, repoName string, tags []*gitlab.RegistryRepositoryTag) ([]*gitlab.RegistryRepositoryTag, error) {
 	detailedTags := make([]*gitlab.RegistryRepositoryTag, 0, len(tags))
 	for _, tag := range tags {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		detailedTag, _, err := client.ContainerRegistry.GetRegistryRepositoryTagDetail(
 			repoName,
 			o.repositoryID,
