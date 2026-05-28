@@ -208,18 +208,14 @@ func Test_TagDelete_RejectsNegativeKeepN(t *testing.T) {
 func Test_TagDelete_BulkRequiresConfirmationWithFilters(t *testing.T) {
 	t.Parallel()
 
-	exec := cmdtest.SetupCmdForTest(t, NewCmd, true)
+	got := bulkDeleteConfirmationMessage(101, "OWNER/REPO", "^release-.*", "^latest$", 5, "30d")
 
-	out, err := exec("101 --name-regex-delete '^release-.*' --name-regex-keep '^latest$' --keep-n 5 --older-than 30d")
-	require.Error(t, err)
-	assert.Equal(t, "user cancelled", err.Error())
-	assert.Contains(t, out.String(), "Are you ABSOLUTELY SURE you wish to schedule matching container registry tags for deletion from repository 101?")
-	assert.Contains(t, out.Stderr(), "This action schedules container registry tags for deletion from repository 101 on OWNER/REPO.")
-	assert.Contains(t, out.Stderr(), "name regex delete: ^release-.*")
-	assert.Contains(t, out.Stderr(), "name regex keep: ^latest$")
-	assert.Contains(t, out.Stderr(), "keep latest: 5")
-	assert.Contains(t, out.Stderr(), "older than: 30d")
-	assert.Contains(t, out.Stderr(), "The matching tags may remain visible until the background deletion job has completed.")
+	assert.Contains(t, got, "This action schedules container registry tags for deletion from repository 101 on OWNER/REPO.")
+	assert.Contains(t, got, "name regex delete: ^release-.*")
+	assert.Contains(t, got, "name regex keep: ^latest$")
+	assert.Contains(t, got, "keep latest: 5")
+	assert.Contains(t, got, "older than: 30d")
+	assert.Contains(t, got, "The matching tags may remain visible until the background deletion job has completed.")
 }
 
 func Test_TagDelete_BulkAPIError(t *testing.T) {

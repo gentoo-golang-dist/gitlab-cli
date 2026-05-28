@@ -57,7 +57,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 			The repository ID must belong to the selected project. Use -R/--repo
 			to specify the owning project when running this command outside that
-			project's git checkout.
+			project's Git checkout.
 		`),
 		Aliases: []string{"del"},
 		Args:    cobra.RangeArgs(1, 2),
@@ -198,18 +198,7 @@ func (o *options) runSingleDelete(ctx context.Context, client *gitlab.Client, re
 
 func (o *options) runBulkDelete(ctx context.Context, client *gitlab.Client, repo glrepo.Interface) error {
 	if !o.forceDelete && o.io.PromptEnabled() {
-		fmt.Fprintf(o.io.StdErr, heredoc.Doc(`
-			This action schedules container registry tags for deletion from repository %d on %s.
-
-			Filters:
-			  name regex delete: %s
-			  name regex keep: %s
-			  keep latest: %d
-			  older than: %s
-
-			The matching tags may remain visible until the background deletion job has completed.
-
-		`), o.repositoryID, repo.FullName(), emptyValue(o.nameRegexDelete), emptyValue(o.nameRegexKeep), o.keepN, emptyValue(o.olderThan))
+		fmt.Fprint(o.io.StdErr, bulkDeleteConfirmationMessage(o.repositoryID, repo.FullName(), o.nameRegexDelete, o.nameRegexKeep, o.keepN, o.olderThan))
 		err := o.io.Confirm(ctx, &o.forceDelete, fmt.Sprintf("Are you ABSOLUTELY SURE you wish to schedule matching container registry tags for deletion from repository %d?", o.repositoryID))
 		if err != nil {
 			return cmdutils.WrapError(err, "could not prompt")
@@ -248,6 +237,21 @@ func (o *options) runBulkDelete(ctx context.Context, client *gitlab.Client, repo
 
 	o.io.LogInfof(c.Bold("%s Container registry tags scheduled for deletion. They may remain visible until GitLab finishes the background deletion job.\n"), c.RedCheck())
 	return nil
+}
+
+func bulkDeleteConfirmationMessage(repositoryID int64, repoName string, nameRegexDelete string, nameRegexKeep string, keepN int, olderThan string) string {
+	return fmt.Sprintf(heredoc.Doc(`
+		This action schedules container registry tags for deletion from repository %d on %s.
+
+		Filters:
+		  name regex delete: %s
+		  name regex keep: %s
+		  keep latest: %d
+		  older than: %s
+
+		The matching tags may remain visible until the background deletion job has completed.
+
+	`), repositoryID, repoName, emptyValue(nameRegexDelete), emptyValue(nameRegexKeep), keepN, emptyValue(olderThan))
 }
 
 func emptyValue(value string) string {

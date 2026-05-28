@@ -27,7 +27,7 @@ deletion flag: --name-regex-delete, --name-regex-keep, --keep-n, or
 
 The repository ID must belong to the selected project. Use -R/--repo
 to specify the owning project when running this command outside that
-project's git checkout.
+project's Git checkout.
 
 ```plaintext
 glab container-registry tag delete <repository-id> [<tag-name>] [flags]
