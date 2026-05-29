@@ -9,11 +9,17 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
+	"syscall"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
+
+// errorBadExeFormat is the Windows ERROR_BAD_EXE_FORMAT system error code,
+// returned when the OS cannot run a binary (e.g. an x86_64 image on ARM64
+// without emulation). Comparing the code is locale-independent, unlike the
+// localized error string.
+const errorBadExeFormat = syscall.Errno(193)
 
 // executeOrbit runs the orbit binary as a subprocess on Windows. Windows has
 // no exec() equivalent, so we shell out and exit with the child's status to
@@ -33,6 +39,9 @@ func executeOrbit(ctx context.Context, io *iostreams.IOStreams, binaryPath strin
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
+			// Intentional: mirror the Unix syscall.Exec path by exiting with the
+			// child's status. This skips deferred cleanup further up the stack;
+			// do not "fix" it by returning the error instead.
 			os.Exit(exitErr.ExitCode())
 		}
 		return wrapExecError(err)
@@ -44,8 +53,8 @@ func executeOrbit(ctx context.Context, io *iostreams.IOStreams, binaryPath strin
 // guidance. ERROR_BAD_EXE_FORMAT on ARM64 typically means x64 emulation is
 // not available; on x64 it usually means the file is corrupt.
 func wrapExecError(err error) error {
-	msg := err.Error()
-	if strings.Contains(msg, "not a valid Win32 application") || strings.Contains(msg, "bad EXE format") {
+	var errno syscall.Errno
+	if errors.As(err, &errno) && errno == errorBadExeFormat {
 		if runtime.GOARCH == "arm64" {
 			return cmdutils.WrapError(err, fmt.Sprintf(
 				"failed to execute Orbit local CLI: the x86_64 binary could not run on ARM64 Windows. "+

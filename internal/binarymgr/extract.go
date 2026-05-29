@@ -53,6 +53,9 @@ func TarGzExtractor(binaryName string) Extractor {
 				continue
 			}
 
+			if strings.HasPrefix(hdr.Name, "/") || strings.HasPrefix(hdr.Name, `\`) {
+				return "", fmt.Errorf("archive entry %q escapes extract directory", hdr.Name)
+			}
 			cleaned := filepath.Clean(hdr.Name)
 			if strings.HasPrefix(cleaned, "..") || filepath.IsAbs(cleaned) {
 				return "", fmt.Errorf("archive entry %q escapes extract directory", hdr.Name)
@@ -111,6 +114,9 @@ func ZipExtractor(binaryName string) Extractor {
 				continue
 			}
 
+			if strings.HasPrefix(f.Name, "/") || strings.HasPrefix(f.Name, `\`) {
+				return "", fmt.Errorf("archive entry %q escapes extract directory", f.Name)
+			}
 			cleaned := filepath.Clean(f.Name)
 			if strings.HasPrefix(cleaned, "..") || filepath.IsAbs(cleaned) {
 				return "", fmt.Errorf("archive entry %q escapes extract directory", f.Name)

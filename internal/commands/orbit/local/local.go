@@ -3,7 +3,7 @@ package local
 import (
 	"context"
 	"errors"
-	"strings"
+	"runtime"
 
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
@@ -29,7 +29,7 @@ func Spec() binarymgr.Spec {
 		NormalizeArch: orbitNormalizeArch,
 		AssetName:     orbitAssetName,
 		InstalledName: orbitInstalledName,
-		Extract:       orbitExtractor,
+		Extract:       orbitExtractorFor(runtime.GOOS),
 	}
 }
 
@@ -38,6 +38,8 @@ func Spec() binarymgr.Spec {
 // the OS handle it.
 func orbitNormalizeArch(goos, goarch string) (string, error) {
 	if goos == "windows" {
+		// Deliberate bypass of the switch below: every Windows GOARCH maps to
+		// x86_64 so ARM64 routes to the emulated x64 asset. Not a missing case.
 		return "x86_64", nil
 	}
 	switch goarch {
@@ -66,11 +68,14 @@ func orbitInstalledName(goos string) string {
 	return "orbit"
 }
 
-func orbitExtractor(srcPath, destDir string) (string, error) {
-	if strings.HasSuffix(srcPath, ".zip") {
-		return binarymgr.ZipExtractor("orbit.exe")(srcPath, destDir)
+// orbitExtractorFor returns the archive extractor matching the asset format
+// that orbitAssetName produces for goos. The binarymgr writes downloads to a
+// temp file with a generic suffix, so we can't pick based on the source path.
+func orbitExtractorFor(goos string) binarymgr.Extractor {
+	if goos == "windows" {
+		return binarymgr.ZipExtractor("orbit.exe")
 	}
-	return binarymgr.TarGzExtractor("orbit")(srcPath, destDir)
+	return binarymgr.TarGzExtractor("orbit")
 }
 
 // NewCmd creates the `glab orbit local` command.

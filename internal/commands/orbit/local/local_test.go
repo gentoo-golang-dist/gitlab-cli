@@ -104,22 +104,29 @@ func TestOrbitInstalledName(t *testing.T) {
 	assert.Equal(t, "orbit.exe", orbitInstalledName("windows"))
 }
 
-func TestOrbitExtractor_picksByExtension(t *testing.T) {
+func TestOrbitExtractorFor_picksByOS(t *testing.T) {
 	t.Parallel()
 
-	tarPath := filepath.Join(t.TempDir(), "src.tar.gz")
+	// The binarymgr writes downloads to a generic .tmp file, so the
+	// extractor is selected by GOOS at Spec construction time rather than by
+	// inspecting the source path.
+	tarPath := filepath.Join(t.TempDir(), "src.tmp")
 	require.NoError(t, os.WriteFile(tarPath, buildOrbitTarGz(t), 0o644))
 
-	zipPath := filepath.Join(t.TempDir(), "src.zip")
+	zipPath := filepath.Join(t.TempDir(), "src.tmp")
 	require.NoError(t, os.WriteFile(zipPath, buildOrbitZip(t), 0o644))
 
 	tarDest := t.TempDir()
-	got, err := orbitExtractor(tarPath, tarDest)
+	got, err := orbitExtractorFor("linux")(tarPath, tarDest)
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(tarDest, "orbit"), got)
 
+	got, err = orbitExtractorFor("darwin")(tarPath, t.TempDir())
+	require.NoError(t, err)
+	assert.Equal(t, "orbit", filepath.Base(got))
+
 	zipDest := t.TempDir()
-	got, err = orbitExtractor(zipPath, zipDest)
+	got, err = orbitExtractorFor("windows")(zipPath, zipDest)
 	require.NoError(t, err)
 	assert.Equal(t, filepath.Join(zipDest, "orbit.exe"), got)
 }
