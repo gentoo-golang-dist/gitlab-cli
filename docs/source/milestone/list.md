@@ -14,10 +14,9 @@ List milestones in a project or group.
 
 ## Synopsis
 
-List milestones in a project or group. Filter by state with
-`--state` (`active` or `closed`), by title with `--title`, or by free-text
-search with `--search`. For group milestones, use `--include-ancestors`
-to also include milestones from ancestor groups.
+Filter by state with `--state` (`active` or `closed`), by title with `--title`,
+or by free-text search with `--search`. For group milestones, use
+`--include-ancestors` to also include milestones from ancestor groups.
 
 By default, milestones are listed for the current project. Use
 `--project` to target a different project, or `--group` to list

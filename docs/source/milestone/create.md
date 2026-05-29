@@ -14,7 +14,7 @@ Create a milestone in a project or group.
 
 ## Synopsis
 
-Create a milestone in a project or group. The `--title` flag is required.
+The `--title` flag is required.
 Optionally provide a description, due date, and start date.
 
 By default, the milestone is created in the current project. Use
