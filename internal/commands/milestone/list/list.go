@@ -39,19 +39,36 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		apiClient: f.ApiClient,
 	}
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "Get a list of milestones for a project or group.",
-		Long:  "",
-		Example: heredoc.Doc(`
-		  # List milestones for a given project
-			glab milestone list --project 123
-			glab milestone list --project example-group/project-path
+		Use:   "list [flags]",
+		Short: "List milestones in a project or group.",
+		Long: heredoc.Docf(`
+		Filter by state with %[1]s--state%[1]s (%[1]sactive%[1]s or %[1]sclosed%[1]s), by title with %[1]s--title%[1]s,
+		or by free-text search with %[1]s--search%[1]s. For group milestones, use
+		%[1]s--include-ancestors%[1]s to also include milestones from ancestor groups.
 
-			# List milestones for a group
+		By default, milestones are listed for the current project. Use
+		%[1]s--project%[1]s to target a different project, or %[1]s--group%[1]s to list
+		group-level milestones. %[1]s--project%[1]s and %[1]s--group%[1]s are mutually exclusive.
+
+		Use %[1]s--output json%[1]s to format the result as JSON for use with other tools.
+		`, "`"),
+		Example: heredoc.Doc(`
+			# List milestones in a project
+			glab milestone list --project 123
+			glab milestone list --project owner/project
+
+			# List milestones in a group
 			glab milestone list --group example-group
 
-			# List only active milestones for a given group
-			glab milestone list --group example-group --state active`),
+			# List only active milestones in a group
+			glab milestone list --group example-group --state active
+
+			# List group milestones, including those from ancestor groups
+			glab milestone list --group example-group --include-ancestors
+
+			# List milestones as JSON
+			glab milestone list --project owner/project --output json
+		`),
 		Args: cobra.MaximumNArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

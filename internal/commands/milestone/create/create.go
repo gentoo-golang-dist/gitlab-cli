@@ -35,18 +35,26 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a group or project milestone.",
-		Long:  "",
+		Use:   "create [flags]",
+		Short: "Create a milestone in a project or group.",
+		Long: heredoc.Docf(`
+		The %[1]s--title%[1]s flag is required.
+		Optionally provide a description, due date, and start date.
+
+		By default, the milestone is created in the current project. Use
+		%[1]s--project%[1]s to target a different project, or %[1]s--group%[1]s to create a
+		group-level milestone. %[1]s--project%[1]s and %[1]s--group%[1]s are mutually exclusive.
+		`, "`"),
 		Example: heredoc.Doc(`
-		  # Create milestone for the current project
+			# Create a milestone in the current project
 			glab milestone create --title='Example title' --due-date='2025-12-16'
 
-			# Create milestone for the specified project
-			glab milestone create --title='Example group milestone' --due-date='2025-12-16' --project 123
+			# Create a milestone in a different project
+			glab milestone create --title='Q4 release' --due-date='2025-12-16' --project 123
 
-			# Create milestone for the specified group
-			glab milestone create --title='Example group milestone' --due-date='2025-12-16' --group 456`),
+			# Create a milestone in a group
+			glab milestone create --title='FY26 planning' --due-date='2026-01-31' --group 456
+		`),
 		Args: cobra.MaximumNArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",

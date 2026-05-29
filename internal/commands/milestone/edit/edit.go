@@ -39,18 +39,27 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edit",
-		Short: "Edit a group or project milestone.",
-		Long:  "",
+		Use:   "edit <id> [flags]",
+		Short: "Edit a milestone in a project or group.",
+		Long: heredoc.Docf(`
+		Edit a milestone, identified by its numeric ID, in a project or group.
+		Use the flags to update the title, description, due date, start date,
+		or state. Only the fields you specify are updated.
+
+		By default, the milestone is edited in the current project. Use
+		%[1]s--project%[1]s to target a different project, or %[1]s--group%[1]s to edit a
+		group-level milestone. %[1]s--project%[1]s and %[1]s--group%[1]s are mutually exclusive.
+		`, "`"),
 		Example: heredoc.Doc(`
-			# Edit milestone for the current project
+			# Update a milestone's title and due date in the current project
 			glab milestone edit 123 --title='Example title' --due-date='2025-12-16'
 
-			# Edit milestone for the specified project
-			glab milestone edit 123 --title='Example group milestone' --due-date='2025-12-16' --project example-path/project-path
+			# Update a milestone in a different project
+			glab milestone edit 123 --title='Q4 release' --due-date='2025-12-16' --project owner/project
 
-			# Edit milestone for the specified group
-			glab milestone edit 123 --title='Example group milestone' --due-date='2025-12-16' --group 789`),
+			# Update a group milestone
+			glab milestone edit 123 --title='FY26 planning' --due-date='2026-01-31' --group 789
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",
