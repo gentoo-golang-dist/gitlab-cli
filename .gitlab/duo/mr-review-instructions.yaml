@@ -1,69 +1,523 @@
-# See https://docs.gitlab.com/user/project/merge_requests/duo_in_merge_requests/#customize-instructions-for-gitlab-duo-code-review
+# Custom review instructions for GitLab Duo Code Review.
+# Spec: https://docs.gitlab.com/user/duo_agent_platform/customize/review_instructions/
+#
+# When updating: keep rules concrete and grep-able. Reference helpers by
+# their package + name (for example, `cmdutils.NewEnumValue`,
+# `cmdtest.SetupCmdForTest`) rather than vague guidance like "follow the
+# canonical pattern". Inlined rule text is used verbatim by Duo; file
+# references get summarized.
 instructions:
-  - name: Commands
+  # ============================================================
+  # GENERAL GO CODE
+  # ============================================================
+
+  - name: Error handling
+    fileFilters:
+      - '**/*.go'
+    instructions: |
+      1. Do not silently drop errors with the blank identifier (`_ = ...`).
+         If an error is intentionally ignored, either handle it explicitly
+         or annotate the call with `//nolint:errcheck` plus a comment
+         explaining why — that's the canonical escape hatch.
+      2. For `cmd.Flags().MarkRequired(...)` / `MarkFlagsMutuallyExclusive(...)`
+         and similar cobra calls that return an error, use `cobra.CheckErr(err)`
+         rather than `_ = ...`.
+      3. When a function has a primary error and a deferred cleanup error
+         (e.g., `defer file.Close()`), combine them with `errors.Join(primary, cleanupErr)`.
+         Do not print one and return the other; that splits the failure across
+         surfaces.
+      4. For deferred cleanup that must affect the returned error, use a named
+         return value and a closure:
+
+         ```go
+         func doThing() (err error) {
+             f, err := os.Open(...)
+             if err != nil { return err }
+             defer func() { err = errors.Join(err, f.Close()) }()
+             ...
+         }
+         ```
+      5. Wrap errors crossing layer boundaries with `fmt.Errorf("...: %w", err)`
+         so callers can `errors.Is` / `errors.As`. Use `errors.Is` for sentinel
+         checks, never string comparisons.
+      6. Error messages from `errors.New` / `fmt.Errorf` should start with a
+         lowercase letter and not end with punctuation, per Go's standard style
+         (https://go.dev/wiki/CodeReviewComments#error-strings). Wrap code
+         identifiers and flag names in backticks: `` "must provide `--all` or
+         `--id`" ``.
+      7. Always handle errors returned by API calls — even when they look benign
+         (e.g., `defer os.Remove`). Hidden errors block debugging.
+      8. When a function returns `(value, error)`, do not silently convert a
+         sentinel error into `return nil, nil`. Distinguish "not found" from
+         "real error" via an explicit sentinel (e.g., `errors.Is(err,
+         ErrNotFound)`) or by documenting the contract. Quiet `(nil, nil)`
+         on a sentinel hides bugs at the call site.
+      9. Do not silently fall back to a default value or behavior when an
+         error occurs. Surface the error (return it, or log via the
+         `internal/dbg` package); let the caller choose the fallback.
+         Eating the error and substituting a default is a debugging
+         dead-end.
+
+  - name: Go idioms (Go 1.26+)
+    fileFilters:
+      - '**/*.go'
+    instructions: |
+      The project is on Go 1.26+. Apply modern idioms:
+      1. Use `any` instead of `interface{}`.
+      2. Prefer `new(literalValue)` over `gitlab.Ptr(literalValue)` or
+         intermediate variables for pointer-to-literal. For example, write
+         `new(true)` rather than `gitlab.Ptr(true)`. Background: client-go 3.0
+         deprecates `gitlab.Ptr`.
+      3. Use `slices.Contains`, `slices.DeleteFunc`, `slices.Concat`, etc.
+         instead of hand-rolled loops.
+      4. Replace long `if / else if / else if` chains over the same value with
+         a `switch` statement.
+      5. Use `map[K]struct{}` (not `map[K]bool`) for set-membership data
+         structures — less allocation, clearer intent.
+      6. Use `strings.Cut` / `strings.CutPrefix` / `strings.CutSuffix` instead
+         of manual `strings.Index` + slicing.
+      7. Prefer `iter.Seq` / `iter.Seq2` range-over-func iterators (Go 1.23+)
+         for paged or generator-style traversals where they're available.
+      8. Compile regular expressions once at package scope (`var fooRe = regexp.MustCompile(...)`),
+         not inside the hot path of a function.
+
+  - name: Naming
+    fileFilters:
+      - '**/*.go'
+    instructions: |
+      1. Names describe the value, not the code that produced it. If a function
+         no longer needs full `iostreams.IOStreams` and only writes, rename the
+         parameter to `out io.Writer`. If a parameter's role changes, rename it.
+      2. When a function has a side effect (creating files, mutating state),
+         the name should reflect it. Split `ConfigFile()` (read-only) from
+         `EnsureConfigFile()` (creates if missing).
+      3. New command sub-packages export a single constructor named `NewCmd`,
+         not `NewCmdList` / `NewCmdGet` / etc. — the package name already
+         carries the verb.
+      4. Avoid identifier names that only differ from existing ones by suffix
+         (e.g., `projectAccessTokenResponseJson` next to
+         `projectAccessTokenResponse`). Pick a name that distinguishes the role.
+      5. Unexport types, constants, and functions that are not used outside
+         their package. Public API surface is a maintenance commitment.
+      6. When introducing a helper, field, or option that parallels a
+         standard-library API (especially `net/http`), mirror the stdlib
+         name. Example: a helper that derives an HTTP proxy URL from
+         glab's config is named `ProxyFromConfig` (parallel to
+         `http.ProxyFromEnvironment`), the struct field is `proxy` (parallel
+         to `http.Transport.Proxy`), the client option is `WithProxy`.
+         Don't bake the protocol into a name when the field is
+         protocol-agnostic (e.g., a generic proxy config key should be
+         `proxy`, not `https_proxy`).
+
+  - name: Code reuse and dead code
+    fileFilters:
+      - '**/*.go'
+    instructions: |
+      1. Before adding a new helper, search the codebase for existing equivalents.
+         Common locations: `internal/cmdutils/`, `internal/iostreams/`,
+         `internal/testing/cmdtest/`, `internal/api/`, `internal/glrepo/`,
+         `internal/tableprinter/`, `internal/text/`. **Reuse, do not re-derive.**
+      2. If a new function substantially duplicates an existing one (bulk vs.
+         single-item operations, paired endpoint builders), refactor: call the
+         single-item function in a loop, or extract a shared helper.
+      3. Do not introduce struct fields, functions, or config entries that are
+         not actually used by the change set. Remove dead code before merge.
+      4. Tests that don't make a meaningful assertion (e.g., construct a value
+         and check `assert.NotNil`) must either be strengthened to test behavior
+         or removed. `assert.True(t, true)` placeholders are not acceptable.
+      5. Function signatures should accept only the values they actually use.
+         If a helper only needs `note.Position`, take `*gitlab.NotePosition`,
+         not `*gitlab.Note`. Avoid passing `cmdutils.Factory` into helpers —
+         pass the resolved `glrepo.Interface` / `*gitlab.Client` / branch
+         string directly.
+      6. Don't keep parameters that callers always pass as `""`, `nil`, or
+         another sentinel. Drop the parameter and let the callee compute or
+         default the value, or split the function.
+      7. Prefer returning parsed/typed values (e.g., `*url.URL`, `time.Duration`)
+         over strings that the caller must re-parse. The parser belongs next
+         to the producer.
+      8. Inline single-use, single-line helpers at the call site unless the
+         helper carries a meaningful name. A two-statement helper called from
+         one place is rarely worth the indirection.
+      9. For ANSI-color stripping in tests, use `github.com/acarl005/stripansi`
+         (already a project dep) — see `internal/commands/schedule/list/list_test.go`.
+         Don't hand-roll regex stripping.
+
+  - name: Control flow
+    fileFilters:
+      - '**/*.go'
+    instructions: |
+      1. Prefer inverted-guard / early-return style: when a long block is gated
+         by a single condition, flip it to `if !cond { return ... }` so the
+         happy path is unindented.
+      2. Declare variables as close to their use as possible. Don't pre-declare
+         at function top when only an inner block needs them.
+      3. Thread `context.Context` from `cmd.Context()` through every function
+         that calls into the GitLab client or another context-aware API. Pass
+         it via `gitlab.WithContext(ctx)` to client-go methods. Never drop the
+         context partway down the call chain.
+
+  # ============================================================
+  # COMMANDS
+  # ============================================================
+
+  - name: Command structure
     fileFilters:
       - 'internal/commands/**/*.go'
+      - '!**/*_test.go'
     instructions: |
-      1. Each (sub-)command is in its own package. The file where the cobra command itself is defined is named the same as the package.
-      2. The command should be created by a factory function called `NewCmd` that ideally only takes a single argument. That argument is the `cmdutils.Factory`.
-      3. The command uses an unexported `options` struct to store all the information it needs. That is, data from the command arguments and flags and data from the factory.
-      4. In the beginning of the `NewCmd` function the `options` struct is instantiated as `opts` and directly assigns the data from the factory depending on what it needs. For example, the `io: f.IO()`.
-      5. The command itself in the `NewCmd` function is created with `cobra.Command` and stored in a local `cmd` variable, like so `cmd := &cobra.Command{...}`.
-      6. If multiple flags are added to the command it's recommended to retrieve `cmd.Flags()` once and stored it in a local variable `fl` that is then used to register the flags.
-      7. The command should make use of cobra functionality to define requirements for flags, like mutually exclusiveness (`cmd.MarkFlagsMutuallyExclusive`) or requiring flags together (`cmd.MarkFlagsRequiredTogether`).
-      8. The command should be implemented in the `cobra.Command{RunE: ...}` function.
-      9. The command run function should ideally be split into multiple sections depending on the necessity of the command. Into the `options.complete`, `options.validate` and `options.run` functions.
-      10. The `options.complete` function can take the run `cmd` object and / or `args` to complete the `options` struct with CLI argument information.
-      11. The `options.validate` function can take the run `cmd` object and / or `args` to validate the contents of the `options` struct that wasn't possible with cobra's built-in functionality.
-      12. The `options.run` function must execute the commands business logic.
-      13. The `options.complete`, `options.validate` and `options.run` functions may optionally be passed the command context (`cmd.Context()`).
-      14. The commands should never directly print to or read from the standard ios, but instead rely on the factories iostreams object. That must be assigned to the `io` field of the `options` struct.
+      New (sub-)commands under `internal/commands/**` must follow the
+      "Command Structure" pattern in `CONTRIBUTING.md:185-195`:
+
+      1. Each (sub-)command is in its own package. The file where the cobra
+         command is defined is named the same as the package.
+      2. The command is created by a factory function named `NewCmd` (no
+         package-name suffix like `NewCmdList`) that takes a single argument:
+         the `cmdutils.Factory`.
+      3. Define an unexported `options` struct (just `options`, not
+         `xxxOptions`) inside the package. Methods and fields on `options` are
+         not exported. Optional constructor named `newOptions`.
+      4. In `NewCmd`, instantiate `opts := &options{...}` and pre-assign
+         factory dependencies onto the struct: `io: f.IO()`,
+         `baseRepo: f.BaseRepo`, `gitlabClient: f.GitLabClient`, etc.
+      5. Create the cobra command in a local `cmd` variable.
+      6. If multiple flags are added, retrieve `cmd.Flags()` once into a local
+         `fl` variable and use `fl` for all registrations.
+      7. Split logic into three methods on `*options`:
+         - `complete(cmd *cobra.Command, args []string) error` — populate
+           `opts` from CLI input.
+         - `validate() error` — validate the completed options beyond what
+           cobra can enforce.
+         - `run(ctx context.Context) error` — execute the business logic.
+         Only implement the methods you actually need.
+      8. The `cobra.Command.RunE` calls `complete` → `validate` → `run` and
+         passes `cmd.Context()` to `run`. **No business logic, validation, or
+         API calls in `RunE` itself.**
+      9. Commands must never read from or write to `os.Stdin/Stdout/Stderr`
+         directly. Always go through `opts.io` (an `*iostreams.IOStreams`
+         assigned from `f.IO()`).
+      10. If a needed seam is missing on `cmdutils.Factory` (e.g., for
+          subprocess execution), add it to the factory rather than introducing
+          a package-level `var foo = func(...)` shim. The factory exists to
+          provide test seams cleanly.
+
+      Canonical reference: `internal/commands/gpg-key/get/get.go`.
 
   - name: Command documentation
     fileFilters:
       - 'internal/commands/**/*.go'
+      - '!**/*_test.go'
     instructions: |
-      CLI documentation is generated from Go source files by `make gen-docs`. The following rules
-      apply to the documentation fields of `cobra.Command` definitions.
+      CLI documentation is generated from Go source files by `make gen-docs`.
+      The following rules apply to the documentation fields of `cobra.Command`
+      definitions.
 
       Short description (`Short` field):
       1. Write in the imperative mood. For example: `Create a new merge request.`
       2. End with a period.
       3. Do not duplicate the command name.
-      4. For experimental commands, append `(EXPERIMENTAL)` after the sentence.
-         For example: `Create a new stacked diff. (EXPERIMENTAL)`
+      4. For experimental commands, append `(EXPERIMENTAL)`.
 
       Synopsis (`Long` field):
       5. All new commands must include a `Long` field.
       6. Do not repeat information already in the `Short` field.
       7. Use lists for multiple constraints, input types, or behavioral differences.
-      8. If the command requires a minimum GitLab version to work correctly, state this.
+      8. If the command requires a minimum GitLab version, state it.
          For example: `This command requires GitLab 17.0 or later.`
+      9. **Do not reference underlying REST or GraphQL endpoint paths in
+         user-facing `Long` text.** Describe what the user gets, not how it's
+         implemented. Internals leak into docs and rot.
+      10. Document environment variables via the `cobra.Command.Annotations`
+          map (key: `help:environment`), not inside `Long`.
 
       Experimental and beta features:
-      9. Use `text.ExperimentalString` or `text.BetaString` from `internal/text/text.go` to mark
-         experimental or beta features. Do not copy these strings manually into the `Long` field.
-      10. When only a flag is experimental, prepend `(EXPERIMENTAL)` to its description and add a
-          note in the `Long` field explaining the experimental status and any feature flag requirements.
+      11. Use `text.ExperimentalString` or `text.BetaString` from
+          `internal/text/text.go`. Do not copy these strings manually.
+      12. When only a flag is experimental, prepend `(EXPERIMENTAL)` to its
+          description and add a note in `Long` explaining feature flag
+          requirements.
 
       Examples (`Example` field):
-      11. Every command must include at least one example that demonstrates real-world usage.
-          Do not use examples that only repeat the command syntax.
-      12. Annotate non-obvious examples with an inline comment above the command, using `# Comment text` format.
-      13. For commands with many options, show the most common combinations first.
+      13. Every command must include at least one realistic example. Do not
+          use examples that only repeat the command syntax.
+      14. Examples live on the leaf command they apply to, not on parent
+          group commands.
+      15. Annotate examples with an inline comment using `# Comment text`
+          above the command. Lead with the simplest realistic invocation and
+          annotate even that one — explicit beats implicit for users scanning
+          `--help`.
+      16. For commands with many options, show the most common combinations first.
+      17. Use `heredoc.Doc(\`...\`)` (from `github.com/MakeNowJust/heredoc/v2`)
+          for multi-line `Long` and `Example` content. Indent with tabs (the
+          heredoc package strips them). Don't hand-format multi-line strings.
 
       Flag descriptions:
-      14. Start each flag description with a capital letter and end with a period.
-      15. Use angle-bracket placeholders for user-supplied values. For example: `<username>`, `<branch>`.
-      16. Always state the default value for boolean flags. For example: `(default false)`.
-      17. For output format flags, use `-F, --output [text | json]` as the canonical form.
+      18. Start each flag description with a capital letter and end with a period.
+      19. Use angle-bracket placeholders for user-supplied values:
+          `<username>`, `<branch>`, `<id>`.
+      20. Always state the default value for boolean flags: `(default false)`.
+      21. For output-format flags, use `-F, --output [text | json]` as the
+          canonical form.
+      22. For slice flags (`StringSliceVar`, `Int64SliceVar`, etc.), include
+          the phrase: `Multiple <items> can be comma-separated or specified by
+          repeating the flag.` Use `StringArrayVar` if comma-separation should
+          NOT be supported.
+      23. Do not use `-v` as a shorthand for anything — it collides with
+          `--verbose` and `--version` conventions.
 
-  - name: Command tests
+  - name: Flag handling
     fileFilters:
-      - 'internal/commands/**/*_test.go'
+      - 'internal/commands/**/*.go'
+      - '!**/*_test.go'
     instructions: |
-      1. Use the `cmdtest` package for helper functions related to command execution or the factory.
-      2. Ideally use the `cmdtest.SetupCmdForTest` function to setup the command under test for execution.
-      3. Use the GitLab client-go testing package imported as `gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"` to create a GitLab testing client for mocking the API calls. Do not use HTTP mocks directly when possible. The commands interface with the GitLab client-go package and usually not with an HTTP client directly.
-      4. Use `t.Parallel()` when possible.
-      5. Use the testify require and assert package for assertions instead of the assertion functions of `testing.T`.
+      1. Prefer cobra's built-in flag/argument helpers over manual checks:
+         - `cmd.MarkFlagsMutuallyExclusive("a", "b")` instead of hand-rolled
+           `if foo != "" && bar != "" { return error }`.
+         - `cmd.MarkFlagsRequiredTogether("a", "b")`.
+         - `cmd.MarkFlagsOneRequired("a", "b")` when at least one is required.
+         - `cmd.MarkFlagRequired("flag")`.
+         - `Args: cobra.ExactArgs(N)` / `cobra.NoArgs` / `cobra.RangeArgs(...)`
+           instead of manual `len(args) != N` checks in `RunE`/`complete`.
+      2. For closed-set string flags, use `cmdutils.NewEnumValue(allowedValues,
+         defaultValue)` from `internal/cmdutils/enum_flag.go`. Do not validate
+         the string by hand in `complete`/`validate`.
+      3. Use typed cobra flag variants where available: `Int64Var`, `BoolVar`,
+         `TimeVar`, etc. Do not parse times/numbers from `StringVar` by hand.
+      4. To target a project, use `cmdutils.EnableRepoOverride(cmd, f)` from
+         `internal/cmdutils/repo_override.go` (`-R/--repo`). Do not invent a
+         custom `--project` flag.
+      5. For group-scoped commands, use `cmdutils.GroupOverride`.
+      6. When `-R`, `--group`, and `--instance` coexist, mark them mutually
+         exclusive: `cmd.MarkFlagsMutuallyExclusive("repo", "group", "instance")`.
+      7. Required flags are often a "bad" UX choice — prefer the first
+         positional argument when there's a clear primary subject (e.g., the
+         token ID, the runner ID).
+      8. To detect whether a flag was explicitly set by the user (vs. left
+         at its default), use `cmd.Flags().Changed("<name>")`. Do not infer
+         "unset" by comparing the bound value to its default — that breaks
+         when the user explicitly passes the default value, and it makes the
+         "no flag" case impossible to distinguish from "flag = default".
+
+  - name: IO streams and output
+    fileFilters:
+      - 'internal/commands/**/*.go'
+      - '!**/*_test.go'
+    instructions: |
+      1. Never call `fmt.Fprintf(os.Stdout, ...)` / `os.Stderr` / `fmt.Println`
+         directly. Always go through `opts.io` (from `f.IO()`):
+         - `opts.io.LogInfo(...)` / `opts.io.LogInfof(format, ...)` →  stdout
+         - `opts.io.LogError(...)` / `opts.io.LogErrorf(format, ...)` → stderr
+      2. For JSON output, use `opts.io.PrintJSON(v)` from
+         `internal/iostreams/print_json.go`. Do not hand-roll
+         `json.NewEncoder(...).Encode(...)`. `PrintJSON` handles `--jq`
+         filtering and the nil-slice-to-`[]` normalization.
+      3. To register the canonical `-F/--output [text | json]` flag plus
+         `--jq`, use `cmdutils.EnableJSONOutput(cmd)` from
+         `internal/cmdutils/output_format.go`. Do not invent a separate
+         `--json` boolean.
+      4. **JSON output is for machines, not humans.** Do not pretty-print or
+         wrap it. Users can pipe to `jq` themselves.
+      5. For table output, use `internal/tableprinter` (`NewTablePrinter()`,
+         `AddRow(...)`, `String()`, `SetIsTTY(...)`).
+      6. For interactive prompts, use the helpers on `IOStreams`:
+         `Confirm`, `Input`, `Select`, `MultiSelect`, `Password`, `Multiline`,
+         `Editor`, `DirectEditor`. Do not hand-roll `fmt.Scanln` confirmation
+         loops. Check `io.PromptEnabled()` / `io.IsInteractive()` before
+         prompting so `NO_PROMPT` and non-TTY users are respected.
+      7. For terminal hyperlinks, use `io.Hyperlink(displayText, targetURL)`.
+
+  - name: API client and pagination
+    fileFilters:
+      - 'internal/**/*.go'
+    instructions: |
+      1. For commands tied to one repo, use `f.GitLabClient()`. For multi-repo
+         operations, use `f.ApiClient(host)`. Don't construct `*gitlab.Client`
+         directly in command code.
+      2. For unauthenticated flows (e.g., release-note fetching), use
+         `api.NewClientFromConfig(host, config.NewBlankConfig(), ...)`. Do not
+         drop down to `net/http` or `http.Get` for GitLab endpoints — even for
+         downloads, prefer the `gitlab.Client`.
+      3. Pass `gitlab.WithContext(ctx)` (from `cmd.Context()`) to every
+         client-go call. This is non-optional.
+      4. For paginated list endpoints, use `gitlab.ScanAndCollect` (or
+         `gitlab.Scan2` iterators). Do not hand-roll `for page := 1;` loops.
+         See `internal/cmdutils/cmdutils.go:92` for the canonical pattern.
+      5. For HTTP status checks, use `resp.HasStatusCode(http.StatusXxx)` —
+         never compare integers like `resp.StatusCode == 200`. Always use
+         `http.Status*` constants over magic numbers.
+
+  - name: Package layering
+    fileFilters:
+      - 'internal/commands/**/*.go'
+      - '!**/*_test.go'
+    instructions: |
+      1. API-shape concerns belong in an `api` (sub-)package, not in command
+         packages or `utils` packages. GraphQL queries, REST endpoint
+         construction, response struct definitions, case normalization for API
+         enums — these go in `internal/api/` or a command-local `api/`
+         subpackage.
+      2. Command packages should focus on CLI surface: flag parsing, prompts,
+         output formatting, calling into the api layer.
+      3. Do not import one command package from another. Shared command-level
+         utilities go in `internal/cmdutils/` (or a new shared package), not
+         a sibling command.
+      4. Helpers that take `io *iostreams.IOStreams` should put it as the first
+         parameter to mirror the standard-library convention of `io.Writer`-
+         first.
+
+  - name: Config and environment
+    fileFilters:
+      - 'internal/**/*.go'
+    instructions: |
+      1. Bind new environment variables through `EnvKeyEquivalence` in
+         `internal/config/config_mapping.go` so they flow through
+         `config.Get` and get the standard config-file fallback for free.
+         Do not call `os.LookupEnv` / `os.Getenv` in command code for
+         settings that have, or should have, a config-file equivalent.
+      2. New per-host or per-user settings should be added to the config
+         schema (`internal/config/config.yaml.lock`) rather than read ad-hoc
+         from disk or env. Run `make gen-config` after schema changes.
+      3. Document environment variables on the `cobra.Command.Annotations`
+         map (key: `help:environment`), not in free-form `Long` text — that
+         placement is also surfaced in generated docs.
+
+  # ============================================================
+  # TESTS
+  # ============================================================
+
+  - name: Test setup
+    fileFilters:
+      - 'internal/**/*_test.go'
+    instructions: |
+      1. Use `cmdtest.SetupCmdForTest(t, NewCmd, parseFlags, opts...)` from
+         `internal/testing/cmdtest/factory.go` to set up command tests. It
+         returns a `CmdExecFunc` you can call with the command's args.
+      2. Configure test state with `FactoryOption`s — see
+         `internal/testing/cmdtest/factory.go` for the full list:
+         `WithStdin`, `WithBranch`, `WithBaseRepo`, `WithGitLabClient`,
+         `WithApiClient`, `WithBuildInfo`, `WithExecutor`, `WithGitRunner`,
+         `WithConsole`, etc.
+      3. **If you need a seam that isn't there, add a new `FactoryOption` to
+         `cmdtest`** — do not hand-roll factory wiring inline in the test, and
+         do not introduce a package-level `var xxx = func(...)` shim in
+         production code to be overridden by the test.
+      4. For GitLab API mocking, use the client-go testing package:
+         `gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"`.
+
+         ```go
+         tc := gitlabtesting.NewTestClient(t)
+         tc.MockUsers.EXPECT().GetGPGKey(int64(123)).Return(testKey, nil, nil)
+         exec := cmdtest.SetupCmdForTest(t, NewCmd, false, cmdtest.WithGitLabClient(tc.Client))
+         ```
+
+         **Do not introduce new `httpmock`-based HTTP responders** for code
+         paths that go through client-go. Migrate existing HTTP mocks when
+         touching files in the same package.
+      5. For mock call ordering, use `gomock.InOrder(...)`.
+      6. Canonical reference: `internal/commands/gpg-key/get/get_test.go`;
+         JSON-assertion pattern: `internal/commands/runnercontroller/token/list/list_test.go`.
+
+  - name: Test discipline
+    fileFilters:
+      - 'internal/**/*_test.go'
+    instructions: |
+      1. Use `testify/require` and `testify/assert` for assertions, not the
+         bare `testing.T` methods (`t.Errorf`, `t.Fatalf`). This is the
+         project's standard and the existing codebase is consistent.
+      2. **Use `require` (not `assert`) before any operation that depends on
+         the previous assertion** — most importantly, before indexing into a
+         slice or dereferencing a pointer. Avoids panics that obscure the
+         actual failure.
+      3. Call `t.Parallel()` at the top of every `Test*` function that does
+         not depend on mutable global state. For table-driven tests, also call
+         it inside the `t.Run` closure.
+      4. Root any test-produced filesystem artifacts under `t.TempDir()` —
+         the framework cleans them up automatically and parallelism stays
+         intact. Don't write to the package source directory or
+         `os.TempDir()`. When the test must change working directory, use
+         `t.Chdir` (Go 1.24+) or operate on relative paths under
+         `t.TempDir`. Do not use `os.Chdir` with manual `t.Cleanup`.
+         Prefer `t.Cleanup(...)` over `defer` for cleanup that must outlive
+         the immediate scope.
+      5. New behavior gated by a flag, argument shape, or branch must include
+         a test for each meaningful path — including the "no flag set",
+         "invalid input", and "default" branches. A new `--<flag>` must not
+         ship without an exercising test.
+      6. When asserting on a command's JSON output, `json.Unmarshal` into a
+         typed struct and assert on fields. Do not substring-match on the raw
+         JSON text (`assert.Contains(out, '"id": 1')`). Reference:
+         `internal/commands/runnercontroller/token/list/list_test.go`.
+      7. **Test the user-visible behavior of the command**, not the
+         configuration plumbing or internal field assignments. If a test
+         constructs `options{}` directly and checks a field, it probably
+         should drive the command through `cmdtest.SetupCmdForTest` instead.
+      8. Prefer flat per-case assertions over loops. `for _, tc := range
+         testCases { tc.run() }` is fine for table-driven tests with shared
+         setup, but don't loop over a slice just to assert each element —
+         spell out the asserts (`assert.Equal(t, tokens[0].ID, results[0].ID)`,
+         `assert.Equal(t, tokens[1].ID, results[1].ID)`) so failures point at
+         the specific element.
+      9. When adding a flag-aware test variant, keep the original no-flag
+         test as well. Do not rename / repurpose existing baseline tests —
+         that quietly removes coverage. Add new tests alongside, don't
+         replace.
+      10. When adding behavior to one of a set of parallel sibling commands
+          (e.g., `token list` for project / group / personal tokens), add
+          the equivalent test in each sibling package — otherwise coverage
+          drifts asymmetrically.
+      11. `cmdtest.SetupCmdForTest` produces non-TTY IOStreams by default.
+          Don't reach for `t.Setenv("NO_COLOR", ...)` or other TTY-affecting
+          env hacks — if you need different behavior, pass a `FactoryOption`
+          (`cmdtest.WithIOStreamsOverride` or similar) rather than mutating
+          process environment.
+      12. Prefer test-local fixtures over package-level `var` blocks unless
+          the fixture is genuinely shared by multiple tests. Local fixtures
+          make ownership and lifetime obvious.
+
+  # ============================================================
+  # SHELL SCRIPTS
+  # ============================================================
+
+  - name: Shell scripts
+    fileFilters:
+      - 'scripts/**/*.sh'
+      - '*.sh'
+    instructions: |
+      1. Write usage messages and error output to stderr: `echo "..." >&2`.
+         User-consumable program output goes to stdout; diagnostics go to stderr.
+      2. Use a direct shebang (`#!/usr/bin/env bash` or `#!/bin/sh`) and make
+         the script executable. Do not invoke scripts with `bash ./script.sh`
+         from other scripts or CI config — call the script directly.
+      3. Validate required environment variables explicitly at the top of the
+         script (e.g., `: "${APPSTORE_CONNECT_API_KEY_FILE:?must be set}"`).
+         A surprising `:` mount or missing var should error early, not silently.
+      4. Use `set -euo pipefail` for new scripts.
+
+  # ============================================================
+  # PROJECT-LEVEL / DEPENDENCIES
+  # ============================================================
+
+  - name: Dependencies
+    fileFilters:
+      - 'go.mod'
+      - 'go.sum'
+    instructions: |
+      1. Before adding a new third-party dependency, check whether the
+         standard library or an existing dependency covers the need. For
+         example, prefer `os.UserConfigDir` over `github.com/adrg/xdg`.
+      2. New dependencies must be justified in the MR description: what the
+         stdlib can't do and why an existing dep won't suffice.
+      3. Unexpected `go.mod` / `go.sum` changes that don't trace to a
+         deliberate need should be removed or explained.
+
+  - name: Tool versions
+    fileFilters:
+      - '.tool-versions'
+      - 'Makefile'
+    instructions: |
+      1. The project pins developer tools via `mise` and `.tool-versions`.
+         When bumping a tool version (e.g., golangci-lint, Go), update both
+         `.tool-versions` AND any hard-coded version in `Makefile` so local
+         and CI environments stay aligned.
+      2. New developer tools should be added to `.tool-versions` (not to the
+         Makefile alone).

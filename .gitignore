@@ -81,3 +81,6 @@ scripts/commit-lint/node_modules/
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# MR-review audit (transient artifacts; never commit)
+.audit/
