@@ -10,6 +10,12 @@ glamour_style: dark
 check_update: true
 # Last update check timestamp, used for checking when the last update check was performed.
 last_update_check_timestamp:
+# Show a one-time post-upgrade banner pointing at 'glab whatsnew' when a new version is detected.
+show_whats_new: true
+# Last glab version a post-upgrade banner was shown for (automatically set).
+last_seen_version:
+# Last glab version 'glab whatsnew' rendered notes for (automatically set).
+last_whatsnew_version:
 # Whether or not to display hyperlinks in terminal output. Defaults to true (enabled for TTYs). Set to false to disable. Force hyperlinks in non-TTY environments by setting FORCE_HYPERLINKS=1.
 display_hyperlinks: true
 # Default GitLab hostname to use.

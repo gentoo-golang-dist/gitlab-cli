@@ -48,6 +48,7 @@ import (
 	userCmd "gitlab.com/gitlab-org/cli/internal/commands/user"
 	variableCmd "gitlab.com/gitlab-org/cli/internal/commands/variable"
 	versionCmd "gitlab.com/gitlab-org/cli/internal/commands/version"
+	whatsnewCmd "gitlab.com/gitlab-org/cli/internal/commands/whatsnew"
 	workitemsCmd "gitlab.com/gitlab-org/cli/internal/commands/workitems"
 )
 
@@ -148,6 +149,7 @@ func NewCmdRoot(f cmdutils.Factory) *cobra.Command {
 	rootCmd.AddCommand(completionCmd.NewCmdCompletion(f.IO()))
 	rootCmd.AddCommand(versionCmd.NewCmdVersion(f))
 	rootCmd.AddCommand(updateCmd.NewCheckUpdateCmd(f))
+	rootCmd.AddCommand(whatsnewCmd.NewCmd(f))
 	rootCmd.AddCommand(authCmd.NewCmdAuth(f))
 
 	rootCmd.AddCommand(apiCmd.NewCmdApi(f, nil))

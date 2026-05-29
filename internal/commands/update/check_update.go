@@ -68,7 +68,7 @@ func NewCheckUpdateCmd(f cmdutils.Factory) *cobra.Command {
 }
 
 // clientCreator is a variable that can be overridden for testing
-var clientCreator = createUnauthenticatedClient
+var clientCreator = CreateUnauthenticatedClient
 
 // installMethodDetector is overridable for tests so we don't depend on the
 // filesystem path of the running test binary.
@@ -168,11 +168,11 @@ func writeHumanUpdateBlock(io *iostreams.IOStreams, currentVersion, latestVersio
 	fmt.Fprintf(io.StdErr, "  Release notes: %s\n", releaseURL)
 }
 
-// createUnauthenticatedClient creates an API client without authentication for accessing
+// CreateUnauthenticatedClient creates an API client without authentication for accessing
 // public endpoints on gitlab.com. This avoids issues where user credentials (especially
 // from environment variables like GITLAB_TOKEN) might be for self-hosted instances
 // and invalid for gitlab.com.
-func createUnauthenticatedClient(userAgent string, options ...api.ClientOption) (*api.Client, error) {
+func CreateUnauthenticatedClient(userAgent string, options ...api.ClientOption) (*api.Client, error) {
 	// Create a client with an empty token for unauthenticated requests
 	opts := []api.ClientOption{
 		api.WithBaseURL(glinstance.APIEndpoint(glinstance.DefaultHostname, glinstance.DefaultProtocol, "", "")),
@@ -199,8 +199,9 @@ func ShouldSkipUpdate(previousCommand string) bool {
 	isCompletion := previousCommand == "completion"
 	isGitCredential := previousCommand == "git-credential"
 	isCredentialHelper := previousCommand == "credential-helper"
+	isWhatsNew := previousCommand == "whatsnew"
 
-	return isCheckUpdate || isCompletion || isGitCredential || isCredentialHelper
+	return isCheckUpdate || isCompletion || isGitCredential || isCredentialHelper || isWhatsNew
 }
 
 func isOlderVersion(latestVersion, appVersion string) bool {
