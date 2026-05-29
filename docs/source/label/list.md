@@ -14,9 +14,9 @@ List labels in a project or group.
 
 ## Synopsis
 
-List labels in a project or group. By default, labels are listed
-for the current repository. Use `--group` to list labels for a group
-or subgroup, or `--repo` to target another project.
+By default, labels are listed for the current repository. Use
+`--group` to list labels for a group or subgroup, or
+`--repo` to target another project.
 
 Use `--output json` to format the result as JSON for use with other tools.
 

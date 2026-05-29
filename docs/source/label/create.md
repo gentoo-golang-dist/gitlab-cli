@@ -14,9 +14,9 @@ Create a label in a project.
 
 ## Synopsis
 
-Create a label in a project. Use the flags to set the label name,
-color, description, and priority. The `--name` flag is required;
-`--color` defaults to `#428BCA` if not specified.
+Use the flags to set the label name, color, description, and priority.
+The `--name` flag is required; `--color` defaults to
+`#428BCA` if not specified.
 
 By default, the label is created in the current repository. Use
 `--repo` to target another project.
