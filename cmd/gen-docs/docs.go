@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,17 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/glrepo"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 )
+
+// quotedSegment matches a single-quoted segment such as
+// 'glab config set browser mybrowser' or 'client_id'.
+var quotedSegment = regexp.MustCompile(`'([^'\n]+)'`)
+
+// codeWrapQuoted converts single-quoted segments into backtick-wrapped
+// code so command and config-key references render with code formatting
+// in the generated documentation.
+func codeWrapQuoted(s string) string {
+	return quotedSegment.ReplaceAllString(s, "`$1`")
+}
 
 func main() {
 	var flagErr pflag.ErrorHandling
@@ -422,6 +434,10 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 								description += " " + additionalLine
 							}
 						}
+
+						// Wrap single-quoted segments (command and config-key
+						// references) in backticks so they render as code.
+						description = codeWrapQuoted(description)
 
 						// Wrap any bare URLs in the description with markdown link syntax
 						description = urlwrapper.MDWrap(description)
