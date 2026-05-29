@@ -28,14 +28,22 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "get <label-id>",
-		Short: "Returns a single label specified by the ID.",
-		Long:  ``,
+		Short: "Get information about a single label by ID.",
+		Long: heredoc.Docf(`
+			Get information about a single label in a project, identified by
+			its numeric ID. Use the JSON output to integrate with other tools
+			or scripts.
+
+			By default, the label is looked up in the current repository. Use
+			%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Get label info using label 1234 as argument
 			glab label get 1234
 
 			# Get info about a label in another project
-			glab label get 1234 -R owner/repo`),
+			glab label get 1234 -R owner/repo
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

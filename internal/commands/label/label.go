@@ -1,6 +1,7 @@
 package label
 
 import (
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -15,7 +16,12 @@ func NewCmdLabel(f cmdutils.Factory) *cobra.Command {
 	labelCmd := &cobra.Command{
 		Use:   "label <command> [flags]",
 		Short: `Manage labels on remote.`,
-		Long:  ``,
+		Long: heredoc.Doc(`
+		Manage labels on projects and groups. Labels are used to categorize
+		and filter issues, merge requests, and epics. Use the subcommands to
+		create, list, edit, delete, or look up labels in the current repository
+		or in another project or group.
+		`),
 	}
 
 	cmdutils.EnableRepoOverride(labelCmd, f)
