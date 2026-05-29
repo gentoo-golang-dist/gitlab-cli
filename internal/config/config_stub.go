@@ -42,6 +42,15 @@ func rootConfig() *yaml.Node {
 						Value: "",
 					},
 					{
+						HeadComment: "# Color usage/detection behavior. Available options are auto (rely on terminal capabilities and NO_COLOR), force (use colors), and disable (don't use colors)",
+						Kind:        yaml.ScalarNode,
+						Value:       "colors",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "auto",
+					},
+					{
 						HeadComment: "# Set your desired Markdown renderer style. Available options are [dark, light, notty]. To set a custom style, refer to https://github.com/charmbracelet/glamour#styles",
 						Kind:        yaml.ScalarNode,
 						Value:       "glamour_style",
