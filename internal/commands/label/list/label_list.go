@@ -45,9 +45,9 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Use:   "list [flags]",
 		Short: `List labels in a project or group.`,
 		Long: heredoc.Docf(`
-			List labels in a project or group. By default, labels are listed
-			for the current repository. Use %[1]s--group%[1]s to list labels for a group
-			or subgroup, or %[1]s--repo%[1]s to target another project.
+			By default, labels are listed for the current repository. Use
+			%[1]s--group%[1]s to list labels for a group or subgroup, or
+			%[1]s--repo%[1]s to target another project.
 
 			Use %[1]s--output json%[1]s to format the result as JSON for use with other tools.
 		`, "`"),

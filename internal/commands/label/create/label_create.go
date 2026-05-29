@@ -15,9 +15,9 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Use:   "create [flags]",
 		Short: `Create a label in a project.`,
 		Long: heredoc.Docf(`
-			Create a label in a project. Use the flags to set the label name,
-			color, description, and priority. The %[1]s--name%[1]s flag is required;
-			%[1]s--color%[1]s defaults to %[1]s#428BCA%[1]s if not specified.
+			Use the flags to set the label name, color, description, and priority.
+			The %[1]s--name%[1]s flag is required; %[1]s--color%[1]s defaults to
+			%[1]s#428BCA%[1]s if not specified.
 
 			By default, the label is created in the current repository. Use
 			%[1]s--repo%[1]s to target another project.
