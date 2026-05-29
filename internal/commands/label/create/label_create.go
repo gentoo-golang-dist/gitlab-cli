@@ -12,14 +12,24 @@ import (
 
 func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	labelCreateCmd := &cobra.Command{
-		Use:     "create [flags]",
-		Short:   `Create labels for a repository or project.`,
-		Long:    ``,
+		Use:   "create [flags]",
+		Short: `Create a label in a project.`,
+		Long: heredoc.Docf(`
+			Use the flags to set the label name, color, description, and priority.
+			The %[1]s--name%[1]s flag is required; %[1]s--color%[1]s defaults to
+			%[1]s#428BCA%[1]s if not specified.
+
+			By default, the label is created in the current repository. Use
+			%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
-			glab label create
-			glab label new
-			glab label create -R owner/repo`),
+			# Create a label in the current repository
+			glab label create --name bug --color "#FF0000" --description "Something is broken"
+
+			# Create a label in another project
+			glab label create --name bug -R owner/repo
+		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

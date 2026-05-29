@@ -14,12 +14,23 @@ import (
 
 func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 	labelDeleteCmd := &cobra.Command{
-		Use:   "delete [flags]",
-		Short: `Delete labels for a repository or project.`,
-		Long:  ``,
+		Use:   "delete <name> [flags]",
+		Short: `Delete a label from a project.`,
+		Long: heredoc.Docf(`
+			Delete a label from a project by name. The label is removed from
+			the project; it is not removed from issues, merge requests, or
+			epics that already use it.
+
+			By default, the label is deleted from the current repository. Use
+			%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
-			glab label delete foo
-			glab label delete -R owner/repo foo`),
+			# Delete a label from the current repository
+			glab label delete bug
+
+			# Delete a label from another project
+			glab label delete bug -R owner/repo
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

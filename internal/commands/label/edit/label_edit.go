@@ -17,11 +17,22 @@ func NewCmdEdit(f cmdutils.Factory) *cobra.Command {
 
 	LabelUpdateCmd := &cobra.Command{
 		Use:   "edit [flags]",
-		Short: `Edit group or project label.`,
-		Long:  ``,
+		Short: `Edit a label in a project.`,
+		Long: heredoc.Docf(`
+			Edit an existing label in a project. The %[1]s--label-id%[1]s flag is required
+			to identify the label to update. At least one of %[1]s--new-name%[1]s or
+			%[1]s--color%[1]s must be provided; %[1]s--description%[1]s and %[1]s--priority%[1]s are optional.
+
+			By default, the label is edited in the current repository. Use
+			%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
-			glab label edit
-			glab label edit -R owner/repo`),
+			# Rename a label in the current repository
+			glab label edit --label-id 1234 --new-name critical
+
+			# Change a label's color and description in another project
+			glab label edit --label-id 1234 --color "#FF0000" --description "Top priority" -R owner/repo
+		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

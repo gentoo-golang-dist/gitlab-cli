@@ -42,15 +42,29 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	}
 
 	labelListCmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   `List labels in the repository.`,
-		Long:    ``,
+		Use:   "list [flags]",
+		Short: `List labels in a project or group.`,
+		Long: heredoc.Docf(`
+			By default, labels are listed for the current repository. Use
+			%[1]s--group%[1]s to list labels for a group or subgroup, or
+			%[1]s--repo%[1]s to target another project.
+
+			Use %[1]s--output json%[1]s to format the result as JSON for use with other tools.
+		`, "`"),
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
+			# List labels in the current repository
 			glab label list
-			glab label ls
+
+			# List labels in another project
 			glab label list -R owner/repository
-			glab label list -g mygroup`),
+
+			# List labels in a group
+			glab label list -g mygroup
+
+			# List labels as JSON
+			glab label list --output json
+		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
