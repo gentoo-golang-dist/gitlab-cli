@@ -4,6 +4,7 @@ package iostreams
 
 import (
 	"image/color"
+	"os"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -13,6 +14,13 @@ import (
 
 func Test_isColorEnabled(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
+		for _, key := range []string{"NO_COLOR", "COLOR_ENABLED"} {
+			if val, ok := os.LookupEnv(key); ok {
+				os.Unsetenv(key)
+				t.Cleanup(func() { t.Setenv(key, val) })
+			}
+		}
+
 		got := detectIsColorEnabled()
 		assert.True(t, got)
 	})
