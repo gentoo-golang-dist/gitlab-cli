@@ -26,10 +26,9 @@ func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 		Use:   "download [<id>] [flags]",
 		Short: `Download one or more secure files from a project.`,
 		Long: heredoc.Docf(`
-		Download one or more secure files from a project. To download a
-		single file, identify it by its numeric ID (as a positional argument
-		or with %[1]s--id%[1]s) or by its name with %[1]s--name%[1]s. To download every secure
-		file in the project (up to a limit of 100), use %[1]s--all%[1]s.
+		To download a single file, identify it by its numeric ID (as a positional
+		argument or with %[1]s--id%[1]s) or by its name with %[1]s--name%[1]s. To download every
+		secure file in the project (up to a limit of 100), use %[1]s--all%[1]s.
 
 		Use %[1]s--path%[1]s to save a single download to a specific filename, or
 		%[1]s--output-dir%[1]s to choose the destination directory when downloading
