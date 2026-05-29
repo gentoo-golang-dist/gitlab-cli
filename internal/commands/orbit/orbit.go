@@ -7,6 +7,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	localCmd "gitlab.com/gitlab-org/cli/internal/commands/orbit/local"
 	remoteCmd "gitlab.com/gitlab-org/cli/internal/commands/orbit/remote"
+	setupCmd "gitlab.com/gitlab-org/cli/internal/commands/orbit/setup"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/text"
 )
@@ -24,6 +25,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			`+"`glab orbit local`"+` to run the Orbit local CLI binary.
 		`) + text.ExperimentalString,
 		Example: heredoc.Doc(`
+			# Guided onboarding: verify access, install the skill, install the local CLI
+			$ glab orbit setup
+
 			# Discover the remote Knowledge Graph
 			$ glab orbit remote status
 			$ glab orbit remote schema
@@ -43,6 +47,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
+	orbitCmd.AddCommand(setupCmd.NewCmd(f))
 	orbitCmd.AddCommand(remoteCmd.NewCmd(f))
 	orbitCmd.AddCommand(localCmd.NewCmd(f))
 
