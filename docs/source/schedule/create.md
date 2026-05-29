@@ -14,10 +14,12 @@ Create a new pipeline schedule.
 
 ## Synopsis
 
-Create a new CI/CD pipeline schedule. The `--cron` and `--ref` flags
-are typically required: `--cron` sets the schedule's recurrence in
-cron syntax, and `--ref` sets the branch or tag the pipeline runs
-against.
+Create a new CI/CD pipeline schedule. The `--cron`, `--description`, and `--ref` flags
+are required:
+
+- `--cron` sets the schedule's recurrence in cron syntax.
+- `--ref` sets the branch or tag the pipeline runs against.
+- `--description` provides a human-readable label.
 
 Use `--variable` to add pipeline variables in `key:value` format.
 Pass `--variable` multiple times to add several variables.

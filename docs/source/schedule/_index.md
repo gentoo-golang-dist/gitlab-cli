@@ -16,7 +16,7 @@ Work with GitLab CI/CD schedules.
 
 Manage GitLab CI/CD pipeline schedules. Use the subcommands to
 create, list, update, delete, or trigger schedules in the current
-project, or use --repo to target another project.
+project, or use `--repo` to target another project.
 
 ## Aliases
 
