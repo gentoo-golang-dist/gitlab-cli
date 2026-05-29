@@ -47,10 +47,11 @@ func MaybeShowPostUpgradeBanner(io *iostreams.IOStreams, cfg config.Config, buil
 	fmt.Fprintln(io.StdErr, c.Yellow(fmt.Sprintf("What's new in glab %s", currentVersion)))
 	fmt.Fprintln(io.StdErr, "  Run: glab whatsnew")
 
+	// An upgrade is the only moment a new bundled-skill payload becomes
+	// available, so the skill check piggybacks on the banner.
+	writeSkillUpdateLine(io, bundledSkillUpdates(cfg), true)
+
 	if err := SetLastSeenVersion(cfg, currentVersion); err != nil {
-		// Best-effort: if we can't persist, the banner repeats next run.
-		// Surface as an info-level note rather than a hard error so we
-		// don't disrupt the user's actual command.
 		fmt.Fprintf(io.StdErr, "  (could not update %s: %s)\n", LastSeenVersionKey, err)
 	}
 }

@@ -22,6 +22,7 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/api"
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/skills/installed"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
@@ -50,6 +51,15 @@ func stubInstallMethod(t *testing.T, method InstallMethod) {
 	old := installMethodDetector
 	installMethodDetector = func() InstallMethod { return method }
 	t.Cleanup(func() { installMethodDetector = old })
+}
+
+// stubNoInstalledSkills swaps the package-level skill discoverer so tests
+// don't depend on whatever the developer has under ~/.agents/skills/.
+func stubNoInstalledSkills(t *testing.T) {
+	t.Helper()
+	old := discoverInstalled
+	discoverInstalled = func() ([]installed.Skill, error) { return nil, nil }
+	t.Cleanup(func() { discoverInstalled = old })
 }
 
 func TestNewCheckUpdateCmd(t *testing.T) {
@@ -122,6 +132,7 @@ func TestNewCheckUpdateCmd(t *testing.T) {
 
 			mockClientCreator(t, testClient)
 			stubInstallMethod(t, tc.installMethod)
+			stubNoInstalledSkills(t)
 
 			defer config.StubWriteConfig(io.Discard, io.Discard)()
 

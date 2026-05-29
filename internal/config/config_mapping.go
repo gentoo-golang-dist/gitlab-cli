@@ -110,6 +110,8 @@ func EnvKeyEquivalence(key string) []string {
 		return []string{"NO_PROMPT", "PROMPT_DISABLED"}
 	case "show_whats_new":
 		return []string{"GLAB_SHOW_WHATS_NEW"}
+	case "notify_skill_updates":
+		return []string{"GLAB_NOTIFY_SKILL_UPDATES"}
 	case "telemetry":
 		return []string{"GLAB_SEND_TELEMETRY"}
 	case "editor", "visual", "glab_editor":

@@ -3,6 +3,13 @@
 // dependencies on the source packages — those import this one.
 package skill
 
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"sort"
+)
+
 // Source identifies where a Skill was loaded from.
 type Source string
 
@@ -33,4 +40,25 @@ type Skill struct {
 // s.Files[FileName].
 func (s Skill) SkillFile() []byte {
 	return s.Files[FileName]
+}
+
+// ContentHash returns a stable sha256 over a file tree. Empty input
+// returns "" so "nothing on disk yet" callsites don't need a special case.
+func ContentHash(files map[string][]byte) string {
+	if len(files) == 0 {
+		return ""
+	}
+	paths := make([]string, 0, len(files))
+	for p := range files {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	h := sha256.New()
+	for _, p := range paths {
+		// Length-prefix so two different (path, body) splits can't collide.
+		fmt.Fprintf(h, "%d:%s\n%d:", len(p), p, len(files[p]))
+		h.Write(files[p])
+		h.Write([]byte{'\n'})
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
