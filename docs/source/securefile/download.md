@@ -14,10 +14,9 @@ Download one or more secure files from a project.
 
 ## Synopsis
 
-Download one or more secure files from a project. To download a
-single file, identify it by its numeric ID (as a positional argument
-or with `--id`) or by its name with `--name`. To download every secure
-file in the project (up to a limit of 100), use `--all`.
+To download a single file, identify it by its numeric ID (as a positional
+argument or with `--id`) or by its name with `--name`. To download every
+secure file in the project (up to a limit of 100), use `--all`.
 
 Use `--path` to save a single download to a specific filename, or
 `--output-dir` to choose the destination directory when downloading

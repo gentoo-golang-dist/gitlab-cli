@@ -14,8 +14,8 @@ Upload a new secure file to a project.
 
 ## Synopsis
 
-Upload a new secure file to a project. Provide the name to store the
-file under, followed by the local path to the file to upload.
+Provide the name to store the file under, followed by the local path
+to the file to upload.
 
 Secure files are stored outside the project's repository and not in
 version control. Both plain text and binary files are supported, up
