@@ -188,7 +188,7 @@ func main() {
 		argCommand = expandedArgs[0]
 	}
 	if !update.ShouldSkipUpdate(argCommand) {
-		update.MaybeShowPostUpgradeBanner(cmdFactory)
+		update.MaybeShowPostUpgradeBanner(cmdFactory.IO(), cmdFactory.Config(), cmdFactory.BuildInfo())
 		checkForUpdate(cmdFactory, rootCmd, debug)
 	}
 }

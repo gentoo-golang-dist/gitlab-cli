@@ -108,6 +108,8 @@ func EnvKeyEquivalence(key string) []string {
 		return []string{strings.ToUpper(key)}
 	case "no_prompt":
 		return []string{"NO_PROMPT", "PROMPT_DISABLED"}
+	case "show_whats_new":
+		return []string{"GLAB_SHOW_WHATS_NEW"}
 	case "telemetry":
 		return []string{"GLAB_SEND_TELEMETRY"}
 	case "editor", "visual", "glab_editor":
@@ -141,9 +143,12 @@ func defaultFor(key string) string {
 		return defaultAPIProtocol
 	case "glamour_style":
 		return defaultGlamourStyle
-	case "last_seen_version":
+	case "last_seen_version", "last_whatsnew_version":
 		// Seeded so the post-upgrade banner can surface immediately when
-		// existing users upgrade to the release that ships `glab whatsnew`.
+		// existing users upgrade to the release that ships `glab whatsnew`,
+		// and so that the default `whatsnew` invocation has a non-empty
+		// baseline (otherwise it would show no releases for users who run
+		// it before the banner has had a chance to advance the marker).
 		// Bump only when intentionally re-announcing the feature.
 		return "v1.100.0"
 	default:

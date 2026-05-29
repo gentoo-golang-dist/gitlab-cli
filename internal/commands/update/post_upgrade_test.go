@@ -4,23 +4,25 @@ package update
 
 import (
 	"bytes"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/gitlab-org/cli/internal/api"
-	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
+	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/testing/cmdtest"
 )
 
-// newBannerFactory builds a test factory with the supplied build info, a fresh
-// blank config seeded with last_seen_version, and a non-TTY stderr buffer.
-func newBannerFactory(t *testing.T, currentVersion, lastSeen, showWhatsNew string, codingAgent string) (cmdutils.Factory, *bytes.Buffer) {
-	t.Helper()
+// noWriteConfig wraps a config.Config so cfg.Write() doesn't touch disk
+// in tests. Avoids needing config.StubWriteConfig per test.
+type noWriteConfig struct{ config.Config }
 
+func (noWriteConfig) Write() error { return nil }
+
+func newBannerTest(t *testing.T, currentVersion, lastSeen, showWhatsNew, codingAgent string) (*iostreams.IOStreams, config.Config, api.BuildInfo, *bytes.Buffer) {
+	t.Helper()
 	cfg := config.NewBlankConfig()
 	if lastSeen != "" {
 		require.NoError(t, cfg.Set("", LastSeenVersionKey, lastSeen))
@@ -28,21 +30,12 @@ func newBannerFactory(t *testing.T, currentVersion, lastSeen, showWhatsNew strin
 	if showWhatsNew != "" {
 		require.NoError(t, cfg.Set("", "show_whats_new", showWhatsNew))
 	}
-
 	ios, _, _, stderr := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(false))
-	f := cmdtest.NewTestFactory(ios,
-		cmdtest.WithConfig(cfg),
-		cmdtest.WithBuildInfo(api.BuildInfo{Version: currentVersion, CodingAgent: codingAgent}),
-	)
-	return f, stderr
+	return ios, noWriteConfig{cfg}, api.BuildInfo{Version: currentVersion, CodingAgent: codingAgent}, stderr
 }
 
 func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 	t.Parallel()
-	// StubWriteConfig is installed ONCE here, before any subtest fires its
-	// t.Parallel(). All subtests share this stub read-only — installing
-	// inside each subtest would race on the package-level WriteConfigFile.
-	t.Cleanup(config.StubWriteConfig(io.Discard, io.Discard))
 
 	tests := []struct {
 		name           string
@@ -65,8 +58,7 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 			currentVersion: "1.100.0",
 			lastSeen:       "",
 			wantBanner:     false,
-			// defaultFor returns "v1.100.0" when nothing is stored — exposed via Get
-			wantLastSeen: "v1.100.0",
+			wantLastSeen:   "v1.100.0", // defaultFor() value
 		},
 		{
 			name:           "stored value older than current fires banner and updates marker",
@@ -124,9 +116,8 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			f, stderr := newBannerFactory(t, tc.currentVersion, tc.lastSeen, tc.showWhatsNew, tc.codingAgent)
-			MaybeShowPostUpgradeBanner(f)
+			ios, cfg, buildInfo, stderr := newBannerTest(t, tc.currentVersion, tc.lastSeen, tc.showWhatsNew, tc.codingAgent)
+			MaybeShowPostUpgradeBanner(ios, cfg, buildInfo)
 
 			if tc.wantBanner {
 				assert.Contains(t, stderr.String(), "What's new in glab")
@@ -136,23 +127,21 @@ func TestMaybeShowPostUpgradeBanner(t *testing.T) {
 				assert.Empty(t, stderr.String())
 			}
 
-			got, _ := f.Config().Get("", LastSeenVersionKey)
+			got, _ := cfg.Get("", LastSeenVersionKey)
 			assert.Equal(t, tc.wantLastSeen, got)
 		})
 	}
 }
 
-// TestMaybeShowPostUpgradeBanner_envOverride covers the GLAB_SHOW_WHATS_NEW
-// case in isolation. t.Setenv is incompatible with t.Parallel, so this
-// stays sequential rather than dragging the whole table back to serial.
+// envOverride covers GLAB_SHOW_WHATS_NEW separately because t.Setenv is
+// incompatible with t.Parallel.
 func TestMaybeShowPostUpgradeBanner_envOverride(t *testing.T) {
-	t.Cleanup(config.StubWriteConfig(io.Discard, io.Discard))
 	t.Setenv("GLAB_SHOW_WHATS_NEW", "false")
 
-	f, stderr := newBannerFactory(t, "1.85.0", "1.84.0", "", "")
-	MaybeShowPostUpgradeBanner(f)
+	ios, cfg, buildInfo, stderr := newBannerTest(t, "1.85.0", "1.84.0", "", "")
+	MaybeShowPostUpgradeBanner(ios, cfg, buildInfo)
 
 	assert.Empty(t, stderr.String())
-	got, _ := f.Config().Get("", LastSeenVersionKey)
+	got, _ := cfg.Get("", LastSeenVersionKey)
 	assert.Equal(t, "1.84.0", got)
 }

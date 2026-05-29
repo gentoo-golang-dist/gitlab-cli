@@ -1,6 +1,7 @@
 package whatsnew
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,18 +24,21 @@ import (
 
 const (
 	projectPath = "gitlab-org/cli"
-	// maxReleases caps the number of release notes shown in a single run so
-	// that a very out-of-date binary doesn't dump a wall of text on the user.
 	maxReleases = 10
+	// Separate from update.LastSeenVersionKey on purpose: the banner needs
+	// `marker >= current` (to stop repeating), the default whatsnew view
+	// needs `marker < current` (to still include the just-installed version).
+	// Sharing one marker produces TestWhatsnew_bannerNudgeThenWhatsnew.
+	LastWhatsnewVersionKey = "last_whatsnew_version"
 )
 
-// clientCreator is overridable for tests.
 var clientCreator = update.CreateUnauthenticatedClient
 
 type options struct {
 	tagName      string
 	sinceVersion string
 	showLatest   bool
+	isDefault    bool
 
 	io        *iostreams.IOStreams
 	cfg       func() config.Config
@@ -77,11 +81,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Safe: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.complete(args)
+			opts.complete(cmd, args)
 			if err := opts.validate(); err != nil {
 				return err
 			}
-			return opts.run()
+			return opts.run(cmd.Context())
 		},
 	}
 
@@ -93,15 +97,16 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	return cmd
 }
 
-func (o *options) complete(args []string) {
+func (o *options) complete(cmd *cobra.Command, args []string) {
 	if len(args) == 1 {
 		o.tagName = args[0]
 	}
+	fl := cmd.Flags()
+	o.isDefault = o.tagName == "" && !fl.Changed("since") && !fl.Changed("latest")
 }
 
 func (o *options) validate() error {
-	// --since and --latest are made mutually exclusive via
-	// MarkFlagsMutuallyExclusive; cobra can't express conflicts between
+	// cobra's MarkFlagsMutuallyExclusive can't express conflicts between
 	// flags and a positional argument, so we cover those here.
 	if o.tagName != "" && (o.sinceVersion != "" || o.showLatest) {
 		return cmdutils.WrapError(errors.New("flag conflict"), "cannot combine a version argument with --since or --latest.")
@@ -109,17 +114,17 @@ func (o *options) validate() error {
 	return nil
 }
 
-func (o *options) run() error {
+func (o *options) run(ctx context.Context) error {
 	client, err := clientCreator(o.buildInfo.UserAgent())
 	if err != nil {
 		return err
 	}
-	releases, err := o.fetchReleases(client.Lab())
+	releases, err := o.fetchReleases(ctx, client.Lab())
 	if err != nil {
 		return err
 	}
 	if len(releases) == 0 {
-		fmt.Fprintln(o.io.StdErr, "No new releases since you last checked.")
+		o.io.LogError("No new releases since you last checked.")
 		return nil
 	}
 
@@ -127,22 +132,18 @@ func (o *options) run() error {
 		return err
 	}
 
-	// Only the default invocation (no args, no flags) advances the marker —
-	// so explicit views (`whatsnew --latest`, `whatsnew v1.x`) don't silently
-	// dismiss the banner for releases the user hasn't actually read.
-	if o.isDefaultInvocation() {
-		_ = update.SetLastSeenVersion(o.cfg(), strings.TrimSpace(o.buildInfo.Version))
+	// Explicit views (--latest, version arg) shouldn't dismiss releases
+	// the user hasn't actually read, so only the default advances.
+	if o.isDefault {
+		_ = setLastWhatsnewVersion(o.cfg(), strings.TrimSpace(o.buildInfo.Version))
 	}
 	return nil
 }
 
-func (o *options) isDefaultInvocation() bool {
-	return o.tagName == "" && o.sinceVersion == "" && !o.showLatest
-}
-
-func (o *options) fetchReleases(client *gitlab.Client) ([]*gitlab.Release, error) {
-	if o.tagName != "" {
-		r, resp, err := client.Releases.GetRelease(projectPath, normalizeTag(o.tagName))
+func (o *options) fetchReleases(ctx context.Context, client *gitlab.Client) ([]*gitlab.Release, error) {
+	switch {
+	case o.tagName != "":
+		r, resp, err := client.Releases.GetRelease(projectPath, normalizeTag(o.tagName), gitlab.WithContext(ctx))
 		if err != nil {
 			if resp != nil && resp.StatusCode == http.StatusNotFound {
 				return nil, cmdutils.WrapError(err, fmt.Sprintf("release %q not found.", o.tagName))
@@ -150,34 +151,30 @@ func (o *options) fetchReleases(client *gitlab.Client) ([]*gitlab.Release, error
 			return nil, cmdutils.WrapError(err, "failed to fetch release.")
 		}
 		return []*gitlab.Release{r}, nil
-	}
 
-	if o.showLatest {
+	case o.showLatest:
 		releases, _, err := client.Releases.ListReleases(projectPath, &gitlab.ListReleasesOptions{
 			ListOptions: gitlab.ListOptions{Page: 1, PerPage: 1},
-		})
+		}, gitlab.WithContext(ctx))
 		if err != nil {
 			return nil, cmdutils.WrapError(err, "failed to fetch latest release.")
 		}
 		return releases, nil
-	}
 
-	// Default or --since: pull the most recent N releases and filter to
-	// anything strictly newer than the baseline (--since value, otherwise
-	// the stored last_seen_version, which has a seeded default).
-	sinceStr := strings.TrimSpace(o.sinceVersion)
-	if sinceStr == "" {
-		seen, _ := o.cfg().Get("", update.LastSeenVersionKey)
-		sinceStr = strings.TrimSpace(seen)
+	default:
+		sinceStr := strings.TrimSpace(o.sinceVersion)
+		if sinceStr == "" {
+			seen, _ := o.cfg().Get("", LastWhatsnewVersionKey)
+			sinceStr = strings.TrimSpace(seen)
+		}
+		releases, _, err := client.Releases.ListReleases(projectPath, &gitlab.ListReleasesOptions{
+			ListOptions: gitlab.ListOptions{Page: 1, PerPage: int64(maxReleases)},
+		}, gitlab.WithContext(ctx))
+		if err != nil {
+			return nil, cmdutils.WrapError(err, "failed to fetch releases.")
+		}
+		return filterNewer(releases, sinceStr), nil
 	}
-
-	releases, _, err := client.Releases.ListReleases(projectPath, &gitlab.ListReleasesOptions{
-		ListOptions: gitlab.ListOptions{Page: 1, PerPage: int64(maxReleases)},
-	})
-	if err != nil {
-		return nil, cmdutils.WrapError(err, "failed to fetch releases.")
-	}
-	return filterNewer(releases, sinceStr), nil
 }
 
 func (o *options) renderReleases(releases []*gitlab.Release) error {
@@ -211,9 +208,6 @@ func (o *options) renderReleases(releases []*gitlab.Release) error {
 	return nil
 }
 
-// filterNewer keeps releases whose tag is strictly greater than sinceStr,
-// preserving the API's newest-first order. Releases with unparseable tags
-// are skipped.
 func filterNewer(releases []*gitlab.Release, sinceStr string) []*gitlab.Release {
 	since, err := version.NewVersion(sinceStr)
 	if err != nil {
@@ -241,4 +235,11 @@ func normalizeTag(v string) string {
 		return "v" + v
 	}
 	return v
+}
+
+func setLastWhatsnewVersion(cfg config.Config, v string) error {
+	if err := cfg.Set("", LastWhatsnewVersionKey, v); err != nil {
+		return err
+	}
+	return cfg.Write()
 }

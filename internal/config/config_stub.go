@@ -87,6 +87,15 @@ func rootConfig() *yaml.Node {
 						Value: "",
 					},
 					{
+						HeadComment: "# Last glab version 'glab whatsnew' rendered notes for (automatically set).",
+						Kind:        yaml.ScalarNode,
+						Value:       "last_whatsnew_version",
+					},
+					{
+						Kind:  yaml.ScalarNode,
+						Value: "",
+					},
+					{
 						HeadComment: "# Whether or not to display hyperlinks in terminal output. Defaults to true (enabled for TTYs). Set to false to disable. Force hyperlinks in non-TTY environments by setting FORCE_HYPERLINKS=1.",
 						Kind:        yaml.ScalarNode,
 						Value:       "display_hyperlinks",
