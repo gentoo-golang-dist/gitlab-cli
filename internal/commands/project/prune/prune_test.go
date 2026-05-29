@@ -282,30 +282,6 @@ func TestPrune_SkipsCurrentBranch(t *testing.T) {
 	assert.Contains(t, out.OutBuf.String(), "No local branches found")
 }
 
-func TestPrune_IncludeCurrentBranch(t *testing.T) {
-	t.Parallel()
-
-	tc := gitlabtesting.NewTestClient(t)
-	expectProject(tc)
-	expectNoProtectedBranches(tc)
-	expectMRsForBranch(tc, "current-branch", []*gitlab.BasicMergeRequest{{IID: 7, State: "merged", TargetBranch: "main"}})
-
-	ctrl := gomock.NewController(t)
-	mockGit := git_testing.NewMockGitRunner(ctrl)
-	expectListLocalBranches(mockGit, "current-branch")
-	mockGit.EXPECT().Git("branch", "-D", "current-branch").Return("", nil)
-
-	exec := cmdtest.SetupCmdForTest(t, NewCmdPrune, false,
-		cmdtest.WithGitLabClient(tc.Client),
-		cmdtest.WithGitRunner(mockGit),
-		cmdtest.WithBranch("current-branch"),
-	)
-
-	out, err := exec("--include-current --yes")
-	require.NoError(t, err)
-	assert.Contains(t, out.OutBuf.String(), "deleted current-branch")
-}
-
 func TestPrune_NonInteractiveRequiresYes(t *testing.T) {
 	t.Parallel()
 
@@ -370,24 +346,46 @@ func TestPrune_MergedFlagUsesGit(t *testing.T) {
 	assert.NotContains(t, stdout, "deleted not-merged")
 }
 
-func TestBranchMatches(t *testing.T) {
+func TestBuildMatcher(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		pattern, branch string
-		want            bool
+		name         string
+		protected    []string
+		userPatterns []string
+		branch       string
+		wantExcluded bool
 	}{
-		{"main", "main", true},
-		{"main", "develop", false},
-		{"wip-*", "wip-foo", true},
-		{"wip-*", "feature/wip", false},
-		{"release/*", "release/1.0", true},
-		{"release/*", "release/", true},
-		{"feature/?", "feature/a", true},
-		{"feature/?", "feature/abc", false},
+		{name: "literal match", protected: []string{"main"}, branch: "main", wantExcluded: true},
+		{name: "literal non-match", protected: []string{"main"}, branch: "develop"},
+		{name: "star matches non-slash", protected: []string{"wip-*"}, branch: "wip-foo", wantExcluded: true},
+		// Regression: GitLab protected-branch wildcards match across `/`, unlike filepath.Match.
+		{name: "star matches across slash", protected: []string{"release*"}, branch: "release/1.0", wantExcluded: true},
+		{name: "star prefix with slash", protected: []string{"release/*"}, branch: "release/1.0", wantExcluded: true},
+		{name: "star matches empty", protected: []string{"release/*"}, branch: "release/", wantExcluded: true},
+		{name: "question mark matches one char", protected: []string{"feature/?"}, branch: "feature/a", wantExcluded: true},
+		{name: "question mark does not match many", protected: []string{"feature/?"}, branch: "feature/abc"},
+		{name: "no patterns matches nothing", branch: "anything"},
+		{name: "user pattern comma split", userPatterns: []string{"a,b"}, branch: "b", wantExcluded: true},
+		{name: "user wildcard", userPatterns: []string{"wip-*"}, branch: "wip-x", wantExcluded: true},
 	}
 	for _, tc := range cases {
-		got := branchMatches(tc.pattern, tc.branch)
-		assert.Equal(t, tc.want, got, "pattern=%q branch=%q", tc.pattern, tc.branch)
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			excluded := buildMatcher("", "", tc.protected, tc.userPatterns)
+			assert.Equal(t, tc.wantExcluded, excluded(tc.branch))
+		})
 	}
+}
+
+// TestBuildMatcher_ProtectedWildcardAcrossSlash isolates the specific
+// failure mode Gary flagged in review: filepath.Match would have left
+// release/1.0 unexcluded against a release* pattern.
+func TestBuildMatcher_ProtectedWildcardAcrossSlash(t *testing.T) {
+	t.Parallel()
+
+	excluded := buildMatcher("", "", []string{"release*"}, nil)
+	assert.True(t, excluded("release/1.0"), "release* should match release/1.0 under GitLab wildcard semantics")
+	assert.True(t, excluded("release-rc"), "release* should match release-rc")
+	assert.False(t, excluded("hotfix/1.0"))
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -23,7 +23,6 @@ type options struct {
 	dryRun          bool
 	yes             bool
 	excludePatterns []string
-	includeCurrent  bool
 	useMergedFlag   bool
 
 	io           *iostreams.IOStreams
@@ -103,7 +102,6 @@ func NewCmdPrune(f cmdutils.Factory) *cobra.Command {
 	fl.BoolVar(&opts.dryRun, "dry-run", false, "Preview branches that would be deleted without deleting them. (default false)")
 	fl.BoolVarP(&opts.yes, "yes", "y", false, "Skip the confirmation prompt. (default false)")
 	fl.StringSliceVarP(&opts.excludePatterns, "exclude", "e", nil, "Branch name or glob pattern to exclude. Comma-separated or repeated.")
-	fl.BoolVar(&opts.includeCurrent, "include-current", false, "Allow pruning the currently checked-out branch. (default false)")
 	fl.BoolVar(&opts.useMergedFlag, "merged", false, "Use 'git branch --merged' instead of querying GitLab. Detects fast-forward merges only. (default false)")
 
 	return cmd
@@ -151,7 +149,7 @@ func (o *options) run(ctx context.Context) error {
 		return err
 	}
 
-	excluded := buildMatcher(defaultBranch, currentBranch, o.includeCurrent, protectedPatterns, o.excludePatterns)
+	excluded := buildMatcher(defaultBranch, currentBranch, protectedPatterns, o.excludePatterns)
 
 	candidateBranches := make([]string, 0, len(allBranches))
 	for _, b := range allBranches {
@@ -326,13 +324,15 @@ func listProtectedBranchNames(client *gitlab.Client, projectID string) ([]string
 }
 
 // buildMatcher returns a predicate that reports whether a branch should be
-// excluded from pruning.
-func buildMatcher(defaultBranch, currentBranch string, includeCurrent bool, protected, userPatterns []string) func(string) bool {
+// excluded from pruning. Pattern semantics match GitLab's protected-branch
+// wildcards: `*` matches any character including `/`, `?` matches exactly
+// one character. Plain strings match by full equality.
+func buildMatcher(defaultBranch, currentBranch string, protected, userPatterns []string) func(string) bool {
 	var patterns []string
 	if defaultBranch != "" {
 		patterns = append(patterns, defaultBranch)
 	}
-	if currentBranch != "" && !includeCurrent {
+	if currentBranch != "" {
 		patterns = append(patterns, currentBranch)
 	}
 	patterns = append(patterns, protected...)
@@ -344,9 +344,24 @@ func buildMatcher(defaultBranch, currentBranch string, includeCurrent bool, prot
 		}
 	}
 
+	compiled := make([]*regexp.Regexp, 0, len(patterns))
+	literals := make(map[string]struct{}, len(patterns))
+	for _, p := range patterns {
+		if !strings.ContainsAny(p, "*?") {
+			literals[p] = struct{}{}
+			continue
+		}
+		if re := compileGlob(p); re != nil {
+			compiled = append(compiled, re)
+		}
+	}
+
 	return func(branch string) bool {
-		for _, p := range patterns {
-			if branchMatches(p, branch) {
+		if _, ok := literals[branch]; ok {
+			return true
+		}
+		for _, re := range compiled {
+			if re.MatchString(branch) {
 				return true
 			}
 		}
@@ -354,14 +369,28 @@ func buildMatcher(defaultBranch, currentBranch string, includeCurrent bool, prot
 	}
 }
 
-func branchMatches(pattern, branch string) bool {
-	if pattern == branch {
-		return true
-	}
-	if strings.ContainsAny(pattern, "*?[") {
-		if ok, err := filepath.Match(pattern, branch); err == nil && ok {
-			return true
+// compileGlob converts a GitLab-style wildcard pattern (`*` matches any
+// sequence of any characters including `/`, `?` matches exactly one) into
+// an anchored regular expression. Returns nil if the resulting pattern
+// can't be compiled — a malformed pattern silently matches nothing rather
+// than blowing up the whole prune run.
+func compileGlob(pattern string) *regexp.Regexp {
+	var sb strings.Builder
+	sb.WriteString("^")
+	for _, r := range pattern {
+		switch r {
+		case '*':
+			sb.WriteString(".*")
+		case '?':
+			sb.WriteString(".")
+		default:
+			sb.WriteString(regexp.QuoteMeta(string(r)))
 		}
 	}
-	return false
+	sb.WriteString("$")
+	re, err := regexp.Compile(sb.String())
+	if err != nil {
+		return nil
+	}
+	return re
 }
