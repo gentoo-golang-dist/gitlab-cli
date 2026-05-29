@@ -65,7 +65,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	repoListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	cmdutils.EnableJSONOutput(repoListCmd, opts.io, &opts.outputFormat)
-	repoListCmd.Flags().BoolVarP(&opts.filterAll, "all", "a", false, "List all projects on the instance.")
+	repoListCmd.Flags().BoolVarP(&opts.filterAll, "all", "a", false, "List all projects on the instance. Removes the ownership filter. Results are still paginated. Use --page to navigate.")
 	repoListCmd.Flags().BoolVarP(&opts.filterOwner, "mine", "m", false, "List only projects you own. Default if no filters are provided.")
 	repoListCmd.Flags().StringVarP(&opts.user, "user", "u", "", "List user projects.")
 	repoListCmd.Flags().BoolVar(&opts.filterMember, "member", false, "List only projects of which you are a member.")
