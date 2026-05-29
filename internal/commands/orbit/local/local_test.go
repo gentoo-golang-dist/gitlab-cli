@@ -3,6 +3,10 @@
 package local
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"os"
 	"path/filepath"
@@ -43,8 +47,8 @@ func TestSpec_Wiring(t *testing.T) {
 	assert.Equal(t, "orbit_local", s.ConfigPrefix)
 	assert.Equal(t, "GLAB_ORBIT_LOCAL", s.EnvVarPrefix)
 	assert.Zero(t, s.MaxCompatibleMajor, "Orbit is pre-1.0; major-version cap should be uncapped")
-	assert.ElementsMatch(t, []string{"darwin", "linux"}, s.SupportedOS)
-	assert.NotNil(t, s.Extract, "Orbit ships tarballs and requires an Extractor")
+	assert.ElementsMatch(t, []string{"darwin", "linux", "windows"}, s.SupportedOS)
+	assert.NotNil(t, s.Extract, "Orbit ships archives and requires an Extractor")
 }
 
 func TestOrbitNormalizeArch(t *testing.T) {
@@ -62,8 +66,8 @@ func TestOrbitNormalizeArch(t *testing.T) {
 		{name: "arm64 darwin", goos: "darwin", goarch: "arm64", want: "aarch64"},
 		{name: "arm64 linux", goos: "linux", goarch: "arm64", want: "aarch64"},
 		{name: "aarch64 alias", goos: "linux", goarch: "aarch64", want: "aarch64"},
-		{name: "amd64 windows unsupported", goos: "windows", goarch: "amd64", expectError: true},
-		{name: "arm64 windows unsupported", goos: "windows", goarch: "arm64", expectError: true},
+		{name: "amd64 windows", goos: "windows", goarch: "amd64", want: "x86_64"},
+		{name: "arm64 windows uses x64 emulation", goos: "windows", goarch: "arm64", want: "x86_64"},
 		{name: "unsupported arch", goos: "linux", goarch: "386", expectError: true},
 	}
 
@@ -89,6 +93,7 @@ func TestOrbitAssetName(t *testing.T) {
 	assert.Equal(t, "orbit-local-darwin-x86_64.tar.gz", orbitAssetName("darwin", "x86_64"))
 	assert.Equal(t, "orbit-local-linux-aarch64.tar.gz", orbitAssetName("linux", "aarch64"))
 	assert.Equal(t, "orbit-local-linux-x86_64.tar.gz", orbitAssetName("linux", "x86_64"))
+	assert.Equal(t, "orbit-local-windows-x86_64.zip", orbitAssetName("windows", "x86_64"))
 }
 
 func TestOrbitInstalledName(t *testing.T) {
@@ -96,6 +101,64 @@ func TestOrbitInstalledName(t *testing.T) {
 
 	assert.Equal(t, "orbit", orbitInstalledName("darwin"))
 	assert.Equal(t, "orbit", orbitInstalledName("linux"))
+	assert.Equal(t, "orbit.exe", orbitInstalledName("windows"))
+}
+
+func TestOrbitExtractorFor_picksByOS(t *testing.T) {
+	t.Parallel()
+
+	// The binarymgr writes downloads to a generic .tmp file, so the
+	// extractor is selected by GOOS at Spec construction time rather than by
+	// inspecting the source path.
+	tarPath := filepath.Join(t.TempDir(), "src.tmp")
+	require.NoError(t, os.WriteFile(tarPath, buildOrbitTarGz(t), 0o644))
+
+	zipPath := filepath.Join(t.TempDir(), "src.tmp")
+	require.NoError(t, os.WriteFile(zipPath, buildOrbitZip(t), 0o644))
+
+	tarDest := t.TempDir()
+	got, err := orbitExtractorFor("linux")(tarPath, tarDest)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(tarDest, "orbit"), got)
+
+	got, err = orbitExtractorFor("darwin")(tarPath, t.TempDir())
+	require.NoError(t, err)
+	assert.Equal(t, "orbit", filepath.Base(got))
+
+	zipDest := t.TempDir()
+	got, err = orbitExtractorFor("windows")(zipPath, zipDest)
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(zipDest, "orbit.exe"), got)
+}
+
+func buildOrbitTarGz(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	body := []byte("orbit-binary")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name: "orbit", Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg,
+	}))
+	_, err := tw.Write(body)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gz.Close())
+	return buf.Bytes()
+}
+
+func buildOrbitZip(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	hdr := &zip.FileHeader{Name: "orbit.exe", Method: zip.Deflate}
+	hdr.SetMode(0o755)
+	w, err := zw.CreateHeader(hdr)
+	require.NoError(t, err)
+	_, err = w.Write([]byte("orbit-binary"))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+	return buf.Bytes()
 }
 
 func TestRunWithCustomPath_Validation(t *testing.T) {
