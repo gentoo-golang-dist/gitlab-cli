@@ -69,7 +69,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			Run a guided onboarding for the GitLab Knowledge Graph (Orbit):
 
-			1. Verify that Orbit is reachable for your user via `+"`GET /api/v4/orbit/status`"+`.
+			1. Verify that Orbit is reachable and enabled for your user.
 			2. Install the Orbit agent skill so AI coding agents can discover it.
 			3. Install the Orbit local CLI binary for indexing a local copy of the graph.
 
