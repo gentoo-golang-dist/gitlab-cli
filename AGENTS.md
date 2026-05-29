@@ -28,7 +28,10 @@ make check             # test + lint
 ```
 
 To skip hooks, use `LEFTHOOK=0 git push` or
-`LEFTHOOK_EXCLUDE=pre-push git push`.
+`LEFTHOOK_EXCLUDE=pre-push git push`. Treat these like `--no-verify`, an
+escape hatch for debugging the hooks themselves, not a workaround for slow
+builds. The hooks catch generated-doc/code drift and lint regressions
+before merge.
 
 ## Common commands
 
@@ -50,6 +53,12 @@ make gen-config                               # config stubs from internal/confi
 and sets `CI_PROJECT_PATH` from the origin remote. Some tests depend on
 this. If you run `go test` directly and see environment-dependent failures,
 replicate that setup.
+
+> [!note]
+> Local vendor workflow: `vendor/` is gitignored. Do not request vendor
+> updates in merge requests. On an inconsistent-vendoring error,
+> run `go mod vendor` to resync. Do not use `-mod=mod`, which bypasses the
+> vendor directory instead of fixing it.
 
 ## Integration tests
 
@@ -88,13 +97,21 @@ set (see `GetHostOrSkip` in `test/helpers.go`). The token must have the
 
 ## Command conventions
 
+[`.gitlab/duo/mr-review-instructions.yaml`](.gitlab/duo/mr-review-instructions.yaml)
+is the source that GitLab Duo Code Review enforces. Before you make changes in
+`internal/commands/**`, read the matching `fileFilters` section:
+`Commands`, `Command documentation`, or `Command tests`.
+
+Highlights:
+
 - Noun-first verbs with shared semantics: `create`, `list`, `get`,
   `update`, and `delete`. See the `Grammar` section in `CONTRIBUTING.md`
   before you introduce a new verb.
 - The per-command options struct is unexported and named `options`, not
-  `xxxOptions`. The constructor, if present, is `newOptions`. Implement
-  only the needed subset of `complete`, `validate`, and `run`. Copy the
-  pattern from a neighboring command.
+  `xxxOptions`. The constructor, if present, is `newOptions`, and the
+  `NewCmd*` factory takes a `cmdutils.Factory`. Implement only the needed
+  subset of `complete`, `validate`, and `run`. Copy the pattern from a
+  neighboring command.
 - Commit messages use Conventional Commits, enforced by the `commit-msg`
   hook through `scripts/commit-lint`. Requires Node.js.
 
@@ -116,3 +133,10 @@ you change anything under that tree.
   enables `CI_JOB_TOKEN` auto-login.
 - `DEBUG=true` - Verbose logging for Git commands, expanded aliases, and
   DNS.
+
+## Create merge requests
+
+When a merge request relates to an issue, add `/copy_metadata #<issue-id>`
+on its own line in the description. GitLab copies the issue's labels,
+milestone, and related metadata to the merge request, so you do not need
+`glab mr create --label` flags.
