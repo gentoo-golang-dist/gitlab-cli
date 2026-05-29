@@ -18,11 +18,29 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	scheduleUpdateCmd := &cobra.Command{
 		Use:   "update <id> [flags]",
 		Short: `Update a pipeline schedule.`,
+		Long: heredoc.Docf(`
+		Update a CI/CD pipeline schedule, identified by its numeric ID. Use
+		the flags to change the cron expression, description, ref, time zone,
+		or active state. Only the fields you specify are updated.
+
+		To change pipeline variables, use %[1]s--create-variable%[1]s, %[1]s--update-variable%[1]s,
+		and %[1]s--delete-variable%[1]s. The %[1]screate%[1]s and %[1]supdate%[1]s flags take
+		%[1]skey:value%[1]s pairs; %[1]sdelete%[1]s takes a key. Pass each flag multiple times
+		to change several variables.
+
+		By default, the schedule is updated in the current project. Use
+		%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
-			# Update a scheduled pipeline with ID 10
-			$ glab schedule update 10 --cron "0 * * * *" --description "Describe your pipeline here" --ref "main" --create-variable "foo:bar" --update-variable "baz:baz" --delete-variable "qux"
-			Updated schedule with ID 10`),
-		Long: ``,
+			# Update the cron expression for a schedule
+			glab schedule update 10 --cron "0 * * * *"
+
+			# Update a schedule's description and ref
+			glab schedule update 10 --description "Hourly build" --ref main
+
+			# Add, change, and remove variables in one call
+			glab schedule update 10 --create-variable "foo:bar" --update-variable "baz:qux" --delete-variable "old"
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

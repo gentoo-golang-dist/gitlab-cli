@@ -31,12 +31,22 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 	}
 	scheduleDeleteCmd := &cobra.Command{
 		Use:   "delete <id> [flags]",
-		Short: `Delete the schedule with the specified ID.`,
+		Short: `Delete a pipeline schedule by ID.`,
+		Long: heredoc.Docf(`
+		Delete a CI/CD pipeline schedule, identified by its numeric ID. The
+		schedule is removed from the project; pipelines previously triggered
+		by it are not affected.
+
+		By default, the schedule is deleted from the current project. Use
+		%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
-			# Delete a scheduled pipeline with ID 10
-			$ glab schedule delete 10
-			Deleted schedule with ID 10`),
-		Long: ``,
+			# Delete the schedule with ID 10
+			glab schedule delete 10
+
+			# Delete a schedule in another project
+			glab schedule delete 10 -R owner/repo
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

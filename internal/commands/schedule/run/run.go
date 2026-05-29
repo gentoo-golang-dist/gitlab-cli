@@ -40,12 +40,22 @@ func NewCmdRun(f cmdutils.Factory) *cobra.Command {
 	}
 	scheduleRunCmd := &cobra.Command{
 		Use:   "run <id>",
-		Short: `Run the specified scheduled pipeline.`,
+		Short: `Trigger a pipeline schedule to run immediately.`,
+		Long: heredoc.Docf(`
+		Trigger a CI/CD pipeline schedule, identified by its numeric ID, to
+		run immediately. The schedule's normal recurrence is not affected;
+		this is a one-time, on-demand run in addition to the configured cron.
+
+		By default, the schedule is run in the current project. Use %[1]s--repo%[1]s
+		to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
-			# Run a scheduled pipeline with ID 1
-			$ glab schedule run 1
-			Started schedule with ID 1`),
-		Long: ``,
+			# Run the schedule with ID 1 immediately
+			glab schedule run 1
+
+			# Run a schedule in another project
+			glab schedule run 1 -R owner/repo
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",

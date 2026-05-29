@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/spf13/cobra"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
@@ -13,9 +14,13 @@ import (
 
 func NewCmdSchedule(f cmdutils.Factory) *cobra.Command {
 	scheduleCmd := &cobra.Command{
-		Use:     "schedule <command> [flags]",
-		Short:   `Work with GitLab CI/CD schedules.`,
-		Long:    ``,
+		Use:   "schedule <command> [flags]",
+		Short: `Work with GitLab CI/CD schedules.`,
+		Long: heredoc.Doc(`
+		Manage GitLab CI/CD pipeline schedules. Use the subcommands to
+		create, list, update, delete, or trigger schedules in the current
+		project, or use --repo to target another project.
+		`),
 		Aliases: []string{"sched", "skd"},
 	}
 
