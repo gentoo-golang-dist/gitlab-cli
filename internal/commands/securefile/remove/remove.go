@@ -32,23 +32,31 @@ func NewCmdRemove(f cmdutils.Factory) *cobra.Command {
 		baseRepo:     f.BaseRepo,
 	}
 	securefileRemoveCmd := &cobra.Command{
-		Use:     "remove <fileID>",
-		Short:   `Remove a secure file.`,
-		Long:    ``,
+		Use:   "remove <id>",
+		Short: `Remove a secure file from a project.`,
+		Long: heredoc.Docf(`
+		Remove a secure file from a project, identified by its numeric ID.
+		The command asks for confirmation before deleting; use %[1]s-y%[1]s to skip
+		the prompt in scripts.
+
+		By default, the file is removed from the current project. Use %[1]s--repo%[1]s
+		to target another project.
+		`, "`"),
 		Aliases: []string{"rm", "delete"},
 		Args:    cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
-			# Remove a project's secure file using the file's ID.
+			# Remove a secure file by ID
 			glab securefile remove 1
 
-			# Skip the confirmation prompt and force delete.
+			# Skip the confirmation prompt
 			glab securefile remove 1 -y
 
-			# Remove a project's secure file with 'rm' alias.
+			# Use the 'rm' alias
 			glab securefile rm 1
 
-			# Remove a project's secure file with 'delete' alias.
-			glab securefile delete 1`),
+			# Use the 'delete' alias
+			glab securefile delete 1
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

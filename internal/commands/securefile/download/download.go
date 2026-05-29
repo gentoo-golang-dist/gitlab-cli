@@ -23,34 +23,48 @@ import (
 
 func NewCmdDownload(f cmdutils.Factory) *cobra.Command {
 	securefileDownloadCmd := &cobra.Command{
-		Use:   "download <fileID> [flags]",
-		Short: `Download a secure file for a project.`,
+		Use:   "download [<id>] [flags]",
+		Short: `Download one or more secure files from a project.`,
+		Long: heredoc.Docf(`
+		To download a single file, identify it by its numeric ID (as a positional
+		argument or with %[1]s--id%[1]s) or by its name with %[1]s--name%[1]s. To download every
+		secure file in the project (up to a limit of 100), use %[1]s--all%[1]s.
+
+		Use %[1]s--path%[1]s to save a single download to a specific filename, or
+		%[1]s--output-dir%[1]s to choose the destination directory when downloading
+		multiple files.
+
+		By default, downloaded files are verified against their checksum.
+		Use %[1]s--no-verify%[1]s to skip verification, or %[1]s--force-download%[1]s to keep
+		files even when verification fails. Both options can allow corrupted
+		or tampered files; use with caution.
+
+		By default, files are downloaded from the current project. Use
+		%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
-		    # Download a project's secure file using the file's ID by argument or flag.
-		    glab securefile download 1
-		    glab securefile download --id 1
+			# Download a file by ID (positional or flag)
+			glab securefile download 1
+			glab securefile download --id 1
 
-		    # Download a project's secure file using the file's ID to a given path.
-		    glab securefile download 1 --path="securefiles/file.txt"
+			# Download a file by ID to a specific path
+			glab securefile download 1 --path "securefiles/file.txt"
 
-		    # Download a project's secure file without verifying its checksum.
-		    glab securefile download 1 --no-verify
+			# Download a file by name to the current directory
+			glab securefile download --name my-secure-file.pem
 
-		    # Download a project's secure file even if checksum verification fails.
-		    glab securefile download 1 --force-download
+			# Download a file by name to a chosen path
+			glab securefile download --name my-secure-file.pem --path securefiles/some-other-name.pem
 
-		    # Download a project's secure file using the file's name to the current directory.
-		    glab securefile download --name my-secure-file.pem
+			# Download without verifying the checksum
+			glab securefile download 1 --no-verify
 
-		    # Download a project's secure file using the file's name to a given path.
-		    glab securefile download --name my-secure-file.pem --path=securefiles/some-other-name.pem
+			# Download all secure files in the project (up to 100)
+			glab securefile download --all
 
-		    # Download all (limit 100) of a project's secure files.
-		    glab securefile download --all
-
-		    # Download all (limit 100) of a project's secure files to a given directory.
-		    glab securefile download --all --output-dir secure_files/`),
-		Long: ``,
+			# Download all secure files to a specific directory
+			glab securefile download --all --output-dir secure_files/
+		`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Exclude: "true",
