@@ -17,10 +17,10 @@ func NewCmdMilestone(f cmdutils.Factory) *cobra.Command {
 		Use:   "milestone <command>",
 		Short: "Manage group or project milestones.",
 		Long: heredoc.Doc(`
-		Manage milestones at the project or group level. Milestones group
-		issues, merge requests, and epics around a shared goal or release.
-		Use the subcommands to create, list, edit, delete, or look up
-		milestones in the current project, in another project, or in a group.
+		Milestones group issues, merge requests, and epics around a shared
+		goal or release. Use the subcommands to create, list, edit, delete,
+		or look up milestones in the current project, in another project, or
+		in a group.
 		`),
 	}
 

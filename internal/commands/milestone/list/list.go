@@ -42,10 +42,9 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		Use:   "list [flags]",
 		Short: "List milestones in a project or group.",
 		Long: heredoc.Docf(`
-		List milestones in a project or group. Filter by state with
-		%[1]s--state%[1]s (%[1]sactive%[1]s or %[1]sclosed%[1]s), by title with %[1]s--title%[1]s, or by free-text
-		search with %[1]s--search%[1]s. For group milestones, use %[1]s--include-ancestors%[1]s
-		to also include milestones from ancestor groups.
+		Filter by state with %[1]s--state%[1]s (%[1]sactive%[1]s or %[1]sclosed%[1]s), by title with %[1]s--title%[1]s,
+		or by free-text search with %[1]s--search%[1]s. For group milestones, use
+		%[1]s--include-ancestors%[1]s to also include milestones from ancestor groups.
 
 		By default, milestones are listed for the current project. Use
 		%[1]s--project%[1]s to target a different project, or %[1]s--group%[1]s to list

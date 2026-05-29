@@ -38,7 +38,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 		Use:   "create [flags]",
 		Short: "Create a milestone in a project or group.",
 		Long: heredoc.Docf(`
-		Create a milestone in a project or group. The %[1]s--title%[1]s flag is required.
+		The %[1]s--title%[1]s flag is required.
 		Optionally provide a description, due date, and start date.
 
 		By default, the milestone is created in the current project. Use
