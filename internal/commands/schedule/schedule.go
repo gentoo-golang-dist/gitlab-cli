@@ -16,11 +16,11 @@ func NewCmdSchedule(f cmdutils.Factory) *cobra.Command {
 	scheduleCmd := &cobra.Command{
 		Use:   "schedule <command> [flags]",
 		Short: `Work with GitLab CI/CD schedules.`,
-		Long: heredoc.Doc(`
+		Long: heredoc.Docf(`
 		Manage GitLab CI/CD pipeline schedules. Use the subcommands to
 		create, list, update, delete, or trigger schedules in the current
-		project, or use --repo to target another project.
-		`),
+		project, or use %[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Aliases: []string{"sched", "skd"},
 	}
 
