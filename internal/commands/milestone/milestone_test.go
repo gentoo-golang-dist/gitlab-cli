@@ -26,7 +26,7 @@ func TestNewCmdMilestone(t *testing.T) {
 		subcommandNames[i] = subcmd.Use
 	}
 
-	expectedSubcommands := []string{"get", "list", "create", "edit", "delete"}
+	expectedSubcommands := []string{"get [<id>] [flags]", "list [flags]", "create [flags]", "edit <id> [flags]", "delete <id> [flags]"}
 	for _, expected := range expectedSubcommands {
 		assert.Contains(t, subcommandNames, expected)
 	}

@@ -31,18 +31,27 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 		baseRepo:  f.BaseRepo,
 	}
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Delete a group or project milestone.",
-		Long:  "",
+		Use:   "delete <id> [flags]",
+		Short: "Delete a milestone from a project or group.",
+		Long: heredoc.Docf(`
+		Delete a milestone, identified by its numeric ID, from a project or
+		group. The milestone is removed; issues, merge requests, and epics
+		that referenced it are no longer associated with it.
+
+		By default, the milestone is deleted from the current project. Use
+		%[1]s--project%[1]s to target a different project, or %[1]s--group%[1]s to delete a
+		group-level milestone. %[1]s--project%[1]s and %[1]s--group%[1]s are mutually exclusive.
+		`, "`"),
 		Example: heredoc.Doc(`
-			# Delete milestone for the current project
+			# Delete a milestone from the current project
 			glab milestone delete 123
 
-			# Delete milestone for the specified project
-			glab milestone delete 123 --project project-name
+			# Delete a milestone from a different project
+			glab milestone delete 123 --project owner/project
 
-			# Delete milestone for the specified group
-			glab milestone delete 123 --group group-name`),
+			# Delete a group milestone
+			glab milestone delete 123 --group example-group
+		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "false",

@@ -33,18 +33,30 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 		baseRepo:  f.BaseRepo,
 	}
 	cmd := &cobra.Command{
-		Use:   "get",
-		Short: "Get a milestones via an ID for a project or group.",
-		Long:  "",
+		Use:   "get [<id>] [flags]",
+		Short: "Get a milestone by ID in a project or group.",
+		Long: heredoc.Docf(`
+		Get information about a single milestone in a project or group,
+		identified by its numeric ID. Use %[1]s--output json%[1]s to format the result
+		as JSON for use with other tools.
+
+		By default, the milestone is looked up in the current project. Use
+		%[1]s--project%[1]s to target a different project, or %[1]s--group%[1]s to look up a
+		group-level milestone. %[1]s--project%[1]s and %[1]s--group%[1]s are mutually exclusive.
+		`, "`"),
 		Example: heredoc.Doc(`
-		  # Get milestone for the current project
+			# Get a milestone from the current project
 			glab milestone get 123
 
-			# Get milestone for the specified project
-			glab milestone get 123 --project project-name
+			# Get a milestone from a different project
+			glab milestone get 123 --project owner/project
 
-			# Get milestone for the specified group
-			glab milestone get 123 --group group-name`),
+			# Get a group milestone
+			glab milestone get 123 --group example-group
+
+			# Get a milestone as JSON
+			glab milestone get 123 --output json
+		`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
