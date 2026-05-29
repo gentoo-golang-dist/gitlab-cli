@@ -18,12 +18,28 @@ var variableList []string
 func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	scheduleCreateCmd := &cobra.Command{
 		Use:   "create [flags]",
-		Short: `Schedule a new pipeline.`,
+		Short: `Create a new pipeline schedule.`,
+		Long: heredoc.Docf(`
+		Create a new CI/CD pipeline schedule. The %[1]s--cron%[1]s, %[1]s--description%[1]s, and %[1]s--ref%[1]s flags
+		are required:
+		
+		- %[1]s--cron%[1]s sets the schedule's recurrence in cron syntax.
+		- %[1]s--ref%[1]s sets the branch or tag the pipeline runs against.
+		- %[1]s--description%[1]s provides a human-readable label.
+
+		Use %[1]s--variable%[1]s to add pipeline variables in %[1]skey:value%[1]s format.
+		Pass %[1]s--variable%[1]s multiple times to add several variables.
+
+		By default, the schedule is created in the current project. Use
+		%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Example: heredoc.Doc(`
 			# Create a scheduled pipeline that runs every hour
-			$ glab schedule create --cron "0 * * * *" --description "Describe your pipeline here" --ref "main" --variable "foo:bar" --variable "baz:baz"
-			Created schedule`),
-		Long: ``,
+			glab schedule create --cron "0 * * * *" --description "Hourly build" --ref main
+
+			# Create a schedule with pipeline variables
+			glab schedule create --cron "0 0 * * *" --description "Daily build" --ref main --variable "foo:bar" --variable "baz:qux"
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},

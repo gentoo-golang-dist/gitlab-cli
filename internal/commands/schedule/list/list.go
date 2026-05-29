@@ -38,15 +38,25 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 
 	scheduleListCmd := &cobra.Command{
 		Use:   "list [flags]",
-		Short: `Get the list of schedules.`,
+		Short: `List pipeline schedules in a project.`,
+		Long: heredoc.Docf(`
+		List CI/CD pipeline schedules in a project. By default, schedules
+		are listed for the current project. Use %[1]s--repo%[1]s to target another
+		project.
+
+		Use %[1]s--output json%[1]s to format the result as JSON for use with other
+		tools.
+		`, "`"),
 		Example: heredoc.Doc(`
-			# List all scheduled pipelines
-			$ glab schedule list
-			Showing schedules for project gitlab-org/cli
-			ID  Description                    Cron            Ref    Active
-			1   Daily build                   0 0 * * *       main   true
-			2   Weekly deployment             0 0 * * 0       main   true`),
-		Long: ``,
+			# List schedules for the current project
+			glab schedule list
+
+			# List schedules in another project
+			glab schedule list -R owner/repo
+
+			# List schedules as JSON
+			glab schedule list --output json
+		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
