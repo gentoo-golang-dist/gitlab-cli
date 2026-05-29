@@ -87,7 +87,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 	scheduleListCmd.Flags().IntP("page", "p", 1, "Page number.")
-	scheduleListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page. Maximum: 100.")
+	scheduleListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
 	cmdutils.EnableJSONOutput(scheduleListCmd, opts.io, &opts.outputFormat)
 
 	return scheduleListCmd

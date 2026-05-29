@@ -69,7 +69,7 @@ glab work-items list --type issue -R gitlab-org/cli
   -g, --group string    List work items for a group or subgroup.
       --jq string       Filter JSON output with a jq expression.
   -F, --output string   Format output as: text, json. (default "text")
-  -P, --per-page int    Number of items to list per page. Maximum: 100. (default 20)
+  -P, --per-page int    Number of items to list per page (max 100) (default 20)
   -R, --repo string     Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
       --state string    Filter by state: opened, closed, all. (default "opened")
   -t, --type strings    Filter by work item type (epic, issue, task, etc.) Multiple types can be comma-separated or specified by repeating the flag.

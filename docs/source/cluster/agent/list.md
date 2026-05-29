@@ -42,7 +42,7 @@ glab cluster agent list --output json
       --jq string       Filter JSON output with a jq expression.
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page uint       Page number. (default 1)
-  -P, --per-page uint   Number of items to list per page. Maximum: 100. (default 30)
+  -P, --per-page uint   Number of items to list per page. (default 30)
 ```
 
 ## Options inherited from parent commands

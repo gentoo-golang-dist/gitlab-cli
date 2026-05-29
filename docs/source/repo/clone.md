@@ -82,7 +82,7 @@ GITLAB_HOST=salsa.debian.org glab repo clone myrepo
   -S, --with-shared           Include projects shared to this group. Default is true. Used with the --group flag. (default true)
       --paginate              Make additional HTTP requests to fetch all pages of projects before cloning. Respects --per-page.
       --page int              Page number. (default 1)
-      --per-page int          Number of items to list per page. Maximum: 100. (default 30)
+      --per-page int          Number of items to list per page. (default 30)
 ```
 
 ## Options inherited from parent commands

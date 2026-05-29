@@ -33,7 +33,7 @@ show
       --jq string       Filter JSON output with a jq expression.
   -F, --output string   Format output as: text, json. (default "text")
   -p, --page int        Page number.
-  -P, --per-page int    Number of items to list per page. Maximum: 100. (default 20)
+  -P, --per-page int    Number of items to list per page. (default 20)
       --resolved        Show only resolved discussions (implies --comments).
   -s, --system-logs     Show system activities and logs.
       --unresolved      Show only unresolved discussions (implies --comments).

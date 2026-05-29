@@ -68,7 +68,7 @@ glab mr list --not-draft
   -o, --order string           Order merge requests by <field>. Order options: created_at, updated_at, merged_at, title, priority, label_priority, milestone_due, and popularity.
   -F, --output string          Format output as: text, json. (default "text")
   -p, --page int               Page number. (default 1)
-  -P, --per-page int           Number of items to list per page. Maximum: 100. (default 30)
+  -P, --per-page int           Number of items to list per page. (default 30)
   -R, --repo string            Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
   -r, --reviewer strings       Get only merge requests with users as reviewer. Multiple users can be comma-separated or specified by repeating the flag.
       --search string          Filter by <string> in title and description.

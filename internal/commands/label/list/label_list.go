@@ -61,7 +61,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	}
 
 	labelListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	labelListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page. Maximum: 100.")
+	labelListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	cmdutils.EnableJSONOutput(labelListCmd, opts.io, &opts.outputFormat)
 	labelListCmd.Flags().StringVarP(&opts.group, "group", "g", "", "List labels for a group.")
 

@@ -58,7 +58,7 @@ func NewCmdDelete(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page. Maximum: 100.")
+	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 
 	return cmd
 }

@@ -41,7 +41,7 @@ glab repo list
   -o, --order string        Return repositories ordered by id, name, path, created_at, updated_at, similarity, star_count, last_activity_at. (default "last_activity_at")
   -F, --output string       Format output as: text, json. (default "text")
   -p, --page int            Page number. (default 1)
-  -P, --per-page int        Number of items to list per page. Maximum: 100. (default 30)
+  -P, --per-page int        Number of items to list per page. (default 30)
   -s, --sort string         Sort direction for --order field: asc or desc.
       --starred             List only starred projects.
   -u, --user string         List user projects.

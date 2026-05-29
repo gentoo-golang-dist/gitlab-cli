@@ -182,7 +182,7 @@ func NewCmdClone(f cmdutils.Factory, runE func(*options, *ContextOpts) error) *c
 	repoCloneCmd.Flags().BoolVarP(&opts.withShared, "with-shared", "S", true, "Include projects shared to this group. Default is true. Used with the --group flag.")
 	repoCloneCmd.Flags().BoolVarP(&opts.paginate, "paginate", "", false, "Make additional HTTP requests to fetch all pages of projects before cloning. Respects --per-page.")
 	repoCloneCmd.Flags().IntVarP(&opts.page, "page", "", 1, "Page number.")
-	repoCloneCmd.Flags().IntVarP(&opts.perPage, "per-page", "", 30, "Number of items to list per page. Maximum: 100.")
+	repoCloneCmd.Flags().IntVarP(&opts.perPage, "per-page", "", 30, "Number of items to list per page.")
 
 	repoCloneCmd.Flags().SortFlags = false
 	repoCloneCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {

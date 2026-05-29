@@ -151,7 +151,7 @@ func SetupCommandFlags(flags *pflag.FlagSet) {
 	flags.Duration(FlagOlderThan, 0, "Filter pipelines older than the given duration. Valid units: h, m, s, ms, us, ns.")
 	flags.BoolP(FlagPaginate, "", false, "Make additional HTTP requests to fetch all pages of pipelines. Respects '--per-page'.")
 	flags.IntP(FlagPage, "", 0, "Page number.")
-	flags.IntP(FlagPerPage, "", 0, "Number of items to list per page. Maximum: 100.")
+	flags.IntP(FlagPerPage, "", 0, "Number of items to list per page.")
 }
 
 func optsFromFlags(flags *pflag.FlagSet) *gitlab.ListProjectPipelinesOptions {

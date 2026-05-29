@@ -387,6 +387,12 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 	buf.WriteString("For detailed authentication instructions, see the [Authentication section](https://gitlab.com/gitlab-org/cli#authentication)\n")
 	buf.WriteString("in the main README.\n\n")
 
+	// Pagination section
+	buf.WriteString("## Pagination\n\n")
+	buf.WriteString("Commands that return lists of items are paginated. Use `--page` and `--per-page` to\n")
+	buf.WriteString("navigate results. These commands respect the pagination limits configured on your\n")
+	buf.WriteString("GitLab instance.\n\n")
+
 	if cmd.Runnable() {
 		fmt.Fprintf(buf, "```plaintext\n%s\n```\n\n", cmd.UseLine())
 	}

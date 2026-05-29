@@ -72,7 +72,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.action, "action", "a", "", "Filter by action: assigned, mentioned, build_failed, marked, approval_required, directly_addressed.")
 	fl.StringVarP(&opts.typ, "type", "t", "", "Filter by target type: Issue, MergeRequest.")
 	fl.IntVarP(&opts.page, "page", "p", 1, "Page number.")
-	fl.IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page. Maximum: 100.")
+	fl.IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	return cmd

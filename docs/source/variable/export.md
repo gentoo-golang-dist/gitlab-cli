@@ -48,7 +48,7 @@ glab variable export --output export
       --jq string       Filter JSON output with a jq expression.
   -F, --output string   Format output as: json, export, env. (default "json")
   -p, --page int        Page number. (default 1)
-  -P, --per-page int    Number of items to list per page. Maximum: 100. (default 100)
+  -P, --per-page int    Number of items to list per page. (default 100)
   -R, --repo string     Select another repository. You can use either OWNER/REPO or GROUP/NAMESPACE/REPO. The full URL or Git URL is also accepted.
   -s, --scope string    The environment_scope of the variables. Values: '*' (default), or specific environments. (default "*")
 ```

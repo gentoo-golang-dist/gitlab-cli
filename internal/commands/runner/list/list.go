@@ -74,7 +74,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 	fl := cmd.Flags()
 	fl.Int64VarP(&opts.page, "page", "p", 1, "Page number.")
-	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page. Maximum: 100.")
+	fl.Int64VarP(&opts.perPage, "per-page", "P", api.DefaultListLimit, "Number of items to list per page.")
 	fl.StringVarP(&opts.group, "group", "g", "", "List runners for a group. Ignored if -R/--repo is set.")
 	fl.BoolVarP(&opts.instance, "instance", "i", false, "List all runners available to the user (instance scope).")
 	cmd.MarkFlagsMutuallyExclusive("instance", "group", "repo")

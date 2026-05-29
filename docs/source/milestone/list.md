@@ -38,7 +38,7 @@ glab milestone list --group example-group --state active
       --jq string           Filter JSON output with a jq expression.
   -F, --output string       Format output as: text, json. (default "text")
   -p, --page int            Page number. (default 1)
-  -P, --per-page int        Number of items to list per page. Maximum: 100. (default 20)
+  -P, --per-page int        Number of items to list per page. (default 20)
       --project string      The ID or URL-encoded path of the project.
       --search string       Return only milestones with a title or description matching the provided string.
       --show-id             Show IDs in table output.
