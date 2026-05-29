@@ -13,17 +13,30 @@ import (
 
 func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 	securefileGetCmd := &cobra.Command{
-		Use:     "get <fileID>",
-		Short:   `Get details of a project secure file. (GitLab 18.0 and later)`,
-		Long:    ``,
+		Use:   "get <id>",
+		Short: `Get details of a secure file by ID.`,
+		Long: heredoc.Docf(`
+		Get details of a single secure file in a project, identified by its
+		numeric ID. The response includes the file's name, checksum, and
+		associated metadata.
+
+		This command requires GitLab 18.0 or later.
+
+		By default, the file is looked up in the current project. Use
+		%[1]s--repo%[1]s to target another project.
+		`, "`"),
 		Aliases: []string{"show"},
 		Args:    cobra.ExactArgs(1),
 		Example: heredoc.Doc(`
-			# Get details of a project's secure file using the file ID.
+			# Get details of a secure file by ID
 			glab securefile get 1
 
-			# Get details of a project's secure file using the 'show' alias.
-			glab securefile show 1`),
+			# Get details using the 'show' alias
+			glab securefile show 1
+
+			# Get details from another project
+			glab securefile get 1 -R owner/repo
+		`),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
 		},

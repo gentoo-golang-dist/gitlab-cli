@@ -15,22 +15,32 @@ import (
 
 func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	securefileListCmd := &cobra.Command{
-		Use:     "list [flags]",
-		Short:   `List secure files for a project.`,
-		Long:    ``,
+		Use:   "list [flags]",
+		Short: `List secure files in a project.`,
+		Long: heredoc.Docf(`
+		List the secure files configured for a project. Use %[1]s--page%[1]s and
+		%[1]s--per-page%[1]s to paginate the result.
+
+		By default, files are listed for the current project. Use %[1]s--repo%[1]s
+		to target another project.
+		`, "`"),
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(`
-			# List all secure files.
+			# List all secure files in the current project
 			glab securefile list
 
-			# List all secure files with 'cmd' alias.
+			# Use the 'ls' alias
 			glab securefile ls
 
-			# List a specific page of secure files.
+			# List a specific page
 			glab securefile list --page 2
 
-			# List a specific page of secure files, with a custom page size.
-			glab securefile list --page 2 --per-page 10`),
+			# List a specific page with a custom page size
+			glab securefile list --page 2 --per-page 10
+
+			# List files from another project
+			glab securefile list -R owner/repo
+		`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
