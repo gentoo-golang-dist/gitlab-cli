@@ -99,7 +99,7 @@ func (o *options) run() error {
 	}
 
 	if len(targets) == 0 {
-		fmt.Fprintln(o.io.StdErr, "No installed skills found.")
+		o.io.LogError("No installed skills found.")
 		return nil
 	}
 
@@ -134,11 +134,24 @@ func filterByName(in []installed.Skill, name string) []installed.Skill {
 	return out
 }
 
-// writeSkill mirrors install.installOne's write loop but doesn't gate
-// on --force (update is explicit consent to overwrite).
+// writeSkill replaces skillDir's contents with files. Writes to a sibling
+// temp dir first then renames so a failed write can't leave a partial
+// update, and so files removed upstream don't linger on disk and make
+// the on-disk hash perpetually differ from the source.
 func writeSkill(skillDir string, files map[string][]byte) error {
+	parent := filepath.Dir(skillDir)
+	tmp, err := os.MkdirTemp(parent, ".skill-update-*")
+	if err != nil {
+		return fmt.Errorf("creating temp directory: %w", err)
+	}
+	success := false
+	defer func() {
+		if !success {
+			_ = os.RemoveAll(tmp)
+		}
+	}()
 	for rel, content := range files {
-		destPath := filepath.Join(skillDir, filepath.FromSlash(rel))
+		destPath := filepath.Join(tmp, filepath.FromSlash(rel))
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			return fmt.Errorf("creating directory for %s: %w", destPath, err)
 		}
@@ -146,5 +159,12 @@ func writeSkill(skillDir string, files map[string][]byte) error {
 			return fmt.Errorf("writing %s: %w", destPath, err)
 		}
 	}
+	if err := os.RemoveAll(skillDir); err != nil {
+		return fmt.Errorf("removing old skill directory %s: %w", skillDir, err)
+	}
+	if err := os.Rename(tmp, skillDir); err != nil {
+		return fmt.Errorf("installing updated skill: %w", err)
+	}
+	success = true
 	return nil
 }

@@ -25,28 +25,20 @@ func installedSkill(t *testing.T, parent, name, body string) string {
 	return dir
 }
 
-// pointDiscoveryAt swaps the package-level candidate locations in
-// installed/installed.go so Discover() walks the supplied scratch
-// directory instead of ~/.agents/skills/ and the repo root.
 func pointDiscoveryAt(t *testing.T, scratch string) {
 	t.Helper()
-	// We don't have a direct hook here — the update command calls
-	// installed.Discover() which is internal. The cleanest test
-	// surface is to populate scratch with a directory matching a
-	// real bundled skill name (so the registry recognizes it) and
-	// rely on installed.candidateLocationsFn being overridable from
-	// the installed package's own tests. For this test we use the
-	// fact that bundled.All() exposes real bundled skill names.
 	installed.StubCandidateLocations(t, scratch)
 }
 
 func TestUpdate_missingNameAndAllErrors(t *testing.T) {
+	t.Parallel()
 	exec := cmdtest.SetupCmdForTest(t, NewCmd, false)
 	_, err := exec("")
 	require.Error(t, err)
 }
 
 func TestUpdate_nameAndAllConflictErrors(t *testing.T) {
+	t.Parallel()
 	exec := cmdtest.SetupCmdForTest(t, NewCmd, false)
 	_, err := exec("glab --all")
 	require.Error(t, err)
@@ -103,6 +95,30 @@ func TestUpdate_skipsAlreadyUpToDate(t *testing.T) {
 	out, err := exec(name)
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "already up to date")
+}
+
+// Regression: writeSkill replaces the directory atomically so files
+// that exist on disk but no longer in the source are dropped. Without
+// the fix the on-disk hash would perpetually differ from the source
+// and the skill would show as outdated even after a successful update.
+func TestUpdate_removesStaleFiles(t *testing.T) {
+	bs, err := bundled.All()
+	require.NoError(t, err)
+	require.NotEmpty(t, bs)
+	name := bs[0].Name
+
+	scratch := t.TempDir()
+	skillDir := installedSkill(t, scratch, name, "stale SKILL.md")
+	stalePath := filepath.Join(skillDir, "removed-upstream.txt")
+	require.NoError(t, os.WriteFile(stalePath, []byte("ghost"), 0o644))
+	pointDiscoveryAt(t, scratch)
+
+	exec := cmdtest.SetupCmdForTest(t, NewCmd, false)
+	_, err = exec(name)
+	require.NoError(t, err)
+
+	_, err = os.Stat(stalePath)
+	assert.True(t, os.IsNotExist(err), "file removed upstream should not persist on disk after update")
 }
 
 func TestUpdate_allUpdatesEveryInstalledSkill(t *testing.T) {

@@ -16,39 +16,21 @@ import (
 var discoverInstalled = installed.Discover
 
 // bundledSkillUpdates lists installed bundled skills whose on-disk content
-// does not match the version embedded in this binary. Best-effort:
-// discovery or registry failures return nil so a stale check doesn't
-// disrupt the user's actual command.
+// does not match the version embedded in this binary.
 func bundledSkillUpdates(cfg config.Config) []string {
-	if !isSkillNotificationsEnabled(cfg) {
-		return nil
-	}
-	all, err := discoverInstalled()
-	if err != nil {
-		return nil
-	}
-	var out []string
-	seen := map[string]bool{}
-	for _, ins := range all {
-		if ins.Source != skill.SourceBundled || seen[ins.Name] {
-			continue
-		}
-		src, err := bundled.Get(ins.Name)
-		if err != nil {
-			continue
-		}
-		if skill.ContentHash(src.Files) != ins.Hash {
-			out = append(out, ins.Name)
-			seen[ins.Name] = true
-		}
-	}
-	return out
+	return skillUpdates(cfg, skill.SourceBundled, bundled.Get)
 }
 
 // remoteSkillUpdates lists installed remote skills whose on-disk content
 // does not match the current upstream. Each name triggers a gitlab.com
 // request — gate on the 24h CheckUpdate cadence, not per command.
 func remoteSkillUpdates(cfg config.Config) []string {
+	return skillUpdates(cfg, skill.SourceRemote, remote.Get)
+}
+
+// skillUpdates is best-effort: discovery or getter failures return nil
+// rather than an error so a stale check can't disrupt the user's command.
+func skillUpdates(cfg config.Config, source skill.Source, getSource func(string) (skill.Skill, error)) []string {
 	if !isSkillNotificationsEnabled(cfg) {
 		return nil
 	}
@@ -59,10 +41,10 @@ func remoteSkillUpdates(cfg config.Config) []string {
 	var out []string
 	seen := map[string]bool{}
 	for _, ins := range all {
-		if ins.Source != skill.SourceRemote || seen[ins.Name] {
+		if ins.Source != source || seen[ins.Name] {
 			continue
 		}
-		src, err := remote.Get(ins.Name)
+		src, err := getSource(ins.Name)
 		if err != nil {
 			continue
 		}

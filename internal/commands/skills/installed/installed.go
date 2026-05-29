@@ -1,15 +1,3 @@
-// Package installed discovers agent skills that the user has previously
-// installed via `glab skills install`. It walks the two well-known
-// locations (the current project's .agents/skills/ and ~/.agents/skills/)
-// and matches each subdirectory against the bundled + remote registries
-// so callers can answer "is this skill known to glab?" without having
-// to parse anything.
-//
-// We intentionally don't maintain a manifest file. Detection is purely
-// content-based: each installed skill is hashed and compared against
-// the source-of-truth at check time. The trade-off is that we can't
-// distinguish a user-edited skill from a stale one — both look
-// "diverged." The notification surface is honest about that.
 package installed
 
 import (
@@ -19,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"testing"
 
 	"gitlab.com/gitlab-org/cli/internal/commands/skills/bundled"
 	"gitlab.com/gitlab-org/cli/internal/commands/skills/remote"
@@ -26,14 +15,10 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/git"
 )
 
-// skillsRelDir mirrors install.skillsRelDir — kept duplicated rather
-// than imported to avoid a back-reference into the install command from
-// what should be a leaf data package.
+// Duplicated from install.skillsRelDir rather than imported to keep this
+// leaf data package free of a back-reference into the install command.
 var skillsRelDir = filepath.Join(".agents", "skills")
 
-// Scope identifies which well-known location an installed skill came
-// from. Reported back so notifications can disambiguate when the same
-// skill name exists in both scopes.
 type Scope string
 
 const (
@@ -41,11 +26,6 @@ const (
 	ScopeGlobal  Scope = "global"
 )
 
-// Skill is one installed-on-disk skill that matches a known glab
-// registry entry. Files holds the on-disk contents (one entry per
-// regular file under the skill directory, keyed by path relative to
-// the skill root). Hash is skill.ContentHash(Files), cached for cheap
-// comparison.
 type Skill struct {
 	Name   string
 	Dir    string
@@ -57,11 +37,8 @@ type Skill struct {
 
 // Discover walks both well-known skill locations and returns every
 // subdirectory whose name matches a known bundled or remote skill.
-// Anything else (user-authored skills with unfamiliar names, dotfiles,
-// regular files) is ignored.
-//
-// Missing locations (no git repo, no ~/.agents/skills/) are not
-// errors — they just contribute zero entries.
+// Missing locations (no git repo, no ~/.agents/skills/) contribute
+// zero entries and are not errors.
 func Discover() ([]Skill, error) {
 	known, err := buildKnownNames()
 	if err != nil {
@@ -100,22 +77,20 @@ type location struct {
 	scope Scope
 }
 
-// candidateLocationsFn is overridable for tests so they can point at
-// scratch directories instead of the real ~/ and repo root.
+// Overridable so tests can point at scratch dirs instead of ~/ and the repo root.
 var candidateLocationsFn = defaultCandidateLocations
 
 func candidateLocations() []location { return candidateLocationsFn() }
 
-// StubCandidateLocations replaces the discovery walker's locations
-// with a single project-scope entry pointing at dir. Restored on
-// test cleanup. Exposed for cross-package tests (e.g., the update
-// command) that need installed.Discover() to read from a scratch tree.
-func StubCandidateLocations(t interface{ Cleanup(func()) }, dir string) {
+// StubCandidateLocations points Discover at dir for the duration of the test.
+// Exposed for cross-package tests (e.g. the update command).
+func StubCandidateLocations(tb testing.TB, dir string) {
+	tb.Helper()
 	old := candidateLocationsFn
 	candidateLocationsFn = func() []location {
 		return []location{{dir: dir, scope: ScopeProject}}
 	}
-	t.Cleanup(func() { candidateLocationsFn = old })
+	tb.Cleanup(func() { candidateLocationsFn = old })
 }
 
 func defaultCandidateLocations() []location {
