@@ -164,24 +164,61 @@ func TestSetup_WriteSkillIdempotent(t *testing.T) {
 	dir := t.TempDir()
 	s := stubSkill()
 
-	require.NoError(t, writeSkill(dir, s, false))
+	alreadyInstalled, err := writeSkill(dir, s, false)
+	require.NoError(t, err)
+	assert.False(t, alreadyInstalled, "first write should report fresh install")
 	require.FileExists(t, filepath.Join(dir, s.Name, "SKILL.md"))
 	require.FileExists(t, filepath.Join(dir, s.Name, "references/troubleshooting.md"))
 
 	mainPath := filepath.Join(dir, s.Name, "SKILL.md")
 	require.NoError(t, os.WriteFile(mainPath, []byte("user edit"), 0o644))
 
-	// Second call without force should NOT overwrite.
-	require.NoError(t, writeSkill(dir, s, false))
+	// Second call without force should NOT overwrite and must report
+	// alreadyInstalled so the caller can surface a different message.
+	alreadyInstalled, err = writeSkill(dir, s, false)
+	require.NoError(t, err)
+	assert.True(t, alreadyInstalled, "second write should report alreadyInstalled")
 	got, err := os.ReadFile(mainPath)
 	require.NoError(t, err)
 	assert.Equal(t, "user edit", string(got))
 
 	// With force=true, the helper restores the bundled content.
-	require.NoError(t, writeSkill(dir, s, true))
+	alreadyInstalled, err = writeSkill(dir, s, true)
+	require.NoError(t, err)
+	assert.False(t, alreadyInstalled, "force write should report fresh install")
 	got, err = os.ReadFile(mainPath)
 	require.NoError(t, err)
 	assert.Equal(t, string(s.Files["SKILL.md"]), string(got))
+}
+
+// TestSetup_AutoAccept locks in the behavior that drives both the
+// confirm() prompts and the binarymgr.Runner.Yes flag. The non-TTY
+// branch is the load-bearing one: without it, CI / Docker / agent
+// subprocesses hang on stdin inside binarymgr's Download? prompt.
+func TestSetup_AutoAccept(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		yes           bool
+		upgrade       bool
+		promptEnabled bool
+		want          bool
+	}{
+		{name: "interactive TTY default", promptEnabled: true, want: false},
+		{name: "--yes", yes: true, promptEnabled: true, want: true},
+		{name: "--upgrade", upgrade: true, promptEnabled: true, want: true},
+		{name: "non-TTY without flags", promptEnabled: false, want: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ios, _, _, _ := cmdtest.TestIOStreams(cmdtest.WithTestIOStreamsAsTTY(tc.promptEnabled))
+			o := &options{io: ios, yes: tc.yes, upgrade: tc.upgrade}
+			assert.Equal(t, tc.want, o.autoAccept())
+		})
+	}
 }
 
 // TestSetup_GlobalAndPathMutuallyExclusive locks in the cobra wiring.

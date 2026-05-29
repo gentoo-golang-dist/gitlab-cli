@@ -206,37 +206,43 @@ func (o *options) installSkillStep(ctx context.Context) error {
 		return fmt.Errorf("fetching Orbit skill from registry: %w", err)
 	}
 
-	if err := writeSkill(o.skillTargetDir, s, o.upgrade); err != nil {
+	alreadyInstalled, err := writeSkill(o.skillTargetDir, s, o.upgrade)
+	if err != nil {
 		return err
 	}
 
 	c := o.io.Color()
 	skillDir := filepath.Join(o.skillTargetDir, s.Name)
-	o.io.LogInfof("%s Installed Orbit skill at %s\n", c.GreenCheck(), skillDir)
+	if alreadyInstalled {
+		o.io.LogInfof("%s Orbit skill already installed at %s (use --upgrade to refresh).\n", c.DotWarnIcon(), skillDir)
+	} else {
+		o.io.LogInfof("%s Installed Orbit skill at %s\n", c.GreenCheck(), skillDir)
+	}
 	return nil
 }
 
 // writeSkill places each file under <targetDir>/<skill.Name>/. When
 // force is false and the canonical SKILL.md already exists, the call is
-// a no-op (matching `glab skills install` behavior).
-func writeSkill(targetDir string, s skill.Skill, force bool) error {
+// a no-op (matching `glab skills install` behavior); the bool is true
+// in that case so the caller can surface the right message.
+func writeSkill(targetDir string, s skill.Skill, force bool) (bool, error) {
 	skillDir := filepath.Join(targetDir, s.Name)
 	skillMDPath := filepath.Join(skillDir, skill.FileName)
 
-	if _, err := os.Stat(skillMDPath); err == nil && !force {
-		return nil
+	if _, statErr := os.Stat(skillMDPath); statErr == nil && !force {
+		return true, nil
 	}
 
 	for rel, content := range s.Files {
 		destPath := filepath.Join(skillDir, filepath.FromSlash(rel))
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-			return fmt.Errorf("creating directory for %s: %w", destPath, err)
+			return false, fmt.Errorf("creating directory for %s: %w", destPath, err)
 		}
 		if err := os.WriteFile(destPath, content, 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", destPath, err)
+			return false, fmt.Errorf("writing %s: %w", destPath, err)
 		}
 	}
-	return nil
+	return false, nil
 }
 
 // installLocalStep installs (or, with --upgrade, updates) the Orbit
@@ -277,7 +283,10 @@ func (o *options) installLocalStep(ctx context.Context) error {
 		// Executor is intentionally nil — setup never executes the
 		// binary, only installs/updates it.
 		UpdateCommand: "orbit setup --upgrade",
-		Yes:           o.yes,
+		// Propagate the same auto-accept decision used by setup's own
+		// prompts so binarymgr doesn't issue its own Download? prompt
+		// in CI / Docker / agent subprocesses.
+		Yes: o.autoAccept(),
 	}
 
 	if o.upgrade {
@@ -289,10 +298,7 @@ func (o *options) installLocalStep(ctx context.Context) error {
 // confirm wraps io.Confirm so --yes / --upgrade can bypass prompts and
 // non-TTY callers get a sane default (yes) instead of a hang.
 func (o *options) confirm(ctx context.Context, prompt string) (bool, error) {
-	if o.yes || o.upgrade {
-		return true, nil
-	}
-	if !o.io.PromptEnabled() {
+	if o.autoAccept() {
 		return true, nil
 	}
 	result := true
@@ -300,4 +306,12 @@ func (o *options) confirm(ctx context.Context, prompt string) (bool, error) {
 		return false, err
 	}
 	return result, nil
+}
+
+// autoAccept reports whether every confirmation prompt — both setup's own
+// and the binarymgr Runner's download prompt — should be skipped. The
+// non-TTY branch matters most: agent subprocesses and CI runners hang on
+// stdin without it.
+func (o *options) autoAccept() bool {
+	return o.yes || o.upgrade || !o.io.PromptEnabled()
 }
