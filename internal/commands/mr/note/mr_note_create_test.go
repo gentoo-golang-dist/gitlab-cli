@@ -346,6 +346,123 @@ func Test_cmdCreate_reply(t *testing.T) {
 	})
 }
 
+func Test_cmdCreate_resolvable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("default (no flag) posts a resolvable discussion via the Discussions API", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			CreateMergeRequestDiscussion("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestDiscussionOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Discussion, *gitlab.Response, error) {
+				assert.Equal(t, "default path", *opts.Body)
+				return &gitlab.Discussion{
+					ID:    "disc-default",
+					Notes: []*gitlab.Note{{ID: 500}},
+				}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 -m "default path"`)
+		require.NoError(t, err)
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_500\n", output.String())
+	})
+
+	t.Run("--resolvable=false posts a plain note via the Notes API", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "Build status: green", *opts.Body)
+				return &gitlab.Note{ID: 501}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --resolvable=false -m "Build status: green"`)
+		require.NoError(t, err)
+		assert.Empty(t, output.Stderr())
+		assert.Equal(t, "https://gitlab.com/OWNER/REPO/merge_requests/1#note_501\n", output.String())
+	})
+
+	t.Run("--resolvable=false --unique skips duplicate then posts a note", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := setupMR(t)
+
+		testClient.MockNotes.EXPECT().
+			ListMergeRequestNotes("OWNER/REPO", int64(1), gomock.Any()).
+			Return([]*gitlab.Note{
+				{ID: 100, Body: "other note"},
+			}, nil, nil)
+
+		testClient.MockNotes.EXPECT().
+			CreateMergeRequestNote("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(pid any, mrIID int64, opts *gitlab.CreateMergeRequestNoteOptions, options ...gitlab.RequestOptionFunc) (*gitlab.Note, *gitlab.Response, error) {
+				assert.Equal(t, "brand new note", *opts.Body)
+				return &gitlab.Note{ID: 502}, nil, nil
+			})
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --resolvable=false --unique -m "brand new note"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_502")
+	})
+
+	t.Run("--resolvable=false and --reply are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --resolvable=false --reply abc12345 -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--resolvable=false cannot be used with --reply")
+	})
+
+	t.Run("--resolvable=false and --file are mutually exclusive", func(t *testing.T) {
+		t.Parallel()
+
+		testClient := gitlabtesting.NewTestClient(t)
+
+		exec := setupCreateExec(t, testClient)
+
+		_, err := exec(`1 --resolvable=false --file main.go -m "hi"`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--resolvable=false cannot be used with --file, --line, or --old-line")
+	})
+
+	t.Run("--resolvable=true with --reply is allowed (no false positive)", func(t *testing.T) {
+		t.Parallel()
+
+		const fullID = "abc12345deadbeef1234567890abcdef12345678"
+
+		testClient := setupMR(t)
+
+		testClient.MockDiscussions.EXPECT().
+			ListMergeRequestDiscussions("OWNER/REPO", int64(1), gomock.Any(), gomock.Any()).
+			Return([]*gitlab.Discussion{{ID: fullID}}, nil, nil)
+
+		testClient.MockDiscussions.EXPECT().
+			AddMergeRequestDiscussionNote("OWNER/REPO", int64(1), fullID, gomock.Any(), gomock.Any()).
+			Return(&gitlab.Note{ID: 503}, nil, nil)
+
+		exec := setupCreateExec(t, testClient)
+
+		output, err := exec(`1 --resolvable=true --reply abc12345 -m "hi"`)
+		require.NoError(t, err)
+		assert.Contains(t, output.String(), "#note_503")
+	})
+}
+
 func Test_cmdCreate_reply_prompt(t *testing.T) {
 	// NOTE: This test cannot run in parallel because the huh form library
 	// uses global state (charmbracelet/bubbles runeutil sanitizer).

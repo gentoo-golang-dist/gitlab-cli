@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -69,7 +68,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 
 	cmdutils.EnableRepoOverride(cmd, f)
 	cmd.PersistentFlags().StringP("group", "g", "", "Select a group or subgroup. Ignored if a repository argument is set.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 	cmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	cmd.Flags().BoolVarP(&opts.instance, "instance", "i", false, "Display instance variables.")
@@ -120,9 +119,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varListJSON, _ := json.Marshal(variables)
-			fmt.Fprintln(o.io.StdOut, string(varListJSON))
-
+			if err := o.io.PrintJSON(variables); err != nil {
+				return err
+			}
 		} else {
 			table.AddRow("KEY", "PROTECTED", "MASKED", "HIDDEN", "EXPANDED", "SCOPE", "DESCRIPTION")
 			for _, variable := range variables {
@@ -144,9 +143,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varListJSON, _ := json.Marshal(variables)
-			fmt.Fprintln(o.io.StdOut, string(varListJSON))
-
+			if err := o.io.PrintJSON(variables); err != nil {
+				return err
+			}
 		} else {
 			table.AddRow("KEY", "PROTECTED", "MASKED", "EXPANDED", "SCOPE", "DESCRIPTION")
 			for _, variable := range variables {
@@ -172,8 +171,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varListJSON, _ := json.Marshal(variables)
-			fmt.Fprintln(o.io.StdOut, string(varListJSON))
+			if err := o.io.PrintJSON(variables); err != nil {
+				return err
+			}
 		} else {
 			table.AddRow("KEY", "PROTECTED", "MASKED", "HIDDEN", "EXPANDED", "SCOPE", "DESCRIPTION")
 			for _, variable := range variables {

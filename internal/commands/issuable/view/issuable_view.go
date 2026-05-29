@@ -1,7 +1,6 @@
 package view
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -100,7 +99,7 @@ func NewCmdView(f cmdutils.Factory, issueType issuable.IssueType) *cobra.Command
 	issueViewCmd.Flags().BoolVarP(&opts.web, "web", "w", false, fmt.Sprintf("Open %s in a browser. Uses the default browser, or the browser specified in the $BROWSER variable.", issueType))
 	issueViewCmd.Flags().IntVarP(&opts.commentPageNumber, "page", "p", 1, "Page number.")
 	issueViewCmd.Flags().IntVarP(&opts.commentLimit, "per-page", "P", 20, "Number of items to list per page.")
-	cmdutils.EnableJSONOutput(issueViewCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(issueViewCmd, opts.io, &opts.outputFormat)
 
 	return issueViewCmd
 }
@@ -161,7 +160,7 @@ func (o *options) run(issueType issuable.IssueType, args []string) error {
 
 	switch {
 	case o.outputFormat == "json":
-		printJSONIssue(o)
+		return printJSONIssue(o)
 	case o.io.IsErrTTY && o.io.IsaTTY:
 		printTTYIssuePreview(o)
 	default:
@@ -316,15 +315,9 @@ func RawIssuableNotes(notes []*gitlab.Note, showComments bool, showSystemLogs bo
 	return out.String()
 }
 
-func printJSONIssue(opts *options) {
-	// var notes []gitlab.Note
+func printJSONIssue(opts *options) error {
 	if opts.showComments {
-
-		extendedIssue := IssueWithNotes{opts.issue, opts.notes}
-		issueJSON, _ := json.Marshal(extendedIssue)
-		fmt.Fprintln(opts.io.StdOut, string(issueJSON))
-	} else {
-		issueJSON, _ := json.Marshal(opts.issue)
-		fmt.Fprintln(opts.io.StdOut, string(issueJSON))
+		return opts.io.PrintJSON(IssueWithNotes{opts.issue, opts.notes})
 	}
+	return opts.io.PrintJSON(opts.issue)
 }

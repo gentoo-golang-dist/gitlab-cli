@@ -1,7 +1,6 @@
 package get
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -49,11 +48,10 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Error getting secure file: %v", err)
 			}
 
-			fileJSON, _ := json.Marshal(file)
-			fmt.Fprintln(f.IO().StdOut, string(fileJSON))
-			return nil
+			return f.IO().PrintJSON(file)
 		},
 	}
 
+	cmdutils.AddJQFlag(securefileGetCmd, f.IO())
 	return securefileGetCmd
 }

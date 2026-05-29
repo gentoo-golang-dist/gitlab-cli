@@ -1,7 +1,6 @@
 package search
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -54,7 +53,7 @@ func NewCmdSearch(f cmdutils.Factory) *cobra.Command {
 	projectSearchCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	projectSearchCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 20, "Number of items to list per page.")
 	projectSearchCmd.Flags().StringVarP(&opts.search, "search", "s", "", "A string contained in the project name.")
-	cmdutils.EnableJSONOutput(projectSearchCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(projectSearchCmd, opts.io, &opts.outputFormat)
 	cobra.CheckErr(projectSearchCmd.MarkFlagRequired("search"))
 
 	return projectSearchCmd
@@ -75,12 +74,7 @@ func (o *options) run() error {
 		return err
 	}
 	if o.outputFormat == "json" {
-		projectListJSON, err := json.Marshal(projects)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintln(o.io.StdOut, string(projectListJSON))
-		return nil
+		return o.io.PrintJSON(projects)
 	}
 	title := fmt.Sprintf("Showing results for \"%s\"\n", o.search)
 	if len(projects) == 0 {

@@ -63,7 +63,7 @@ func NewCmdReleaseList(f cmdutils.Factory) *cobra.Command {
 
 	releaseListCmd.Flags().IntP("page", "p", 1, "Page number.")
 	releaseListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
-	cmdutils.EnableJSONOutput(releaseListCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(releaseListCmd, opts.io, &opts.outputFormat)
 
 	releaseListCmd.Flags().StringP("tag", "t", "", "Filter releases by tag <name>.")
 	// deprecate in favour of the `release view` command

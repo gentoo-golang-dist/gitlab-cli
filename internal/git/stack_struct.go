@@ -396,10 +396,15 @@ func (r StackRef) IsLast() bool { return r.Next == "" }
 // It only takes the first line of the description into account
 // and truncates it to 72 characters.
 func (r StackRef) Subject() string {
-	ls := strings.SplitN(r.Description, "\n", 1)
+	ls := strings.SplitN(r.Description, "\n", 2)
 	if len(ls[0]) <= 72 {
 		return ls[0]
 	}
 
 	return ls[0][:69] + "..."
+}
+
+func (r StackRef) Body() string {
+	_, body, _ := strings.Cut(r.Description, "\n")
+	return strings.TrimSpace(body)
 }

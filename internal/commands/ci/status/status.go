@@ -39,22 +39,25 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd := &cobra.Command{
 		Use:     "status [flags]",
-		Short:   `View a running CI/CD pipeline on current or other branch specified.`,
+		Short:   `View CI/CD pipeline status.`,
 		Aliases: []string{"stats"},
 		Long: heredoc.Docf(`
+			Defaults to the current branch.
+
 			Use %[1]s--live%[1]s for real-time updates. Use %[1]s--compact%[1]s for a condensed view.
 		`, "`"),
 		Example: heredoc.Doc(`
-		       glab ci status --live
+			# View the pipeline status in real time
+			glab ci status --live
 
-		       # A more compact view
-		       glab ci status --compact
+			# A more compact view
+			glab ci status --compact
 
-		       # Get the pipeline for the main branch
-		       glab ci status --branch=main
+			# Get the pipeline for the main branch
+			glab ci status --branch=main
 
-		       # Get the pipeline for the current branch
-		       glab ci status`),
+			# Get the pipeline for the current branch
+			glab ci status`),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",
@@ -176,7 +179,31 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 				}
 				fmt.Fprintf(writer.Newline(), "Pipeline state: %s\n\n", runningPipeline.Status)
 
-				if (runningPipeline.Status == "pending" || runningPipeline.Status == "running") && live {
+				inProgress := isLivePollableStatus(runningPipeline.Status)
+
+				// When the current pipeline is canceled (e.g. auto-canceled because a
+				// rebase triggered a new pipeline), check whether a newer pipeline now
+				// exists for the branch and continue monitoring it instead of exiting.
+				if !inProgress && runningPipeline.Status == "canceled" && live {
+					if latest, lookupErr := ciutils.GetPipelineWithFallback(ctx, client, repoName, branch, opts.io); lookupErr == nil && latest != nil && latest.ID != runningPipeline.ID {
+						runningPipeline = latest
+						inProgress = isLivePollableStatus(latest.Status)
+						// Skip the redundant refresh below by waiting for the next
+						// tick and restarting the loop, which will re-render jobs
+						// for the new pipeline and then fall into the normal
+						// live-update path.
+						if inProgress {
+							select {
+							case <-ctx.Done():
+								break loop
+							case <-ticker.C:
+							}
+							continue
+						}
+					}
+				}
+
+				if inProgress && live {
 					// Use fallback logic for live updates
 					updatedPipeline, err := ciutils.GetPipelineWithFallback(ctx, client, repoName, branch, opts.io)
 					if err != nil {
@@ -263,8 +290,20 @@ func NewCmdStatus(f cmdutils.Factory) *cobra.Command {
 
 	pipelineStatusCmd.Flags().BoolP("live", "l", false, "Show status in real time until the pipeline ends.")
 	pipelineStatusCmd.Flags().BoolP("compact", "c", false, "Show status in compact format.")
-	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. (default current branch)")
-	cmdutils.EnableJSONOutput(pipelineStatusCmd, &opts.outputFormat, "Format output as: text, json. Note: JSON output is not compatible with --live or --compact flags.")
+	pipelineStatusCmd.Flags().StringP("branch", "b", "", "Check pipeline status for a branch. Defaults to the current branch.")
+	cmdutils.EnableJSONOutput(pipelineStatusCmd, opts.io, &opts.outputFormat, "Format output as: text, json. Note: JSON output is not compatible with --live or --compact flags.")
 
 	return pipelineStatusCmd
+}
+
+// isLivePollableStatus reports whether a pipeline status represents an
+// in-progress state that --live should keep polling. Terminal statuses
+// (success, failed, skipped, canceled) and statuses requiring user action
+// (manual) are excluded — they don't progress on their own.
+func isLivePollableStatus(status string) bool {
+	switch status {
+	case "created", "waiting_for_resource", "preparing", "pending", "running", "scheduled":
+		return true
+	}
+	return false
 }

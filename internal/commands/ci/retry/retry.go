@@ -13,7 +13,7 @@ import (
 
 func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
 	pipelineRetryCmd := &cobra.Command{
-		Use:     "retry <job-id>",
+		Use:     "retry [<job-id | job-name>]",
 		Short:   `Retry a CI/CD job.`,
 		Aliases: []string{},
 		Long: heredoc.Doc(`
@@ -83,7 +83,7 @@ func NewCmdRetry(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	pipelineRetryCmd.Flags().StringP("branch", "b", "", "The branch to search for the job. (default current branch)")
+	pipelineRetryCmd.Flags().StringP("branch", "b", "", "The branch to search for the job. Defaults to the current branch.")
 	pipelineRetryCmd.Flags().IntP("pipeline-id", "p", 0, "The pipeline ID to search for the job.")
 	return pipelineRetryCmd
 }

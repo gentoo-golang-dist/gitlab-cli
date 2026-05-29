@@ -72,7 +72,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	fl := cmd.Flags()
 	fl.BoolVar(&opts.instance, "instance", false, "Add an instance-level scope.")

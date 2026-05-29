@@ -26,12 +26,16 @@ glab mr create --push --title "fix: title" --description "$(cat /tmp/desc.md)"
 glab mr view <iid>
 glab mr list --assignee <user>
 glab mr update <iid> --description "$(cat /tmp/desc.md)"
+glab mr note create <iid> -m "comment text"
 
 # CI/CD
 glab ci status
+glab ci status --output json
 glab ci list
-glab ci trace <job-id>
-glab ci retry <pipeline-id>
+glab ci get --merge-request <iid> --with-job-details
+glab ci get --pipeline-id <id> --output json
+glab ci retry <job-id>
+glab api projects/:id/jobs/<job-id>/trace
 
 # Machine-readable output
 glab mr list --output json | jq '.[].title'
@@ -42,6 +46,99 @@ glab mr list --output json | jq '.[].title'
 
 **References:** Link issues with `#123`, MRs with `!456`, cross-project
 with `group/project#123`.
+
+## Comments and discussions
+
+Use the `mr note` subcommands (`create`, `resolve`, `reopen`); flags on the
+root `glab mr note` command are deprecated.
+
+### Short, inline bodies — pass `-m`
+
+```shell
+glab issue note        <iid> -m "comment text"
+glab mr note create    <iid> -m "comment text"
+glab incident note     <iid> -m "comment text"
+
+# Cross-project
+glab mr note create <iid> -m "..." --repo group/project
+```
+
+### Long or Markdown bodies — pipe to stdin (preferred for MR notes)
+
+`glab mr note create` reads the body from stdin when its input is a pipe.
+This avoids shell-quoting pitfalls (backticks, `$`, backslashes) and is the
+safest pattern for non-interactive use.
+
+```shell
+# From a file
+glab mr note create <iid> < /tmp/body.md
+
+# Inline literal multi-line body — quoted heredoc, no shell expansion inside
+glab mr note create <iid> << 'EOF'
+Your **markdown** comment.
+Code blocks and `inline code`, $variables, and \backslashes are all literal.
+EOF
+```
+
+`glab issue note` and `glab incident note` do **not** read stdin. For long
+bodies on those commands, use `glab api` with `-F body=@file` (see
+[Content-type guidance](#content-type-guidance)) or inline a quoted heredoc
+into `-m`:
+
+```shell
+glab issue note <iid> -m "$(cat << 'EOF'
+Your **markdown** comment.
+Code blocks and `inline code` are safe.
+EOF
+)"
+```
+
+For descriptions on `glab issue create` / `glab mr create` / `glab mr update`,
+inline a quoted heredoc into `--description`, or for very large or reusable
+bodies write to a file and use `--description "$(cat /tmp/desc.md)"`.
+
+### Threaded replies on merge requests
+
+`glab mr note create` supports `--reply <discussion-id>` for replying inside
+an MR thread. The value can be the full discussion ID or a unique prefix of
+at least 8 characters.
+
+Diff comments accept a single line (`--line 42`), a range (`--line 10:15`),
+a removed line (`--old-line 7`), or no line for a file-level comment.
+
+```shell
+glab mr note create  <iid> --reply <discussion-id> -m "I agree!"
+glab mr note create  <iid> --file main.go --line 42 -m "Needs refactoring"
+glab mr note create  <iid> --file main.go --line 10:15 -m "Extract this block"
+glab mr note create  <iid> --file main.go --old-line 7 -m "Why was this removed?"
+glab mr note create  <iid> --file main.go -m "General comment on this file"
+glab mr note create  <iid> -m "LGTM" --unique    # idempotent: skip if same body exists
+```
+
+`glab mr note resolve` / `reopen` take the MR identifier followed by the
+discussion identifier. The identifier can be a discussion ID (full 40-char
+hex or 8+ char prefix) or a note ID (integer; the parent discussion is
+looked up automatically):
+
+```shell
+glab mr note resolve <iid> <discussion-id>
+glab mr note resolve <iid> <note-id>           # integer note ID also works
+glab mr note reopen  <iid> <discussion-id>
+```
+
+### Threaded replies on issues, incidents, and work items
+
+The CLI does not wrap threaded replies for these. Fall back to `glab api`:
+
+```shell
+# Discover the discussion ID
+glab api projects/:id/issues/<iid>/discussions \
+  | jq '.[] | {id, body: .notes[0].body}'
+
+# Reply to it
+glab api projects/:id/issues/<iid>/discussions/<discussion-id>/notes \
+  -f body="reply text"
+```
 
 ## API calls
 
@@ -60,13 +157,50 @@ syntax like `ids[]=1` is not supported:
 glab api projects/:id/merge_requests/:iid -X PUT -f "assignee_id=1"
 ```
 
+### Content-type guidance
+
+```shell
+# -f / --raw-field — literal string value
+glab api projects/:id/issues/:iid/notes -f body="comment text"
+
+# -F / --field — reads @file as a string
+glab api projects/:id/issues/:iid/notes -F body=@/tmp/comment.md
+
+# --input — raw request body from a file (or '-' for stdin). Does NOT set
+# Content-Type. Without the header, JSON endpoints return HTTP 415.
+glab api projects/:id/issues/:iid/notes \
+  --input /tmp/body.json \
+  -H "Content-Type: application/json"
+```
+
 ## Common mistakes
 
-- **`glab issue note`, not `issue comment`** — use `-m` for the message body.
-- **Write long text to a file first** — use `$(cat /tmp/file.md)` for
-  descriptions and comments. Use a `<< 'EOF'` heredoc (single-quoted
-  delimiter) when the content contains backticks or `$` to prevent
-  shell expansion.
+- **`-m` is required on `note` commands** — without it, `glab issue note` and
+  `glab incident note` open `$EDITOR` (which hangs in non-interactive
+  environments). `glab mr note create` falls back to reading stdin on a pipe,
+  but still opens `$EDITOR` on a TTY.
+- **Use `glab mr note create`, not `glab mr note -m`** — the `--message`,
+  `--unique`, `--resolve`, and `--unresolve` flags on the root `glab mr note`
+  command are deprecated. Use the `create`, `resolve`, and `reopen`
+  subcommands instead.
+- **Editor-opening flags are unsafe in agent environments** — avoid
+  `--description "-"` on `issue create` / `mr create` / `mr update` and
+  avoid omitting `-m` on `note` commands. Pass an explicit value or pipe
+  from stdin instead.
+- **`glab issue note` and `glab incident note` only post root-level
+  comments** — use `glab mr note create --reply` for MRs, or
+  `glab api .../discussions/<id>/notes -f body=...` for issues/incidents.
+- **`--input` requires an explicit `Content-Type` header** — `glab api
+  --input file.json` sends raw bytes without setting Content-Type, causing
+  HTTP 415. Add `-H "Content-Type: application/json"` or use `-f` / `-F`
+  instead.
+- **`glab ci retry` takes a job ID, not a pipeline ID** — to retry an
+  entire pipeline, use `glab api projects/:id/pipelines/<id>/retry -X POST`.
+- **`glab ci trace` streams** — it blocks until the job finishes. For
+  agents, use `glab ci get` for pipeline state or
+  `glab api projects/:id/jobs/<job-id>/trace` to fetch a finished log.
+- **`glab ci view` is interactive** — terminal UI that blocks. Use
+  `glab ci status` or `glab ci get` for pipeline state instead.
 - **Always `--push` on `glab mr create`** — without it the remote branch
   may not exist and MR creation fails.
 - **No `--state` on `mr list`** — use `--all`, `--merged`, or `--closed`.

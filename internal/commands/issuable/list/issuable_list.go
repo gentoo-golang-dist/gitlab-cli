@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -187,6 +186,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 	_ = issueListCmd.Flags().MarkHidden("mine")
 	_ = issueListCmd.Flags().MarkDeprecated("mine", "use --assignee=@me")
 
+	cmdutils.AddJQFlag(issueListCmd, f.IO())
 	return issueListCmd
 }
 
@@ -326,9 +326,7 @@ func listRun(opts *ListOptions) error {
 	title.CurrentPageTotal = len(issues)
 
 	if opts.Output == "json" {
-		issueListJSON, _ := json.Marshal(issues)
-		fmt.Fprintln(opts.IO.StdOut, string(issueListJSON))
-		return nil
+		return opts.IO.PrintJSON(issues)
 	}
 
 	if opts.OutputFormat == "ids" {

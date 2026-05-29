@@ -108,8 +108,8 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		config:       f.Config,
 	}
 	pipelineCIView := &cobra.Command{
-		Use:   "view [branch/tag]",
-		Short: "View, run, trace, log, and cancel CI/CD job's current pipeline.",
+		Use:   "view [<branch | tag>]",
+		Short: "View, run, retry, and cancel CI/CD pipeline jobs.",
 		Long: heredoc.Docf(`Supports viewing, running, tracing, and canceling jobs.
 
 		Use arrow keys to navigate jobs and logs.
@@ -122,7 +122,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 		- %[1]sCtrl+D%[1]s to cancel a job. If the selected job isn't running or pending,
 		  quits the CI/CD view.
 		- %[1]sCtrl+Q%[1]s to quit the CI/CD view.
-		- %[1]sCtrl+Space%[1]s to suspend application and view the logs. Similar to %[1]sglab pipeline ci trace%[1]s.
+		- %[1]sCtrl+Space%[1]s to suspend application and view the logs. Similar to %[1]sglab ci trace%[1]s.
 		- Supports %[1]svi%[1]s style bindings and arrow keys for navigating jobs and logs.
 	`, "`"),
 		Annotations: map[string]string{
@@ -130,17 +130,17 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 			mcpannotations.Interactive: "true",
 		},
 		Example: heredoc.Doc(`
-			# Uses current branch
-			glab pipeline ci view
+			# Use the current branch
+			glab ci view
 
-			# Get latest pipeline on main branch
-			glab pipeline ci view main
+			# View the latest pipeline on main
+			glab ci view main
 
-			# Just like the second example
-			glab pipeline ci view -b main
+			# View the latest pipeline on main using a flag
+			glab ci view -b main
 
-			# Get latest pipeline on main branch of myusername/glab repo
-			glab pipeline ci view -b main -R myusername/glab`),
+			# View the latest pipeline on main for another project
+			glab ci view -b main -R myusername/myproject`),
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := opts.complete(args); err != nil {
@@ -153,7 +153,7 @@ func NewCmdView(f cmdutils.Factory) *cobra.Command {
 
 	pipelineCIView.Flags().
 		StringVarP(&opts.refName, "branch", "b", "", "Check pipeline status for a branch or tag. Defaults to the current branch.")
-	pipelineCIView.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses default browser, or browser specified in BROWSER variable.")
+	pipelineCIView.Flags().BoolVarP(&opts.openInBrowser, "web", "w", false, "Open pipeline in a browser. Uses the default browser, or the browser specified in the BROWSER environment variable.")
 	pipelineCIView.Flags().Int64VarP(&opts.pipelineID, "pipelineid", "p", 0, "Check pipeline status for a specific pipeline ID.")
 	pipelineCIView.MarkFlagsMutuallyExclusive("branch", "pipelineid")
 
@@ -278,7 +278,7 @@ func (o *options) run(ctx context.Context) error {
 	defer recoverPanic(app)
 
 	var navi navigator
-	app.SetInputCapture(inputCapture(ctx, app, root, navi, inputCh, forceUpdateCh, o, client, projectID, commitSHA))
+	app.SetInputCapture(inputCapture(ctx, app, root, &navi, inputCh, forceUpdateCh, o, client, projectID, commitSHA))
 	go updateJobs(app, jobsCh, forceUpdateCh, client, commit)
 	go func() {
 		defer recoverPanic(app)
@@ -296,11 +296,14 @@ func (o *options) run(ctx context.Context) error {
 
 // handleBridgeJobSelection handles the user pressing Enter on a bridge job (downstream pipeline trigger).
 // It navigates to the downstream pipeline if it exists, or shows an informational modal if it doesn't.
-func handleBridgeJobSelection(app *tview.Application, root *tview.Pages, forceUpdateCh chan<- bool) {
+func handleBridgeJobSelection(app *tview.Application, root *tview.Pages, forceUpdateCh chan<- bool, navi *navigator) {
 	// If downstream pipeline exists, navigate to it
 	if curJob.OriginalBridge.DownstreamPipeline != nil {
 		pipelines = append(pipelines, *curJob.OriginalBridge.DownstreamPipeline)
 		curJob = nil
+		// Reset cursor: the child pipeline has a different jobs slice, so a stale
+		// idx/depth from the parent can index past the end and crash Navigate (#8313).
+		*navi = navigator{}
 		forceUpdateCh <- true
 		app.ForceDraw()
 		return
@@ -342,7 +345,7 @@ func inputCapture(
 	ctx context.Context,
 	app *tview.Application,
 	root *tview.Pages,
-	navi navigator,
+	navi *navigator,
 	inputCh chan<- struct{},
 	forceUpdateCh chan<- bool,
 	opts *options,
@@ -369,6 +372,8 @@ func inputCapture(
 			case len(pipelines) > 0:
 				pipelines = pipelines[:len(pipelines)-1]
 				curJob = nil
+				// Reset cursor: see comment in handleBridgeJobSelection (#8313).
+				*navi = navigator{}
 				forceUpdateCh <- true
 				app.ForceDraw()
 			default:
@@ -467,7 +472,7 @@ func inputCapture(
 					app.ForceDraw()
 				} else {
 					// Downstream pipeline trigger selected
-					handleBridgeJobSelection(app, root, forceUpdateCh)
+					handleBridgeJobSelection(app, root, forceUpdateCh, navi)
 				}
 				return nil
 			}
@@ -573,11 +578,14 @@ func (b *bracketEscaper) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func curPipeline(commit *gitlab.Commit) gitlab.PipelineInfo {
-	if len(pipelines) == 0 {
-		return *commit.LastPipeline
+func curPipeline(commit *gitlab.Commit) (gitlab.PipelineInfo, error) {
+	if len(pipelines) > 0 {
+		return pipelines[len(pipelines)-1], nil
 	}
-	return pipelines[len(pipelines)-1]
+	if commit.LastPipeline == nil {
+		return gitlab.PipelineInfo{}, fmt.Errorf("commit %s has no associated pipeline", commit.ID)
+	}
+	return *commit.LastPipeline, nil
 }
 
 // navigator manages the internal state for processing tcell.EventKeys
@@ -588,6 +596,12 @@ type navigator struct {
 // Navigate uses the ci stages as boundaries and returns the currently focused
 // job index after processing a *tcell.EventKey
 func (n *navigator) Navigate(jobs []*ViewJob, event *tcell.EventKey) *ViewJob {
+	// Defensive clamp: callers reset navi when switching pipelines, but a stale
+	// idx left over from a larger jobs slice would otherwise panic here (#8313).
+	if n.idx >= len(jobs) {
+		n.idx = 0
+		n.depth = 0
+	}
 	stage := jobs[n.idx].Stage
 	prev, next := adjacentStages(jobs, stage)
 	switch event.Key() {
@@ -903,8 +917,11 @@ func updateJobs(
 		}
 		var jobs []*gitlab.Job
 		var bridges []*gitlab.Bridge
-		var err error
-		pipeline := curPipeline(commit)
+		pipeline, err := curPipeline(commit)
+		if err != nil {
+			app.Stop()
+			log.Fatalf("%v", err)
+		}
 		jobs, bridges, err = api.PipelineJobsWithID(
 			apiClient,
 			pipeline.ProjectID,

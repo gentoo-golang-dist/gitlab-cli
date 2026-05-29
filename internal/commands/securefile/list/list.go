@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -67,14 +66,13 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 				return fmt.Errorf("Error listing secure files: %v", err)
 			}
 
-			fileListJSON, _ := json.Marshal(files)
-			fmt.Fprintln(f.IO().StdOut, string(fileListJSON))
-			return nil
+			return f.IO().PrintJSON(files)
 		},
 	}
 
 	securefileListCmd.Flags().IntP("page", "p", 1, "Page number.")
 	securefileListCmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
 
+	cmdutils.AddJQFlag(securefileListCmd, f.IO())
 	return securefileListCmd
 }

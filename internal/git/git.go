@@ -442,6 +442,7 @@ func parseRemotes(gitRemotes []string) RemoteSet {
 // AddRemote adds a new git remote and auto-fetches objects from it
 func AddRemote(name, u string) (*Remote, error) {
 	addCmd := exec.Command("git", "remote", "add", "-f", name, u)
+	addCmd.Stderr = os.Stderr
 	err := run.PrepareCmd(addCmd).Run()
 	if err != nil {
 		return nil, err

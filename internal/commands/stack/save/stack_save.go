@@ -1,7 +1,6 @@
 package save
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -11,9 +10,9 @@ import (
 	"github.com/MakeNowJust/heredoc/v2"
 	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/sha3"
 
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
+	"gitlab.com/gitlab-org/cli/internal/commands/stack/stackutils"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/run"
@@ -96,13 +95,13 @@ func NewCmdSaveStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetT
 			}
 
 			// generate a SHA based on: commit message, stack title, Git author name
-			sha, err := generateStackSha(description, title, string(author), time.Now())
+			sha, err := stackutils.GenerateStackSha(description, title, string(author), time.Now())
 			if err != nil {
 				return fmt.Errorf("error generating hash for stack branch name: %v", err)
 			}
 
 			// create branch name from SHA
-			branch, err := createShaBranch(f, sha, title)
+			branch, err := stackutils.CreateShaBranch(f, sha, title)
 			if err != nil {
 				return fmt.Errorf("error creating branch name: %v", err)
 			}
@@ -255,39 +254,4 @@ func commitFiles(message string) (string, error) {
 	}
 
 	return string(output), nil
-}
-
-func generateStackSha(message string, title string, author string, timestamp time.Time) (string, error) {
-	toSha := []byte(message + title + author + timestamp.String())
-	hashData := make([]byte, 4)
-
-	shakeHash := sha3.NewShake256()
-	shakeHash.Write(toSha)
-	_, err := shakeHash.Read(hashData)
-	if err != nil {
-		return "", fmt.Errorf("error generating hash for stack branch: %v", err)
-	}
-
-	return hex.EncodeToString(hashData), nil
-}
-
-func createShaBranch(f cmdutils.Factory, sha string, title string) (string, error) {
-	cfg := f.Config()
-
-	prefix, err := cfg.Get("", "branch_prefix")
-	if err != nil {
-		return "", fmt.Errorf("could not get prefix config: %v", err)
-	}
-
-	if prefix == "" {
-		prefix = os.Getenv("USER")
-		if prefix == "" {
-			prefix = "glab-stack"
-		}
-	}
-
-	branchTitle := []string{prefix, title, sha}
-
-	branch := strings.Join(branchTitle, "-")
-	return branch, nil
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -50,6 +51,11 @@ type IOStreams struct {
 	isColorEnabled bool
 
 	programOptions []tea.ProgramOption
+
+	// JQ is the filter applied to JSON output by PrintJSON. It is always
+	// non-nil so callers can pass &s.JQ to cobra's Flags().Var without nil
+	// checks; IsActive reports whether a --jq expression has been supplied.
+	JQ *JQFilter
 }
 
 var controlCharRegEx = regexp.MustCompile(`(\x1b\[)((?:(\d*)(;*))*)([A-Z,a-l,n-z])`)
@@ -110,6 +116,7 @@ func New(options ...IOStreamsOption) *IOStreams {
 		// static configuration that we don't need to change in tests.
 		is256ColorEnabled: is256ColorSupported(),
 		displayHyperlinks: "auto",
+		JQ:                &JQFilter{},
 	}
 
 	// Apply options
@@ -166,15 +173,18 @@ func (s *IOStreams) StartPager() error {
 	}
 
 	pagerEnv := os.Environ()
-	for i := len(pagerEnv) - 1; i >= 0; i-- {
-		if strings.HasPrefix(pagerEnv[i], "PAGER=") {
+	for i, v := range slices.Backward(pagerEnv) {
+		if strings.HasPrefix(v, "PAGER=") {
 			pagerEnv = append(pagerEnv[0:i], pagerEnv[i+1:]...)
 		}
 	}
 
 	pagerEnv = append(pagerEnv, "LESSSECURE=1")
 
-	if s.shouldDisplayHyperlinks() {
+	// Only use `-r` (all raw control chars) when hyperlinks are forced on;
+	// otherwise `-R` (color escapes only) avoids letting unexpected sequences
+	// through to less.
+	if s.displayHyperlinks == "always" {
 		pagerEnv = append(pagerEnv, "LESS=FrX")
 	} else if _, ok := os.LookupEnv("LESS"); !ok {
 		pagerEnv = append(pagerEnv, "LESS=FRX")

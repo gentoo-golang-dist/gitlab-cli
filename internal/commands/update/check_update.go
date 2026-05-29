@@ -70,6 +70,10 @@ func NewCheckUpdateCmd(f cmdutils.Factory) *cobra.Command {
 // clientCreator is a variable that can be overridden for testing
 var clientCreator = createUnauthenticatedClient
 
+// installMethodDetector is overridable for tests so we don't depend on the
+// filesystem path of the running test binary.
+var installMethodDetector = DetectInstallMethod
+
 func CheckUpdate(f cmdutils.Factory, silentSuccess bool) error {
 	return checkUpdate(f, silentSuccess, false)
 }
@@ -113,22 +117,55 @@ func checkUpdate(f cmdutils.Factory, silentSuccess bool, forceCheck bool) error 
 	latestRelease := releases[0]
 	releaseURL := fmt.Sprintf("%s/-/releases/%s", defaultProjectURL, latestRelease.TagName)
 
-	version := f.BuildInfo().Version
+	buildInfo := f.BuildInfo()
+	version := buildInfo.Version
 
-	c := f.IO().Color()
 	if isOlderVersion(latestRelease.Name, version) {
-		fmt.Fprintf(f.IO().StdErr, "%s %s -> %s\n%s\n",
-			c.Yellow("A new version of glab has been released:"),
-			c.Red(version), c.Green(latestRelease.TagName),
-			releaseURL)
+		writeUpdateAvailable(f.IO(), version, latestRelease.TagName, releaseURL, installMethodDetector(), buildInfo.CodingAgent)
 	} else {
 		if silentSuccess {
 			return nil
 		}
+		c := f.IO().Color()
 		fmt.Fprintf(f.IO().StdErr, "%v",
 			c.Green("You are already using the latest version of glab!\n"))
 	}
 	return nil
+}
+
+// writeUpdateAvailable renders the "update available" nudge to stderr. When a
+// coding agent is detected it emits a single bracketed line phrased as a
+// suggestion the agent can relay; otherwise it emits a multi-line, colored
+// notice for humans. When the install method is unknown the upgrade-command
+// segments are dropped and only the release-notes URL is shown.
+func writeUpdateAvailable(io *iostreams.IOStreams, currentVersion, latestVersion, releaseURL string, method InstallMethod, codingAgent string) {
+	if codingAgent != "" {
+		writeAgentUpdateLine(io, currentVersion, latestVersion, releaseURL, method)
+		return
+	}
+	writeHumanUpdateBlock(io, currentVersion, latestVersion, releaseURL, method)
+}
+
+func writeAgentUpdateLine(io *iostreams.IOStreams, currentVersion, latestVersion, releaseURL string, method InstallMethod) {
+	var b strings.Builder
+	fmt.Fprintf(&b, "[glab] Update available: %s → %s", currentVersion, latestVersion)
+	if method.UpgradeCommand != "" {
+		fmt.Fprintf(&b, " (installed via %s). Suggested upgrade command: `%s`.", method.Name, method.UpgradeCommand)
+	} else {
+		b.WriteString(".")
+	}
+	fmt.Fprintf(&b, " Release notes: %s\n", releaseURL)
+	fmt.Fprint(io.StdErr, b.String())
+}
+
+func writeHumanUpdateBlock(io *iostreams.IOStreams, currentVersion, latestVersion, releaseURL string, method InstallMethod) {
+	c := io.Color()
+	fmt.Fprintln(io.StdErr, c.Yellow("A new version of glab is available"))
+	fmt.Fprintf(io.StdErr, "  %s → %s\n", c.Red(currentVersion), c.Green(latestVersion))
+	if method.UpgradeCommand != "" {
+		fmt.Fprintf(io.StdErr, "  Run: %s\n", method.UpgradeCommand)
+	}
+	fmt.Fprintf(io.StdErr, "  Release notes: %s\n", releaseURL)
 }
 
 // createUnauthenticatedClient creates an API client without authentication for accessing

@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -136,7 +135,7 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comma
 	mrListCmd.Flags().BoolVarP(&opts.merged, "merged", "M", false, "Get only merged merge requests.")
 	mrListCmd.Flags().BoolVarP(&opts.draft, "draft", "d", false, "Filter by draft merge requests.")
 	mrListCmd.Flags().BoolVarP(&opts.notDraft, "not-draft", "", false, "Filter by non-draft merge requests.")
-	cmdutils.EnableJSONOutput(mrListCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(mrListCmd, opts.io, &opts.outputFormat)
 	mrListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	mrListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
 	mrListCmd.Flags().StringSliceVarP(&opts.assignee, "assignee", "a", []string{}, "Get only merge requests assigned to users. Multiple users can be comma-separated or specified by repeating the flag.")
@@ -358,8 +357,7 @@ func (o *options) run() error {
 	title.CurrentPageTotal = len(mergeRequests)
 
 	if jsonOutput {
-		mrListJSON, _ := json.Marshal(mergeRequests)
-		fmt.Fprintln(o.io.StdOut, string(mrListJSON))
+		return o.io.PrintJSON(mergeRequests)
 	} else {
 		if err = o.io.StartPager(); err != nil {
 			return err

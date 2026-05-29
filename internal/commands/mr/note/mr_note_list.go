@@ -2,7 +2,6 @@ package note
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -73,7 +72,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 		"state", "Resolution state: all, resolved, unresolved.",
 	)
 	mrNoteListCmd.Flags().StringVar(&opts.filePath, "file", "", "Show only diff notes on this file path.")
-	cmdutils.EnableJSONOutput(mrNoteListCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(mrNoteListCmd, f.IO(), &opts.outputFormat)
 
 	return mrNoteListCmd
 }
@@ -110,9 +109,7 @@ func (o *listOptions) run(ctx context.Context) error {
 	filtered := mrutils.FilterDiscussions(discussions, filterOpts)
 
 	if o.outputFormat == "json" {
-		enc := json.NewEncoder(o.factory.IO().StdOut)
-		enc.SetIndent("", "  ")
-		return enc.Encode(filtered)
+		return o.factory.IO().PrintJSON(filtered)
 	}
 
 	out := o.factory.IO().StdOut

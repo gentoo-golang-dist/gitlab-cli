@@ -60,6 +60,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl := cmd.Flags()
 	fl.VarP(cmdutils.NewEnumValue([]string{"text", "json"}, "text", &opts.outputFormat), "output", "F", "Format output as: text, json.")
 
+	cmdutils.AddJQFlag(cmd, f.IO())
 	return cmd
 }
 

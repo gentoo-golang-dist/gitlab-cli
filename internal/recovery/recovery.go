@@ -43,7 +43,7 @@ func CreateFile(repoName, filename string, i any) (string, error) {
 
 	defer f.Close()
 
-	if err := json.NewEncoder(f).Encode(i); err != nil {
+	if err := json.NewEncoder(f).Encode(i); err != nil { //nolint:forbidigo // recovery state is serialized to disk, not stdout
 		return "", fmt.Errorf("writing file: %w", err)
 	}
 

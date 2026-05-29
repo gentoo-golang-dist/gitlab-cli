@@ -1,7 +1,6 @@
 package list
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -65,7 +64,7 @@ func NewCmdList(f cmdutils.Factory) *cobra.Command {
 	repoListCmd.Flags().BoolVarP(&opts.includeSubgroups, "include-subgroups", "G", false, "Include projects in subgroups of this group. Default is false. Used with the '--group' flag.")
 	repoListCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoListCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	cmdutils.EnableJSONOutput(repoListCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(repoListCmd, opts.io, &opts.outputFormat)
 	repoListCmd.Flags().BoolVarP(&opts.filterAll, "all", "a", false, "List all projects on the instance.")
 	repoListCmd.Flags().BoolVarP(&opts.filterOwner, "mine", "m", false, "List only projects you own. Default if no filters are provided.")
 	repoListCmd.Flags().StringVarP(&opts.user, "user", "u", "", "List user projects.")
@@ -106,8 +105,9 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		projectListJSON, _ := json.Marshal(projects)
-		fmt.Fprintln(o.io.StdOut, string(projectListJSON))
+		if err := o.io.PrintJSON(projects); err != nil {
+			return err
+		}
 	} else {
 		// Title
 		title := fmt.Sprintf("Showing %d of %d projects (Page %d of %d).\n", len(projects), resp.TotalItems, resp.CurrentPage, resp.TotalPages)

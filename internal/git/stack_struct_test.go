@@ -878,3 +878,85 @@ func TestStack_Iter2(t *testing.T) {
 		})
 	}
 }
+
+func Test_StackRefSubject(t *testing.T) {
+	tests := []struct {
+		name        string
+		description string
+		expected    string
+	}{
+		{
+			name:        "single line",
+			description: "simple title",
+			expected:    "simple title",
+		},
+		{
+			name:        "multi-line with body",
+			description: "commit subject\n\ncommit body with details",
+			expected:    "commit subject",
+		},
+		{
+			name:        "multi-line with trailer",
+			description: "commit subject\n\nChangelog: changed",
+			expected:    "commit subject",
+		},
+		{
+			name:        "long subject truncated",
+			description: "this is a very long subject line that exceeds the seventy two character limit for display",
+			expected:    "this is a very long subject line that exceeds the seventy two charact...",
+		},
+		{
+			name:        "empty description",
+			description: "",
+			expected:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ref := StackRef{Description: tt.description}
+			assert.Equal(t, tt.expected, ref.Subject())
+		})
+	}
+}
+
+func Test_StackRefBody(t *testing.T) {
+	tests := []struct {
+		name        string
+		description string
+		expected    string
+	}{
+		{
+			name:        "single line no body",
+			description: "simple title",
+			expected:    "",
+		},
+		{
+			name:        "multi-line with body",
+			description: "commit subject\n\ncommit body with details",
+			expected:    "commit body with details",
+		},
+		{
+			name:        "multi-line with trailer",
+			description: "commit subject\n\nChangelog: changed",
+			expected:    "Changelog: changed",
+		},
+		{
+			name:        "body with multiple lines",
+			description: "subject\n\nline one\nline two\nline three",
+			expected:    "line one\nline two\nline three",
+		},
+		{
+			name:        "empty description",
+			description: "",
+			expected:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ref := StackRef{Description: tt.description}
+			assert.Equal(t, tt.expected, ref.Body())
+		})
+	}
+}

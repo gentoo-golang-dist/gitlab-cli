@@ -1,7 +1,6 @@
 package get
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc/v2"
@@ -62,7 +61,7 @@ func NewCmdGet(f cmdutils.Factory, runE func(opts *options) error) *cobra.Comman
 
 	cmd.Flags().StringVarP(&opts.scope, "scope", "s", "*", "The environment_scope of the variable. Values: all (*), or specific environments.")
 	cmd.Flags().StringVarP(&opts.group, "group", "g", "", "Get variable for a group.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 	return cmd
 }
 
@@ -102,8 +101,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varJSON, _ := json.Marshal(variable)
-			fmt.Println(string(varJSON))
+			if err := o.io.PrintJSON(variable); err != nil {
+				return err
+			}
 		}
 		variableValue = variable.Value
 	} else {
@@ -119,8 +119,9 @@ func (o *options) run() error {
 			return err
 		}
 		if o.outputFormat == "json" {
-			varJSON, _ := json.Marshal(variable)
-			fmt.Fprintln(o.io.StdOut, string(varJSON))
+			if err := o.io.PrintJSON(variable); err != nil {
+				return err
+			}
 		}
 		variableValue = variable.Value
 	}

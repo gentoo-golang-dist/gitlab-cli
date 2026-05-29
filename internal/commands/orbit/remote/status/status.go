@@ -53,6 +53,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&opts.hostname, "hostname", "",
 		"GitLab hostname to query. Defaults to the current repository's host or `gitlab.com`.")
 
+	cmdutils.AddJQFlag(cmd, f.IO())
 	return cmd
 }
 

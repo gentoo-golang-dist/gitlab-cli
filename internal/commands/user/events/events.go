@@ -1,7 +1,6 @@
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -68,7 +67,7 @@ func NewCmdEvents(f cmdutils.Factory) *cobra.Command {
 			}
 
 			if outputFormat == "json" {
-				return writeJSON(f.IO().StdOut, events)
+				return f.IO().PrintJSON(&events)
 			}
 
 			if lb, _ := cmd.Flags().GetBool("all"); lb {
@@ -105,13 +104,8 @@ func NewCmdEvents(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().IntP("page", "p", 1, "Page number.")
 	cmd.Flags().IntP("per-page", "P", 30, "Number of items to list per page.")
 	cmd.Flags().StringP("output", "F", "text", "Format output as: 'text', 'json'.")
+	cmdutils.AddJQFlag(cmd, f.IO())
 	return cmd
-}
-
-func writeJSON(w io.Writer, events []*gitlab.ContributionEvent) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(&events)
 }
 
 func DisplayProjectEvents(w io.Writer, events []*gitlab.ContributionEvent, project *gitlab.Project) {

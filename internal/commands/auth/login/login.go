@@ -704,7 +704,7 @@ func hostnameValidator(v any) error {
 func getAccessTokenTip(hostname string) string {
 	return fmt.Sprintf(`
 	The minimum required scopes are 'api' and 'write_repository'.
-	Generate a personal access token at https://%s/-/user_settings/personal_access_tokens?scopes=api,write_repository`, hostname)
+	Generate a personal access token at https://%s/-/user_settings/personal_access_tokens/legacy/new?scopes=api,write_repository`, hostname)
 }
 
 func showTokenPrompt(ctx context.Context, io *iostreams.IOStreams, hostname string) (string, error) {

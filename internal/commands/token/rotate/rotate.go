@@ -1,7 +1,6 @@
 package rotate
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -95,7 +94,7 @@ func NewCmdRotate(f cmdutils.Factory) *cobra.Command {
 	fl.StringVarP(&opts.user, "user", "U", "", "Rotate personal access token. Use @me for the current user.")
 	fl.VarP(&opts.duration, "duration", "D", "Sets the token lifetime in days. Accepts: days (30d), weeks (4w), or hours in multiples of 24 (24h, 168h, 720h). Maximum: 365d. The token expires at 00:00 UTC on the calculated date.")
 	fl.VarP(&opts.expireAt, "expires-at", "E", "Sets the token's expiration date and time, in YYYY-MM-DD format. If not specified, --duration is used.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat, "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat, "Format output as: text, json. 'text' provides the new token value; 'json' outputs the token with metadata.")
 	cmd.MarkFlagsMutuallyExclusive("duration", "expires-at")
 	return cmd
 }
@@ -257,8 +256,7 @@ func (o *options) run() error {
 	}
 
 	if o.outputFormat == "json" {
-		encoder := json.NewEncoder(o.io.StdOut)
-		if err := encoder.Encode(outputToken); err != nil {
+		if err := o.io.PrintJSON(outputToken); err != nil {
 			return err
 		}
 	} else {

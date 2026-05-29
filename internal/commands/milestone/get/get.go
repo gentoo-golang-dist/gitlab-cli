@@ -64,7 +64,7 @@ func NewCmdGet(f cmdutils.Factory) *cobra.Command {
 
 	cmd.Flags().StringVar(&opts.projectID, "project", "", "The ID or URL-encoded path of the project.")
 	cmd.Flags().StringVar(&opts.groupID, "group", "", "The ID or URL-encoded path of the group.")
-	cmdutils.EnableJSONOutput(cmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(cmd, opts.io, &opts.outputFormat)
 
 	return cmd
 }

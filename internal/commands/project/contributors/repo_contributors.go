@@ -59,7 +59,7 @@ func NewCmdContributors(f cmdutils.Factory) *cobra.Command {
 	repoContributorsCmd.Flags().StringVarP(&opts.sort, "sort", "s", "", "Sort direction for --order field: asc or desc.")
 	repoContributorsCmd.Flags().IntVarP(&opts.page, "page", "p", 1, "Page number.")
 	repoContributorsCmd.Flags().IntVarP(&opts.perPage, "per-page", "P", 30, "Number of items to list per page.")
-	cmdutils.EnableJSONOutput(repoContributorsCmd, &opts.outputFormat)
+	cmdutils.EnableJSONOutput(repoContributorsCmd, opts.io, &opts.outputFormat)
 	return repoContributorsCmd
 }
 
