@@ -1,6 +1,9 @@
 package git
 
 import (
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"testing"
@@ -134,5 +137,43 @@ func CreateBranches(t *testing.T, branches []string) {
 	for _, branch := range branches {
 		err := CheckoutNewBranch(branch)
 		require.Nil(t, err)
+	}
+}
+
+// FetchStub returns a closure for MockGitRunner.GitWithIO's DoAndReturn that
+// writes a simulated `git fetch` progress line to the stderr writer the
+// caller supplies, then returns nil. Use in tests that verify a command
+// pipes its stderr writer through to GitWithIO end-to-end.
+func FetchStub(refspec string) func(stdout, stderr io.Writer, args ...string) error {
+	return func(_, stderr io.Writer, _ ...string) error {
+		fmt.Fprintf(stderr, "remote: Counting objects: 100%% (10/10), done.\n* [new branch] %s\n", refspec)
+		return nil
+	}
+}
+
+// FailingFetchStub is the failure variant of FetchStub: writes a stderr line,
+// then returns the supplied error message.
+func FailingFetchStub(refspec, msg string) func(stdout, stderr io.Writer, args ...string) error {
+	return func(_, stderr io.Writer, _ ...string) error {
+		fmt.Fprintf(stderr, "fetch attempt %s failed\n", refspec)
+		return errors.New(msg)
+	}
+}
+
+// CheckoutStub returns a closure for MockGitRunner.GitWithIO's DoAndReturn
+// that writes a simulated `git checkout` line to the stderr writer the
+// caller supplies, then returns nil.
+func CheckoutStub(branch string) func(stdout, stderr io.Writer, args ...string) error {
+	return func(_, stderr io.Writer, _ ...string) error {
+		fmt.Fprintf(stderr, "Switched to a new branch '%s'\n", branch)
+		return nil
+	}
+}
+
+// FailingCheckoutStub is the failure variant of CheckoutStub.
+func FailingCheckoutStub(branch, msg string) func(stdout, stderr io.Writer, args ...string) error {
+	return func(_, stderr io.Writer, _ ...string) error {
+		fmt.Fprintf(stderr, "error: pathspec '%s' did not match\n", branch)
+		return errors.New(msg)
 	}
 }

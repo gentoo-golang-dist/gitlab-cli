@@ -1,10 +1,14 @@
+//go:generate go run go.uber.org/mock/mockgen@v0.6.0 -typed -destination=./testing/git_runner.go -package=git gitlab.com/gitlab-org/cli/internal/git GitRunner
+
 package git
 
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -12,6 +16,74 @@ import (
 
 	"gitlab.com/gitlab-org/cli/internal/run"
 )
+
+type GitRunner interface {
+	Git(args ...string) (string, error)
+	// GitWithIO runs git with the provided stdout and stderr writers attached
+	// directly to the subprocess, allowing live output (progress bars, errors)
+	// to reach the user during long-running operations like fetch and checkout.
+	GitWithIO(stdout, stderr io.Writer, args ...string) error
+}
+
+// Executor is a subset of cmdutils.Executor defined here to avoid a circular
+// import: the cmdutils package already imports the git package.
+type Executor interface {
+	ExecWithIO(ctx context.Context, name string, args []string, env []string, stdin io.Reader, stdout, stderr io.Writer) error
+}
+
+type StandardGitCommand struct {
+	executor Executor
+}
+
+func NewGitCommand(executor Executor) StandardGitCommand {
+	return StandardGitCommand{executor: executor}
+}
+
+func (gitc StandardGitCommand) Git(args ...string) (string, error) {
+	env := append(os.Environ(), "LC_ALL=C")
+
+	if gitc.executor == nil {
+		cmd := GitCommand(args...)
+		cmd.Env = env
+		output, err := run.PrepareCmd(cmd).Output()
+		if err != nil {
+			return "", err
+		}
+		return string(output), nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := gitc.executor.ExecWithIO(context.Background(), "git", args, env, nil, &stdout, &stderr)
+	if err != nil {
+		errMsg := strings.TrimSpace(stderr.String())
+		if errMsg != "" {
+			return "", fmt.Errorf("%s: %w", errMsg, err)
+		}
+		return "", err
+	}
+	return stdout.String(), nil
+}
+
+func (gitc StandardGitCommand) GitWithIO(stdout, stderr io.Writer, args ...string) error {
+	env := append(os.Environ(), "LC_ALL=C")
+
+	if gitc.executor == nil {
+		var stderrBuf bytes.Buffer
+		cmd := GitCommand(args...)
+		cmd.Env = env
+		cmd.Stdout = stdout
+		cmd.Stderr = io.MultiWriter(stderr, &stderrBuf)
+		if err := cmd.Run(); err != nil {
+			if msg := strings.TrimSpace(stderrBuf.String()); msg != "" {
+				return fmt.Errorf("%s: %w", msg, err)
+			}
+			return err
+		}
+		return nil
+	}
+
+	return gitc.executor.ExecWithIO(context.Background(), "git", args, env, nil, stdout, stderr)
+}
 
 const (
 	DefaultBranchName = "main"

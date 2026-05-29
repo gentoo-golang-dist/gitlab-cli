@@ -86,17 +86,20 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr:feat-new-mr"))
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
-		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.CheckoutStub("feat-new-mr"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123")
 
 		assert.NoError(t, err)
-		assert.Empty(t, output.String())
-		assert.Empty(t, output.Stderr())
+		assert.Contains(t, output.Stderr(), "Counting objects")
+		assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:feat-new-mr")
+		assert.Contains(t, output.Stderr(), "Switched to a new branch 'feat-new-mr'")
 	})
 
 	t.Run("when a valid MR comes from a forked private project", func(t *testing.T) {
@@ -132,17 +135,19 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/merge-requests/123/head:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/merge-requests/123/head:feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/merge-requests/123/head:feat-new-mr"))
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/merge-requests/123/head").Return("", nil)
-		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.CheckoutStub("feat-new-mr"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123")
 
 		assert.NoError(t, err)
-		assert.Empty(t, output.String())
-		assert.Empty(t, output.Stderr())
+		assert.Contains(t, output.Stderr(), "[new branch] refs/merge-requests/123/head:feat-new-mr")
+		assert.Contains(t, output.Stderr(), "Switched to a new branch 'feat-new-mr'")
 	})
 
 	t.Run("when a valid MR is checked out using MR id and specifying branch", func(t *testing.T) {
@@ -173,18 +178,20 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:FORK_OWNER/REPO.git", "refs/heads/feat-new-mr:foo").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:FORK_OWNER/REPO.git", "refs/heads/feat-new-mr:foo").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr:foo"))
 		mockGit.EXPECT().Git("config", "branch.foo.remote", "git@gitlab.com:FORK_OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.foo.pushRemote", "git@gitlab.com:FORK_OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.foo.merge", "refs/heads/feat-new-mr").Return("", nil)
-		mockGit.EXPECT().Git("checkout", "foo").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "foo").
+			DoAndReturn(git.CheckoutStub("foo"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123 --branch foo")
 
 		assert.NoError(t, err)
-		assert.Empty(t, output.String())
-		assert.Empty(t, output.Stderr())
+		assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:foo")
+		assert.Contains(t, output.Stderr(), "Switched to a new branch 'foo'")
 	})
 
 	t.Run("when initial fetch fails but retry succeeds", func(t *testing.T) {
@@ -212,19 +219,22 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
-			Return("", errors.New("couldn't find remote ref"))
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "couldn't find remote ref"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
-		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.CheckoutStub("feat-new-mr"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 		output, err := exec("123")
 
 		assert.NoError(t, err)
-		assert.Empty(t, output.String())
-		assert.Empty(t, output.Stderr())
+		assert.Contains(t, output.Stderr(), "fetch attempt refs/heads/feat-new-mr:feat-new-mr failed")
+		assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr")
+		assert.Contains(t, output.Stderr(), "Switched to a new branch 'feat-new-mr'")
 	})
 
 	t.Run("when fetch fails completely", func(t *testing.T) {
@@ -252,16 +262,19 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
-			Return("", errors.New("fetch failed"))
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
-			Return("", errors.New("fetch failed"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "fetch failed"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr", "fetch failed"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
-		_, err := exec("123")
+		output, err := exec("123")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "fetch failed")
+		assert.Contains(t, output.Stderr(), "fetch attempt refs/heads/feat-new-mr:feat-new-mr failed")
+		assert.Contains(t, output.Stderr(), "fetch attempt refs/heads/feat-new-mr failed")
+		assert.Empty(t, output.String())
 	})
 
 	t.Run("when checkout fails", func(t *testing.T) {
@@ -289,16 +302,21 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr:feat-new-mr"))
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
-		mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", errors.New("pathspec 'feat-new-mr' did not match"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.FailingCheckoutStub("feat-new-mr", "pathspec 'feat-new-mr' did not match"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
-		_, err := exec("123")
+		output, err := exec("123")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "could not checkout branch")
+		assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:feat-new-mr")
+		assert.Contains(t, output.Stderr(), "error: pathspec 'feat-new-mr' did not match")
+		assert.Empty(t, output.String())
 	})
 
 	t.Run("when git config fails", func(t *testing.T) {
@@ -326,15 +344,18 @@ func TestMrCheckout(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		mockGit := git_testing.NewMockGitRunner(ctrl)
-		mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr:feat-new-mr"))
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").
 			Return("", errors.New("could not set config"))
 
 		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
-		_, err := exec("123")
+		output, err := exec("123")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "could not set config")
+		assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:feat-new-mr")
+		assert.Empty(t, output.String())
 	})
 }
 
@@ -364,18 +385,20 @@ func TestMrCheckout_SetUpstreamTo(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
-	mockGit.EXPECT().Git("fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+	mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+		DoAndReturn(git.FetchStub("refs/heads/feat-new-mr:feat-new-mr"))
 	mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
 	mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
-	mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
+	mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+		DoAndReturn(git.CheckoutStub("feat-new-mr"))
 	mockGit.EXPECT().Git("branch", "--set-upstream-to", "upstream/main").Return("", nil)
 
 	exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
 	output, err := exec("123 --set-upstream-to upstream/main")
 
 	assert.NoError(t, err)
-	assert.Empty(t, output.String())
-	assert.Empty(t, output.Stderr())
+	assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:feat-new-mr")
+	assert.Contains(t, output.Stderr(), "Switched to a new branch 'feat-new-mr'")
 }
 
 func TestMrCheckout_HTTPSProtocolConfiguration(t *testing.T) {
@@ -407,10 +430,12 @@ func TestMrCheckout_HTTPSProtocolConfiguration(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockGit := git_testing.NewMockGitRunner(ctrl)
-	mockGit.EXPECT().Git("fetch", "https://gitlab.com/OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").Return("", nil)
+	mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "https://gitlab.com/OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+		DoAndReturn(git.FetchStub("refs/heads/feat-new-mr:feat-new-mr"))
 	mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "https://gitlab.com/OWNER/REPO.git").Return("", nil)
 	mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
-	mockGit.EXPECT().Git("checkout", "feat-new-mr").Return("", nil)
+	mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+		DoAndReturn(git.CheckoutStub("feat-new-mr"))
 
 	cfg := config.NewBlankConfig()
 	err := cfg.Set("gitlab.com", "git_protocol", "https")
@@ -420,6 +445,6 @@ func TestMrCheckout_HTTPSProtocolConfiguration(t *testing.T) {
 	output, err := exec("123")
 
 	assert.NoError(t, err)
-	assert.Empty(t, output.String())
-	assert.Empty(t, output.Stderr())
+	assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:feat-new-mr")
+	assert.Contains(t, output.Stderr(), "Switched to a new branch 'feat-new-mr'")
 }

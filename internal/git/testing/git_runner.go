@@ -10,6 +10,7 @@
 package testing
 
 import (
+	io "io"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -78,6 +79,49 @@ func (c *MockGitRunnerGitCall) Do(f func(...string) (string, error)) *MockGitRun
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockGitRunnerGitCall) DoAndReturn(f func(...string) (string, error)) *MockGitRunnerGitCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GitWithIO mocks base method.
+func (m *MockGitRunner) GitWithIO(stdout, stderr io.Writer, args ...string) error {
+	m.ctrl.T.Helper()
+	varargs := []any{stdout, stderr}
+	for _, a := range args {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GitWithIO", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// GitWithIO indicates an expected call of GitWithIO.
+func (mr *MockGitRunnerMockRecorder) GitWithIO(stdout, stderr any, args ...any) *MockGitRunnerGitWithIOCall {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{stdout, stderr}, args...)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GitWithIO", reflect.TypeOf((*MockGitRunner)(nil).GitWithIO), varargs...)
+	return &MockGitRunnerGitWithIOCall{Call: call}
+}
+
+// MockGitRunnerGitWithIOCall wrap *gomock.Call
+type MockGitRunnerGitWithIOCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockGitRunnerGitWithIOCall) Return(arg0 error) *MockGitRunnerGitWithIOCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockGitRunnerGitWithIOCall) Do(f func(io.Writer, io.Writer, ...string) error) *MockGitRunnerGitWithIOCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockGitRunnerGitWithIOCall) DoAndReturn(f func(io.Writer, io.Writer, ...string) error) *MockGitRunnerGitWithIOCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

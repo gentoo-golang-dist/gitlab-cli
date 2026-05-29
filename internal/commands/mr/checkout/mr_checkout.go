@@ -111,11 +111,12 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 			}
 			repoURL := glrepo.RemoteURL(mrProject, gitProtocol)
 
+			io := f.IO()
 			fetchRefSpec := fmt.Sprintf("%s:%s", mrRef, mrCheckoutCfg.branch)
-			if _, err := gr.Git("fetch", repoURL, fetchRefSpec); err != nil {
+			if err := gr.GitWithIO(io.StdOut, io.StdErr, "fetch", repoURL, fetchRefSpec); err != nil {
 				// the remote may have diverged from local after git operations
 				// try fetching without updating the branch ref before giving up
-				if _, err := gr.Git("fetch", repoURL, mrRef); err != nil {
+				if err := gr.GitWithIO(io.StdOut, io.StdErr, "fetch", repoURL, mrRef); err != nil {
 					return err
 				}
 			}
@@ -135,7 +136,7 @@ func NewCmdCheckout(f cmdutils.Factory) *cobra.Command {
 				return err
 			}
 
-			if _, err := gr.Git("checkout", mrCheckoutCfg.branch); err != nil {
+			if err := gr.GitWithIO(io.StdOut, io.StdErr, "checkout", mrCheckoutCfg.branch); err != nil {
 				return fmt.Errorf("could not checkout branch %q: %w", mrCheckoutCfg.branch, err)
 			}
 
