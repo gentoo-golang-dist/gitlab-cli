@@ -17,7 +17,7 @@ func Test_isColorEnabled(t *testing.T) {
 		for _, key := range []string{"NO_COLOR", "COLOR_ENABLED"} {
 			if val, ok := os.LookupEnv(key); ok {
 				os.Unsetenv(key)
-				t.Cleanup(func() { os.Setenv(key, val) })
+				t.Cleanup(func() { t.Setenv(key, val) })
 			}
 		}
 
