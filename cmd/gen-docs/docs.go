@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -422,6 +423,10 @@ func GenRootMarkdownCustom(cmd *cobra.Command, w io.Writer) error {
 								description += " " + additionalLine
 							}
 						}
+
+						// Wrap single-quoted segments (command and config-key
+						// references) in backticks so they render as code.
+						description = codeWrapQuoted(description)
 
 						// Wrap any bare URLs in the description with markdown link syntax
 						description = urlwrapper.MDWrap(description)
