@@ -1,0 +1,18 @@
+name: Sync with upstream
+on:
+  push:
+  schedule:
+    - cron: "13 */8 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync-mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Update mirror
+      uses: projg2/golang-dist-mirror-action@v1
+      with:
+        token: ${{ secrets.PUSH_TOKEN }}
+        upstream-repo: https://gitlab.com/gitlab-org/cli.git
