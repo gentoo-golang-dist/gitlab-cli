@@ -31,3 +31,4 @@ Manages GitLab CI/CD runners for projects, groups, or the entire instance.
 - [`managers`](managers.md)
 - [`unassign`](unassign.md)
 - [`update`](update.md)
+- [`verify`](verify.md)
