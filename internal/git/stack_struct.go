@@ -20,6 +20,7 @@ type StackRef struct {
 	Next        string `json:"next"`
 	MR          string `json:"mr"`
 	Description string `json:"description"`
+	Base        string `json:"base,omitempty"`
 }
 
 // Stack represents a stacked diff data structure.
