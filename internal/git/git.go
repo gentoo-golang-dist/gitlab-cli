@@ -505,23 +505,24 @@ func SetConfig(key, value string) error {
 func configValueExists(key, value string) (bool, error) {
 	output, err := GetAllConfig(key)
 	if err == nil {
-		return outputContainsLine(output, value), nil
+		lines := strings.Split(strings.TrimSuffix(output, "\n"), "\n")
+		return slices.Contains(lines, value), nil
 	}
 	return false, err
 }
 
 // GetConfig returns the local config value associated with the provided key.
 // If there are multiple values associated with the key, they are all returned.
-func GetAllConfig(key string) ([]byte, error) {
+func GetAllConfig(key string) (string, error) {
 	err := assertValidConfigKey(key)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	gitCmd := GitCommand("config", "--get-all", key)
 	output, err := run.PrepareCmd(gitCmd).Output()
 	if err == nil {
-		return output, nil
+		return string(output), nil
 	}
 
 	// git-config will exit with 1 in almost all cases, but only when it prints
@@ -529,9 +530,9 @@ func GetAllConfig(key string) ([]byte, error) {
 	// Therefore ignore errors that don't output to stderr.
 	var cmdErr *run.CmdError
 	if errors.As(err, &cmdErr) && cmdErr.Stderr.Len() == 0 {
-		return nil, nil
+		return "", nil
 	}
-	return nil, fmt.Errorf("getting Git configuration value cmd: %s: %w", gitCmd.String(), err)
+	return "", fmt.Errorf("getting Git configuration value cmd: %s: %w", gitCmd.String(), err)
 }
 
 func assertValidConfigKey(key string) error {
@@ -540,12 +541,6 @@ func assertValidConfigKey(key string) error {
 		return fmt.Errorf("incorrect Git configuration key.")
 	}
 	return nil
-}
-
-// outputContainsLine searches through each line in the command output
-// and returns true if one matches the needle a.k.a. the search string.
-func outputContainsLine(output []byte, needle string) bool {
-	return slices.Contains(outputLines(output), needle)
 }
 
 func RunCmd(args []string) error {

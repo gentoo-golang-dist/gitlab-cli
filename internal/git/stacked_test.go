@@ -46,8 +46,7 @@ func TestSetLocalConfig(t *testing.T) {
 			config, err := GetAllConfig("this.glabstacks")
 			require.NoError(t, err)
 
-			// GetAllConfig() appends a new line. Let's get rid of that.
-			compareString := strings.TrimSuffix(string(config), "\n")
+			compareString := strings.TrimSuffix(config, "\n")
 
 			if compareString != tt.value {
 				t.Errorf("config value = %v, want %v", compareString, tt.value)
