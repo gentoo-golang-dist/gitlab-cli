@@ -84,10 +84,15 @@ func NewCmdList(f cmdutils.Factory, runE func(opts *ListOptions) error, issueTyp
 		`, "`"),
 		Aliases: []string{"ls"},
 		Example: heredoc.Doc(fmt.Sprintf(`
-			glab %[1]s list --all
-			glab %[1]s ls --all
-			glab %[1]s list --assignee=@me
-			glab %[1]s list --milestone release-2.0.0 --opened`, issueType)),
+			$ glab %[1]s list --all
+			$ glab %[1]s ls --all
+			$ glab %[1]s list --assignee=@me
+			$ glab %[1]s list --milestone release-2.0.0 --opened
+			$ glab %[1]s list --label "bug"
+			$ glab %[1]s list --not-author=username
+			$ glab %[1]s list -R "repository-url"
+			$ glab %[1]s list --output json
+		`, issueType)),
 		Args: cobra.ExactArgs(0),
 		Annotations: map[string]string{
 			mcpannotations.Safe: "true",

@@ -30,10 +30,15 @@ ls
 ## Examples
 
 ```console
-glab incident list --all
-glab incident ls --all
-glab incident list --assignee=@me
-glab incident list --milestone release-2.0.0 --opened
+$ glab incident list --all
+$ glab incident ls --all
+$ glab incident list --assignee=@me
+$ glab incident list --milestone release-2.0.0 --opened
+$ glab incident list --label "bug"
+$ glab incident list --not-author=username
+$ glab incident list -R "repository-url"
+$ glab incident list --output json
+
 ```
 
 ## Options

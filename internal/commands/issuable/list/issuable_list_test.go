@@ -902,7 +902,7 @@ func TestIssueList_epicIssues(t *testing.T) {
 				ID:       102,
 				Username: "one-oh-two",
 			},
-			commandLine: `--group testGroupID --epic 42 --all --not-author one-oh-two`,
+			commandLine: `--group testGroupID --epic 42 --all --not-author=one-oh-two`,
 			wantIDs:     []int{2},
 		},
 		{

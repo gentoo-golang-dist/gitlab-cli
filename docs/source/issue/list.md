@@ -30,10 +30,15 @@ ls
 ## Examples
 
 ```console
-glab issue list --all
-glab issue ls --all
-glab issue list --assignee=@me
-glab issue list --milestone release-2.0.0 --opened
+$ glab issue list --all
+$ glab issue ls --all
+$ glab issue list --assignee=@me
+$ glab issue list --milestone release-2.0.0 --opened
+$ glab issue list --label "bug"
+$ glab issue list --not-author=username
+$ glab issue list -R "repository-url"
+$ glab issue list --output json
+
 ```
 
 ## Options
