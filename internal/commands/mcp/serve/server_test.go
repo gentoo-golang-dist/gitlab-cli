@@ -991,3 +991,45 @@ func TestCallToolResultErrorStructure(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "error message here", textContent.Text)
 }
+
+func TestStructuredContentIncludesToolOutput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		processedOutput string
+		wantData        bool
+	}{
+		{
+			name:            "non-json output includes content only",
+			processedOutput: "plain text output",
+			wantData:        false,
+		},
+		{
+			name:            "json output includes content and data",
+			processedOutput: `{"id":1,"name":"test"}`,
+			wantData:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := &mcpServer{}
+
+			structuredContent := server.buildStructuredContent(tt.processedOutput)
+
+			result := &mcp.CallToolResult{StructuredContent: structuredContent}
+
+			require.NotNil(t, result.StructuredContent)
+
+			structuredMap, ok := result.StructuredContent.(map[string]any)
+			require.True(t, ok, "structured content should be a map")
+			assert.Equal(t, tt.processedOutput, structuredMap["content"])
+
+			_, hasData := structuredMap["data"]
+			assert.Equal(t, tt.wantData, hasData)
+		})
+	}
+}

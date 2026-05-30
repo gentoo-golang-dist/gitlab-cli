@@ -372,31 +372,33 @@ func (s *mcpServer) createCommandHandler(cmdPath []string, cmd *cobra.Command) m
 		// Process output with rune-based limiting
 		processedOutput := s.processOutput(output, config)
 
-		// Try to parse as JSON and return structured content for better LLM parsing
-		var structuredData any
-		if err := json.Unmarshal([]byte(processedOutput), &structuredData); err == nil {
-			// Successfully parsed JSON - return both content and structured content
-			// This follows MCP spec: "For backwards compatibility, a tool that returns
-			// structured content SHOULD also return the serialized JSON in a TextContent block"
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{
-						Text: processedOutput,
-					},
-				},
-				StructuredContent: structuredData,
-			}, nil
-		}
+		structuredContent := s.buildStructuredContent(processedOutput)
 
-		// Not JSON or parse failed - return as plain text
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
 					Text: processedOutput,
 				},
 			},
+			StructuredContent: structuredContent,
 		}, nil
 	}
+}
+
+// buildStructuredContent builds structured content from command output.
+// It always includes the raw text output under "content" and, when possible,
+// also includes parsed JSON under "data".
+func (s *mcpServer) buildStructuredContent(processedOutput string) map[string]any {
+	structuredContent := map[string]any{
+		"content": processedOutput,
+	}
+
+	var structuredData any
+	if err := json.Unmarshal([]byte(processedOutput), &structuredData); err == nil {
+		structuredContent["data"] = structuredData
+	}
+
+	return structuredContent
 }
 
 // responseConfig holds output processing configuration
