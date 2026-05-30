@@ -112,6 +112,7 @@ GitLab instance.
 - [`glab schedule`](schedule/_index.md)
 - [`glab search`](search/_index.md)
 - [`glab securefile`](securefile/_index.md)
+- [`glab service-account`](service-account/_index.md)
 - [`glab skills`](skills/_index.md)
 - [`glab snippet`](snippet/_index.md)
 - [`glab ssh-key`](ssh-key/_index.md)
