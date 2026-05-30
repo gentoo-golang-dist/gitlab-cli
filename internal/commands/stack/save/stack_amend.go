@@ -18,6 +18,7 @@ import (
 
 func NewCmdAmendStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.GetTextUsingEditor) *cobra.Command {
 	var amendStageAll bool
+	var reword bool
 	stackSaveCmd := &cobra.Command{
 		Use:   "amend",
 		Short: `Save more changes to a stacked diff. (EXPERIMENTAL)`,
@@ -34,12 +35,15 @@ func NewCmdAmendStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.Get
 			glab stack amend -a -m "fixed a function in exisiting file"
 
 			# Add all tracked and untracked files to staged changes and amend diff
-			glab stack amend . -m "refactored file into new files"`),
+			glab stack amend . -m "refactored file into new files"
+
+			# Reword the commit message without adding any files
+			glab stack amend --reword -m "updated commit message"`),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			output, err := amendFunc(cmd.Context(), f, args, getText, description, amendStageAll)
+			output, err := amendFunc(cmd.Context(), f, args, getText, description, amendStageAll, reword)
 			if err != nil {
 				return fmt.Errorf("could not run stack amend: %v", err)
 			}
@@ -54,16 +58,24 @@ func NewCmdAmendStack(f cmdutils.Factory, gr git.GitRunner, getText cmdutils.Get
 	stackSaveCmd.Flags().StringVarP(&description, "description", "d", "", "A description of the change.")
 	stackSaveCmd.Flags().StringVarP(&description, "message", "m", "", "Alias for the description flag.")
 	stackSaveCmd.Flags().BoolVarP(&amendStageAll, "all", "a", false, "Automatically stage modified and deleted tracked files.")
+	stackSaveCmd.Flags().BoolVar(&reword, "reword", false, "Only update the commit message without staging any files.")
 	stackSaveCmd.MarkFlagsMutuallyExclusive("message", "description")
+	stackSaveCmd.MarkFlagsMutuallyExclusive("all", "reword")
 
 	return stackSaveCmd
 }
 
-func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText cmdutils.GetTextUsingEditor, description string, stageAll bool) (string, error) {
-	// check if there are even any changes before we start
-	err := checkForChanges()
-	if err != nil {
-		return "", fmt.Errorf("could not save: %v", err)
+func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText cmdutils.GetTextUsingEditor, description string, stageAll bool, reword bool) (string, error) {
+	if reword && len(args) > 0 {
+		return "", fmt.Errorf("--reword cannot be used with file arguments")
+	}
+
+	if !reword {
+		// check if there are even any changes before we start
+		err := checkForChanges()
+		if err != nil {
+			return "", fmt.Errorf("could not save: %v", err)
+		}
 	}
 
 	// get stack title
@@ -91,16 +103,25 @@ func amendFunc(ctx context.Context, f cmdutils.Factory, args []string, getText c
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 
-	// git add files
-	err = addFiles(args[0:], stageAll)
-	if err != nil {
-		return "", fmt.Errorf("error adding files: %v", err)
+	if !reword {
+		// git add files
+		err = addFiles(args[0:], stageAll)
+		if err != nil {
+			return "", fmt.Errorf("error adding files: %v", err)
+		}
 	}
 
 	// run the amend commit
 	err = gitAmend(description)
 	if err != nil {
 		return "", fmt.Errorf("error amending commit with Git: %v", err)
+	}
+
+	// update the stack ref description to match the new commit message
+	ref.Description = description
+	err = git.UpdateStackRefFile(title, ref)
+	if err != nil {
+		return "", fmt.Errorf("error updating stack ref: %v", err)
 	}
 
 	var output string
