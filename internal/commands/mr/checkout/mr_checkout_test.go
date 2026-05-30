@@ -13,6 +13,7 @@ import (
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
 	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
+	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/git"
 	git_testing "gitlab.com/gitlab-org/cli/internal/git/testing"
@@ -223,6 +224,7 @@ func TestMrCheckout(t *testing.T) {
 			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "couldn't find remote ref"))
 		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
 			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("", errors.New("not found"))
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
 		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
 		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
@@ -357,6 +359,282 @@ func TestMrCheckout(t *testing.T) {
 		assert.Contains(t, output.Stderr(), "[new branch] refs/heads/feat-new-mr:feat-new-mr")
 		assert.Empty(t, output.String())
 	})
+
+	t.Run("when diverged without --force and non-interactive", func(t *testing.T) {
+		testClient := newDivergenceTestClient(t)
+
+		ctrl := gomock.NewController(t)
+		mockGit := git_testing.NewMockGitRunner(ctrl)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "non-fast-forward"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("old\n", nil)
+		mockGit.EXPECT().Git("rev-parse", "FETCH_HEAD^{commit}").Return("new\n", nil)
+		mockGit.EXPECT().Git("symbolic-ref", "--quiet", "--short", "HEAD").Return("main\n", nil)
+
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+		_, err := exec("123")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "--force")
+		var fe cmdutils.FlagError
+		assert.ErrorAs(t, err, &fe)
+	})
+
+	t.Run("when --force, on target, clean", func(t *testing.T) {
+		testClient := newDivergenceTestClient(t)
+
+		ctrl := gomock.NewController(t)
+		mockGit := git_testing.NewMockGitRunner(ctrl)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "non-fast-forward"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("old\n", nil)
+		mockGit.EXPECT().Git("rev-parse", "FETCH_HEAD^{commit}").Return("new\n", nil)
+		mockGit.EXPECT().Git("symbolic-ref", "--quiet", "--short", "HEAD").Return("feat-new-mr\n", nil)
+		mockGit.EXPECT().Git("diff", "--name-only", "HEAD").Return("", nil)
+		mockGit.EXPECT().Git("ls-files", "--others", "--exclude-standard").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "reset", "--hard", "FETCH_HEAD").Return(nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.CheckoutStub("feat-new-mr"))
+
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+		_, err := exec("123 --force")
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("when --force, on target, tracked modifications refuse", func(t *testing.T) {
+		testClient := newDivergenceTestClient(t)
+
+		ctrl := gomock.NewController(t)
+		mockGit := git_testing.NewMockGitRunner(ctrl)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "non-fast-forward"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("old\n", nil)
+		mockGit.EXPECT().Git("rev-parse", "FETCH_HEAD^{commit}").Return("new\n", nil)
+		mockGit.EXPECT().Git("symbolic-ref", "--quiet", "--short", "HEAD").Return("feat-new-mr\n", nil)
+		mockGit.EXPECT().Git("diff", "--name-only", "HEAD").Return("file.go\n", nil)
+
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+		_, err := exec("123 --force")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "changes that would be lost")
+	})
+
+	t.Run("when --force, on target, untracked file conflicts with incoming", func(t *testing.T) {
+		testClient := newDivergenceTestClient(t)
+
+		ctrl := gomock.NewController(t)
+		mockGit := git_testing.NewMockGitRunner(ctrl)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "non-fast-forward"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("old\n", nil)
+		mockGit.EXPECT().Git("rev-parse", "FETCH_HEAD^{commit}").Return("new\n", nil)
+		mockGit.EXPECT().Git("symbolic-ref", "--quiet", "--short", "HEAD").Return("feat-new-mr\n", nil)
+		mockGit.EXPECT().Git("diff", "--name-only", "HEAD").Return("", nil)
+		mockGit.EXPECT().Git("ls-files", "--others", "--exclude-standard").Return("local.txt\n", nil)
+		mockGit.EXPECT().Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("main.txt\nlocal.txt\n", nil)
+
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+		_, err := exec("123 --force")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "changes that would be lost")
+	})
+
+	t.Run("when --force, on target, unrelated untracked file allowed", func(t *testing.T) {
+		testClient := newDivergenceTestClient(t)
+
+		ctrl := gomock.NewController(t)
+		mockGit := git_testing.NewMockGitRunner(ctrl)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "non-fast-forward"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("old\n", nil)
+		mockGit.EXPECT().Git("rev-parse", "FETCH_HEAD^{commit}").Return("new\n", nil)
+		mockGit.EXPECT().Git("symbolic-ref", "--quiet", "--short", "HEAD").Return("feat-new-mr\n", nil)
+		mockGit.EXPECT().Git("diff", "--name-only", "HEAD").Return("", nil)
+		mockGit.EXPECT().Git("ls-files", "--others", "--exclude-standard").Return("notes.txt\n", nil)
+		mockGit.EXPECT().Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("main.txt\nfeature.go\n", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "reset", "--hard", "FETCH_HEAD").Return(nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.CheckoutStub("feat-new-mr"))
+
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+		_, err := exec("123 --force")
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("when --force, not on target", func(t *testing.T) {
+		testClient := newDivergenceTestClient(t)
+
+		ctrl := gomock.NewController(t)
+		mockGit := git_testing.NewMockGitRunner(ctrl)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr:feat-new-mr").
+			DoAndReturn(git.FailingFetchStub("refs/heads/feat-new-mr:feat-new-mr", "non-fast-forward"))
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "fetch", "git@gitlab.com:OWNER/REPO.git", "refs/heads/feat-new-mr").
+			DoAndReturn(git.FetchStub("refs/heads/feat-new-mr"))
+		mockGit.EXPECT().Git("rev-parse", "--verify", "refs/heads/feat-new-mr").Return("old\n", nil)
+		mockGit.EXPECT().Git("rev-parse", "FETCH_HEAD^{commit}").Return("new\n", nil)
+		mockGit.EXPECT().Git("symbolic-ref", "--quiet", "--short", "HEAD").Return("main\n", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "branch", "-f", "feat-new-mr", "FETCH_HEAD").Return(nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.remote", "git@gitlab.com:OWNER/REPO.git").Return("", nil)
+		mockGit.EXPECT().Git("config", "branch.feat-new-mr.merge", "refs/heads/feat-new-mr").Return("", nil)
+		mockGit.EXPECT().GitWithIO(gomock.Any(), gomock.Any(), "checkout", "feat-new-mr").
+			DoAndReturn(git.CheckoutStub("feat-new-mr"))
+
+		exec := setupTest(t, testClient, cmdtest.WithGitRunner(mockGit))
+		_, err := exec("123 --force")
+
+		assert.NoError(t, err)
+	})
+}
+
+func newDivergenceTestClient(t *testing.T) *gitlabtesting.TestClient {
+	t.Helper()
+	testClient := gitlabtesting.NewTestClient(t)
+	testClient.MockMergeRequests.EXPECT().
+		GetMergeRequest("OWNER/REPO", int64(123), gomock.Any(), gomock.Any()).
+		Return(&gitlab.MergeRequest{
+			BasicMergeRequest: gitlab.BasicMergeRequest{
+				ID:              123,
+				IID:             123,
+				ProjectID:       3,
+				SourceProjectID: 3,
+				SourceBranch:    "feat-new-mr",
+				State:           "opened",
+			},
+		}, nil, nil)
+	testClient.MockProjects.EXPECT().
+		GetProject(gomock.Any(), gomock.Any()).
+		Return(&gitlab.Project{
+			ID:           3,
+			SSHURLToRepo: "git@gitlab.com:OWNER/REPO.git",
+		}, nil, nil)
+	return testClient
+}
+
+func TestUnsafeToReset(t *testing.T) {
+	t.Parallel()
+	boom := errors.New("boom")
+	cases := []struct {
+		name        string
+		mocks       func(m *git_testing.MockGitRunnerMockRecorder)
+		wantBlocked bool
+		wantErr     error
+	}{
+		{
+			name: "clean tree",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("", nil)
+			},
+		},
+		{
+			name: "tracked diff single file",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("file.go\n", nil)
+			},
+			wantBlocked: true,
+		},
+		{
+			name: "tracked diff multiple files",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("a.go\nb.go\n", nil)
+			},
+			wantBlocked: true,
+		},
+		{
+			name: "unrelated untracked only",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("notes.txt\n", nil)
+				m.Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("main.txt\nfeature.go\n", nil)
+			},
+		},
+		{
+			name: "conflicting untracked",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("conflict.txt\n", nil)
+				m.Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("main.txt\nconflict.txt\n", nil)
+			},
+			wantBlocked: true,
+		},
+		{
+			name: "multiple untracked one conflicts",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("notes.txt\nconflict.txt\n", nil)
+				m.Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("main.txt\nconflict.txt\n", nil)
+			},
+			wantBlocked: true,
+		},
+		{
+			name: "trailing blank lines parsed",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("notes.txt\n\n", nil)
+				m.Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("main.txt\n\n", nil)
+			},
+		},
+		{
+			name: "diff errors propagate",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", boom)
+			},
+			wantErr: boom,
+		},
+		{
+			name: "ls-files errors propagate",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("", boom)
+			},
+			wantErr: boom,
+		},
+		{
+			name: "ls-tree errors propagate",
+			mocks: func(m *git_testing.MockGitRunnerMockRecorder) {
+				m.Git("diff", "--name-only", "HEAD").Return("", nil)
+				m.Git("ls-files", "--others", "--exclude-standard").Return("foo.txt\n", nil)
+				m.Git("ls-tree", "-r", "--name-only", "FETCH_HEAD").Return("", boom)
+			},
+			wantErr: boom,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			mockGit := git_testing.NewMockGitRunner(ctrl)
+			tc.mocks(mockGit.EXPECT())
+
+			got, err := unsafeToReset(mockGit)
+
+			if tc.wantErr != nil {
+				assert.ErrorIs(t, err, tc.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.wantBlocked, got)
+		})
+	}
 }
 
 func TestMrCheckout_SetUpstreamTo(t *testing.T) {
