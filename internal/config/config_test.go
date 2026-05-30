@@ -397,6 +397,59 @@ func Test_SetKeyring_JobToken(t *testing.T) {
 	assert.Equal(t, "true", useKeyring)
 }
 
+func Test_SetStringValue_ResetsNullTag(t *testing.T) {
+	// Reproduces a bug where SetStringValue didn't reset the YAML tag of an
+	// existing node. If a node had a !!null tag (e.g. from an empty "token:"
+	// field parsed by the YAML library), updating it with a non-empty value
+	// left the !!null tag intact. On re-serialization this produced
+	// "token: !!null <value>", and on re-parsing the !!null tag caused the
+	// YAML parser to discard the value entirely, resulting in an empty token.
+	defer StubConfig(`---
+hosts:
+  gitlab.com:
+    token:
+    git_protocol: https
+`, `
+`)()
+
+	mainBuf := bytes.Buffer{}
+	aliasesBuf := bytes.Buffer{}
+	defer StubWriteConfig(&mainBuf, &aliasesBuf)()
+
+	c, err := ParseConfig("config.yml")
+	require.NoError(t, err)
+
+	// Verify the token node starts with a !!null tag (precondition)
+	fc := c.(*fileConfig)
+	hostsEntry, err := fc.FindEntry("hosts")
+	require.NoError(t, err)
+	// hosts -> gitlab.com -> mapping -> token value node
+	hostMapping := hostsEntry.ValueNode.Content[1] // gitlab.com's mapping
+	tokenValueNode := hostMapping.Content[1]       // value node of "token"
+	assert.Equal(t, "!!null", tokenValueNode.Tag, "precondition: token node should have !!null tag")
+
+	// Update the token value
+	assert.NoError(t, c.Set("gitlab.com", "token", "glpat-test-token"))
+	assert.NoError(t, c.WriteAll())
+
+	// Verify the tag was reset and the serialized YAML is clean
+	assert.Equal(t, "!!str", tokenValueNode.Tag, "tag should be reset to !!str after SetStringValue")
+
+	expected := heredoc.Doc(`
+hosts:
+    gitlab.com:
+        token: glpat-test-token
+        git_protocol: https
+`)
+	assert.Equal(t, expected, mainBuf.String())
+
+	// Extra check: re-parse the output and verify the token value survives a round-trip
+	reparsed := NewFromString(mainBuf.String())
+	token, err := reparsed.Get("gitlab.com", "token")
+	require.NoError(t, err)
+	assert.Equal(t, "glpat-test-token", token)
+}
+
 func Test_SetKeyring_CleansUpExistingPlaintextToken(t *testing.T) {
 	defer StubConfig(`---
 hosts:
