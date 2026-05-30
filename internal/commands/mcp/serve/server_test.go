@@ -991,3 +991,53 @@ func TestCallToolResultErrorStructure(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "error message here", textContent.Text)
 }
+
+// TestEnsureStructuredRecord pins the wrapper: strict MCP clients
+// reject non-object structuredContent, so the helper always returns
+// an object.
+func TestEnsureStructuredRecord(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   any
+		want any
+	}{
+		{
+			name: "objects pass through unchanged",
+			in:   map[string]any{"id": float64(1), "title": "hello"},
+			want: map[string]any{"id": float64(1), "title": "hello"},
+		},
+		{
+			name: "arrays get wrapped under data",
+			in:   []any{map[string]any{"iid": "1"}, map[string]any{"iid": "2"}},
+			want: map[string]any{"data": []any{map[string]any{"iid": "1"}, map[string]any{"iid": "2"}}},
+		},
+		{
+			name: "empty array still wraps",
+			in:   []any{},
+			want: map[string]any{"data": []any{}},
+		},
+		{
+			name: "scalar string lands under value",
+			in:   "hello",
+			want: map[string]any{"value": "hello"},
+		},
+		{
+			name: "scalar number lands under value",
+			in:   float64(42),
+			want: map[string]any{"value": float64(42)},
+		},
+		{
+			name: "nil lands under value",
+			in:   nil,
+			want: map[string]any{"value": nil},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.want, ensureStructuredRecord(tc.in))
+		})
+	}
+}
