@@ -4,9 +4,11 @@ package save
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"os"
+	"os/user"
 	"path"
 	"strings"
 	"testing"
@@ -472,12 +474,14 @@ func Test_createShaBranch(t *testing.T) {
 		title string
 	}
 	tests := []struct {
-		name     string
-		args     args
-		prefix   string
-		want     string
-		wantErr  bool
-		noConfig bool
+		name         string
+		args         args
+		prefix       string
+		want         string
+		wantErr      bool
+		noConfig     bool
+		username     string
+		isGetUserErr bool
 	}{
 		{
 			name:   "standard test case",
@@ -486,25 +490,59 @@ func Test_createShaBranch(t *testing.T) {
 			want:   "asdf-cool-change-237ec83c",
 		},
 		{
-			name:     "with no config file",
+			name:     "with no config file (username)",
 			args:     args{sha: "237ec83c", title: "cool-change"},
 			prefix:   "",
 			want:     "jawn-cool-change-237ec83c",
 			noConfig: true,
+			username: "jawn",
+		},
+		{
+			name:     "with no config file (uppercase username)",
+			args:     args{sha: "237ec83c", title: "cool-change"},
+			prefix:   "",
+			want:     "jawn-cool-change-237ec83c",
+			noConfig: true,
+			username: "JAWN",
+		},
+		{
+			name:     "with no config file (empty username)",
+			args:     args{sha: "237ec83c", title: "cool-change"},
+			prefix:   "",
+			want:     "glab-stack-cool-change-237ec83c",
+			noConfig: true,
+			username: "",
+		},
+		{
+			name:         "with no config file (getUser err)",
+			args:         args{sha: "237ec83c", title: "cool-change"},
+			prefix:       "",
+			want:         "glab-stack-cool-change-237ec83c",
+			noConfig:     true,
+			isGetUserErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			git.InitGitRepo(t)
+			originalGetUser := stackutils.GetUser
+			t.Cleanup(func() {
+				stackutils.GetUser = originalGetUser
+			})
 
+			if tt.noConfig {
+				stackutils.GetUser = func() (*user.User, error) {
+					if tt.isGetUserErr {
+						return nil, errors.New("unexpected")
+					}
+					return &user.User{Username: tt.username}, nil
+				}
+			}
+
+			git.InitGitRepo(t)
 			defer config.StubWriteConfig(io.Discard, io.Discard)()
 
 			factory := createFactoryWithConfig("branch_prefix", tt.prefix)
-
-			if tt.noConfig {
-				t.Setenv("USER", "jawn")
-			}
 
 			got, err := stackutils.CreateShaBranch(factory, tt.args.sha, tt.args.title)
 			require.Nil(t, err)
