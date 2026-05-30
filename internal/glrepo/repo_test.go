@@ -9,8 +9,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	gitlab "gitlab.com/gitlab-org/api/client-go/v2"
+	gitlabtesting "gitlab.com/gitlab-org/api/client-go/v2/testing"
 
 	"gitlab.com/gitlab-org/cli/internal/config"
 	"gitlab.com/gitlab-org/cli/internal/glinstance"
@@ -389,6 +392,79 @@ hosts:
 			}
 		})
 	}
+}
+
+func TestParseBareProjectID(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int64
+		ok    bool
+	}{
+		{"12345", 12345, true},
+		{"1", 1, true},
+		{"", 0, false},
+		{"0", 0, false},
+		{"12a34", 0, false},
+		{"OWNER/REPO", 0, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, ok := ParseBareProjectID(tt.input)
+			assert.Equal(t, tt.ok, ok)
+			if tt.ok {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestFromProjectID(t *testing.T) {
+	t.Parallel()
+
+	tc := gitlabtesting.NewTestClient(t)
+	tc.MockProjects.EXPECT().
+		GetProject(int64(42), gomock.Any()).
+		Return(&gitlab.Project{HTTPURLToRepo: "https://gitlab.example.com/ns/app.git"}, nil, nil)
+
+	r, err := FromProjectID(tc.Client, 42, glinstance.DefaultHostname)
+	require.NoError(t, err)
+	assert.Equal(t, "ns/app", r.FullName())
+	assert.Equal(t, "gitlab.example.com", r.RepoHost())
+}
+
+func TestFromProjectID_HTTPURLToRepo(t *testing.T) {
+	t.Parallel()
+
+	t.Run("uses HTTPURLToRepo", func(t *testing.T) {
+		t.Parallel()
+		tc := gitlabtesting.NewTestClient(t)
+		tc.MockProjects.EXPECT().
+			GetProject(int64(1), gomock.Any()).
+			Return(&gitlab.Project{
+				HTTPURLToRepo: "https://gitlab.com/preferred/repo.git",
+			}, nil, nil)
+
+		r, err := FromProjectID(tc.Client, 1, glinstance.DefaultHostname)
+		require.NoError(t, err)
+		assert.Equal(t, "preferred/repo", r.FullName())
+		assert.Equal(t, "gitlab.com", r.RepoHost())
+	})
+
+	t.Run("error when HTTPURLToRepo is empty", func(t *testing.T) {
+		t.Parallel()
+		tc := gitlabtesting.NewTestClient(t)
+		tc.MockProjects.EXPECT().
+			GetProject(int64(99), gomock.Any()).
+			Return(&gitlab.Project{
+				HTTPURLToRepo: "",
+				WebURL:        "https://gitlab.example.com/group/sub/web-only",
+			}, nil, nil)
+
+		_, err := FromProjectID(tc.Client, 99, glinstance.DefaultHostname)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "no HTTPURLToRepo")
+		assert.ErrorContains(t, err, "99")
+	})
 }
 
 func TestFullNameFromURL(t *testing.T) {
