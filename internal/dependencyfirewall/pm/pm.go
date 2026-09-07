@@ -49,12 +49,17 @@ type PackageManager interface {
 	// proxy's MITM CA at caPath (NODE_EXTRA_CA_CERTS, SSL_CERT_FILE,
 	// PIP_CERT/REQUESTS_CA_BUNDLE, MAVEN_OPTS truststore, etc.).
 	CATrustEnviron(caPath string) []string
-	// ExistingBundleVar names the environment variable that holds the user's
-	// pre-existing CA bundle for this ecosystem (e.g. NODE_EXTRA_CA_CERTS,
-	// REQUESTS_CA_BUNDLE, SSL_CERT_FILE), so the engine can prepend those
-	// trust anchors to the proxy CA rather than replacing them. An empty
-	// string means the manager has no such variable to preserve.
-	ExistingBundleVar() string
+	// ExistingBundleVars names every environment variable this manager's
+	// CATrustEnviron overwrites that could hold a user's pre-existing CA
+	// bundle (e.g. NODE_EXTRA_CA_CERTS, PIP_CERT and REQUESTS_CA_BUNDLE,
+	// SSL_CERT_FILE and BUNDLE_SSL_CA_CERT), so the engine can prepend those
+	// trust anchors to the proxy CA rather than replacing them. Every variable
+	// CATrustEnviron sets must appear here, or a user who set only the
+	// undeclared one loses their anchors and can no longer verify an internal
+	// index/mirror. An empty slice means the manager has no such variable to
+	// preserve (e.g. Maven, which trusts the proxy through a generated
+	// truststore rather than an env-named bundle).
+	ExistingBundleVars() []string
 	// CleanupCAFiles removes any files this manager derived from the CA
 	// bundle at caPath (for example a JVM truststore or a generated
 	// settings.xml). The engine always removes caPath itself; this covers
@@ -118,23 +123,33 @@ func envKeys(env []string) []string {
 }
 
 // writeCABundle PEM-encodes the proxy CA into a temp file so managers can
-// trust the proxy via CATrustEnviron. If the manager names an existing CA
-// bundle variable (ExistingBundleVar) and the parent env sets it, those trust
-// anchors are prepended so the user's are preserved. Returns the path; the
-// caller removes it.
-func writeCABundle(ios *iostreams.IOStreams, parent []string, bundleVar string, ca *x509.Certificate) (string, error) {
+// trust the proxy via CATrustEnviron. For each CA-bundle variable the manager
+// names (ExistingBundleVars) that the parent env sets, those trust anchors are
+// prepended so the user's are preserved. A file already merged (two variables
+// pointing at the same path) is not read twice. Returns the path; the caller
+// removes it.
+func writeCABundle(ios *iostreams.IOStreams, parent []string, bundleVars []string, ca *x509.Certificate) (string, error) {
 	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
 
 	var bundle []byte
-	if existing := lookupEnv(parent, bundleVar); bundleVar != "" && existing != "" {
+	seen := make(map[string]struct{}, len(bundleVars))
+	for _, bundleVar := range bundleVars {
+		existing := lookupEnv(parent, bundleVar)
+		if bundleVar == "" || existing == "" {
+			continue
+		}
+		if _, dup := seen[existing]; dup {
+			continue
+		}
+		seen[existing] = struct{}{}
 		userPEM, err := os.ReadFile(existing)
 		if err != nil {
 			ios.LogErrorf("warning: could not read existing %s %q: %v\n", bundleVar, existing, err)
-		} else {
-			bundle = append(bundle, userPEM...)
-			if len(bundle) > 0 && bundle[len(bundle)-1] != '\n' {
-				bundle = append(bundle, '\n')
-			}
+			continue
+		}
+		bundle = append(bundle, userPEM...)
+		if len(bundle) > 0 && bundle[len(bundle)-1] != '\n' {
+			bundle = append(bundle, '\n')
 		}
 	}
 	bundle = append(bundle, pemBytes...)
@@ -258,7 +273,7 @@ func Run(ctx context.Context, manager PackageManager, opts RunOptions) error {
 
 	proxyURL := "http://" + p.Addr()
 
-	caPath, err := writeCABundle(opts.IO, os.Environ(), manager.ExistingBundleVar(), p.CACertificate())
+	caPath, err := writeCABundle(opts.IO, os.Environ(), manager.ExistingBundleVars(), p.CACertificate())
 	if err != nil {
 		return fmt.Errorf("failed to write proxy CA bundle: %w", err)
 	}
