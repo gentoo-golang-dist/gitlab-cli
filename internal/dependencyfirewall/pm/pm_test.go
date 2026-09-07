@@ -41,6 +41,14 @@ func TestManagerMetadata(t *testing.T) {
 	}{
 		{NPM(), "npm", "npm"},
 		{Pnpm(), "pnpm", "pnpm"},
+		{Yarn(), "yarn", "yarn"},
+		{Pip(), "pip", "pip"},
+		{Pipenv(), "pipenv", "pipenv"},
+		{Uv(), "uv", "uv"},
+		{Poetry(), "poetry", "poetry"},
+		{Twine(), "twine", "twine"},
+		{Gem(), "gem", "gem"},
+		{Bundle(), "bundle", "bundle"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -150,8 +158,27 @@ func TestDedupEnvLastWinsPreservesOrder(t *testing.T) {
 
 func TestMatcherTypes(t *testing.T) {
 	t.Parallel()
+	// Spelled out per manager so a failure names the specific one.
 	_, ok := NPM().Matcher().(proxy.NPMMatcher)
-	assert.True(t, ok)
+	assert.True(t, ok, "npm")
+	_, ok = Pnpm().Matcher().(proxy.NPMMatcher)
+	assert.True(t, ok, "pnpm")
+	_, ok = Yarn().Matcher().(proxy.NPMMatcher)
+	assert.True(t, ok, "yarn")
+	_, ok = Pip().Matcher().(proxy.PyPIMatcher)
+	assert.True(t, ok, "pip")
+	_, ok = Pipenv().Matcher().(proxy.PyPIMatcher)
+	assert.True(t, ok, "pipenv")
+	_, ok = Uv().Matcher().(proxy.PyPIMatcher)
+	assert.True(t, ok, "uv")
+	_, ok = Poetry().Matcher().(proxy.PyPIMatcher)
+	assert.True(t, ok, "poetry")
+	_, ok = Twine().Matcher().(proxy.PyPIMatcher)
+	assert.True(t, ok, "twine")
+	_, ok = Gem().Matcher().(proxy.GemMatcher)
+	assert.True(t, ok, "gem")
+	_, ok = Bundle().Matcher().(proxy.GemMatcher)
+	assert.True(t, ok, "bundle")
 }
 
 // fakeExecutor records the env it was invoked with and returns execErr.
@@ -325,7 +352,7 @@ func testCA(t *testing.T) *x509.Certificate {
 func TestWriteCABundleEmitsValidPEM(t *testing.T) {
 	t.Parallel()
 	ios, _, _, _ := cmdtest.TestIOStreams()
-	path, err := writeCABundle(ios, nil, "", testCA(t))
+	path, err := writeCABundle(ios, nil, nil, testCA(t))
 	require.NoError(t, err)
 	defer func() { _ = os.Remove(path) }()
 
@@ -336,9 +363,23 @@ func TestWriteCABundleEmitsValidPEM(t *testing.T) {
 	assert.Equal(t, "CERTIFICATE", block.Type)
 }
 
+// countPEMBlocks returns how many PEM blocks pemBytes decodes into.
+func countPEMBlocks(pemBytes []byte) int {
+	var blocks int
+	for rest := pemBytes; ; {
+		var b *pem.Block
+		b, rest = pem.Decode(rest)
+		if b == nil {
+			break
+		}
+		blocks++
+	}
+	return blocks
+}
+
 func TestWriteCABundlePrependsExistingBundle(t *testing.T) {
 	t.Parallel()
-	// A user-provided bundle named by the manager's ExistingBundleVar must be
+	// A user-provided bundle named by the manager's ExistingBundleVars must be
 	// preserved: the output should contain the user's PEM followed by the
 	// proxy CA, so the child trusts both.
 	userPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCA(t).Raw})
@@ -347,23 +388,55 @@ func TestWriteCABundlePrependsExistingBundle(t *testing.T) {
 
 	ios, _, _, _ := cmdtest.TestIOStreams()
 	parent := []string{"NODE_EXTRA_CA_CERTS=" + userPath}
-	path, err := writeCABundle(ios, parent, "NODE_EXTRA_CA_CERTS", testCA(t))
+	path, err := writeCABundle(ios, parent, []string{"NODE_EXTRA_CA_CERTS"}, testCA(t))
 	require.NoError(t, err)
 	defer func() { _ = os.Remove(path) }()
 
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.True(t, bytes.HasPrefix(raw, userPEM), "user's bundle must be prepended")
-	var blocks int
-	for rest := raw; ; {
-		var b *pem.Block
-		b, rest = pem.Decode(rest)
-		if b == nil {
-			break
-		}
-		blocks++
-	}
-	assert.Equal(t, 2, blocks, "bundle must contain the user CA and the proxy CA")
+	assert.Equal(t, 2, countPEMBlocks(raw), "bundle must contain the user CA and the proxy CA")
+}
+
+func TestWriteCABundleMergesMultipleDeclaredVars(t *testing.T) {
+	t.Parallel()
+	// A user who set only the second declared variable (e.g. REQUESTS_CA_BUNDLE
+	// but not PIP_CERT) must still have their anchors preserved. Two distinct
+	// user CAs, each named by a different declared var, both land in the bundle.
+	caA := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCA(t).Raw})
+	caB := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCA(t).Raw})
+	pathA := filepath.Join(t.TempDir(), "a.pem")
+	pathB := filepath.Join(t.TempDir(), "b.pem")
+	require.NoError(t, os.WriteFile(pathA, caA, 0o600))
+	require.NoError(t, os.WriteFile(pathB, caB, 0o600))
+
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	parent := []string{"PIP_CERT=" + pathA, "REQUESTS_CA_BUNDLE=" + pathB}
+	path, err := writeCABundle(ios, parent, []string{"PIP_CERT", "REQUESTS_CA_BUNDLE"}, testCA(t))
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(path) }()
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, 3, countPEMBlocks(raw), "both user CAs plus the proxy CA must be present")
+}
+
+func TestWriteCABundleDeduplicatesSharedPath(t *testing.T) {
+	t.Parallel()
+	// Two declared vars pointing at the same file must not double-append it.
+	userPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: testCA(t).Raw})
+	userPath := filepath.Join(t.TempDir(), "user-ca.pem")
+	require.NoError(t, os.WriteFile(userPath, userPEM, 0o600))
+
+	ios, _, _, _ := cmdtest.TestIOStreams()
+	parent := []string{"SSL_CERT_FILE=" + userPath, "BUNDLE_SSL_CA_CERT=" + userPath}
+	path, err := writeCABundle(ios, parent, []string{"SSL_CERT_FILE", "BUNDLE_SSL_CA_CERT"}, testCA(t))
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(path) }()
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, 2, countPEMBlocks(raw), "shared path must be read once: one user CA plus the proxy CA")
 }
 
 func TestWriteCABundleWarnsOnUnreadableExisting(t *testing.T) {
@@ -372,7 +445,7 @@ func TestWriteCABundleWarnsOnUnreadableExisting(t *testing.T) {
 	// alone rather than failing the run.
 	ios, _, _, errOut := cmdtest.TestIOStreams()
 	parent := []string{"NODE_EXTRA_CA_CERTS=" + filepath.Join(t.TempDir(), "does-not-exist.pem")}
-	path, err := writeCABundle(ios, parent, "NODE_EXTRA_CA_CERTS", testCA(t))
+	path, err := writeCABundle(ios, parent, []string{"NODE_EXTRA_CA_CERTS"}, testCA(t))
 	require.NoError(t, err)
 	defer func() { _ = os.Remove(path) }()
 

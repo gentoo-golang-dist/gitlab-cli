@@ -44,7 +44,7 @@ func (m npmManager) CATrustEnviron(caPath string) []string {
 	return []string{"NODE_EXTRA_CA_CERTS=" + caPath}
 }
 
-func (m npmManager) ExistingBundleVar() string { return "NODE_EXTRA_CA_CERTS" }
+func (m npmManager) ExistingBundleVars() []string { return []string{"NODE_EXTRA_CA_CERTS"} }
 
 func (m npmManager) CleanupCAFiles(string) {}
 
