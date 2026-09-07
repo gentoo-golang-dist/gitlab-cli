@@ -42,6 +42,10 @@ type Factory struct {
 	ExecutorStub     cmdutils.Executor
 	GitRunnerStub    git.GitRunner
 
+	// DefaultHostnameStub is what the real factory resolves from GITLAB_HOST
+	// and the config before any command runs.
+	DefaultHostnameStub string
+
 	repoOverride string
 
 	// captured standard ios for assertion purposes
@@ -74,8 +78,9 @@ func NewTestFactory(ios *iostreams.IOStreams, opts ...FactoryOption) *Factory {
 		BranchStub: func() (string, error) {
 			return "main", nil
 		},
-		BuildInfoStub: api.BuildInfo{Version: "test", Commit: "test", Platform: runtime.GOOS, Architecture: runtime.GOARCH},
-		GitRunnerStub: git.StandardGitCommand{},
+		BuildInfoStub:       api.BuildInfo{Version: "test", Commit: "test", Platform: runtime.GOOS, Architecture: runtime.GOARCH},
+		DefaultHostnameStub: glinstance.DefaultHostname,
+		GitRunnerStub:       git.StandardGitCommand{},
 	}
 
 	// Apply all options
@@ -173,7 +178,7 @@ func (f *Factory) IO() *iostreams.IOStreams {
 }
 
 func (f *Factory) DefaultHostname() string {
-	return glinstance.DefaultHostname
+	return f.DefaultHostnameStub
 }
 
 func (f *Factory) BuildInfo() api.BuildInfo {

@@ -840,7 +840,7 @@ func Test_initialContainerRegistryDomains(t *testing.T) {
 		cfg := config.NewBlankConfigInDir(t.TempDir())
 		require.NoError(t, cfg.Set("gitlab.com", "container_registry_domains", "my.custom.registry"))
 
-		got := initialContainerRegistryDomains(cfg, "gitlab.com")
+		got := initialContainerRegistryDomains(cfg, "gitlab.com", "")
 
 		assert.Equal(t, "my.custom.registry", got)
 	})
@@ -848,9 +848,29 @@ func Test_initialContainerRegistryDomains(t *testing.T) {
 	t.Run("falls back to hostname-derived default when nothing saved", func(t *testing.T) {
 		cfg := config.NewBlankConfigInDir(t.TempDir())
 
-		got := initialContainerRegistryDomains(cfg, "gitlab.com")
+		got := initialContainerRegistryDomains(cfg, "gitlab.com", "")
 
 		assert.Equal(t, "gitlab.com,gitlab.com:443,registry.gitlab.com", got)
+	})
+
+	t.Run("flag wins over the saved value", func(t *testing.T) {
+		cfg := config.NewBlankConfigInDir(t.TempDir())
+		require.NoError(t, cfg.Set("gitlab.com", "container_registry_domains", "my.custom.registry"))
+
+		got := initialContainerRegistryDomains(cfg, "gitlab.com", "none")
+
+		assert.Equal(t, "none", got)
+	})
+
+	// A login that does not reach the prompt, which is every non-interactive
+	// login, must not clear domains the host already has.
+	t.Run("never resolves to empty", func(t *testing.T) {
+		cfg := config.NewBlankConfigInDir(t.TempDir())
+		require.NoError(t, cfg.Set("example.com", "container_registry_domains", "registry.example.com"))
+
+		assert.Equal(t, "registry.example.com", initialContainerRegistryDomains(cfg, "example.com", ""))
+		assert.Equal(t, defaultContainerRegistryDomainsString("other.example.com"),
+			initialContainerRegistryDomains(cfg, "other.example.com", ""))
 	})
 }
 
@@ -921,4 +941,34 @@ func Test_getAccessTokenTip(t *testing.T) {
 	assert.Contains(t, tip, older)
 	assert.Less(t, strings.Index(tip, current), strings.Index(tip, older),
 		"the URL for supported versions should come first")
+}
+
+// A non-interactive login with no --hostname used to fall back to the
+// gitlab.com constant, storing credentials under the wrong host for anyone who
+// had pointed glab at another instance with GITLAB_HOST.
+func Test_nonInteractiveLoginDefaultsToTheResolvedHost(t *testing.T) {
+	keyring.MockInit()
+
+	d := t.TempDir()
+	t.Setenv("GLAB_CONFIG_DIR", d)
+
+	io, _, _, _ := cmdtest.TestIOStreams()
+	f := cmdtest.NewTestFactory(io, currentUserFactoryOption(t))
+	f.DefaultHostnameStub = "gitlab.example.com"
+	cfg := config.NewBlankConfigInDir(d)
+	f.ConfigStub = func() config.Config { return cfg }
+
+	cmd := NewCmdLogin(f)
+	cmd.Flags().BoolP("help", "x", false, "")
+	cmd.SetArgs([]string{"--job-token", "job-abc"})
+
+	_, err := cmd.ExecuteC()
+	require.NoError(t, err)
+
+	got, err := cfg.Get("gitlab.example.com", "job_token")
+	require.NoError(t, err)
+	assert.Equal(t, "job-abc", got)
+
+	onDefault, _ := cfg.Get("gitlab.com", "job_token")
+	assert.Empty(t, onDefault, "credentials should not land on gitlab.com")
 }
