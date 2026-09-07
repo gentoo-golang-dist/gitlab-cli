@@ -33,8 +33,9 @@ type KeyDef struct {
 	// and an empty sequence is emitted instead.
 	Default     string
 	Description string
-	// EnvVars overrides the default env-var (uppercase Name). CI-autologin
-	// overrides are layered on top by EnvKeyEquivalence.
+	// EnvVars overrides the default env-var (uppercase Name). The first one
+	// that is set wins. CI-autologin overrides are layered on top by
+	// EnvKeyEquivalence.
 	EnvVars []string
 	Aliases []string
 	// UserSettable false keeps the key off `config set` and out of the
@@ -96,12 +97,14 @@ var KeySchema = []KeyDef{
 	{
 		Name: "glamour_style", Scope: ScopeGlobal, Type: TypeString,
 		Default: "dark", UserSettable: true, Fallback: true,
+		EnvVars:     []string{"GLAB_GLAMOUR_STYLE", "GLAMOUR_STYLE"},
 		Description: "Set your desired Markdown renderer style. Available options are [dark, light, notty]. To set a custom style, refer to https://github.com/charmbracelet/glamour#styles",
 	},
 	{
 		Name: "check_update", Scope: ScopeGlobal, Type: TypeBool,
 		Default: "true", UserSettable: true,
-		Description: "Allow glab to automatically check for updates and notify you when there are new updates.",
+		EnvVars:     []string{"GLAB_CHECK_UPDATE", "CHECK_UPDATE"},
+		Description: "Allow glab to automatically check for updates and notify you when there are new updates.\nSetting the environment variable to true also forces a check, bypassing the once-a-day interval.",
 	},
 	{
 		Name: "last_update_check_timestamp", Scope: ScopeGlobal, Type: TypeString,
@@ -151,7 +154,7 @@ var KeySchema = []KeyDef{
 		Name: "no_prompt", Scope: ScopeGlobal, Type: TypeBool,
 		Default: "false", UserSettable: true,
 		Aliases:     []string{"prompt_disabled"},
-		EnvVars:     []string{"NO_PROMPT", "PROMPT_DISABLED"},
+		EnvVars:     []string{"GLAB_NO_PROMPT", "NO_PROMPT", "PROMPT_DISABLED"},
 		Description: "Set to true (1) to disable prompts, or false (0) to enable them.",
 	},
 	{
