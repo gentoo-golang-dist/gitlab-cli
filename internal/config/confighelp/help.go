@@ -33,10 +33,7 @@ func backtickLiterals(s string) string {
 }
 
 func describe(kd config.KeyDef) string {
-	desc := backtickLiterals(flatten(kd.Description))
-	if !strings.HasSuffix(desc, ".") {
-		desc += "."
-	}
+	desc := tidy(kd.Description)
 	if len(kd.Aliases) > 0 {
 		quoted := make([]string, 0, len(kd.Aliases))
 		for _, a := range kd.Aliases {
@@ -47,7 +44,57 @@ func describe(kd config.KeyDef) string {
 	if kd.Scope == config.ScopePerHost {
 		desc += " Scoped per host; set it with `--host`."
 	}
+	if envVars := config.EnvVarsForKey(kd); len(envVars) > 0 {
+		desc += " " + envVarSentence(envVars)
+	}
 	return desc
+}
+
+// tidy renders a schema description as a single Markdown sentence.
+func tidy(desc string) string {
+	out := backtickLiterals(flatten(desc))
+	if !strings.HasSuffix(out, ".") {
+		out += "."
+	}
+	return out
+}
+
+// EnvVarsByGroup returns the environment variable reference, grouped, with
+// each description flattened onto one line and its quoted literals marked up
+// as code.
+func EnvVarsByGroup() []config.EnvVarSection {
+	out := slices.Clone(config.EnvVarsByGroup())
+	for i := range out {
+		out[i].Vars = slices.Clone(out[i].Vars)
+		for j := range out[i].Vars {
+			out[i].Vars[j].Description = tidy(out[i].Vars[j].Description)
+		}
+	}
+	return out
+}
+
+// EnvironmentHelp renders the environment variable reference as the plain
+// "NAME: description" blocks the help:environment annotation uses.
+func EnvironmentHelp() string {
+	var b strings.Builder
+	for i, ev := range config.EnvVars() {
+		if i > 0 {
+			b.WriteString("\n\n")
+		}
+		fmt.Fprintf(&b, "%s: %s", ev.Name, flatten(ev.Description))
+	}
+	return b.String()
+}
+
+func envVarSentence(envVars []string) string {
+	quoted := make([]string, 0, len(envVars))
+	for _, v := range envVars {
+		quoted = append(quoted, "`"+v+"`")
+	}
+	if len(quoted) == 1 {
+		return "Environment variable: " + quoted[0] + "."
+	}
+	return "Environment variables, first one set wins: " + strings.Join(quoted, ", ") + "."
 }
 
 // flatten collapses a KeyDef description onto one line, dropping any trailing

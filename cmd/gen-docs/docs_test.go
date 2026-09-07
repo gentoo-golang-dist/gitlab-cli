@@ -52,7 +52,18 @@ func TestGenWebDocsPrunesAndDocuments(t *testing.T) {
 	seedRaw(t, readmePath,
 		readmeCommandListStart+"\n- [`glab old`](docs/source/old): Old.\n"+readmeCommandListEnd+"\n")
 
+	configPath := filepath.Join(dir, "configuration.md")
+	seedRaw(t, configPath,
+		"Hand-maintained.\n\n"+envVarTableStart+"\nstale table\n"+envVarTableEnd+"\n")
+
 	require.NoError(t, genWebDocs(root, dir, readmePath))
+
+	configContent, err := os.ReadFile(configPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(configContent), "Hand-maintained.")
+	assert.NotContains(t, string(configContent), "stale table")
+	assert.Contains(t, string(configContent), "| `GITLAB_TOKEN` |")
+	assert.Contains(t, string(configContent), "### GitLab access variables")
 
 	// Documented pages exist.
 	assert.FileExists(t, filepath.Join(dir, "_index.md"))

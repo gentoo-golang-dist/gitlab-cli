@@ -25,6 +25,17 @@ var ciAutologinEnvOverrides = map[string][]string{
 	"client_key":   {"CI_SERVER_TLS_KEY_FILE"},
 }
 
+// schemaEnvVars returns the environment variables a key is read from,
+// ignoring the CI auto-login overrides so that help text and generated docs
+// do not vary with the ambient environment.
+func schemaEnvVars(key string) []string {
+	canonical := resolveAlias(key)
+	if kd := findKeyDef(canonical); kd != nil && len(kd.EnvVars) > 0 {
+		return kd.EnvVars
+	}
+	return []string{strings.ToUpper(canonical)}
+}
+
 func EnvKeyEquivalence(key string) []string {
 	canonical := resolveAlias(key)
 
@@ -35,10 +46,7 @@ func EnvKeyEquivalence(key string) []string {
 		}
 	}
 
-	if kd := findKeyDef(canonical); kd != nil && len(kd.EnvVars) > 0 {
-		return kd.EnvVars
-	}
-	return []string{strings.ToUpper(canonical)}
+	return schemaEnvVars(canonical)
 }
 
 // Only KeyDefs marked Fallback contribute a value here; the rest return
