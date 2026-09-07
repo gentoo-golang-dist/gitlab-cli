@@ -26,12 +26,14 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/recovery"
+	"gitlab.com/gitlab-org/cli/internal/text"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 type options struct {
 	Title                 string   `json:"title,omitempty"`
 	Description           string   `json:"description,omitempty"`
+	Attach                []string `json:"attach,omitempty"`
 	SourceBranch          string   `json:"source_branch,omitempty"`
 	TargetBranch          string   `json:"target_branch,omitempty"`
 	TargetTrackingBranch  string   `json:"target_tracking_branch,omitempty"`
@@ -64,6 +66,9 @@ type options struct {
 	web         bool
 	recover     bool
 	signoff     bool
+
+	// Unexported, so a recovery file keeps the description the user wrote.
+	body string
 
 	io              *iostreams.IOStreams             `json:"-"`
 	branch          func() (string, error)           `json:"-"`
@@ -103,11 +108,13 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			to automatically fill the title and description from the commit history. Use
 			%[1]s--draft%[1]s to create a draft merge request.
 
+			%[1]s--attach%[1]s uploads a file and references it at the end of the description. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. Files upload to the target project, so the references resolve even for a merge request from a fork.
+			%[2]s
 			The %[1]s--recover%[1]s flag is an experiment: it might be unstable or
 			removed at any time, and is not ready for production use. For more
 			information, see
 			https://docs.gitlab.com/policy/development_stages_support/.
-		`, "`"),
+		`, "`", fmt.Sprintf(text.ExperimentalFlagString, "`--attach`")),
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
 			# Create a merge request interactively from the current branch
@@ -139,7 +146,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			glab mr create -t "Fix login bug" --description-file description.md
 
 			# Read the description from standard input
-			cat description.md | glab mr create -t "Fix login bug" --description-file -`),
+			cat description.md | glab mr create -t "Fix login bug" --description-file -
+
+			# Attach a screenshot to the description
+			glab mr create -t "Fix login bug" -d "Before and after:" --attach ./before.png --attach ./after.png`),
 		Args: cobra.NoArgs,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			repoOverride, _ := cmd.Flags().GetString("head")
@@ -226,6 +236,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 	mrCreateCmd.Flags().StringVar(&opts.Template, "template", "", "Name of a template in '.gitlab/merge_request_templates/' to pre-populate the description. The '.md' extension is optional. Templates are loaded from the local repository only.")
 	cmdutils.AddDescriptionFileFlag(mrCreateCmd, "merge request")
+	cmdutils.AddAttachFlag(mrCreateCmd, &opts.Attach, "description")
 	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "description")
 	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "description-file")
 	mrCreateCmd.MarkFlagsMutuallyExclusive("template", "fill")
@@ -238,10 +249,11 @@ func (o *options) complete(cmd *cobra.Command) {
 	hasTitle := cmd.Flags().Changed("title")
 	hasDescription := cmd.Flags().Changed("description")
 	hasTemplate := cmd.Flags().Changed("template")
+	hasAttachment := len(o.Attach) > 0
 
 	// Interactive mode prompts when either the title or description/template is missing.
 	// Non-interactive mode only requires a title.
-	o.needsPrompt = !hasTitle || (o.io.IsInteractive() && !hasDescription && !hasTemplate)
+	o.needsPrompt = !hasTitle || (o.io.IsInteractive() && !hasDescription && !hasTemplate && !hasAttachment)
 
 	// Handle boolean flags: only set if explicitly provided by user
 	// This allows users to override project defaults or use them when omitted
@@ -808,11 +820,21 @@ func (o *options) run(ctx context.Context) error {
 		}
 	}
 
+	// After the cancel check so a discarded merge request uploads nothing, before
+	// the preview branch so --web carries the references too. Uploads target the
+	// project that renders the description, not the head repo it is created against.
+	o.body, err = cmdutils.AppendAttachments(ctx, o.io, client, o.TargetProject.PathWithNamespace, o.Description, o.Attach)
+	if err != nil {
+		return err
+	}
+
 	if action == cmdutils.PreviewAction {
 		return previewMR(o)
 	}
 
 	if action == cmdutils.SubmitAction {
+		mrCreateOpts.Description = &o.body
+
 		message := "\nCreating merge request for %s into %s in %s\n\n"
 		if o.IsDraft || o.IsWIP {
 			message = "\nCreating draft merge request for %s into %s in %s\n\n"
@@ -938,7 +960,7 @@ func previewMR(opts *options) error {
 }
 
 func generateMRCompareURL(opts *options) (string, error) {
-	description := opts.Description
+	description := opts.body
 
 	if len(opts.Labels) > 0 {
 		// this uses the slash commands to add labels to the description

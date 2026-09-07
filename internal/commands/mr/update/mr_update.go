@@ -19,16 +19,22 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/commands/mr/mrutils"
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
+	var attach []string
+
 	mrUpdateCmd := &cobra.Command{
 		Use:   "update [<id> | <branch>]",
 		Short: `Update a merge request.`,
 		Long: heredoc.Docf(`
 			Defaults to the currently checked-out branch. Use %[1]s--fill%[1]s to
 			automatically fill the title and description from the commit history.
-		`, "`"),
+
+			%[1]s--attach%[1]s uploads a file and references it at the end of the description. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. Without %[1]s--description%[1]s the references are added to the description the merge request already has, instead of replacing it.
+			%[2]s`, "`", fmt.Sprintf(text.ExperimentalFlagString, "`--attach`")),
 		Example: heredoc.Doc(`
 		# Mark a merge request as ready
 		glab mr update 23 --ready
@@ -46,7 +52,10 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 		glab mr update 23 --description-file description.md
 
 		# Read the description from standard input
-		cat description.md | glab mr update 23 --description-file -`),
+		cat description.md | glab mr update 23 --description-file -
+
+		# Add a screenshot to the existing description
+		glab mr update 23 --attach ./screenshot.png`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -261,6 +270,16 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 				l.Description = new(mergeBody)
 			}
 
+			if len(attach) > 0 {
+				body, err := cmdutils.AppendAttachmentsToUpdate(cmd.Context(), f.IO(), client, repo.FullName(), l.Description, func() (string, error) { return mr.Description, nil }, attach)
+				if err != nil {
+					return err
+				}
+
+				actions = append(actions, fmt.Sprintf("attached %s", utils.Pluralize(len(attach), "file")))
+				l.Description = &body
+			}
+
 			if m, _ := cmd.Flags().GetStringSlice("label"); len(m) != 0 {
 				actions = append(actions, fmt.Sprintf("added labels %s", strings.Join(m, " ")))
 				l.AddLabels = (*gitlab.LabelOptions)(&m)
@@ -382,6 +401,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	mrUpdateCmd.Flags().Bool("fill-commit-body", false, "Fill body with each commit body when multiple commits. Can only be used with --fill.")
 	mrUpdateCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt.")
 	cmdutils.AddDescriptionFileFlag(mrUpdateCmd, "merge request")
+	cmdutils.AddAttachFlag(mrUpdateCmd, &attach, "description")
 
 	return mrUpdateCmd
 }

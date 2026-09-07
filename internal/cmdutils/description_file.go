@@ -42,6 +42,10 @@ func ResolveDescriptionFile(ios *iostreams.IOStreams, cmd *cobra.Command) error 
 		return err
 	}
 
+	if err := checkAttachmentStdin(cmd, path); err != nil {
+		return err
+	}
+
 	content, err := readDescriptionFile(ios, path)
 	if err != nil {
 		return err

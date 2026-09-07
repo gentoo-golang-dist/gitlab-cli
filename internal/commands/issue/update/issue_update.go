@@ -14,9 +14,13 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/cmdutils"
 	"gitlab.com/gitlab-org/cli/internal/commands/issue/issueutils"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
+	"gitlab.com/gitlab-org/cli/internal/text"
+	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
 func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
+	var attach []string
+
 	issueUpdateCmd := &cobra.Command{
 		Use:   "update <id>",
 		Short: `Update issue.`,
@@ -24,7 +28,9 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			Change an issue's labels, assignees, milestone, title, or
 			description. Use %[1]s--label%[1]s and %[1]s--unlabel%[1]s to add or remove
 			labels.
-		`, "`"),
+
+			%[1]s--attach%[1]s uploads a file and references it at the end of the description. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. Without %[1]s--description%[1]s the references are added to the description the issue already has, instead of replacing it.
+			%[2]s`, "`", fmt.Sprintf(text.ExperimentalFlagString, "`--attach`")),
 		Example: heredoc.Doc(`
 			glab issue update 42 --label ui,ux
 			glab issue update 42 --unlabel working
@@ -33,7 +39,10 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			glab issue update 42 --description-file description.md
 
 			# Read the description from standard input
-			cat description.md | glab issue update 42 --description-file -`),
+			cat description.md | glab issue update 42 --description-file -
+
+			# Add a screenshot to the existing description
+			glab issue update 42 --attach ./screenshot.png`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -136,6 +145,16 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 					l.Description = new(m)
 				}
 			}
+
+			if len(attach) > 0 {
+				body, err := cmdutils.AppendAttachmentsToUpdate(cmd.Context(), f.IO(), client, repo.FullName(), l.Description, func() (string, error) { return issue.Description, nil }, attach)
+				if err != nil {
+					return err
+				}
+
+				actions = append(actions, fmt.Sprintf("attached %s", utils.Pluralize(len(attach), "file")))
+				l.Description = &body
+			}
 			if m, _ := cmd.Flags().GetStringSlice("label"); len(m) != 0 {
 				actions = append(actions, fmt.Sprintf("added labels %s", strings.Join(m, " ")))
 				l.AddLabels = (*gitlab.LabelOptions)(&m)
@@ -227,6 +246,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	issueUpdateCmd.Flags().IntP("weight", "w", 0, "Set weight of the issue.")
 	issueUpdateCmd.Flags().StringP("due-date", "", "", "A date in 'YYYY-MM-DD' format.")
 	cmdutils.AddDescriptionFileFlag(issueUpdateCmd, "issue")
+	cmdutils.AddAttachFlag(issueUpdateCmd, &attach, "description")
 
 	return issueUpdateCmd
 }
