@@ -20,7 +20,7 @@ import (
 // The store holds only public certificates (no private keys) and lives in a
 // temp file removed after the run, so the password is not a secret; the JVM
 // simply requires one.
-const jvmTrustStorePassword = "changeit"
+const jvmTrustStorePassword = "df-truststore-not-secret"
 
 // writeJVMTrustStoreAt builds a PKCS#12 truststore at path containing the
 // given CA certificates (the proxy MITM CA, plus any user CAs prepended into
