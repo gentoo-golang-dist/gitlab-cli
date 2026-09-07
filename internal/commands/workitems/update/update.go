@@ -33,6 +33,7 @@ type options struct {
 	iid         int64
 	title       string
 	description string
+	attach      []string
 	assignee    []string
 	milestone   string
 	startDate   string
@@ -61,6 +62,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		The command uses your repository context to detect scope automatically.
 		
 		Use %[1]s--group%[1]s to target a group or subgroup. %[1]s--group%[1]s and %[1]s--repo%[1]s are mutually exclusive.
+
+		%[1]s--attach%[1]s uploads a file and references it at the end of the description. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. Without %[1]s--description%[1]s the references are added to the description the work item already has, instead of replacing it. Uploads are project-scoped, so %[1]s--attach%[1]s cannot be combined with %[1]s--group%[1]s.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 					# Update a work item in current project
@@ -74,6 +77,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 					# Read the description from standard input
 					cat description.md | glab work-items update 42 --description-file -
+
+					# Add a screenshot to the existing description
+					glab work-items update 42 --attach ./screenshot.png
 		`),
 		Args: cobra.ExactArgs(1),
 		Annotations: map[string]string{
@@ -104,8 +110,11 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	fl.StringVar(&opts.startDate, "startdate", "", "Update the start date for the work item.")
 	fl.StringVar(&opts.dueDate, "duedate", "", "Update the due date for the work item.")
 	cmdutils.AddDescriptionFileFlag(cmd, "work item")
+	cmdutils.AddAttachFlag(cmd, &opts.attach, "description")
 
 	cmd.MarkFlagsMutuallyExclusive("group", "repo")
+	// Uploads are project-scoped, and GitLab has no group-level equivalent.
+	cmd.MarkFlagsMutuallyExclusive("group", "attach")
 
 	return cmd
 }
@@ -172,6 +181,22 @@ func (opts *options) run(cmd *cobra.Command) error {
 		updateOpts.Description = new(opts.description)
 	}
 
+	if len(opts.attach) > 0 {
+		current := func() (string, error) {
+			wi, _, err := client.WorkItems.GetWorkItem(opts.scope.Path, opts.iid, gitlab.WithContext(cmd.Context()))
+			if err != nil {
+				return "", fmt.Errorf("failed to read the current description: %w", err)
+			}
+			return wi.Description, nil
+		}
+
+		body, err := cmdutils.AppendAttachmentsToUpdate(cmd.Context(), opts.io, client, opts.scope.Path, updateOpts.Description, current, opts.attach)
+		if err != nil {
+			return err
+		}
+		updateOpts.Description = &body
+	}
+
 	if len(opts.assignee) != 0 {
 		user, err := a.UsersByNames(client, opts.assignee)
 		if err != nil {
@@ -217,7 +242,7 @@ func (opts *options) run(cmd *cobra.Command) error {
 		updateOpts.Weight = new(opts.weight)
 	}
 
-	wi, _, err := client.WorkItems.UpdateWorkItem(opts.scope.Path, opts.iid, &updateOpts)
+	wi, _, err := client.WorkItems.UpdateWorkItem(opts.scope.Path, opts.iid, &updateOpts, gitlab.WithContext(cmd.Context()))
 	if err != nil {
 		return err
 	}

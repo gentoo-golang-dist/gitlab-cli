@@ -53,7 +53,7 @@ func TestWorkItemsCreate(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tc := gitlabtesting.NewTestClient(t)
 				tc.MockWorkItems.EXPECT().
-					CreateWorkItem(gomock.Any(), gomock.Any(), gomock.Any()).
+					CreateWorkItem(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.workItem, &gitlab.Response{}, nil)
 
 				exec := cmdtest.SetupCmdForTest(
@@ -74,7 +74,7 @@ func TestWorkItemsCreate(t *testing.T) {
 	t.Run("API error", func(t *testing.T) {
 		tc := gitlabtesting.NewTestClient(t)
 		tc.MockWorkItems.EXPECT().
-			CreateWorkItem(gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateWorkItem(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, nil, assert.AnError)
 
 		exec := cmdtest.SetupCmdForTest(
@@ -107,7 +107,7 @@ func TestWorkItemsCreate_DescriptionFile(t *testing.T) {
 
 			var gotDescription *string
 			tc.MockWorkItems.EXPECT().
-				CreateWorkItem(gomock.Any(), gomock.Any(), gomock.Any()).
+				CreateWorkItem(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ string, _ gitlab.WorkItemTypeID, opts *gitlab.CreateWorkItemOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.WorkItem, *gitlab.Response, error) {
 					gotDescription = opts.Description
 					return &gitlab.WorkItem{IID: 1, WebURL: "https://gitlab.com/OWNER/REPO/-/work_items/1"}, &gitlab.Response{}, nil

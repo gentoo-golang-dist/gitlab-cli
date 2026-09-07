@@ -26,6 +26,7 @@ type updateOptions struct {
 
 	// Flags.
 	message string
+	attach  []string
 
 	// Populated in complete.
 	mrArgs       []string
@@ -57,6 +58,8 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 			- Note URLs: %[1]s.../merge_requests/1#note_12345%[1]s
 
 			You can change only the note body. You cannot move the position of diff notes.
+
+			%[1]s--attach%[1]s uploads a file and references it at the end of the note. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. Without %[1]s--message%[1]s the references are added to the body the note already has, instead of replacing it.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Update note 12345 on merge request 1 with a new message
@@ -67,6 +70,9 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 
 			# Pipe the new body from stdin
 			echo "new body" | glab mr note update 1 12345
+
+			# Add a screenshot to the existing note body
+			glab mr note update 1 12345 --attach ./screenshot.png
 		`),
 		Args: cobra.RangeArgs(1, 2),
 		Annotations: map[string]string{
@@ -84,6 +90,7 @@ func NewCmdUpdate(f cmdutils.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.message, "message", "m", "", "New note body. If omitted, opens an editor or reads from stdin.")
+	cmdutils.AddAttachFlag(cmd, &opts.attach, "note")
 
 	return cmd
 }
@@ -120,18 +127,23 @@ func (o *updateOptions) complete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to list discussions: %w", err)
 	}
 
-	o.discussionID, _, err = mrutils.FindNoteInDiscussions(discussions, noteID)
+	discussionID, note, err := mrutils.FindNoteInDiscussions(discussions, noteID)
 	if err != nil {
 		return fmt.Errorf("note %d not found in merge request !%d", noteID, mr.IID)
 	}
+	o.discussionID = discussionID
 
 	// Resolve body.
 	body := o.message
-	if strings.TrimSpace(body) == "" {
+	switch {
+	case strings.TrimSpace(body) != "":
+	case len(o.attach) == 0:
 		body, err = getBodyFromStdinOrEditor(o.factory, cmd)
 		if err != nil {
 			return err
 		}
+	default:
+		body = note.Body
 	}
 	o.body = body
 
@@ -139,14 +151,20 @@ func (o *updateOptions) complete(cmd *cobra.Command, args []string) error {
 }
 
 func (o *updateOptions) validate() error {
-	if strings.TrimSpace(o.body) == "" {
+	if strings.TrimSpace(o.body) == "" && len(o.attach) == 0 {
 		return fmt.Errorf("aborted: note has an empty message")
 	}
 	return nil
 }
 
 func (o *updateOptions) run(ctx context.Context) error {
-	_, _, err := o.client.Discussions.UpdateMergeRequestDiscussionNote(
+	body, err := cmdutils.AppendAttachments(ctx, o.io, o.client, o.repo.FullName(), o.body, o.attach)
+	if err != nil {
+		return err
+	}
+	o.body = body
+
+	_, _, err = o.client.Discussions.UpdateMergeRequestDiscussionNote(
 		o.repo.FullName(),
 		o.mr.IID,
 		o.discussionID,

@@ -25,6 +25,7 @@ type createOptions struct {
 
 	// Flags.
 	message    string
+	attach     []string
 	unique     bool
 	reply      string
 	filePath   string
@@ -83,6 +84,11 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			- %[1]s--resolvable=false%[1]s cannot be combined with %[1]s--reply%[1]s
 			or %[1]s--file%[1]s (and by extension %[1]s--line%[1]s or
 			%[1]s--old-line%[1]s).
+			- %[1]s--attach%[1]s and %[1]s--unique%[1]s are mutually exclusive,
+			because every upload gets a fresh URL and so an attached comment can
+			never match an existing one.
+
+			%[1]s--attach%[1]s uploads a file and references it at the end of the comment. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. An attachment is content on its own, so a comment with only %[1]s--attach%[1]s neither prompts nor reads a body from stdin.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Add a comment to merge request 123
@@ -120,6 +126,12 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 
 			# Add a file-level diff comment (no line specified)
 			glab mr note create 123 --file main.go -m "General comment on this file"
+
+			# Attach a screenshot alongside the message
+			glab mr note create 123 -m "Renders wrong here." --attach ./screenshot.png
+
+			# Attach an image piped from the clipboard
+			pngpaste - | glab mr note create 123 --attach -
 		`),
 		Args: cobra.MaximumNArgs(1),
 		Annotations: map[string]string{
@@ -147,7 +159,11 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	fl.StringVar(&opts.line, "line", "", "Line in the new version. A single line number, like 42, or a range, like 10:15.")
 	fl.IntVar(&opts.oldLine, "old-line", 0, "Line in the old version, for commenting on a removed line.")
 	fl.BoolVar(&opts.resolvable, "resolvable", true, "Create the note as a resolvable discussion thread. Set to false to create a non-resolvable note.")
+	cmdutils.AddAttachFlag(cmd, &opts.attach, "comment")
 
+	// Each upload gets a fresh URL, so an attached note never matches an
+	// existing one and --unique could not skip anything.
+	cmd.MarkFlagsMutuallyExclusive("unique", "attach")
 	cmd.MarkFlagsMutuallyExclusive("reply", "unique")
 	cmd.MarkFlagsMutuallyExclusive("reply", "file")
 	cmd.MarkFlagsMutuallyExclusive("unique", "file")
@@ -171,7 +187,9 @@ func (o *createOptions) complete(cmd *cobra.Command, args []string) error {
 	o.repo = repo
 
 	body := o.message
-	if strings.TrimSpace(body) == "" {
+	// The attachment may itself be what is on stdin, so --attach suppresses
+	// reading the body from stdin or an editor.
+	if strings.TrimSpace(body) == "" && len(o.attach) == 0 {
 		body, err = getBodyFromStdinOrEditor(o.factory, cmd)
 		if err != nil {
 			return err
@@ -219,7 +237,7 @@ func (o *createOptions) validateFlags() error {
 }
 
 func (o *createOptions) validate() error {
-	if strings.TrimSpace(o.body) == "" {
+	if strings.TrimSpace(o.body) == "" && len(o.attach) == 0 {
 		return fmt.Errorf("aborted: note has an empty message")
 	}
 	if o.reply != "" && len(o.reply) < 8 {
@@ -232,6 +250,12 @@ func (o *createOptions) validate() error {
 }
 
 func (o *createOptions) run(ctx context.Context) error {
+	body, err := cmdutils.AppendAttachments(ctx, o.io, o.client, o.repo.FullName(), o.body, o.attach)
+	if err != nil {
+		return err
+	}
+	o.body = body
+
 	switch {
 	case o.reply != "":
 		return o.runReply(ctx)

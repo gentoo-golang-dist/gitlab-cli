@@ -23,6 +23,7 @@ import (
 	"gitlab.com/gitlab-org/cli/internal/iostreams"
 	"gitlab.com/gitlab-org/cli/internal/mcpannotations"
 	"gitlab.com/gitlab-org/cli/internal/recovery"
+	"gitlab.com/gitlab-org/cli/internal/text"
 	"gitlab.com/gitlab-org/cli/internal/utils"
 )
 
@@ -38,6 +39,7 @@ var createIssue = func(client *gitlab.Client, projectID any, opts *gitlab.Create
 type options struct {
 	Title       string   `json:"title,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Attach      []string `json:"attach,omitempty"`
 	Labels      []string `json:"labels,omitempty"`
 	Assignees   []string `json:"assignees,omitempty"`
 
@@ -56,6 +58,9 @@ type options struct {
 	IsConfidential bool `json:"is_confidential,omitempty"`
 
 	Template string `json:"template,omitempty"`
+
+	// Unexported, so a recovery file keeps the description the user wrote.
+	body string
 
 	noEditor    bool
 	needsPrompt bool
@@ -88,11 +93,13 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			description. Use %[1]s--web%[1]s to create the issue in your browser, or
 			%[1]s--template%[1]s to start from an issue template.
 
+			%[1]s--attach%[1]s uploads a file and references it at the end of the description. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. An attachment satisfies the description requirement, so %[1]s--title%[1]s with %[1]s--attach%[1]s completes without prompting.
+			%[2]s
 			The %[1]s--recover%[1]s flag is an experiment: it might be unstable or
 			removed at any time, and is not ready for production use. For more
 			information, see
 			https://docs.gitlab.com/policy/development_stages_support/.
-		`, "`"),
+		`, "`", fmt.Sprintf(text.ExperimentalFlagString, "`--attach`")),
 		Aliases: []string{"new"},
 		Example: heredoc.Doc(`
 			glab issue create
@@ -107,7 +114,10 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			glab issue create -t "we need this feature" --description-file description.md
 
 			# Read the description from standard input
-			cat description.md | glab issue create -t "we need this feature" --description-file -`),
+			cat description.md | glab issue create -t "we need this feature" --description-file -
+
+			# Attach a screenshot to the description
+			glab issue create -t "Login button misaligned" -d "See below." --attach ./screenshot.png`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
 			mcpannotations.Destructive: "true",
@@ -130,12 +140,14 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 			hasTitle := cmd.Flags().Changed("title")
 			hasDescription := cmd.Flags().Changed("description")
 			hasTemplate := cmd.Flags().Changed("template")
+			hasAttachment := len(opts.Attach) > 0
 
-			// disable interactive mode if title and description (or template) are explicitly defined
-			opts.needsPrompt = !(hasTitle && (hasDescription || hasTemplate))
+			// disable interactive mode if title and description (or template, or an
+			// attachment) are explicitly defined
+			opts.needsPrompt = !(hasTitle && (hasDescription || hasTemplate || hasAttachment))
 
 			if opts.needsPrompt && !opts.io.IsInteractive() {
-				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' (or '--template') required for non-interactive mode")}
+				return &cmdutils.FlagError{Err: errors.New("'--title' and '--description' (or '--template' or '--attach') required for non-interactive mode")}
 			}
 
 			// Remove this once --yes does more than just skip the prompts that --web happen to skip
@@ -171,6 +183,7 @@ func NewCmdCreate(f cmdutils.Factory) *cobra.Command {
 	}
 	issueCreateCmd.Flags().StringVarP(&opts.Title, "title", "t", "", "Issue title.")
 	issueCreateCmd.Flags().StringVarP(&opts.Description, "description", "d", "", "Issue description. Set to \"-\" to open an editor.")
+	cmdutils.AddAttachFlag(issueCreateCmd, &opts.Attach, "description")
 	issueCreateCmd.Flags().StringSliceVarP(&opts.Labels, "label", "l", []string{}, "Add label by name. Multiple labels can be comma-separated or specified by repeating the flag.")
 	issueCreateCmd.Flags().StringSliceVarP(&opts.Assignees, "assignee", "a", []string{}, "Assign issue to people by their `usernames`. Multiple usernames can be comma-separated or specified by repeating the flag.")
 	issueCreateCmd.Flags().StringVarP(&opts.MilestoneFlag, "milestone", "m", "", "The global ID or title of a milestone to assign.")
@@ -429,6 +442,13 @@ var createRun = func(ctx context.Context, opts *options) error {
 		return nil
 	}
 
+	// After the cancel check so a discarded issue uploads nothing, before the
+	// preview branch so --web carries the references too.
+	opts.body, err = cmdutils.AppendAttachments(ctx, opts.io, apiClient, repo.FullName(), opts.Description, opts.Attach)
+	if err != nil {
+		return err
+	}
+
 	if action == cmdutils.PreviewAction {
 		return previewIssue(opts)
 	}
@@ -436,7 +456,7 @@ var createRun = func(ctx context.Context, opts *options) error {
 	if action == cmdutils.SubmitAction {
 		issueCreateOpts.Title = new(opts.Title)
 		issueCreateOpts.Labels = (*gitlab.LabelOptions)(&opts.Labels)
-		issueCreateOpts.Description = &opts.Description
+		issueCreateOpts.Description = &opts.body
 		if opts.IsConfidential {
 			issueCreateOpts.Confidential = new(opts.IsConfidential)
 		}
@@ -536,7 +556,7 @@ func previewIssue(opts *options) error {
 
 func generateIssueWebURL(opts *options) (string, error) {
 	var description strings.Builder
-	description.WriteString(opts.Description)
+	description.WriteString(opts.body)
 
 	if len(opts.Labels) > 0 {
 		// this uses the slash commands to add labels to the description

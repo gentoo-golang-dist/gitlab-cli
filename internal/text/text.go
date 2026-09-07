@@ -15,6 +15,13 @@ For more information, see
 https://docs.gitlab.com/policy/development_stages_support/.
 `
 
+const ExperimentalFlagString = `
+The %s flag is an experiment. It might be
+unstable or removed at any time, and is not ready for production use.
+For more information, see
+https://docs.gitlab.com/policy/development_stages_support/.
+`
+
 const BetaString = `
 This feature is in beta and might not be ready for production use.
 It might be unstable and breaking changes can occur outside of major releases.

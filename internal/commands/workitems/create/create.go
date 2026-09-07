@@ -32,6 +32,7 @@ type options struct {
 	title        string
 	workItemType string
 	description  string
+	attach       []string
 	confidential bool
 
 	// Internal state
@@ -55,6 +56,8 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 		Short: "Create work items in a project or group. (EXPERIMENTAL)",
 		Long: heredoc.Docf(`Use %[1]s--type%[1]s to specify the kind of work item to create.
 		The command uses your repository context to detect scope automatically.
+
+		%[1]s--attach%[1]s uploads a file and references it at the end of the description. Repeat the flag for more than one file, or pass %[1]s-%[1]s to read the file from standard input. Uploads are project-scoped, so %[1]s--attach%[1]s cannot be combined with %[1]s--group%[1]s.
 		`, "`") + text.ExperimentalString,
 		Example: heredoc.Doc(`
 			# Create a work item in the current project
@@ -68,6 +71,9 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 
 			# Read the description from standard input
 			cat description.md | glab work-items create --type issue --title "Add feature" --description-file -
+
+			# Attach a screenshot to the description
+			glab work-items create --type issue --title "Add feature" --attach ./screenshot.png
 		`),
 		Args: cobra.NoArgs,
 		Annotations: map[string]string{
@@ -80,7 +86,7 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 			if err := opts.validate(); err != nil {
 				return err
 			}
-			return opts.run()
+			return opts.run(cmd.Context())
 		},
 	}
 
@@ -98,9 +104,12 @@ func NewCmd(f cmdutils.Factory) *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.confidential, "confidential", "c", false, "Mark work item confidential.")
 
 	cmdutils.AddDescriptionFileFlag(cmd, "work item")
+	cmdutils.AddAttachFlag(cmd, &opts.attach, "description")
 
 	_ = cmd.MarkFlagRequired("type")
 	cmd.MarkFlagsMutuallyExclusive("group", "repo")
+	// Uploads are project-scoped, and GitLab has no group-level equivalent.
+	cmd.MarkFlagsMutuallyExclusive("group", "attach")
 
 	return cmd
 }
@@ -142,7 +151,7 @@ func (opts *options) validate() error {
 	return nil
 }
 
-func (opts *options) run() error {
+func (opts *options) run(ctx context.Context) error {
 	client, err := opts.gitlabClient()
 	if err != nil {
 		return fmt.Errorf("failed to get GitLab client: %w", err)
@@ -157,15 +166,19 @@ func (opts *options) run() error {
 		Title: opts.title,
 	}
 
-	if opts.description != "" {
-		createOpts.Description = new(opts.description)
+	description, err := cmdutils.AppendAttachments(ctx, opts.io, client, opts.scope.Path, opts.description, opts.attach)
+	if err != nil {
+		return err
+	}
+	if description != "" {
+		createOpts.Description = new(description)
 	}
 
 	if opts.confidential {
 		createOpts.Confidential = new(true)
 	}
 
-	wi, _, err := client.WorkItems.CreateWorkItem(opts.scope.Path, typeID, createOpts)
+	wi, _, err := client.WorkItems.CreateWorkItem(opts.scope.Path, typeID, createOpts, gitlab.WithContext(ctx))
 	if err != nil {
 		return err
 	}

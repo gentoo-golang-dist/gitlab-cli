@@ -52,7 +52,7 @@ func TestWorkItemsUpdate(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				tc := gitlabtesting.NewTestClient(t)
 				tc.MockWorkItems.EXPECT().
-					UpdateWorkItem(gomock.Any(), gomock.Any(), gomock.Any()).
+					UpdateWorkItem(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.workItem, &gitlab.Response{}, nil)
 
 				exec := cmdtest.SetupCmdForTest(
@@ -88,7 +88,7 @@ func TestWorkItemsUpdate_DescriptionFile(t *testing.T) {
 
 			var gotDescription *string
 			tc.MockWorkItems.EXPECT().
-				UpdateWorkItem(gomock.Any(), gomock.Any(), gomock.Any()).
+				UpdateWorkItem(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ string, _ int64, opts *gitlab.UpdateWorkItemOptions, _ ...gitlab.RequestOptionFunc) (*gitlab.WorkItem, *gitlab.Response, error) {
 					gotDescription = opts.Description
 					return &gitlab.WorkItem{IID: 1, WebURL: "https://gitlab.com/OWNER/REPO/-/work_items/1"}, &gitlab.Response{}, nil
